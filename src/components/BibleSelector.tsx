@@ -1,4 +1,9 @@
-// ...existing code...
+import React, { useState } from 'react';
+
+// Add state for selectors
+const [selectedVersion, setSelectedVersion] = useState('');
+const [selectedBook, setSelectedBook] = useState('');
+const [selectedChapter, setSelectedChapter] = useState(1);
 
 const handleVersionChange = (newVersion: string) => {
   // Store current selections
@@ -65,5 +70,3 @@ return (
     </select>
   </div>
 );
-
-// ...existing code...
