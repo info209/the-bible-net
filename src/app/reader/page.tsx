@@ -71,29 +71,38 @@ export default function ReaderPage() {
       .then((res) => res.json())
       .then((data) => {
         console.log('Books:', data);
-        // Support both { books: [...] } and [...]
         const arr = Array.isArray(data) ? data : (Array.isArray(data.books) ? data.books : []);
         setBooks(arr);
-        if (arr.length > 0) setBook(arr[0].slug);
+        // Try to preserve book selection
+        const prevBookSlug = book;
+        const bookExists = arr.some((b: any) => b.slug === prevBookSlug);
+        if (bookExists) {
+          setBook(prevBookSlug);
+        } else if (arr.length > 0) {
+          setBook(arr[0].slug);
+        }
         setLoading(false);
       })
       .catch(() => { setBooks([]); setError('Failed to load books'); setLoading(false); });
   }, [version]);
 
-  // Fetch chapters when book changes
+  // Fetch chapters when book changes or version changes
   useEffect(() => {
     if (!version || !book) return;
     setLoading(true);
-    // Find the selected book object
-    const selectedBook = books.find((b: any) => b.slug === book);
-    if (selectedBook && selectedBook.chapterVerseCounts) {
-      // Use chapterVerseCounts keys as chapter numbers
-      const chapterNums = Object.keys(selectedBook.chapterVerseCounts).map(Number).sort((a, b) => a - b);
+    const selectedBookObj = books.find((b: any) => b.slug === book);
+    if (selectedBookObj && selectedBookObj.chapterVerseCounts) {
+      const chapterNums = Object.keys(selectedBookObj.chapterVerseCounts).map(Number).sort((a, b) => a - b);
       setChapters(chapterNums);
-      setChapter(chapterNums[0] || 1);
+      // Try to preserve chapter selection
+      const prevChapterNum = chapter;
+      if (chapterNums.includes(prevChapterNum)) {
+        setChapter(prevChapterNum);
+      } else {
+        setChapter(chapterNums[0] || 1);
+      }
       setLoading(false);
     } else {
-      // Fallback: fetch chapter-meta if not present
       fetchWithKey(`${API_BASE}/chapter-meta/${version}/${book}`)
         .then((res) => res.json())
         .then((data) => {
@@ -106,7 +115,13 @@ export default function ReaderPage() {
           }
           const arr = Array.from({ length: chapterCount }, (_, i) => i + 1);
           setChapters(arr);
-          setChapter(1);
+          // Try to preserve chapter selection
+          const prevChapterNum = chapter;
+          if (arr.includes(prevChapterNum)) {
+            setChapter(prevChapterNum);
+          } else {
+            setChapter(1);
+          }
           setLoading(false);
         })
         .catch(() => { setChapters([]); setError('Failed to load chapters'); setLoading(false); });
