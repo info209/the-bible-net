@@ -76,11 +76,11 @@ export default function ReaderPage() {
         const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
         // Only include books present in API response
         const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
-          const apiBook = apiBooks.find(b => b.slug === m.slug);
+          const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
           return { ...m, ...apiBook };
         });
         const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
-          const apiBook = apiBooks.find(b => b.slug === m.slug);
+          const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
           return { ...m, ...apiBook };
         });
         setBooks({ oldTestament: oldBooks, newTestament: newBooks });
