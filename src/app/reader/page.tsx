@@ -211,10 +211,11 @@ export default function ReaderPage() {
               {showBooks && (
                 <div
                   ref={booksDropdownRef}
-                  className="absolute z-20 left-0 right-0 mt-1 flex flex-row gap-2 bg-white border rounded shadow-lg p-2 max-h-64 overflow-y-auto"
+                  className="absolute z-20 left-0 right-0 mt-1 flex flex-row gap-2 bg-white border rounded shadow-lg p-2 max-h-64 overflow-y-auto overflow-x-auto min-w-[220px]"
+                  style={{ flexWrap: 'nowrap' }}
                 >
                   {/* Old Testament */}
-                  <div className="flex-1 min-w-[60px]">
+                  <div className="flex-1 min-w-[120px] max-w-[180px]">
                     <div className="font-semibold mb-2 text-xs text-gray-500">Old Testament</div>
                     <div className="flex flex-col gap-1">
                       {(books.oldTestament || []).map((b: any) => {
@@ -236,7 +237,7 @@ export default function ReaderPage() {
                     </div>
                   </div>
                   {/* New Testament */}
-                  <div className="flex-1 min-w-[60px]">
+                  <div className="flex-1 min-w-[120px] max-w-[180px]">
                     <div className="font-semibold mb-2 text-xs text-gray-500">New Testament</div>
                     <div className="flex flex-col gap-1">
                       {(books.newTestament || []).map((b: any) => {
@@ -264,7 +265,8 @@ export default function ReaderPage() {
             <select
               value={chapter}
               onChange={(e) => setChapter(Number(e.target.value))}
-              className="border rounded px-2 py-2 min-w-[60px] w-full"
+              className="border rounded px-2 py-2 min-w-[48px] w-auto"
+              style={{ maxWidth: '70px' }}
             >
               {chapters.map((n) => (
                 <option key={n} value={n}>{n}</option>
