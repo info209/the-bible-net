@@ -19,10 +19,16 @@ export default function ReaderPage() {
   const [chapters, setChapters] = useState<number[]>([]);
   const [verses, setVerses] = useState<any[]>([]);
 
-  // State for selections
-  const [version, setVersion] = useState<string>('');
-  const [book, setBook] = useState<string>('');
-  const [chapter, setChapter] = useState<number>(1);
+  // State for selections (initialize from localStorage if available)
+  const [version, setVersion] = useState<string>(() => typeof window !== 'undefined' ? localStorage.getItem('bible_version') || '' : '');
+  const [book, setBook] = useState<string>(() => typeof window !== 'undefined' ? localStorage.getItem('bible_book') || '' : '');
+  const [chapter, setChapter] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const ch = localStorage.getItem('bible_chapter');
+      return ch ? Number(ch) : 1;
+    }
+    return 1;
+  });
 
   // Loading and error states
   const [loading, setLoading] = useState(false);
@@ -58,7 +64,14 @@ export default function ReaderPage() {
       .then((data) => {
         console.log('Versions:', data);
         setVersions(data);
-        if (data.length > 0) setVersion(data[0].id); // Use id instead of version
+        // Only set version if not already set or invalid
+        const cachedVersion = typeof window !== 'undefined' ? localStorage.getItem('bible_version') : '';
+        const validVersion = data.find((v: any) => v.id === cachedVersion);
+        if (cachedVersion && validVersion) {
+          setVersion(cachedVersion);
+        } else if (data.length > 0) {
+          setVersion(data[0].id);
+        }
         setLoading(false);
       })
       .catch(() => { setError('Failed to load versions'); setLoading(false); });
@@ -84,12 +97,12 @@ export default function ReaderPage() {
           return { ...m, ...apiBook };
         });
         setBooks({ oldTestament: oldBooks, newTestament: newBooks });
-        // Try to preserve book selection
-        const prevBookSlug = book;
+        // Try to preserve book selection from localStorage
+        const cachedBook = typeof window !== 'undefined' ? localStorage.getItem('bible_book') : '';
         const allBooks = [...oldBooks, ...newBooks];
-        const bookExists = allBooks.some((b: any) => b.slug === prevBookSlug);
-        if (bookExists) {
-          setBook(prevBookSlug);
+        const validBook = allBooks.find((b: any) => b.slug === cachedBook);
+        if (cachedBook && validBook) {
+          setBook(cachedBook);
         } else if (allBooks.length > 0) {
           setBook(allBooks[0].slug);
         }
@@ -106,10 +119,10 @@ export default function ReaderPage() {
     if (selectedBookObj && selectedBookObj.chapterVerseCounts) {
       const chapterNums = Object.keys(selectedBookObj.chapterVerseCounts).map(Number).sort((a, b) => a - b);
       setChapters(chapterNums);
-      // Try to preserve chapter selection
-      const prevChapterNum = chapter;
-      if (chapterNums.includes(prevChapterNum)) {
-        setChapter(prevChapterNum);
+      // Try to preserve chapter selection from localStorage
+      const cachedChapter = typeof window !== 'undefined' ? Number(localStorage.getItem('bible_chapter')) : 1;
+      if (chapterNums.includes(cachedChapter)) {
+        setChapter(cachedChapter);
       } else {
         setChapter(chapterNums[0] || 1);
       }
@@ -136,10 +149,10 @@ export default function ReaderPage() {
             }
           }
           setChapters(chapterNums);
-          // Try to preserve chapter selection
-          const prevChapterNum = chapter;
-          if (chapterNums.includes(prevChapterNum)) {
-            setChapter(prevChapterNum);
+          // Try to preserve chapter selection from localStorage
+          const cachedChapter = typeof window !== 'undefined' ? Number(localStorage.getItem('bible_chapter')) : 1;
+          if (chapterNums.includes(cachedChapter)) {
+            setChapter(cachedChapter);
           } else {
             setChapter(chapterNums[0] || 1);
           }
@@ -163,6 +176,17 @@ export default function ReaderPage() {
       })
       .catch(() => { setVerses([]); setError('Failed to load verses'); setLoading(false); });
   }, [version, book, chapter]);
+
+  // Cache selection changes
+  useEffect(() => {
+    if (version) localStorage.setItem('bible_version', version);
+  }, [version]);
+  useEffect(() => {
+    if (book) localStorage.setItem('bible_book', book);
+  }, [book]);
+  useEffect(() => {
+    if (chapter) localStorage.setItem('bible_chapter', String(chapter));
+  }, [chapter]);
 
   // Helper to get selected version object
   const selectedVersionObj = versions.find(v => v.id === version);
