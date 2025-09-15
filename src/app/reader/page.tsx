@@ -265,8 +265,8 @@ export default function ReaderPage() {
             <select
               value={chapter}
               onChange={(e) => setChapter(Number(e.target.value))}
-              className="border rounded px-2 py-2 min-w-[48px] w-auto"
-              style={{ maxWidth: '70px' }}
+              className="border rounded px-2 py-2 min-w-[60px] w-16 text-center"
+              style={{ maxWidth: '90px' }}
             >
               {chapters.map((n) => (
                 <option key={n} value={n}>{n}</option>
