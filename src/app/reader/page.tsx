@@ -3,6 +3,7 @@
 import Header from '@/components/Header';
 import FooterNav from '@/components/FooterNav';
 import { useEffect, useState, useRef } from 'react';
+import { bookMapping } from '@/components/bookMapping';
 
 // Set your API base URL here
 const API_BASE = 'https://australia-southeast1-the-bible-net.cloudfunctions.net/api';
@@ -14,7 +15,7 @@ const fetchWithKey = (url: string) =>
 export default function ReaderPage() {
   // State for API data
   const [versions, setVersions] = useState<any[]>([]);
-  const [books, setBooks] = useState<any[]>([]);
+  const [books, setBooks] = useState<{ oldTestament: any[]; newTestament: any[] }>({ oldTestament: [], newTestament: [] });
   const [chapters, setChapters] = useState<number[]>([]);
   const [verses, setVerses] = useState<any[]>([]);
 
@@ -67,30 +68,41 @@ export default function ReaderPage() {
   useEffect(() => {
     if (!version) return;
     setLoading(true);
-    fetchWithKey(`${API_BASE}/versions/${version}/books`)
+    fetchWithKey(`${API_BASE}/books`)
       .then((res) => res.json())
       .then((data) => {
-        console.log('Books:', data);
-        const arr = Array.isArray(data) ? data : (Array.isArray(data.books) ? data.books : []);
-        setBooks(arr);
+        // Handle both { books: [...] } and [...]
+        const apiBooks = Array.isArray(data) ? data : (Array.isArray(data.books) ? data.books : []);
+        const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
+        // Only include books present in API response
+        const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
+          const apiBook = apiBooks.find(b => b.slug === m.slug);
+          return { ...m, ...apiBook };
+        });
+        const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
+          const apiBook = apiBooks.find(b => b.slug === m.slug);
+          return { ...m, ...apiBook };
+        });
+        setBooks({ oldTestament: oldBooks, newTestament: newBooks });
         // Try to preserve book selection
         const prevBookSlug = book;
-        const bookExists = arr.some((b: any) => b.slug === prevBookSlug);
+        const allBooks = [...oldBooks, ...newBooks];
+        const bookExists = allBooks.some((b: any) => b.slug === prevBookSlug);
         if (bookExists) {
           setBook(prevBookSlug);
-        } else if (arr.length > 0) {
-          setBook(arr[0].slug);
+        } else if (allBooks.length > 0) {
+          setBook(allBooks[0].slug);
         }
         setLoading(false);
       })
-      .catch(() => { setBooks([]); setError('Failed to load books'); setLoading(false); });
+      .catch(() => { setBooks({ oldTestament: [], newTestament: [] }); setError('Failed to load books'); setLoading(false); });
   }, [version]);
 
   // Fetch chapters when book changes or version changes
   useEffect(() => {
     if (!version || !book) return;
     setLoading(true);
-    const selectedBookObj = books.find((b: any) => b.slug === book);
+    const selectedBookObj = [...books.oldTestament, ...books.newTestament].find((b: any) => b.slug === book);
     if (selectedBookObj && selectedBookObj.chapterVerseCounts) {
       const chapterNums = Object.keys(selectedBookObj.chapterVerseCounts).map(Number).sort((a, b) => a - b);
       setChapters(chapterNums);
@@ -106,21 +118,30 @@ export default function ReaderPage() {
       fetchWithKey(`${API_BASE}/chapter-meta/${version}/${book}`)
         .then((res) => res.json())
         .then((data) => {
-          console.log('Chapters meta:', data);
-          let chapterCount = 1;
-          if (typeof data === 'object' && data !== null && 'chapters' in data) {
-            chapterCount = data.chapters;
-          } else if (Array.isArray(data)) {
-            chapterCount = data.length;
+          // Handle object with numeric keys (chapter numbers)
+          let chapterNums: number[] = [];
+          if (typeof data === 'object' && data !== null) {
+            if ('chapters' in data) {
+              // { chapters: N }
+              chapterNums = Array.from({ length: data.chapters }, (_, i) => i + 1);
+            } else if (Array.isArray(data)) {
+              // [ ... ]
+              chapterNums = data.map((_, i) => i + 1);
+            } else {
+              // {1: 80, 2: 52, ...}
+              const keys = Object.keys(data);
+              if (keys.every(k => !isNaN(Number(k)))) {
+                chapterNums = keys.map(Number).sort((a, b) => a - b);
+              }
+            }
           }
-          const arr = Array.from({ length: chapterCount }, (_, i) => i + 1);
-          setChapters(arr);
+          setChapters(chapterNums);
           // Try to preserve chapter selection
           const prevChapterNum = chapter;
-          if (arr.includes(prevChapterNum)) {
+          if (chapterNums.includes(prevChapterNum)) {
             setChapter(prevChapterNum);
           } else {
-            setChapter(1);
+            setChapter(chapterNums[0] || 1);
           }
           setLoading(false);
         })
@@ -142,6 +163,11 @@ export default function ReaderPage() {
       })
       .catch(() => { setVerses([]); setError('Failed to load verses'); setLoading(false); });
   }, [version, book, chapter]);
+
+  // Helper to get selected version object
+  const selectedVersionObj = versions.find(v => v.id === version);
+  const lang = selectedVersionObj?.language?.toLowerCase();
+  const isTelugu = lang === 'telugu' || lang === 'te';
 
   return (
     <div className="min-h-screen flex flex-col bg-[#FEFEFE]">
@@ -169,8 +195,17 @@ export default function ReaderPage() {
                 type="button"
               >
                 {(() => {
-                  const selected = books.find((b: any) => b.slug === book);
-                  return selected ? selected.name : 'Select Book';
+                  const allBooks = [...(books.oldTestament || []), ...(books.newTestament || [])];
+                  const selected = allBooks.find((b: any) => b.slug === book);
+                  if (selected) {
+                    // Use mapping for display
+                    const mapping = [...bookMapping.oldTestament, ...bookMapping.newTestament].find(m => m.slug === selected.slug);
+                    if (mapping) {
+                      return isTelugu ? mapping.telugu : mapping.english;
+                    }
+                    return selected.slug;
+                  }
+                  return 'Select Book';
                 })()}
               </button>
               {showBooks && (
@@ -182,38 +217,44 @@ export default function ReaderPage() {
                   <div className="flex-1 min-w-[120px]">
                     <div className="font-semibold mb-2 text-xs text-gray-500">Old Testament</div>
                     <div className="flex flex-col gap-1">
-                      {books.filter((b: any) => b.testament === 'old').map((b: any) => (
-                        <button
-                          key={b.slug}
-                          className={`text-left px-2 py-1 rounded transition border border-transparent hover:bg-blue-50 ${book === b.slug ? 'bg-blue-100 border-blue-400 font-bold' : ''}`}
-                          onClick={() => {
-                            setBook(b.slug);
-                            setShowBooks(false);
-                          }}
-                          type="button"
-                        >
-                          {b.name}
-                        </button>
-                      ))}
+                      {(books.oldTestament || []).map((b: any) => {
+                        const mapping = bookMapping.oldTestament.find(m => m.slug === b.slug);
+                        return (
+                          <button
+                            key={b.slug}
+                            className={`text-left px-2 py-1 rounded transition border border-transparent hover:bg-blue-50 ${book === b.slug ? 'bg-blue-100 border-blue-400 font-bold' : ''}`}
+                            onClick={() => {
+                              setBook(b.slug);
+                              setShowBooks(false);
+                            }}
+                            type="button"
+                          >
+                            {mapping ? (isTelugu ? mapping.telugu : mapping.english) : b.slug}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                   {/* New Testament */}
                   <div className="flex-1 min-w-[120px]">
                     <div className="font-semibold mb-2 text-xs text-gray-500">New Testament</div>
                     <div className="flex flex-col gap-1">
-                      {books.filter((b: any) => b.testament === 'new').map((b: any) => (
-                        <button
-                          key={b.slug}
-                          className={`text-left px-2 py-1 rounded transition border border-transparent hover:bg-blue-50 ${book === b.slug ? 'bg-blue-100 border-blue-400 font-bold' : ''}`}
-                          onClick={() => {
-                            setBook(b.slug);
-                            setShowBooks(false);
-                          }}
-                          type="button"
-                        >
-                          {b.name}
-                        </button>
-                      ))}
+                      {(books.newTestament || []).map((b: any) => {
+                        const mapping = bookMapping.newTestament.find(m => m.slug === b.slug);
+                        return (
+                          <button
+                            key={b.slug}
+                            className={`text-left px-2 py-1 rounded transition border border-transparent hover:bg-blue-50 ${book === b.slug ? 'bg-blue-100 border-blue-400 font-bold' : ''}`}
+                            onClick={() => {
+                              setBook(b.slug);
+                              setShowBooks(false);
+                            }}
+                            type="button"
+                          >
+                            {mapping ? (isTelugu ? mapping.telugu : mapping.english) : b.slug}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>
