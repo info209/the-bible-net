@@ -174,20 +174,20 @@ export default function ReaderPage() {
       <Header />
       <main className="flex-1 w-full px-2 sm:px-4 pt-4 pb-28">
         <div className="mx-auto w-full max-w-md md:max-w-3xl lg:max-w-4xl">
-          {/* Selectors: Responsive layout */}
-          <div className="flex flex-col sm:flex-row gap-2 mb-6 items-stretch sm:items-start">
+          {/* Selectors: Always side by side */}
+          <div className="flex flex-row gap-2 mb-6 items-stretch">
             {/* Version Selector */}
             <select
               value={version}
               onChange={(e) => setVersion(e.target.value)}
-              className="border rounded px-2 py-2 min-w-[120px] w-full sm:w-auto"
+              className="border rounded px-2 py-2 min-w-[90px] w-full"
             >
               {versions.map((v) => (
                 <option key={v.id} value={v.id}>{v.displayName} ({v.language})</option>
               ))}
             </select>
             {/* Book Selector: Dropdown with side-by-side Old/New Testament */}
-            <div className="relative min-w-[160px] sm:min-w-[220px] w-full sm:w-auto">
+            <div className="relative min-w-[90px] w-full">
               <button
                 ref={booksButtonRef}
                 className="border rounded px-2 py-2 w-full text-left bg-white"
@@ -211,10 +211,10 @@ export default function ReaderPage() {
               {showBooks && (
                 <div
                   ref={booksDropdownRef}
-                  className="absolute z-20 left-0 right-0 mt-1 flex flex-col sm:flex-row gap-4 bg-white border rounded shadow-lg p-2 max-h-64 overflow-y-auto"
+                  className="absolute z-20 left-0 right-0 mt-1 flex flex-row gap-2 bg-white border rounded shadow-lg p-2 max-h-64 overflow-y-auto"
                 >
                   {/* Old Testament */}
-                  <div className="flex-1 min-w-[100px] sm:min-w-[120px]">
+                  <div className="flex-1 min-w-[60px]">
                     <div className="font-semibold mb-2 text-xs text-gray-500">Old Testament</div>
                     <div className="flex flex-col gap-1">
                       {(books.oldTestament || []).map((b: any) => {
@@ -236,7 +236,7 @@ export default function ReaderPage() {
                     </div>
                   </div>
                   {/* New Testament */}
-                  <div className="flex-1 min-w-[100px] sm:min-w-[120px]">
+                  <div className="flex-1 min-w-[60px]">
                     <div className="font-semibold mb-2 text-xs text-gray-500">New Testament</div>
                     <div className="flex flex-col gap-1">
                       {(books.newTestament || []).map((b: any) => {
@@ -264,7 +264,7 @@ export default function ReaderPage() {
             <select
               value={chapter}
               onChange={(e) => setChapter(Number(e.target.value))}
-              className="border rounded px-2 py-2 min-w-[80px] w-full sm:w-auto"
+              className="border rounded px-2 py-2 min-w-[60px] w-full"
             >
               {chapters.map((n) => (
                 <option key={n} value={n}>{n}</option>
