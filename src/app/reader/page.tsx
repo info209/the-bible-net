@@ -172,25 +172,25 @@ export default function ReaderPage() {
   return (
     <div className="min-h-screen flex flex-col bg-[#FEFEFE]">
       <Header />
-      <main className="flex-1 w-full px-4 pt-4 pb-28">
+      <main className="flex-1 w-full px-2 sm:px-4 pt-4 pb-28">
         <div className="mx-auto w-full max-w-md md:max-w-3xl lg:max-w-4xl">
-          {/* Selectors: Side by side */}
-          <div className="flex flex-row gap-2 mb-6 items-start">
+          {/* Selectors: Responsive layout */}
+          <div className="flex flex-col sm:flex-row gap-2 mb-6 items-stretch sm:items-start">
             {/* Version Selector */}
             <select
               value={version}
               onChange={(e) => setVersion(e.target.value)}
-              className="border rounded px-2 py-1 min-w-[120px]"
+              className="border rounded px-2 py-2 min-w-[120px] w-full sm:w-auto"
             >
               {versions.map((v) => (
                 <option key={v.id} value={v.id}>{v.displayName} ({v.language})</option>
               ))}
             </select>
             {/* Book Selector: Dropdown with side-by-side Old/New Testament */}
-            <div className="relative min-w-[220px]">
+            <div className="relative min-w-[160px] sm:min-w-[220px] w-full sm:w-auto">
               <button
                 ref={booksButtonRef}
-                className="border rounded px-2 py-1 w-full text-left bg-white"
+                className="border rounded px-2 py-2 w-full text-left bg-white"
                 onClick={() => setShowBooks((v) => !v)}
                 type="button"
               >
@@ -211,10 +211,10 @@ export default function ReaderPage() {
               {showBooks && (
                 <div
                   ref={booksDropdownRef}
-                  className="absolute z-20 left-0 right-0 mt-1 flex gap-4 bg-white border rounded shadow-lg p-2 max-h-64 overflow-y-auto"
+                  className="absolute z-20 left-0 right-0 mt-1 flex flex-col sm:flex-row gap-4 bg-white border rounded shadow-lg p-2 max-h-64 overflow-y-auto"
                 >
                   {/* Old Testament */}
-                  <div className="flex-1 min-w-[120px]">
+                  <div className="flex-1 min-w-[100px] sm:min-w-[120px]">
                     <div className="font-semibold mb-2 text-xs text-gray-500">Old Testament</div>
                     <div className="flex flex-col gap-1">
                       {(books.oldTestament || []).map((b: any) => {
@@ -222,7 +222,7 @@ export default function ReaderPage() {
                         return (
                           <button
                             key={b.slug}
-                            className={`text-left px-2 py-1 rounded transition border border-transparent hover:bg-blue-50 ${book === b.slug ? 'bg-blue-100 border-blue-400 font-bold' : ''}`}
+                            className={`text-left px-2 py-2 rounded transition border border-transparent hover:bg-blue-50 ${book === b.slug ? 'bg-blue-100 border-blue-400 font-bold' : ''}`}
                             onClick={() => {
                               setBook(b.slug);
                               setShowBooks(false);
@@ -236,7 +236,7 @@ export default function ReaderPage() {
                     </div>
                   </div>
                   {/* New Testament */}
-                  <div className="flex-1 min-w-[120px]">
+                  <div className="flex-1 min-w-[100px] sm:min-w-[120px]">
                     <div className="font-semibold mb-2 text-xs text-gray-500">New Testament</div>
                     <div className="flex flex-col gap-1">
                       {(books.newTestament || []).map((b: any) => {
@@ -244,7 +244,7 @@ export default function ReaderPage() {
                         return (
                           <button
                             key={b.slug}
-                            className={`text-left px-2 py-1 rounded transition border border-transparent hover:bg-blue-50 ${book === b.slug ? 'bg-blue-100 border-blue-400 font-bold' : ''}`}
+                            className={`text-left px-2 py-2 rounded transition border border-transparent hover:bg-blue-50 ${book === b.slug ? 'bg-blue-100 border-blue-400 font-bold' : ''}`}
                             onClick={() => {
                               setBook(b.slug);
                               setShowBooks(false);
@@ -264,7 +264,7 @@ export default function ReaderPage() {
             <select
               value={chapter}
               onChange={(e) => setChapter(Number(e.target.value))}
-              className="border rounded px-2 py-1 min-w-[80px]"
+              className="border rounded px-2 py-2 min-w-[80px] w-full sm:w-auto"
             >
               {chapters.map((n) => (
                 <option key={n} value={n}>{n}</option>
