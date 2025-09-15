@@ -12,6 +12,19 @@ const API_BASE = 'https://australia-southeast1-the-bible-net.cloudfunctions.net/
 const fetchWithKey = (url: string) =>
   fetch(url, { headers: { 'x-app-key': 'your_secret_key' } });
 
+// Helper to load cached data
+const getCached = (key: string) => {
+  if (typeof window !== 'undefined') {
+    const val = localStorage.getItem(key);
+    try {
+      return val ? JSON.parse(val) : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
 export default function ReaderPage() {
   // State for API data
   const [versions, setVersions] = useState<any[]>([]);
@@ -56,59 +69,85 @@ export default function ReaderPage() {
     return () => document.removeEventListener('mousedown', handleClick);
   }, [showBooks]);
 
-  // Fetch versions on mount
+  // Fetch versions on mount (prefer cache)
   useEffect(() => {
     setLoading(true);
-    fetchWithKey(`${API_BASE}/versions`)
-      .then((res) => res.json())
-      .then((data) => {
-        console.log('Versions:', data);
-        setVersions(data);
-        // Only set version if not already set or invalid
-        const cachedVersion = typeof window !== 'undefined' ? localStorage.getItem('bible_version') : '';
-        const validVersion = data.find((v: any) => v.id === cachedVersion);
-        if (cachedVersion && validVersion) {
-          setVersion(cachedVersion);
-        } else if (data.length > 0) {
-          setVersion(data[0].id);
-        }
-        setLoading(false);
-      })
-      .catch(() => { setError('Failed to load versions'); setLoading(false); });
+    const cachedVersions = getCached('bible_versions');
+    if (cachedVersions && Array.isArray(cachedVersions) && cachedVersions.length > 0) {
+      setVersions(cachedVersions);
+      setLoading(false);
+    } else {
+      fetchWithKey(`${API_BASE}/versions`)
+        .then((res) => res.json())
+        .then((data) => {
+          setVersions(data);
+          localStorage.setItem('bible_versions', JSON.stringify(data));
+          setLoading(false);
+        })
+        .catch(() => { setError('Failed to load versions'); setLoading(false); });
+    }
   }, []);
 
-  // Fetch books when version changes
+  // Fetch books when version changes (prefer cache)
   useEffect(() => {
     if (!version) return;
     setLoading(true);
-    fetchWithKey(`${API_BASE}/books`)
-      .then((res) => res.json())
-      .then((data) => {
-        // Handle both { books: [...] } and [...]
-        const apiBooks = Array.isArray(data) ? data : (Array.isArray(data.books) ? data.books : []);
-        const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
-        // Only include books present in API response
-        const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
-          const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
-          return { ...m, ...apiBook };
-        });
-        const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
-          const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
-          return { ...m, ...apiBook };
-        });
-        setBooks({ oldTestament: oldBooks, newTestament: newBooks });
-        // Try to preserve book selection from localStorage
-        const cachedBook = typeof window !== 'undefined' ? localStorage.getItem('bible_book') : '';
-        const allBooks = [...oldBooks, ...newBooks];
-        const validBook = allBooks.find((b: any) => b.slug === cachedBook);
-        if (cachedBook && validBook) {
-          setBook(cachedBook);
-        } else if (allBooks.length > 0) {
-          setBook(allBooks[0].slug);
-        }
-        setLoading(false);
-      })
-      .catch(() => { setBooks({ oldTestament: [], newTestament: [] }); setError('Failed to load books'); setLoading(false); });
+    const cachedBooks = getCached('bible_books');
+    if (cachedBooks && Array.isArray(cachedBooks) && cachedBooks.length > 0) {
+      // Handle both { books: [...] } and [...]
+      const apiBooks = Array.isArray(cachedBooks) ? cachedBooks : (Array.isArray(cachedBooks.books) ? cachedBooks.books : []);
+      const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
+      // Only include books present in API response
+      const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
+        const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
+        return { ...m, ...apiBook };
+      });
+      const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
+        const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
+        return { ...m, ...apiBook };
+      });
+      setBooks({ oldTestament: oldBooks, newTestament: newBooks });
+      // Try to preserve book selection from localStorage
+      const cachedBook = typeof window !== 'undefined' ? localStorage.getItem('bible_book') : '';
+      const allBooks = [...oldBooks, ...newBooks];
+      const validBook = allBooks.find((b: any) => b.slug === cachedBook);
+      if (cachedBook && validBook) {
+        setBook(cachedBook);
+      } else if (allBooks.length > 0) {
+        setBook(allBooks[0].slug);
+      }
+      setLoading(false);
+    } else {
+      fetchWithKey(`${API_BASE}/books`)
+        .then((res) => res.json())
+        .then((data) => {
+          localStorage.setItem('bible_books', JSON.stringify(data));
+          // Handle both { books: [...] } and [...]
+          const apiBooks = Array.isArray(data) ? data : (Array.isArray(data.books) ? data.books : []);
+          const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
+          // Only include books present in API response
+          const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
+            const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
+            return { ...m, ...apiBook };
+          });
+          const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
+            const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
+            return { ...m, ...apiBook };
+          });
+          setBooks({ oldTestament: oldBooks, newTestament: newBooks });
+          // Try to preserve book selection from localStorage
+          const cachedBook = typeof window !== 'undefined' ? localStorage.getItem('bible_book') : '';
+          const allBooks = [...oldBooks, ...newBooks];
+          const validBook = allBooks.find((b: any) => b.slug === cachedBook);
+          if (cachedBook && validBook) {
+            setBook(cachedBook);
+          } else if (allBooks.length > 0) {
+            setBook(allBooks[0].slug);
+          }
+          setLoading(false);
+        })
+        .catch(() => { setBooks({ oldTestament: [], newTestament: [] }); setError('Failed to load books'); setLoading(false); });
+    }
   }, [version]);
 
   // Fetch chapters when book changes or version changes

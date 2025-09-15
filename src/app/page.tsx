@@ -1,7 +1,10 @@
+"use client";
+
 // src/app/page.tsx
 import Header from '@/components/Header';
 import VerseCard from '@/components/VerseCard';
 import FooterNav from '@/components/FooterNav';
+import { useEffect } from 'react';
 
 const sampleCards = [
 	{
@@ -26,7 +29,29 @@ const sampleCards = [
 	},
 ];
 
+const API_BASE = 'https://australia-southeast1-the-bible-net.cloudfunctions.net/api';
+const fetchWithKey = (url: string) => fetch(url, { headers: { 'x-app-key': 'your_secret_key' } });
+
 export default function Home() {
+	useEffect(() => {
+		// Prefetch versions
+		fetchWithKey(`${API_BASE}/versions`)
+			.then((res) => res.json())
+			.then((data) => {
+				localStorage.setItem('bible_versions', JSON.stringify(data));
+				// Set default version if not present
+				if (!localStorage.getItem('bible_version') && data.length > 0) {
+					localStorage.setItem('bible_version', data[0].id);
+				}
+			});
+		// Prefetch books
+		fetchWithKey(`${API_BASE}/books`)
+			.then((res) => res.json())
+			.then((data) => {
+				localStorage.setItem('bible_books', JSON.stringify(data));
+			});
+	}, []);
+
 	return (
 		<div className="min-h-screen flex flex-col bg-[#FEFEFE] px-2 md:px-4">
 			{/* Top header */}
