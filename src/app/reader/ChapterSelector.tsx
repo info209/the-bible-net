@@ -1,0 +1,20 @@
+"use client";
+import React from "react";
+
+export default function ChapterSelector({ chapters, onSelect, active }: any) {
+    return (
+        <div className="w-full">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-8 gap-3 justify-center max-w-3xl mx-auto">
+                {chapters.map((n: number) => (
+                    <button
+                        key={n}
+                        onClick={() => onSelect(n)}
+                        className={`py-3 rounded-lg text-center border transition ${active === n ? "bg-rose-50 border-rose-200 font-semibold" : "bg-gray-50 hover:bg-gray-100"}`}
+                    >
+                        {String(n).padStart(2, "0")}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}

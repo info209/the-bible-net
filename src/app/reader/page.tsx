@@ -1,356 +1,294 @@
 "use client";
+import React, { useEffect, useRef, useState, MutableRefObject } from "react";
+import Header from "@/components/Header";
+import FooterNav from "@/components/FooterNav";
+import { bookMapping } from "@/components/bookMapping";
 
-import Header from '@/components/Header';
-import FooterNav from '@/components/FooterNav';
-import { useEffect, useState, useRef } from 'react';
-import { bookMapping } from '@/components/bookMapping';
+import ModalSelector from "@/app/reader/ModalSelector";
+import BookSelector from "@/app/reader/BookSelector";
+import ChapterSelector from "@/app/reader/ChapterSelector";
+import VerseSelector from "@/app/reader/VerseSelector";
+import VersionSelector from "@/app/reader/VersionSelector";
 
-// Set your API base URL here
-const API_BASE = 'https://australia-southeast1-the-bible-net.cloudfunctions.net/api';
-
-// Helper for fetch with x-app-key header
+const API_BASE = "https://australia-southeast1-the-bible-net.cloudfunctions.net/api";
 const fetchWithKey = (url: string) =>
-  fetch(url, { headers: { 'x-app-key': 'your_secret_key' } });
+    fetch(url, { headers: { "x-app-key": "your_secret_key" } });
 
-// Helper to load cached data
 const getCached = (key: string) => {
-  if (typeof window !== 'undefined') {
+    if (typeof window === "undefined") return null;
     const val = localStorage.getItem(key);
-    try {
-      return val ? JSON.parse(val) : null;
-    } catch {
-      return null;
-    }
-  }
-  return null;
+    try { return val ? JSON.parse(val) : null; } catch { return null; }
 };
 
 export default function ReaderPage() {
-  // State for API data
-  const [versions, setVersions] = useState<any[]>([]);
-  const [books, setBooks] = useState<{ oldTestament: any[]; newTestament: any[] }>({ oldTestament: [], newTestament: [] });
-  const [chapters, setChapters] = useState<number[]>([]);
-  const [verses, setVerses] = useState<any[]>([]);
+    const [isMounted, setIsMounted] = useState(false);
+    useEffect(() => setIsMounted(true), []);
 
-  // State for selections (initialize from localStorage if available)
-  const [version, setVersion] = useState<string>(() => typeof window !== 'undefined' ? localStorage.getItem('bible_version') || '' : '');
-  const [book, setBook] = useState<string>(() => typeof window !== 'undefined' ? localStorage.getItem('bible_book') || '' : '');
-  const [chapter, setChapter] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const ch = localStorage.getItem('bible_chapter');
-      return ch ? Number(ch) : 1;
-    }
-    return 1;
-  });
+    // data & selections
+    const [versions, setVersions] = useState<any[]>([]);
+    const [books, setBooks] = useState<{ oldTestament: any[]; newTestament: any[] }>({ oldTestament: [], newTestament: [] });
+    const [chapters, setChapters] = useState<number[]>([]);
+    const [verses, setVerses] = useState<any[]>([]);
+    const [version, setVersion] = useState<string>("");
+    const [book, setBook] = useState<string>("");
+    const [chapter, setChapter] = useState<number>(1);
+    const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
 
-  // Loading and error states
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+    // UI
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-  // Dropdown open/close state
-  const [showBooks, setShowBooks] = useState(false);
-  const booksButtonRef = useRef<HTMLButtonElement>(null);
-  const booksDropdownRef = useRef<HTMLDivElement>(null);
+    // modal state
+    const [modalOpen, setModalOpen] = useState(false);
+    const [mode, setMode] = useState<"books" | "chapters" | "verses" | "versions">("books");
+    const selectorsRef = useRef<HTMLDivElement | null>(null);
 
-  // Close dropdown on outside click
-  useEffect(() => {
-    if (!showBooks) return;
-    function handleClick(e: MouseEvent) {
-      if (
-        booksDropdownRef.current &&
-        !booksDropdownRef.current.contains(e.target as Node) &&
-        booksButtonRef.current &&
-        !booksButtonRef.current.contains(e.target as Node)
-      ) {
-        setShowBooks(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [showBooks]);
+    // popovers
+    const [musicOpen, setMusicOpen] = useState(false);
+    const [moreOpen, setMoreOpen] = useState(false);
 
-  // Fetch versions on mount (prefer cache)
-  useEffect(() => {
-    setLoading(true);
-    const cachedVersions = getCached('bible_versions');
-    if (cachedVersions && Array.isArray(cachedVersions) && cachedVersions.length > 0) {
-      setVersions(cachedVersions);
-      setLoading(false);
-    } else {
-      fetchWithKey(`${API_BASE}/versions`)
-        .then((res) => res.json())
-        .then((data) => {
-          setVersions(data);
-          localStorage.setItem('bible_versions', JSON.stringify(data));
-          setLoading(false);
-        })
-        .catch(() => { setError('Failed to load versions'); setLoading(false); });
-    }
-  }, []);
+    // reading mode
+    const [readingMode, setReadingMode] = useState(false);
 
-  // Fetch books when version changes (prefer cache)
-  useEffect(() => {
-    if (!version) return;
-    setLoading(true);
-    const cachedBooks = getCached('bible_books') as any[] | { books: any[] };
-    if (cachedBooks && Array.isArray(cachedBooks) && cachedBooks.length > 0) {
-      // Handle both { books: [...] } and [...]
-      const apiBooks = Array.isArray(cachedBooks) ? cachedBooks : (Array.isArray((cachedBooks as { books?: any[] }).books) ? (cachedBooks as { books: any[] }).books : []);
-      const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
-      // Only include books present in API response
-      const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
-        const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
-        return { ...m, ...apiBook };
-      });
-      const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
-        const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
-        return { ...m, ...apiBook };
-      });
-      setBooks({ oldTestament: oldBooks, newTestament: newBooks });
-      // Try to preserve book selection from localStorage
-      const cachedBook = typeof window !== 'undefined' ? localStorage.getItem('bible_book') : '';
-      const allBooks = [...oldBooks, ...newBooks];
-      const validBook = allBooks.find((b: any) => b.slug === cachedBook);
-      if (cachedBook && validBook) {
-        setBook(cachedBook);
-      } else if (allBooks.length > 0) {
-        setBook(allBooks[0].slug);
-      }
-      setLoading(false);
-    } else {
-      fetchWithKey(`${API_BASE}/books`)
-        .then((res) => res.json())
-        .then((data) => {
-          localStorage.setItem('bible_books', JSON.stringify(data));
-          // Handle both { books: [...] } and [...]
-          const apiBooks = Array.isArray(data) ? data : (Array.isArray(data.books) ? data.books : []);
-          const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
-          // Only include books present in API response
-          const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
-            const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
-            return { ...m, ...apiBook };
-          });
-          const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
-            const apiBook = apiBooks.find((b: any) => b.slug === m.slug);
-            return { ...m, ...apiBook };
-          });
-          setBooks({ oldTestament: oldBooks, newTestament: newBooks });
-          // Try to preserve book selection from localStorage
-          const cachedBook = typeof window !== 'undefined' ? localStorage.getItem('bible_book') : '';
-          const allBooks = [...oldBooks, ...newBooks];
-          const validBook = allBooks.find((b: any) => b.slug === cachedBook);
-          if (cachedBook && validBook) {
-            setBook(cachedBook);
-          } else if (allBooks.length > 0) {
-            setBook(allBooks[0].slug);
-          }
-          setLoading(false);
-        })
-        .catch(() => { setBooks({ oldTestament: [], newTestament: [] }); setError('Failed to load books'); setLoading(false); });
-    }
-  }, [version]);
+    // portal key (force remount)
+    const [modalPortalKey, setModalPortalKey] = useState<number>(0);
 
-  // Fetch chapters when book changes or version changes
-  useEffect(() => {
-    if (!version || !book) return;
-    setLoading(true);
-    const selectedBookObj = [...books.oldTestament, ...books.newTestament].find((b: any) => b.slug === book);
-    if (selectedBookObj && selectedBookObj.chapterVerseCounts) {
-      const chapterNums = Object.keys(selectedBookObj.chapterVerseCounts).map(Number).sort((a, b) => a - b);
-      setChapters(chapterNums);
-      // Try to preserve chapter selection from localStorage
-      const cachedChapter = typeof window !== 'undefined' ? Number(localStorage.getItem('bible_chapter')) : 1;
-      if (chapterNums.includes(cachedChapter)) {
-        setChapter(cachedChapter);
-      } else {
-        setChapter(chapterNums[0] || 1);
-      }
-      setLoading(false);
-    } else {
-      fetchWithKey(`${API_BASE}/chapter-meta/${version}/${book}`)
-        .then((res) => res.json())
-        .then((data) => {
-          // Handle object with numeric keys (chapter numbers)
-          let chapterNums: number[] = [];
-          if (typeof data === 'object' && data !== null) {
-            if ('chapters' in data) {
-              // { chapters: N }
-              chapterNums = Array.from({ length: data.chapters }, (_, i) => i + 1);
-            } else if (Array.isArray(data)) {
-              // [ ... ]
-              chapterNums = data.map((_, i) => i + 1);
-            } else {
-              // {1: 80, 2: 52, ...}
-              const keys = Object.keys(data);
-              if (keys.every(k => !isNaN(Number(k)))) {
-                chapterNums = keys.map(Number).sort((a, b) => a - b);
-              }
+    const selectedVersionObj = versions.find(v => v.id === version);
+    const lang = (selectedVersionObj?.language || "").toLowerCase();
+    const isTelugu = lang === "telugu" || lang === "te";
+
+    // hydrate selections after mount
+    useEffect(() => {
+        if (!isMounted) return;
+        const v = localStorage.getItem("bible_version");
+        const b = localStorage.getItem("bible_book");
+        const ch = localStorage.getItem("bible_chapter");
+        if (v) setVersion(v);
+        if (b) setBook(b);
+        if (ch && !isNaN(Number(ch))) setChapter(Number(ch));
+    }, [isMounted]);
+
+    // versions
+    useEffect(() => {
+        if (!isMounted) return;
+        const cache = getCached("bible_versions");
+        if (cache && Array.isArray(cache)) { setVersions(cache); return; }
+        setLoading(true);
+        fetchWithKey(`${API_BASE}/versions`).then(r=>r.json()).then(data=>{
+            setVersions(data || []);
+            localStorage.setItem("bible_versions", JSON.stringify(data || []));
+            setLoading(false);
+        }).catch(()=>{ setError("Failed to load versions"); setLoading(false); });
+    }, [isMounted]);
+
+    // books
+    useEffect(() => {
+        if (!version) return;
+        setLoading(true);
+        const cachedBooks = getCached("bible_books");
+        if (cachedBooks && Array.isArray(cachedBooks) && cachedBooks.length > 0) {
+            const apiBooks = cachedBooks;
+            const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
+            const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find(b => b.slug === m.slug) }));
+            const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find(b => b.slug === m.slug) }));
+            setBooks({ oldTestament: oldBooks, newTestament: newBooks });
+            setLoading(false);
+            return;
+        }
+        fetchWithKey(`${API_BASE}/books`).then(r=>r.json()).then(data=>{
+            localStorage.setItem("bible_books", JSON.stringify(data));
+            const apiBooks = Array.isArray(data) ? data : (data as any).books || [];
+            const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
+            const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find((b: { slug: string; }) => b.slug === m.slug) }));
+            const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find((b: { slug: string; }) => b.slug === m.slug) }));
+            setBooks({ oldTestament: oldBooks, newTestament: newBooks });
+            setLoading(false);
+        }).catch(()=>{ setBooks({ oldTestament: [], newTestament: [] }); setError("Failed to load books"); setLoading(false); });
+    }, [version]);
+
+    // chapters
+    useEffect(() => {
+        if (!version || !book) return;
+        setLoading(true);
+        fetchWithKey(`${API_BASE}/chapter-meta/${version}/${book}`).then(r=>r.json()).then(data=>{
+            let chapterNums: number[] = [];
+            if (data && typeof data === "object") {
+                if ("chapters" in data) chapterNums = Array.from({ length: (data as any).chapters }, (_, i) => i + 1);
+                else if (Array.isArray(data)) chapterNums = data.map((_, i) => i + 1);
+                else chapterNums = Object.keys(data).filter(k => !isNaN(Number(k))).map(Number).sort((a,b)=>a-b);
             }
-          }
-          setChapters(chapterNums);
-          // Try to preserve chapter selection from localStorage
-          const cachedChapter = typeof window !== 'undefined' ? Number(localStorage.getItem('bible_chapter')) : 1;
-          if (chapterNums.includes(cachedChapter)) {
-            setChapter(cachedChapter);
-          } else {
-            setChapter(chapterNums[0] || 1);
-          }
-          setLoading(false);
-        })
-        .catch(() => { setChapters([]); setError('Failed to load chapters'); setLoading(false); });
-    }
-  }, [version, book, books]);
+            setChapters(chapterNums);
+            setLoading(false);
+        }).catch(()=>{ setChapters([]); setError("Failed to load chapters"); setLoading(false); });
+    }, [version, book]);
 
-  // Fetch verses when chapter changes
-  useEffect(() => {
-    if (!version || !book || !chapter) return;
-    setLoading(true);
-    fetchWithKey(`${API_BASE}/chapter/${version}/${book}/${chapter}`)
-      .then((res) => res.json())
-      .then((data) => {
-        console.log('Verses:', data);
-        const arr = (data && Array.isArray(data.verses)) ? data.verses : [];
-        setVerses(arr);
-        setLoading(false);
-      })
-      .catch(() => { setVerses([]); setError('Failed to load verses'); setLoading(false); });
-  }, [version, book, chapter]);
+    // verses
+    useEffect(() => {
+        if (!version || !book || !chapter) return;
+        setLoading(true);
+        fetchWithKey(`${API_BASE}/chapter/${version}/${book}/${chapter}`).then(r=>r.json()).then(data=>{
+            const arr = (data && Array.isArray(data.verses)) ? data.verses : [];
+            setVerses(arr); setLoading(false);
+        }).catch(()=>{ setVerses([]); setError("Failed to load verses"); setLoading(false); });
+    }, [version, book, chapter]);
 
-  // Cache selection changes
-  useEffect(() => {
-    if (version) localStorage.setItem('bible_version', version);
-  }, [version]);
-  useEffect(() => {
-    if (book) localStorage.setItem('bible_book', book);
-  }, [book]);
-  useEffect(() => {
-    if (chapter) localStorage.setItem('bible_chapter', String(chapter));
-  }, [chapter]);
+    // persist selections
+    useEffect(() => { if (isMounted && version) localStorage.setItem("bible_version", version); }, [version, isMounted]);
+    useEffect(() => { if (isMounted && book) localStorage.setItem("bible_book", book); }, [book, isMounted]);
+    useEffect(() => { if (isMounted && chapter) localStorage.setItem("bible_chapter", String(chapter)); }, [chapter, isMounted]);
 
-  // Helper to get selected version object
-  const selectedVersionObj = versions.find(v => v.id === version);
-  const lang = selectedVersionObj?.language?.toLowerCase();
-  const isTelugu = lang === 'telugu' || lang === 'te';
+    // robust cleanup when leaving reading mode
+    useEffect(() => {
+        if (!readingMode) {
+            setModalOpen(false);
+            setMusicOpen(false);
+            setMoreOpen(false);
+            setMode("books");
+            document.body.style.overflow = "";
+            // bump portal key so any portal DOM is remounted/cleared
+            setTimeout(() => setModalPortalKey(k => k + 1), 40);
+        }
+    }, [readingMode]);
 
-  return (
-    <div className="min-h-screen flex flex-col bg-[#FEFEFE]">
-      <Header />
-      <main className="flex-1 w-full px-2 sm:px-4 pt-4 pb-28">
-        <div className="mx-auto w-full max-w-md md:max-w-3xl lg:max-w-4xl">
-          {/* Selectors: Always side by side */}
-          <div className="flex flex-row gap-2 mb-6 items-stretch">
-            {/* Version Selector */}
-            <select
-              value={version}
-              onChange={(e) => setVersion(e.target.value)}
-              className="border rounded px-2 py-2 min-w-[90px] w-full"
-            >
-              {versions.map((v) => (
-                <option key={v.id} value={v.id}>{v.displayName} ({v.language})</option>
-              ))}
-            </select>
-            {/* Book Selector: Dropdown with side-by-side Old/New Testament */}
-            <div className="relative min-w-[90px] w-full">
-              <button
-                ref={booksButtonRef}
-                className="border rounded px-2 py-2 w-full text-left bg-white"
-                onClick={() => setShowBooks((v) => !v)}
-                type="button"
-              >
-                {(() => {
-                  const allBooks = [...(books.oldTestament || []), ...(books.newTestament || [])];
-                  const selected = allBooks.find((b: any) => b.slug === book);
-                  if (selected) {
-                    // Use mapping for display
-                    const mapping = [...bookMapping.oldTestament, ...bookMapping.newTestament].find(m => m.slug === selected.slug);
-                    if (mapping) {
-                      return isTelugu ? mapping.telugu : mapping.english;
-                    }
-                    return selected.slug;
-                  }
-                  return 'Select Book';
-                })()}
-              </button>
-              {showBooks && (
-                <div
-                  ref={booksDropdownRef}
-                  className="absolute z-20 left-0 right-0 mt-1 flex flex-row gap-2 bg-white border rounded shadow-lg p-2 max-h-64 overflow-y-auto overflow-x-auto min-w-[220px]"
-                  style={{ flexWrap: 'nowrap' }}
-                >
-                  {/* Old Testament */}
-                  <div className="flex-1 min-w-[120px] max-w-[180px]">
-                    <div className="font-semibold mb-2 text-xs text-gray-500">Old Testament</div>
-                    <div className="flex flex-col gap-1">
-                      {(books.oldTestament || []).map((b: any) => {
-                        const mapping = bookMapping.oldTestament.find(m => m.slug === b.slug);
-                        return (
-                          <button
-                            key={b.slug}
-                            className={`text-left px-2 py-2 rounded transition border border-transparent hover:bg-blue-50 ${book === b.slug ? 'bg-blue-100 border-blue-400 font-bold' : ''}`}
-                            onClick={() => {
-                              setBook(b.slug);
-                              setShowBooks(false);
-                            }}
-                            type="button"
-                          >
-                            {mapping ? (isTelugu ? mapping.telugu : mapping.english) : b.slug}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                  {/* New Testament */}
-                  <div className="flex-1 min-w-[120px] max-w-[180px]">
-                    <div className="font-semibold mb-2 text-xs text-gray-500">New Testament</div>
-                    <div className="flex flex-col gap-1">
-                      {(books.newTestament || []).map((b: any) => {
-                        const mapping = bookMapping.newTestament.find(m => m.slug === b.slug);
-                        return (
-                          <button
-                            key={b.slug}
-                            className={`text-left px-2 py-2 rounded transition border border-transparent hover:bg-blue-50 ${book === b.slug ? 'bg-blue-100 border-blue-400 font-bold' : ''}`}
-                            onClick={() => {
-                              setBook(b.slug);
-                              setShowBooks(false);
-                            }}
-                            type="button"
-                          >
-                            {mapping ? (isTelugu ? mapping.telugu : mapping.english) : b.slug}
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
+    // open modal helper (force a portal remount so it's fresh)
+    const openModalFor = (m: typeof mode) => {
+        // ensure fresh portal -> bump key then open
+        setModalPortalKey(k => k + 1);
+        setMode(m);
+        setModalOpen(true);
+        selectorsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    };
+    const closeModal = () => setModalOpen(false);
+
+    // popovers
+    const openMusic = () => { setMusicOpen(true); setMoreOpen(false); setModalOpen(false); setModalPortalKey(k => k + 1); selectorsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); };
+    const closeMusic = () => setMusicOpen(false);
+
+    const openMore = () => { setMoreOpen(true); setMusicOpen(false); setModalOpen(false); setModalPortalKey(k => k + 1); selectorsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); };
+    const closeMore = () => setMoreOpen(false);
+
+    // selection handlers
+    const handleBookSelect = (b: any) => { setBook(b.slug); closeModal(); };
+    const handleChapterSelect = (n: number) => { setChapter(n); setMode("verses"); };
+    const handleVerseSelect = (n: number) => setSelectedVerse(n);
+    const handleVersionSelect = (v: any) => { setVersion(v.id); closeModal(); };
+
+    const getBookDisplay = (slug: string) => {
+        if (!slug) return "Select Book";
+        const mapping = [...bookMapping.oldTestament, ...bookMapping.newTestament].find(m => m.slug === slug);
+        if (mapping) return isTelugu ? (mapping.telugu || mapping.english) : (mapping.english || mapping.telugu);
+        return slug;
+    };
+
+    // enter reading mode (simple)
+    const enterReadingMode = () => {
+        setModalOpen(false);
+        setMusicOpen(false);
+        setMoreOpen(false);
+        setTimeout(() => setReadingMode(true), 80);
+    };
+
+    // exit reading mode via Escape
+    useEffect(() => {
+        const onKey = (ev: KeyboardEvent) => { if (ev.key === "Escape" && readingMode) setReadingMode(false); };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [readingMode]);
+
+    return (
+        <div className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10] text-gray-100" : "min-h-screen flex flex-col bg-[#FEFEFE]"}>
+            {!readingMode && <Header />}
+
+            <main className="flex-1 w-full pt-4 pb-28 px-3 sm:px-6">
+                <div className="mx-auto w-full max-w-5xl">
+                    {!readingMode && (
+                        <div ref={selectorsRef} className="relative z-[70] flex flex-col md:flex-row gap-3 md:items-center mb-6">
+                            <div className="flex-1 min-w-0">
+                                <button className="border rounded px-3 py-2 w-full text-left bg-white" onClick={() => openModalFor("books")}>
+                                    {isMounted ? getBookDisplay(book) : "Select Book"}
+                                </button>
+                            </div>
+
+                            <div className="flex gap-3 items-center">
+                                <button className="border rounded px-3 py-2 w-28 text-center bg-white" onClick={() => { if (!book) openModalFor("books"); else openModalFor("chapters"); }}>
+                                    {isMounted ? String(chapter).padStart(2, '0') : "01"}
+                                </button>
+
+                                <button className="border rounded px-3 py-2 min-w-[200px] text-left bg-white" onClick={() => openModalFor("versions")}>
+                                    {isMounted ? (selectedVersionObj ? `${selectedVersionObj.displayName} (${selectedVersionObj.language})` : "Select Version") : "Select Version"}
+                                </button>
+                            </div>
+
+                            <div className="flex items-center gap-2 md:ml-4 ml-auto flex-shrink-0">
+                                <button aria-label="Enter reading mode" title="Reading mode" onClick={enterReadingMode} className="w-9 h-9 rounded-full border flex items-center justify-center hover:bg-gray-50">
+                                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden><circle cx="12" cy="12" r="3" stroke="#374151" strokeWidth="1.6"/><path d="M12 3v2M12 19v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M1 12h2M21 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4" stroke="#374151" strokeWidth="1.6" strokeLinecap="round"/></svg>
+                                </button>
+
+                                <button aria-label="audio" className="w-10 h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={openMusic}>
+                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden><path d="M9 17V7l10-2v10" stroke="#1f6f6f" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><circle cx="6" cy="17" r="2" stroke="#1f6f6f" strokeWidth="1.8"/></svg>
+                                </button>
+
+                                <button aria-label="more" className="w-10 h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={openMore}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden><circle cx="12" cy="5" r="1.5" fill="#333"/><circle cx="12" cy="12" r="1.5" fill="#333"/><circle cx="12" cy="19" r="1.5" fill="#333"/></svg>
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {readingMode && (
+                        <div className="mb-4 text-rose-600 font-medium tracking-wide flex items-center gap-3">
+                            <div>{getBookDisplay(book)} · {String(chapter).padStart(2, "0")} · {selectedVersionObj?.displayName || ""}</div>
+                            <button onClick={() => setReadingMode(false)} className="text-sm text-gray-300 hover:text-gray-100">✕ Exit</button>
+                        </div>
+                    )}
+
+                    {loading && <div className="text-gray-500 mb-4">Loading...</div>}
+                    {error && <div className="text-red-500 mb-4">{error}</div>}
+
+                    <article className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}>
+                        {verses.map((v: any) => (
+                            <div key={v.n} className={`flex gap-2 items-start ${readingMode ? "text-gray-100" : "text-gray-800"}`}>
+                                <span className={`font-bold ${readingMode ? "text-rose-300" : "text-gray-400"} w-8 text-right`}>{v.n}</span>
+                                <span>{v.text}</span>
+                            </div>
+                        ))}
+                    </article>
                 </div>
-              )}
-            </div>
-            {/* Chapter Selector */}
-            <select
-              value={chapter}
-              onChange={(e) => setChapter(Number(e.target.value))}
-              className="border rounded px-2 py-2 min-w-[60px] w-16 text-center"
-              style={{ maxWidth: '90px' }}
-            >
-              {chapters.map((n) => (
-                <option key={n} value={n}>{n}</option>
-              ))}
-            </select>
-          </div>
-          {/* Loading/Error */}
-          {loading && <div className="text-gray-500 mb-4">Loading...</div>}
-          {error && <div className="text-red-500 mb-4">{error}</div>}
-          {/* Verses */}
-          <div className="space-y-2">
-            {verses.map((v: any) => (
-              <div key={v.n} className="flex gap-2 items-start">
-                <span className="font-bold text-gray-400 w-8 text-right">{v.n}</span>
-                <span className="text-gray-800">{v.text}</span>
-              </div>
-            ))}
-          </div>
+            </main>
+
+            {!readingMode && <FooterNav />}
+
+            {/* Modals (no anchorVisible gating) */}
+            {!readingMode && isMounted && modalOpen && selectorsRef.current && (
+                <ModalSelector
+                    portalKey={modalPortalKey}
+                    show={modalOpen}
+                    anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>}
+                    onClose={closeModal}
+                    title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" }
+                >
+                    {mode === "books" && <BookSelector books={books} onSelect={handleBookSelect} active={book} isTelugu={isTelugu} />}
+                    {mode === "chapters" && <ChapterSelector chapters={chapters} onSelect={handleChapterSelect} active={chapter} />}
+                    {mode === "verses" && <VerseSelector verses={verses} onSelect={handleVerseSelect} onBack={() => setMode("chapters")} onDone={() => closeModal()} active={selectedVerse} />}
+                    {mode === "versions" && <VersionSelector versions={versions} onSelect={handleVersionSelect} active={version} />}
+                </ModalSelector>
+            )}
+
+            {!readingMode && isMounted && musicOpen && selectorsRef.current && (
+                <ModalSelector portalKey={modalPortalKey} show={musicOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeMusic} title="Audio">
+                    <div className="p-2">Audio controls (placeholder)</div>
+                </ModalSelector>
+            )}
+
+            {!readingMode && isMounted && moreOpen && selectorsRef.current && (
+                <ModalSelector portalKey={modalPortalKey} show={moreOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeMore} title="More">
+                    <div className="p-2">
+                        <button className="w-full text-left px-3 py-2 rounded hover:bg-gray-50" onClick={() => { navigator.clipboard?.writeText(window.location.href); alert("Link copied"); closeMore(); }}>Copy link</button>
+                        <button className="w-full text-left px-3 py-2 rounded hover:bg-gray-50" onClick={() => { alert("Share dialog"); closeMore(); }}>Share</button>
+                        <button className="w-full text-left px-3 py-2 rounded hover:bg-gray-50" onClick={() => { alert("Reader settings"); closeMore(); }}>Reader settings</button>
+                    </div>
+                </ModalSelector>
+            )}
         </div>
-      </main>
-      <FooterNav />
-    </div>
-  );
+    );
 }
