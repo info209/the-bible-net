@@ -92,10 +92,10 @@ export default function ReaderPage() {
   useEffect(() => {
     if (!version) return;
     setLoading(true);
-    const cachedBooks = getCached('bible_books');
+    const cachedBooks = getCached('bible_books') as any[] | { books: any[] };
     if (cachedBooks && Array.isArray(cachedBooks) && cachedBooks.length > 0) {
       // Handle both { books: [...] } and [...]
-      const apiBooks = Array.isArray(cachedBooks) ? cachedBooks : (Array.isArray(cachedBooks.books) ? cachedBooks.books : []);
+      const apiBooks = Array.isArray(cachedBooks) ? cachedBooks : (Array.isArray((cachedBooks as { books?: any[] }).books) ? (cachedBooks as { books: any[] }).books : []);
       const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
       // Only include books present in API response
       const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => {
