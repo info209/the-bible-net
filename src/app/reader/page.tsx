@@ -10,6 +10,10 @@ import BookSelector from "@/app/reader/BookSelector";
 import ChapterSelector from "@/app/reader/ChapterSelector";
 import VerseSelector from "@/app/reader/VerseSelector";
 import VersionSelector from "@/app/reader/VersionSelector";
+import MoreMenu from "@/app/reader/MoreMenu";
+
+// framer-motion for page transitions
+import { motion, AnimatePresence } from "framer-motion";
 
 const API_BASE = "https://australia-southeast1-the-bible-net.cloudfunctions.net/api";
 const fetchWithKey = (url: string) =>
@@ -57,7 +61,7 @@ export default function ReaderPage() {
     const [versions, setVersions] = useState<any[]>([]);
     const [books, setBooks] = useState<{ oldTestament: any[]; newTestament: any[] }>({ oldTestament: [], newTestament: [] });
     const [chapters, setChapters] = useState<number[]>([]);
-    const [chaptersLoaded, setChaptersLoaded] = useState(false); // NEW: guard so verses wait until chapters known
+    const [chaptersLoaded, setChaptersLoaded] = useState(false); // guard so verses wait until chapters known
     const [verses, setVerses] = useState<any[]>([]);
     const [version, setVersion] = useState<string>("");
     const [book, setBook] = useState<string>("");
@@ -87,16 +91,55 @@ export default function ReaderPage() {
     const lang = (selectedVersionObj?.language || "").toLowerCase();
     const isTelugu = lang === "telugu" || lang === "te";
 
+    // --- Settings state lifted into ReaderPage (applies immediately) ---
+    const [fontSize, setFontSize] = useState<"small" | "medium" | "large" | "xlarge">("medium");
+    const [fontFamily, setFontFamily] = useState<string>("Times New Roman"); // font-family
+    const [theme, setTheme] = useState<"default" | "pink" | "sepia" | "dark">("default");
+    const [transition, setTransition] = useState<"slide" | "fade" | "flip">("slide");
+    const [hideFootnotes, setHideFootnotes] = useState(false);
+
     // hydrate selections after mount
     useEffect(() => {
         if (!isMounted) return;
         const v = localStorage.getItem("bible_version");
         const b = localStorage.getItem("bible_book");
         const ch = localStorage.getItem("bible_chapter");
+        const sv = localStorage.getItem("bible_verse");
         if (v) setVersion(v);
         if (b) setBook(b);
         if (ch && !isNaN(Number(ch))) setChapter(Number(ch));
+        if (sv && !isNaN(Number(sv))) setSelectedVerse(Number(sv));
+
+        // hydrate reader settings
+        const storedFont = localStorage.getItem("reader_fontSize") as any;
+        const storedFamily = localStorage.getItem("reader_fontFamily") as any;
+        const storedTheme = localStorage.getItem("reader_theme") as any;
+        const storedTrans = localStorage.getItem("reader_transition") as any;
+        const storedHide = localStorage.getItem("reader_hideFootnotes");
+        if (storedFont === "small" || storedFont === "medium" || storedFont === "large" || storedFont === "xlarge") setFontSize(storedFont);
+        if (storedFamily) setFontFamily(storedFamily);
+        if (storedTheme === "default" || storedTheme === "pink" || storedTheme === "sepia" || storedTheme === "dark") setTheme(storedTheme);
+        if (storedTrans === "slide" || storedTrans === "fade" || storedTrans === "flip") setTransition(storedTrans);
+        setHideFootnotes(storedHide === "1" ? true : false);
     }, [isMounted]);
+
+    // persist selections
+    useEffect(() => { if (isMounted && version) localStorage.setItem("bible_version", version); }, [version, isMounted]);
+    useEffect(() => { if (isMounted && book) localStorage.setItem("bible_book", book); }, [book, isMounted]);
+    useEffect(() => { if (isMounted && chapter) localStorage.setItem("bible_chapter", String(chapter)); }, [chapter, isMounted]);
+    useEffect(() => { if (isMounted && selectedVerse != null) localStorage.setItem("bible_verse", String(selectedVerse)); }, [selectedVerse, isMounted]);
+
+    // persist reader settings
+    useEffect(() => {
+        if (!isMounted) return;
+        try {
+            localStorage.setItem("reader_fontSize", fontSize);
+            localStorage.setItem("reader_fontFamily", fontFamily);
+            localStorage.setItem("reader_theme", theme);
+            localStorage.setItem("reader_transition", transition);
+            localStorage.setItem("reader_hideFootnotes", hideFootnotes ? "1" : "0");
+        } catch (e) { /* ignore storage errors */ }
+    }, [fontSize, fontFamily, theme, transition, hideFootnotes, isMounted]);
 
     // Select first version if no cache and none selected
     useEffect(() => {
@@ -174,9 +217,6 @@ export default function ReaderPage() {
         }).catch(()=>{ setBooks({ oldTestament: [], newTestament: [] }); setError("Failed to load books"); setLoading(false); });
     }, [version]);
 
-    // IMPORTANT CHANGE:
-    // - DO NOT optimistically set chapter when book changes here.
-    // - Instead, fetch chapter meta, set 'chapters' and 'chaptersLoaded', and decide a valid chapter there.
     // chapters (fetch)
     useEffect(() => {
         if (!version || !book) {
@@ -191,7 +231,6 @@ export default function ReaderPage() {
         fetchWithKey(`${API_BASE}/chapter-meta/${version}/${book}`)
             .then(async (res) => {
                 if (!res.ok) {
-                    // API error: we clear, mark loaded, and pick chapter 1 as safe fallback
                     setChapters([]);
                     setChaptersLoaded(true);
                     setLoading(false);
@@ -212,19 +251,14 @@ export default function ReaderPage() {
                 setChaptersLoaded(true);
                 setLoading(false);
 
-                // Decide a valid chapter now that we know available chapters.
                 if (chapterNums.length > 0) {
-                    // If current chapter is valid, keep it. Otherwise prefer nearest available:
                     if (!chapterNums.includes(chapter)) {
-                        // nearest available UX: pick min(previous, maxAvailable)
                         const maxAvailable = chapterNums[chapterNums.length - 1];
                         const fallback = Math.min(chapter, maxAvailable);
-                        // if fallback still not in list (possible if previous chapter was > maxAvailable), pick maxAvailable
                         const finalChapter = chapterNums.includes(fallback) ? fallback : chapterNums[0];
                         setChapter(finalChapter);
                     }
                 } else {
-                    // no chapters from API -> fallback to 1
                     setChapter(1);
                 }
             })
@@ -240,14 +274,11 @@ export default function ReaderPage() {
     // --- Robust verses loader using request-id pattern ---
     const versesRequestIdRef = useRef(0);
     useEffect(() => {
-        // Wait until chaptersLoaded is true to avoid racing verses requests with chapter-list fetch
         if (!version || !book || !chapter) {
             setVerses([]);
             return;
         }
         if (!chaptersLoaded) {
-            // don't attempt verses fetch until we know the available chapters for the current book
-            // this prevents the earlier race where an optimistic chapter caused a wrong fallback
             return;
         }
 
@@ -263,17 +294,15 @@ export default function ReaderPage() {
                 }
 
                 if (!res.ok) {
-                    // if verses are not available for this chapter, try a single fallback:
                     if (!didFallback) {
                         didFallback = true;
-                        // if we have a chapters list, pick nearest available (min(chap, maxAvailable)) or first
                         if (Array.isArray(chapters) && chapters.length > 0) {
                             const maxAvailable = chapters[chapters.length - 1];
                             const fallback = Math.min(chapNum, maxAvailable);
                             const final = chapters.includes(fallback) ? fallback : chapters[0];
                             if (final !== chapNum) {
                                 setChapter(final);
-                                return; // new chapter will retrigger effect
+                                return;
                             }
                         } else if (chapNum !== 1) {
                             setChapter(1);
@@ -321,10 +350,7 @@ export default function ReaderPage() {
         };
     }, [version, book, chapter, chaptersLoaded, chapters]);
 
-    // persist selections
-    useEffect(() => { if (isMounted && version) localStorage.setItem("bible_version", version); }, [version, isMounted]);
-    useEffect(() => { if (isMounted && book) localStorage.setItem("bible_book", book); }, [book, isMounted]);
-    useEffect(() => { if (isMounted && chapter) localStorage.setItem("bible_chapter", String(chapter)); }, [chapter, isMounted]);
+    // persist selections already handled above
 
     // robust cleanup when leaving reading mode
     useEffect(() => {
@@ -364,7 +390,7 @@ export default function ReaderPage() {
     // Short version label / acronym for the version selector
     const versionShortLabel = isMounted ? extractAcronym(selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id) : "Ver";
 
-    // reading mode toggle (small light)
+    // reading mode toggle
     const enterReadingMode = () => {
         setModalOpen(false);
         setMusicOpen(false);
@@ -379,8 +405,50 @@ export default function ReaderPage() {
         return () => window.removeEventListener("keydown", onKey);
     }, [readingMode]);
 
+    // compute article style for font-size + family
+    const fontSizeMap: Record<string, string> = {
+        small: "0.95rem",
+        medium: "1rem",
+        large: "1.125rem",
+        xlarge: "1.25rem",
+    };
+
+    const articleStyle: React.CSSProperties = {
+        fontSize: fontSizeMap[fontSize] || fontSizeMap["medium"],
+        fontFamily: fontFamily ? `'${fontFamily}', serif` : undefined,
+    };
+
+    // theme styles applied inline so we don't change external CSS
+    const themeStyles: Record<string, React.CSSProperties> = {
+        default: { backgroundColor: "#FEFEFE", color: "#111827" },
+        pink: { backgroundColor: "#fff5f7", color: "#3b0b17" },
+        sepia: { backgroundColor: "#f4ecd8", color: "#2b2b2b" },
+        dark: { backgroundColor: "#0f0f10", color: "#e6eef0" },
+    };
+
+    const rootThemeStyle = themeStyles[theme] || themeStyles["default"];
+
+    // framer variants for transitions
+    const variants: Record<string, any> = {
+        slide: {
+            initial: { x: 80, opacity: 0 },
+            animate: { x: 0, opacity: 1 },
+            exit: { x: -80, opacity: 0 },
+        },
+        fade: {
+            initial: { opacity: 0, scale: 0.99 },
+            animate: { opacity: 1, scale: 1 },
+            exit: { opacity: 0, scale: 0.99 },
+        },
+        flip: {
+            initial: { rotateY: 90, opacity: 0 },
+            animate: { rotateY: 0, opacity: 1 },
+            exit: { rotateY: -90, opacity: 0 },
+        },
+    };
+
     return (
-        <div className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10] text-gray-100" : "min-h-screen flex flex-col bg-[#FEFEFE]"}>
+        <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col" : "min-h-screen flex flex-col"}>
             {!readingMode && <Header />}
 
             <main className="flex-1 w-full pt-4 pb-28 px-2 sm:px-4">
@@ -392,6 +460,7 @@ export default function ReaderPage() {
                         >
                             {/* Book */}
                             <button
+                                type="button"
                                 className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base flex-1 min-w-[90px] bg-white"
                                 onClick={() => openModalFor("books")}
                             >
@@ -400,6 +469,7 @@ export default function ReaderPage() {
 
                             {/* Chapter */}
                             <button
+                                type="button"
                                 className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-14 sm:w-16 text-center bg-white"
                                 onClick={() => { !book ? openModalFor("books") : openModalFor("chapters"); }}
                             >
@@ -408,6 +478,7 @@ export default function ReaderPage() {
 
                             {/* Version - show acronym / short only */}
                             <button
+                                type="button"
                                 className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base min-w-[40px] sm:min-w-[120px] text-left bg-white"
                                 onClick={() => openModalFor("versions")}
                                 title={selectedVersionObj?.displayName || selectedVersionObj?.name || ""}
@@ -417,6 +488,7 @@ export default function ReaderPage() {
 
                             {/* Reading mode button */}
                             <button
+                                type="button"
                                 aria-label="Enter reading mode"
                                 title="Reading mode"
                                 onClick={enterReadingMode}
@@ -427,6 +499,7 @@ export default function ReaderPage() {
 
                             {/* Music */}
                             <button
+                                type="button"
                                 aria-label="audio"
                                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50"
                                 onClick={() => setMusicOpen(true)}
@@ -436,6 +509,7 @@ export default function ReaderPage() {
 
                             {/* More */}
                             <button
+                                type="button"
                                 aria-label="more"
                                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50"
                                 onClick={() => setMoreOpen(true)}
@@ -455,14 +529,32 @@ export default function ReaderPage() {
                     {loading && <div className="text-gray-500 mb-4">Loading...</div>}
                     {error && <div className="text-red-500 mb-4">{error}</div>}
 
-                    <article className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}>
-                        {verses.map((v: any) => (
-                            <div key={v.n} className={`flex gap-2 items-start ${readingMode ? "text-gray-100" : "text-gray-800"}`}>
-                                <span className={`font-bold ${readingMode ? "text-rose-300" : "text-gray-400"} w-8 text-right`}>{v.n}</span>
-                                <span>{v.text}</span>
-                            </div>
-                        ))}
-                    </article>
+                    {/* Animated article - key by chapter so it animates when chapter changes */}
+                    <AnimatePresence mode="wait" initial={false}>
+                        <motion.article
+                            key={`${version}_${book}_${chapter}`}
+                            style={articleStyle}
+                            className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}
+                            variants={variants[transition] || variants["fade"]}
+                            initial="initial"
+                            animate="animate"
+                            exit="exit"
+                            transition={{ duration: 0.36, ease: "easeInOut" }}
+                        >
+                            {verses.map((v: any) => (
+                                <div key={v.n} className={`flex gap-2 items-start ${readingMode ? "text-gray-100" : "text-gray-800"}`}>
+                                    <span className={`font-bold ${readingMode ? "text-rose-300" : "text-gray-400"} w-8 text-right`}>{v.n}</span>
+                                    <span>{v.text}</span>
+                                </div>
+                            ))}
+                            {/* footnotes placeholder example: conditionally hidden */}
+                            {!hideFootnotes && (
+                                <div className="mt-6 text-sm text-gray-500">
+                                    {/* example footnote area - real footnote rendering depends on API */}
+                                </div>
+                            )}
+                        </motion.article>
+                    </AnimatePresence>
                 </div>
             </main>
 
@@ -490,13 +582,31 @@ export default function ReaderPage() {
                 </ModalSelector>
             )}
 
+            {/* MORE MENU: use the new MoreMenu component (passes setters so changes apply immediately) */}
             {!readingMode && isMounted && moreOpen && selectorsRef.current && (
-                <ModalSelector portalKey={modalPortalKey} show={moreOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={() => setMoreOpen(false)} title="More">
-                    <div className="p-2">
-                        <button className="w-full text-left px-3 py-2 rounded hover:bg-gray-50">Copy link</button>
-                        <button className="w-full text-left px-3 py-2 rounded hover:bg-gray-50">Share</button>
-                        <button className="w-full text-left px-3 py-2 rounded hover:bg-gray-50">Reader settings</button>
-                    </div>
+                <ModalSelector
+                    portalKey={modalPortalKey}
+                    show={moreOpen}
+                    anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>}
+                    onClose={() => setMoreOpen(false)}
+                    title="More"
+                >
+                    <MoreMenu
+                        onClose={() => setMoreOpen(false)}
+                        fontSize={fontSize}
+                        setFontSize={(v: any) => setFontSize(v)}
+                        // fontFamily controller
+                        // @ts-ignore
+                        fontFamily={fontFamily}
+                        // @ts-ignore
+                        setFontFamily={(f: string) => setFontFamily(f)}
+                        theme={theme}
+                        setTheme={(t: any) => setTheme(t)}
+                        transition={transition}
+                        setTransition={(t: any) => setTransition(t)}
+                        hideFootnotes={hideFootnotes}
+                        setHideFootnotes={(h: boolean) => setHideFootnotes(h)}
+                    />
                 </ModalSelector>
             )}
         </div>
