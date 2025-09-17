@@ -129,8 +129,8 @@ export default function ReaderPage() {
             localStorage.setItem("bible_books", JSON.stringify(data));
             const apiBooks = Array.isArray(data) ? data : (data as any).books || [];
             const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
-            const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find(b => b.slug === m.slug) }));
-            const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find(b => b.slug === m.slug) }));
+            const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find((b: { slug: string; }) => b.slug === m.slug) }));
+            const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find((b: { slug: string; }) => b.slug === m.slug) }));
             setBooks({ oldTestament: oldBooks, newTestament: newBooks });
             setLoading(false);
         }).catch(()=>{ setBooks({ oldTestament: [], newTestament: [] }); setError("Failed to load books"); setLoading(false); });
