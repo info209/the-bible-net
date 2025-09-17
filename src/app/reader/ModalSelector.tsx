@@ -78,40 +78,51 @@ export default function ModalSelector({
     }
 
     const posToUse = pos || syncPos;
-    if (!show || !posToUse) return null;
-
+    // Always render the portal, but hide modal visually if not shown or no position
+    const isVisible = show && posToUse;
     const root = typeof window !== "undefined" ? document.body : null;
     if (!root) return null;
 
-    // Use fixed positioning so modal remains attached to viewport, updating top/left as the anchor moves.
+    // Manage body overflow to prevent background scroll and scrollbar jumps
+    useEffect(() => {
+        if (show) {
+            const originalOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            return () => {
+                document.body.style.overflow = originalOverflow;
+            };
+        }
+    }, [show]);
+
     const modalElement = (
-        <div key={portalKey} className="fixed inset-0 z-[55] pointer-events-none" aria-modal="true" role="dialog">
-            <div
-                // fixed positioned container
-                style={{
-                    position: "fixed",
-                    top: posToUse.top,
-                    left: posToUse.left,
-                    width: posToUse.width,
-                    zIndex: 56,
-                }}
-            >
+        <div key={portalKey} className="fixed inset-0 z-[55] pointer-events-none" aria-modal="true" role="dialog"
+            style={{ display: isVisible ? undefined : 'none' }}>
+            {isVisible && (
                 <div
-                    className="bg-white border rounded-2xl shadow-xl overflow-hidden pointer-events-auto"
-                    style={{ maxHeight: "68vh" }}
+                    style={{
+                        position: "fixed",
+                        top: posToUse.top,
+                        left: posToUse.left,
+                        width: posToUse.width,
+                        zIndex: 56,
+                    }}
                 >
-                    <div className="sticky top-0 z-30 bg-white border-b flex items-center justify-between px-4 py-3">
-                        <div className="text-md font-semibold text-gray-700">{title}</div>
-                        <div className="flex items-center gap-2">
-                            <button onClick={onClose} aria-label="Close" className="px-3 py-1 rounded text-gray-600 hover:bg-gray-100">✕</button>
+                    <div
+                        className="bg-white border rounded-2xl shadow-xl overflow-hidden pointer-events-auto"
+                        style={{ maxHeight: "68vh" }}
+                    >
+                        <div className="sticky top-0 z-30 bg-white border-b flex items-center justify-between px-4 py-3">
+                            <div className="text-md font-semibold text-gray-700">{title}</div>
+                            <div className="flex items-center gap-2">
+                                <button onClick={onClose} aria-label="Close" className="px-3 py-1 rounded text-gray-600 hover:bg-gray-100">✕</button>
+                            </div>
+                        </div>
+                        <div className="overflow-y-auto max-h-[64vh]">
+                            <div className="p-3">{children}</div>
                         </div>
                     </div>
-
-                    <div className="overflow-y-auto max-h-[64vh]">
-                        <div className="p-3">{children}</div>
-                    </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 
