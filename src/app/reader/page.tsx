@@ -1,3 +1,4 @@
+// app/reader/page.tsx
 "use client";
 import React, { useEffect, useRef, useState, MutableRefObject } from "react";
 import Header from "@/components/Header";
@@ -23,19 +24,14 @@ const getCached = (key: string) => {
 // small helper to extract acronym/short label
 function extractAcronym(displayName?: string) {
     if (!displayName) return "";
-    // look for a parenthesized token that looks like an acronym (all caps or mixed but short)
     const parenMatches = [...displayName.matchAll(/\(([^)]+)\)/g)].map(m => m[1]);
     if (parenMatches.length > 0) {
-        // prefer last parenthesis that is short & likely an acronym
         for (let i = parenMatches.length - 1; i >= 0; i--) {
             const token = parenMatches[i].trim();
-            // if it contains letters and is short (<=5), use it
             if (/^[A-Za-z0-9&-]{1,5}$/.test(token)) return token.toUpperCase();
-            // if token contains spaces but inside is all-caps words like "T N K", remove spaces
             if (/^[A-Z\s]{1,8}$/.test(token)) return token.replace(/\s+/g, "").toUpperCase();
         }
     }
-    // fallback: take first letters of words (skip small words), up to 4 chars
     const words = displayName.replace(/[()]/g, "").split(/\s+/).filter(w => w.length > 0);
     const stopWords = new Set(["and","of","the","in","on","a","an","edition","version","rev","revised","indian"]);
     const letters: string[] = [];
@@ -61,6 +57,7 @@ export default function ReaderPage() {
     const [versions, setVersions] = useState<any[]>([]);
     const [books, setBooks] = useState<{ oldTestament: any[]; newTestament: any[] }>({ oldTestament: [], newTestament: [] });
     const [chapters, setChapters] = useState<number[]>([]);
+    const [chaptersLoaded, setChaptersLoaded] = useState(false); // NEW: guard so verses wait until chapters known
     const [verses, setVerses] = useState<any[]>([]);
     const [version, setVersion] = useState<string>("");
     const [book, setBook] = useState<string>("");
@@ -132,45 +129,166 @@ export default function ReaderPage() {
             localStorage.setItem("bible_books", JSON.stringify(data));
             const apiBooks = Array.isArray(data) ? data : (data as any).books || [];
             const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
-            const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find((b: { slug: string; }) => b.slug === m.slug) }));
-            const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find((b: { slug: string; }) => b.slug === m.slug) }));
+            const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find(b => b.slug === m.slug) }));
+            const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find(b => b.slug === m.slug) }));
             setBooks({ oldTestament: oldBooks, newTestament: newBooks });
             setLoading(false);
         }).catch(()=>{ setBooks({ oldTestament: [], newTestament: [] }); setError("Failed to load books"); setLoading(false); });
     }, [version]);
 
-    // chapters
+    // IMPORTANT CHANGE:
+    // - DO NOT optimistically set chapter when book changes here.
+    // - Instead, fetch chapter meta, set 'chapters' and 'chaptersLoaded', and decide a valid chapter there.
+    // chapters (fetch)
     useEffect(() => {
-        if (!version || !book) return;
-        setLoading(true);
-        fetchWithKey(`${API_BASE}/chapter-meta/${version}/${book}`).then(r=>r.json()).then(data=>{
-            let chapterNums: number[] = [];
-            if (data && typeof data === "object") {
-                if ("chapters" in data) chapterNums = Array.from({ length: (data as any).chapters }, (_, i) => i + 1);
-                else if (Array.isArray(data)) chapterNums = data.map((_, i) => i + 1);
-                else chapterNums = Object.keys(data).filter(k => !isNaN(Number(k))).map(Number).sort((a,b)=>a-b);
-            }
-            setChapters(chapterNums);
-            setLoading(false);
-        }).catch(()=>{ setChapters([]); setError("Failed to load chapters"); setLoading(false); });
-    }, [version, book]);
+        if (!version || !book) {
+            setChapters([]);
+            setChaptersLoaded(false);
+            return;
+        }
 
-    // verses
-    useEffect(() => {
-        if (!version || !book || !chapter) return;
         setLoading(true);
-        fetchWithKey(`${API_BASE}/chapter/${version}/${book}/${chapter}`).then(r=>r.json()).then(data=>{
-            const arr = (data && Array.isArray(data.verses)) ? data.verses : [];
-            setVerses(arr); setLoading(false);
-        }).catch(()=>{ setVerses([]); setError("Failed to load verses"); setLoading(false); });
-    }, [version, book, chapter]);
+        setChaptersLoaded(false);
+
+        fetchWithKey(`${API_BASE}/chapter-meta/${version}/${book}`)
+            .then(async (res) => {
+                if (!res.ok) {
+                    // API error: we clear, mark loaded, and pick chapter 1 as safe fallback
+                    setChapters([]);
+                    setChaptersLoaded(true);
+                    setLoading(false);
+                    setChapter(1);
+                    return;
+                }
+                const data = await res.json();
+                let chapterNums: number[] = [];
+                if (data && typeof data === "object") {
+                    if ("chapters" in data && typeof data.chapters === "number") chapterNums = Array.from({ length: (data as any).chapters }, (_, i) => i + 1);
+                    else if (Array.isArray(data)) chapterNums = data.map((_, i) => i + 1);
+                    else {
+                        const keys = Object.keys(data).filter(k => !isNaN(Number(k)));
+                        if (keys.length > 0) chapterNums = keys.map(Number).sort((a,b)=>a-b);
+                    }
+                }
+                setChapters(chapterNums);
+                setChaptersLoaded(true);
+                setLoading(false);
+
+                // Decide a valid chapter now that we know available chapters.
+                if (chapterNums.length > 0) {
+                    // If current chapter is valid, keep it. Otherwise prefer nearest available:
+                    if (!chapterNums.includes(chapter)) {
+                        // nearest available UX: pick min(previous, maxAvailable)
+                        const maxAvailable = chapterNums[chapterNums.length - 1];
+                        const fallback = Math.min(chapter, maxAvailable);
+                        // if fallback still not in list (possible if previous chapter was > maxAvailable), pick maxAvailable
+                        const finalChapter = chapterNums.includes(fallback) ? fallback : chapterNums[0];
+                        setChapter(finalChapter);
+                    }
+                } else {
+                    // no chapters from API -> fallback to 1
+                    setChapter(1);
+                }
+            })
+            .catch(() => {
+                setChapters([]);
+                setChaptersLoaded(true);
+                setError("Failed to load chapters");
+                setLoading(false);
+                setChapter(1);
+            });
+    }, [version, book]); // intentionally NOT including `chapter` here
+
+    // --- Robust verses loader using request-id pattern ---
+    const versesRequestIdRef = useRef(0);
+    useEffect(() => {
+        // Wait until chaptersLoaded is true to avoid racing verses requests with chapter-list fetch
+        if (!version || !book || !chapter) {
+            setVerses([]);
+            return;
+        }
+        if (!chaptersLoaded) {
+            // don't attempt verses fetch until we know the available chapters for the current book
+            // this prevents the earlier race where an optimistic chapter caused a wrong fallback
+            return;
+        }
+
+        let didFallback = false;
+        const thisRequestId = ++versesRequestIdRef.current;
+
+        async function loadVersesFor(versionId: string, bookSlug: string, chapNum: number) {
+            try {
+                setLoading(true);
+                const res = await fetchWithKey(`${API_BASE}/chapter/${versionId}/${bookSlug}/${chapNum}`);
+                if (thisRequestId !== versesRequestIdRef.current) {
+                    return;
+                }
+
+                if (!res.ok) {
+                    // if verses are not available for this chapter, try a single fallback:
+                    if (!didFallback) {
+                        didFallback = true;
+                        // if we have a chapters list, pick nearest available (min(chap, maxAvailable)) or first
+                        if (Array.isArray(chapters) && chapters.length > 0) {
+                            const maxAvailable = chapters[chapters.length - 1];
+                            const fallback = Math.min(chapNum, maxAvailable);
+                            const final = chapters.includes(fallback) ? fallback : chapters[0];
+                            if (final !== chapNum) {
+                                setChapter(final);
+                                return; // new chapter will retrigger effect
+                            }
+                        } else if (chapNum !== 1) {
+                            setChapter(1);
+                            return;
+                        }
+                    }
+                    setVerses([]);
+                    setLoading(false);
+                    return;
+                }
+
+                const data = await res.json();
+                if (thisRequestId !== versesRequestIdRef.current) {
+                    return;
+                }
+                const arr = (data && Array.isArray(data.verses)) ? data.verses : [];
+                setVerses(arr);
+                setLoading(false);
+            } catch (err) {
+                if (!didFallback) {
+                    didFallback = true;
+                    if (Array.isArray(chapters) && chapters.length > 0) {
+                        const maxAvailable = chapters[chapters.length - 1];
+                        const fallback = Math.min(chapter, maxAvailable);
+                        const final = chapters.includes(fallback) ? fallback : chapters[0];
+                        if (final !== chapter) {
+                            setChapter(final);
+                            return;
+                        }
+                    } else if (chapter !== 1) {
+                        setChapter(1);
+                        return;
+                    }
+                }
+                setVerses([]);
+                setError("Failed to load verses");
+                setLoading(false);
+            }
+        }
+
+        loadVersesFor(version, book, chapter);
+
+        return () => {
+            versesRequestIdRef.current++;
+        };
+    }, [version, book, chapter, chaptersLoaded, chapters]);
 
     // persist selections
     useEffect(() => { if (isMounted && version) localStorage.setItem("bible_version", version); }, [version, isMounted]);
     useEffect(() => { if (isMounted && book) localStorage.setItem("bible_book", book); }, [book, isMounted]);
     useEffect(() => { if (isMounted && chapter) localStorage.setItem("bible_chapter", String(chapter)); }, [chapter, isMounted]);
 
-    // cleanup when leaving reading mode
+    // robust cleanup when leaving reading mode
     useEffect(() => {
         if (!readingMode) {
             setModalOpen(false);
@@ -190,7 +308,10 @@ export default function ReaderPage() {
     };
     const closeModal = () => setModalOpen(false);
 
-    const handleBookSelect = (b: any) => { setBook(b.slug); closeModal(); };
+    const handleBookSelect = (b: any) => {
+        setBook(b.slug);
+        closeModal();
+    };
     const handleChapterSelect = (n: number) => { setChapter(n); setMode("verses"); };
     const handleVerseSelect = (n: number) => setSelectedVerse(n);
     const handleVersionSelect = (v: any) => { setVersion(v.id); closeModal(); };
