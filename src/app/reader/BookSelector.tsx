@@ -61,7 +61,7 @@ export default function BookSelector({ books, onSelect, active, isTelugu }: Prop
                 {/* Old Testament column */}
                 <div className="min-w-0">
                     <div className="sticky top-0 z-10 bg-white pb-2">
-                        <div className="text-xs text-gray-500 font-semibold mb-2">Old Testament</div>
+                        <div className="text-base text-gray-500 font-semibold mb-2">Old Testament</div>
                     </div>
 
                     <div className="flex flex-col gap-1">
@@ -76,7 +76,7 @@ export default function BookSelector({ books, onSelect, active, isTelugu }: Prop
                 {/* New Testament column */}
                 <div className="min-w-0">
                     <div className="sticky top-0 z-10 bg-white pb-2">
-                        <div className="text-xs text-gray-500 font-semibold mb-2">New Testament</div>
+                        <div className="text-base text-gray-500 font-semibold mb-2">New Testament</div>
                     </div>
 
                     <div className="flex flex-col gap-1">
