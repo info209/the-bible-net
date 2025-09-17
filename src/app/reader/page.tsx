@@ -1,4 +1,3 @@
-// app/reader/page.tsx
 "use client";
 import React, { useEffect, useRef, useState, MutableRefObject } from "react";
 import Header from "@/components/Header";
@@ -350,8 +349,6 @@ export default function ReaderPage() {
         };
     }, [version, book, chapter, chaptersLoaded, chapters]);
 
-    // persist selections already handled above
-
     // robust cleanup when leaving reading mode
     useEffect(() => {
         if (!readingMode) {
@@ -390,7 +387,7 @@ export default function ReaderPage() {
     // Short version label / acronym for the version selector
     const versionShortLabel = isMounted ? extractAcronym(selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id) : "Ver";
 
-    // reading mode toggle
+    // reading mode toggle (small light)
     const enterReadingMode = () => {
         setModalOpen(false);
         setMusicOpen(false);
@@ -419,6 +416,7 @@ export default function ReaderPage() {
     };
 
     // theme styles applied inline so we don't change external CSS
+    // NOTE: these theme styles are applied only when NOT in readingMode (so reading mode retains its intended styles)
     const themeStyles: Record<string, React.CSSProperties> = {
         default: { backgroundColor: "#FEFEFE", color: "#111827" },
         pink: { backgroundColor: "#fff5f7", color: "#3b0b17" },
@@ -426,7 +424,7 @@ export default function ReaderPage() {
         dark: { backgroundColor: "#0f0f10", color: "#e6eef0" },
     };
 
-    const rootThemeStyle = themeStyles[theme] || themeStyles["default"];
+    const rootThemeStyle = !readingMode ? (themeStyles[theme] || themeStyles["default"]) : {};
 
     // framer variants for transitions
     const variants: Record<string, any> = {
@@ -448,7 +446,7 @@ export default function ReaderPage() {
     };
 
     return (
-        <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col" : "min-h-screen flex flex-col"}>
+        <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10]" : "min-h-screen flex flex-col"}>
             {!readingMode && <Header />}
 
             <main className="flex-1 w-full pt-4 pb-28 px-2 sm:px-4">

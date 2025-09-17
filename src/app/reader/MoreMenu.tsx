@@ -1,4 +1,3 @@
-// app/reader/MoreMenu.tsx
 "use client";
 import React, { useEffect, useState } from "react";
 
@@ -31,6 +30,7 @@ export default function MoreMenu({
                                  }: Props) {
     const [view, setView] = useState<"main" | "settings">("main");
 
+    // fonts list (as in your screenshot)
     const fonts = [
         "Times New Roman",
         "Georgia",
@@ -40,6 +40,7 @@ export default function MoreMenu({
         "System UI"
     ];
 
+    // local fallbacks
     const [localFont, localSetFont] = useState<"small" | "medium" | "large" | "xlarge">(
         (typeof window !== "undefined" && (localStorage.getItem("reader_fontSize") as any)) || "medium"
     );
@@ -56,6 +57,7 @@ export default function MoreMenu({
         typeof window !== "undefined" && localStorage.getItem("reader_hideFootnotes") === "1" ? true : false
     );
 
+    // active values prefer controlled props
     const activeFont = controlledFont ?? localFont;
     const activeFamily = controlledFamily ?? localFamily;
     const activeTheme = controlledTheme ?? localTheme;
@@ -66,23 +68,28 @@ export default function MoreMenu({
         if (controlledSetFont) controlledSetFont(s);
         else localSetFont(s);
     };
+
     const updateFamily = (f: string) => {
         if (controlledSetFamily) controlledSetFamily(f);
         else localSetFamily(f);
     };
+
     const updateTheme = (t: "default" | "pink" | "sepia" | "dark") => {
         if (controlledSetTheme) controlledSetTheme(t);
         else localSetTheme(t);
     };
+
     const updateTrans = (t: "slide" | "fade" | "flip") => {
         if (controlledSetTransition) controlledSetTransition(t);
         else localSetTrans(t);
     };
+
     const updateHide = (h: boolean) => {
         if (controlledSetHide) controlledSetHide(h);
         else localSetHide(h);
     };
 
+    // persist local state if used
     useEffect(() => {
         try {
             if (!controlledSetFont) localStorage.setItem("reader_fontSize", localFont);
@@ -90,9 +97,12 @@ export default function MoreMenu({
             if (!controlledSetTheme) localStorage.setItem("reader_theme", localTheme);
             if (!controlledSetTransition) localStorage.setItem("reader_transition", localTrans);
             if (!controlledSetHide) localStorage.setItem("reader_hideFootnotes", localHide ? "1" : "0");
-        } catch (e) {}
+        } catch (e) {
+            // ignore storage errors
+        }
     }, [localFont, localFamily, localTheme, localTrans, localHide, controlledSetFont, controlledSetFamily, controlledSetTheme, controlledSetTransition, controlledSetHide]);
 
+    // simple SVG icons for transitions
     const SlideIcon = ({ size = 22 }: { size?: number }) => (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
             <rect x="2" y="5" width="7" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
@@ -100,6 +110,7 @@ export default function MoreMenu({
             <path d="M11 12h2" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
     );
+
     const FadeIcon = ({ size = 22 }: { size?: number }) => (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
             <rect x="3" y="5" width="6" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
@@ -107,6 +118,7 @@ export default function MoreMenu({
             <rect x="15" y="5" width="6" height="14" rx="1.5" stroke="currentColor" strokeWidth="0.6" opacity="0.2" />
         </svg>
     );
+
     const FlipIcon = ({ size = 22 }: { size?: number }) => (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden>
             <rect x="3" y="5" width="7" height="14" rx="1.5" stroke="currentColor" strokeWidth="1.5" />
@@ -115,6 +127,7 @@ export default function MoreMenu({
         </svg>
     );
 
+    // content wrapper: centered and responsive
     const PanelWrapper = ({ children }: { children: React.ReactNode }) => (
         <div className="w-full px-3 pb-4">
             <div className="mx-auto" style={{ maxWidth: 720 }}>
@@ -126,19 +139,41 @@ export default function MoreMenu({
     if (view === "settings") {
         return (
             <PanelWrapper>
+                {/* Header */}
                 <div className="flex items-center justify-between w-full mb-3">
-                    <button type="button" onClick={() => setView("main")} className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100">← Back</button>
+                    <button
+                        type="button"
+                        onClick={() => setView("main")}
+                        className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
+                    >
+                        ← Back
+                    </button>
                     <div className="font-semibold">Fonts & Settings</div>
-                    <button type="button" onClick={() => { onClose?.(); }} className="text-sm text-green-700 px-2 py-1 rounded hover:bg-green-50">Done</button>
+                    <button
+                        type="button"
+                        onClick={() => { onClose?.(); }}
+                        className="text-sm text-green-700 px-2 py-1 rounded hover:bg-green-50"
+                    >
+                        Done
+                    </button>
                 </div>
 
+                {/* Font style / family */}
                 <div className="mb-5 w-full">
                     <div className="text-sm text-gray-500 mb-2">Font family</div>
-                    <select aria-label="Select font family" value={activeFamily} onChange={(e) => updateFamily(e.target.value)} className="w-full border rounded px-3 py-2">
-                        {fonts.map((f) => <option key={f} value={f}>{f}</option>)}
-                    </select>
+                    <div>
+                        <select
+                            aria-label="Select font family"
+                            value={activeFamily}
+                            onChange={(e) => updateFamily(e.target.value)}
+                            className="w-full border rounded px-3 py-2"
+                        >
+                            {fonts.map((f) => <option key={f} value={f}>{f}</option>)}
+                        </select>
+                    </div>
                 </div>
 
+                {/* Font size (4 options) */}
                 <div className="mb-5 w-full">
                     <div className="text-sm text-gray-500 mb-2 text-center w-full">Font size</div>
                     <div className="flex gap-2 flex-wrap justify-center">
@@ -159,20 +194,21 @@ export default function MoreMenu({
                     </div>
                 </div>
 
+                {/* Themes (4 options) */}
                 <div className="mb-5 w-full">
                     <div className="text-sm text-gray-500 mb-2 text-center w-full">Theme</div>
                     <div className="flex gap-3 flex-wrap justify-center">
                         {[
-                            { id: "default", label: "○", cls: "bg-white border" },
-                            { id: "pink", label: "✿", cls: "bg-pink-50 border" },
-                            { id: "sepia", label: "☼", cls: "bg-yellow-50 border" },
-                            { id: "dark", label: "☾", cls: "bg-gray-900 text-white border" },
+                            { id: "default", label: "○", cls: "bg-white border text-black" },
+                            { id: "pink", label: "✿", cls: "bg-pink-50 border text-pink-900" },
+                            { id: "sepia", label: "☼", cls: "bg-yellow-50 border text-yellow-900" },
+                            { id: "dark", label: "☾", cls: "bg-gray-900 text-white border border-gray-700" },
                         ].map((t) => (
                             <button
                                 key={t.id}
                                 type="button"
                                 onClick={() => updateTheme(t.id as any)}
-                                className={`w-12 h-12 rounded-full flex items-center justify-center border ${activeTheme === t.id ? "ring-2 ring-rose-400" : ""} ${t.cls}`}
+                                className={`w-12 h-12 rounded-full flex items-center justify-center ${activeTheme === t.id ? "ring-2 ring-rose-400" : ""} ${t.cls}`}
                                 title={t.id}
                                 aria-pressed={activeTheme === t.id ? "true" : "false"}
                             >
@@ -182,6 +218,7 @@ export default function MoreMenu({
                     </div>
                 </div>
 
+                {/* Page transitions (3 options) */}
                 <div className="mb-2 w-full">
                     <div className="text-sm text-gray-500 mb-2 text-center w-full">Page transitions</div>
                     <div className="grid grid-cols-3 gap-3 justify-items-center">
@@ -220,21 +257,30 @@ export default function MoreMenu({
         );
     }
 
+    // --- Main view ---
     return (
         <PanelWrapper>
             <div className="flex flex-col gap-2 w-full">
-                <button type="button" className="text-left px-3 py-2 rounded hover:bg-gray-50 w-full text-left" onClick={() => setView("settings")}>
+                <button
+                    type="button"
+                    className="text-left px-3 py-2 rounded hover:bg-gray-50 w-full text-left"
+                    onClick={() => setView("settings")}
+                >
                     Fonts & Settings
                 </button>
+
                 <div className="flex items-center justify-between px-3 py-2">
                     <span>Hide footnotes</span>
+                    {/* toggle switch */}
                     <button
                         type="button"
                         aria-pressed={activeHide ? "true" : "false"}
                         onClick={() => updateHide(!activeHide)}
                         className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors focus:outline-none ${activeHide ? "bg-rose-500" : "bg-gray-200"}`}
                     >
-                        <span className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${activeHide ? "translate-x-5" : "translate-x-1"}`} />
+            <span
+                className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${activeHide ? "translate-x-5" : "translate-x-1"}`}
+            />
                     </button>
                 </div>
             </div>
