@@ -98,6 +98,44 @@ export default function ReaderPage() {
         if (ch && !isNaN(Number(ch))) setChapter(Number(ch));
     }, [isMounted]);
 
+    // Select first version if no cache and none selected
+    useEffect(() => {
+        if (!isMounted) return;
+        const v = localStorage.getItem("bible_version");
+        if (!v && versions.length > 0 && !version) {
+            setVersion(versions[0].id);
+        }
+    }, [versions, isMounted, version]);
+
+    // Select first book if no cache and none selected
+    useEffect(() => {
+        if (!isMounted) return;
+        const b = localStorage.getItem("bible_book");
+        if (!b && books.oldTestament && books.oldTestament.length > 0 && !book) {
+            setBook(books.oldTestament[0].slug);
+        } else if (!b && books.newTestament && books.newTestament.length > 0 && !book) {
+            setBook(books.newTestament[0].slug);
+        }
+    }, [books, isMounted, book]);
+
+    // Select first chapter if no cache and none selected
+    useEffect(() => {
+        if (!isMounted) return;
+        const ch = localStorage.getItem("bible_chapter");
+        if (!ch && chapters && chapters.length > 0 && (!chapter || !chapters.includes(chapter))) {
+            setChapter(chapters[0]);
+        }
+    }, [chapters, isMounted, chapter]);
+
+    // Select first verse if no cache and none selected
+    useEffect(() => {
+        if (!isMounted) return;
+        const v = localStorage.getItem("bible_verse");
+        if (!v && verses && verses.length > 0 && selectedVerse == null) {
+            setSelectedVerse(1);
+        }
+    }, [verses, isMounted, selectedVerse]);
+
     // versions
     useEffect(() => {
         if (!isMounted) return;
