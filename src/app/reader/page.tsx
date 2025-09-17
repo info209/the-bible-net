@@ -20,6 +20,39 @@ const getCached = (key: string) => {
     try { return val ? JSON.parse(val) : null; } catch { return null; }
 };
 
+// small helper to extract acronym/short label
+function extractAcronym(displayName?: string) {
+    if (!displayName) return "";
+    // look for a parenthesized token that looks like an acronym (all caps or mixed but short)
+    const parenMatches = [...displayName.matchAll(/\(([^)]+)\)/g)].map(m => m[1]);
+    if (parenMatches.length > 0) {
+        // prefer last parenthesis that is short & likely an acronym
+        for (let i = parenMatches.length - 1; i >= 0; i--) {
+            const token = parenMatches[i].trim();
+            // if it contains letters and is short (<=5), use it
+            if (/^[A-Za-z0-9&-]{1,5}$/.test(token)) return token.toUpperCase();
+            // if token contains spaces but inside is all-caps words like "T N K", remove spaces
+            if (/^[A-Z\s]{1,8}$/.test(token)) return token.replace(/\s+/g, "").toUpperCase();
+        }
+    }
+    // fallback: take first letters of words (skip small words), up to 4 chars
+    const words = displayName.replace(/[()]/g, "").split(/\s+/).filter(w => w.length > 0);
+    const stopWords = new Set(["and","of","the","in","on","a","an","edition","version","rev","revised","indian"]);
+    const letters: string[] = [];
+    for (const w of words) {
+        const cleaned = w.replace(/[^A-Za-z0-9]/g, "");
+        if (!cleaned) continue;
+        if (letters.length === 0 || !stopWords.has(cleaned.toLowerCase())) {
+            letters.push(cleaned[0].toUpperCase());
+        }
+        if (letters.length >= 4) break;
+    }
+    if (letters.length === 0 && words.length > 0) {
+        return words[0].slice(0, 3).toUpperCase();
+    }
+    return letters.join("").toUpperCase();
+}
+
 export default function ReaderPage() {
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => setIsMounted(true), []);
@@ -85,6 +118,16 @@ export default function ReaderPage() {
     useEffect(() => {
         if (!version) return;
         setLoading(true);
+        const cachedBooks = getCached("bible_books");
+        if (cachedBooks && Array.isArray(cachedBooks) && cachedBooks.length > 0) {
+            const apiBooks = cachedBooks;
+            const apiBookSlugs = new Set(apiBooks.map((b: any) => b.slug));
+            const oldBooks = bookMapping.oldTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find(b => b.slug === m.slug) }));
+            const newBooks = bookMapping.newTestament.filter(m => apiBookSlugs.has(m.slug)).map(m => ({ ...m, ...apiBooks.find(b => b.slug === m.slug) }));
+            setBooks({ oldTestament: oldBooks, newTestament: newBooks });
+            setLoading(false);
+            return;
+        }
         fetchWithKey(`${API_BASE}/books`).then(r=>r.json()).then(data=>{
             localStorage.setItem("bible_books", JSON.stringify(data));
             const apiBooks = Array.isArray(data) ? data : (data as any).books || [];
@@ -127,7 +170,7 @@ export default function ReaderPage() {
     useEffect(() => { if (isMounted && book) localStorage.setItem("bible_book", book); }, [book, isMounted]);
     useEffect(() => { if (isMounted && chapter) localStorage.setItem("bible_chapter", String(chapter)); }, [chapter, isMounted]);
 
-    // robust cleanup when leaving reading mode
+    // cleanup when leaving reading mode
     useEffect(() => {
         if (!readingMode) {
             setModalOpen(false);
@@ -159,6 +202,24 @@ export default function ReaderPage() {
         return slug;
     };
 
+    // Short version label / acronym for the version selector
+    const versionShortLabel = isMounted ? extractAcronym(selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id) : "Ver";
+
+    // reading mode toggle (small light)
+    const enterReadingMode = () => {
+        setModalOpen(false);
+        setMusicOpen(false);
+        setMoreOpen(false);
+        setTimeout(() => setReadingMode(true), 80);
+    };
+
+    // escape -> exit reading
+    useEffect(() => {
+        const onKey = (ev: KeyboardEvent) => { if (ev.key === "Escape" && readingMode) setReadingMode(false); };
+        window.addEventListener("keydown", onKey);
+        return () => window.removeEventListener("keydown", onKey);
+    }, [readingMode]);
+
     return (
         <div className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10] text-gray-100" : "min-h-screen flex flex-col bg-[#FEFEFE]"}>
             {!readingMode && <Header />}
@@ -186,21 +247,20 @@ export default function ReaderPage() {
                                 {isMounted ? String(chapter).padStart(2, "0") : "01"}
                             </button>
 
-                            {/* Version */}
+                            {/* Version - show acronym / short only */}
                             <button
-                                className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base min-w-[120px] sm:min-w-[200px] text-left bg-white"
+                                className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base min-w-[40px] sm:min-w-[120px] text-left bg-white"
                                 onClick={() => openModalFor("versions")}
+                                title={selectedVersionObj?.displayName || selectedVersionObj?.name || ""}
                             >
-                                {isMounted
-                                    ? (selectedVersionObj ? `${selectedVersionObj.displayName} (${selectedVersionObj.language})` : "Version")
-                                    : "Version"}
+                                {isMounted ? (selectedVersionObj ? versionShortLabel : "Ver") : "Ver"}
                             </button>
 
                             {/* Reading mode button */}
                             <button
                                 aria-label="Enter reading mode"
                                 title="Reading mode"
-                                onClick={() => setReadingMode(true)}
+                                onClick={enterReadingMode}
                                 className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50"
                             >
                                 📰
