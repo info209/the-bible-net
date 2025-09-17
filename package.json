@@ -11,6 +11,7 @@
     "watch:css": "tailwindcss -i ./src/app/globals.css -o ./public/tw-debug.css --watch"
   },
   "dependencies": {
+    "@vercel/analytics": "^1.5.0",
     "firebase": "^12.2.1",
     "next": "^14.1.0",
     "react": "18.2.0",
