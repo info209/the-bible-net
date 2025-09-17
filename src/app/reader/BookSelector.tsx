@@ -34,7 +34,7 @@ export default function BookSelector({ books, onSelect, active, isTelugu }: Prop
             <button
                 onClick={() => onSelect(b)}
                 className={`w-full text-left px-3 py-2 rounded transition flex items-center gap-2 ${
-                    isActive ? "bg-blue-100 border border-blue-300 font-semibold" : "hover:bg-gray-50"
+                    isActive ? "bg-rose-50 border border-rose-200 font-semibold" : "hover:bg-gray-50"
                 }`}
                 title={label}
                 aria-pressed={isActive}

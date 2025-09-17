@@ -10,11 +10,19 @@ export default function VersionSelector({ versions, onSelect, active }: any) {
         return acc;
     }, {});
 
+    // language code to name mapping
+    const langNames: Record<string, string> = {
+        en: "English",
+        te: "Telugu",
+    };
+
     return (
         <div className="w-full max-w-2xl mx-auto">
             {Object.keys(grouped).map(lang => (
                 <div key={lang} className="mb-4">
-                    <div className="font-semibold mb-2 text-xs text-gray-500">{lang}</div>
+                    <div className="font-semibold mb-2 text-xs text-gray-500">
+                        {langNames[lang] || lang}
+                    </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         {grouped[lang].map((v: any) => (
                             <button
