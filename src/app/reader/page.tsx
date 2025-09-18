@@ -14,6 +14,8 @@ import MoreMenu from "@/app/reader/MoreMenu";
 // framer-motion for page transitions
 import { motion, AnimatePresence } from "framer-motion";
 
+import MusicControl from "@/app/reader/MusicControl"; // <-- ADDED import
+
 const API_BASE = "https://australia-southeast1-the-bible-net.cloudfunctions.net/api";
 const fetchWithKey = (url: string) =>
     fetch(url, { headers: { "x-app-key": "your_secret_key" } });
@@ -576,7 +578,9 @@ export default function ReaderPage() {
 
             {!readingMode && isMounted && musicOpen && selectorsRef.current && (
                 <ModalSelector portalKey={modalPortalKey} show={musicOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={() => setMusicOpen(false)} title="Audio">
-                    <div className="p-2">Audio controls (placeholder)</div>
+                    <div className="p-3">
+                        <MusicControl />
+                    </div>
                 </ModalSelector>
             )}
 
