@@ -447,13 +447,55 @@ export default function ReaderPage() {
         },
     };
 
+    // --- Sticky bar state for scroll ---
+    const [showStickyBar, setShowStickyBar] = useState(false);
+    const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    useEffect(() => {
+        if (readingMode) return; // Don't show sticky bar in reading mode
+        const handleScroll = () => {
+            if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+            // Use requestAnimationFrame for smoothness
+            scrollTimeoutRef.current = setTimeout(() => {
+                const scrollY = window.scrollY || window.pageYOffset;
+                if (scrollY > 40) {
+                    setShowStickyBar(true);
+                } else {
+                    setShowStickyBar(false);
+                }
+            }, 10);
+        };
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => {
+            window.removeEventListener("scroll", handleScroll);
+            if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+        };
+    }, [readingMode]);
+
     return (
         <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10]" : "min-h-screen flex flex-col"}>
-            {!readingMode && <Header />}
+            {/* Sticky info bar: only when scrolled and not in reading mode */}
+            {!readingMode && (
+                <div
+                    className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 ${showStickyBar ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'} bg-white/95 dark:bg-[#18181b]/95 backdrop-blur border-b border-gray-200 dark:border-gray-800`}
+                    style={{ minHeight: '44px', boxShadow: showStickyBar ? '0 2px 8px 0 rgba(0,0,0,0.04)' : 'none' }}
+                >
+                    <div className="flex justify-center items-center w-full max-w-3xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
+                        <span className="font-medium text-base sm:text-lg text-gray-900 dark:text-gray-100 truncate text-center w-full">
+                            {getBookDisplay(book)} · {String(chapter).padStart(2, "0")} · {selectedVersionObj?.displayName || ""}
+                            {selectedVersionObj ? ` (${extractAcronym(selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id)})` : ""}
+                        </span>
+                    </div>
+                </div>
+            )}
 
-            <main className="flex-1 w-full pt-4 pb-28 px-2 sm:px-4">
+            {/* Hide header/selectors/footer when sticky bar is shown */}
+            {!readingMode && !showStickyBar && <Header />}
+
+            <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : 'pt-4'}`}>
                 <div className="mx-auto w-full max-w-5xl">
-                    {!readingMode && (
+                    {/* Hide selectors when sticky bar is shown */}
+                    {!readingMode && !showStickyBar && (
                         <div
                             ref={selectorsRef}
                             className="relative z-[70] flex flex-row flex-wrap gap-2 items-center mb-6"
@@ -466,7 +508,6 @@ export default function ReaderPage() {
                             >
                                 {isMounted ? getBookDisplay(book) : "Book"}
                             </button>
-
                             {/* Chapter */}
                             <button
                                 type="button"
@@ -475,7 +516,6 @@ export default function ReaderPage() {
                             >
                                 {isMounted ? String(chapter).padStart(2, "0") : "01"}
                             </button>
-
                             {/* Version - show acronym / short only */}
                             <button
                                 type="button"
@@ -485,7 +525,6 @@ export default function ReaderPage() {
                             >
                                 {isMounted ? (selectedVersionObj ? versionShortLabel : "Ver") : "Ver"}
                             </button>
-
                             {/* Reading mode button */}
                             <button
                                 type="button"
@@ -496,7 +535,6 @@ export default function ReaderPage() {
                             >
                                 📰
                             </button>
-
                             {/* Music */}
                             <button
                                 type="button"
@@ -506,7 +544,6 @@ export default function ReaderPage() {
                             >
                                 🎵
                             </button>
-
                             {/* More */}
                             <button
                                 type="button"
@@ -558,7 +595,8 @@ export default function ReaderPage() {
                 </div>
             </main>
 
-            {!readingMode && <FooterNav />}
+            {/* Hide footer when sticky bar is shown */}
+            {!readingMode && !showStickyBar && <FooterNav />}
 
             {/* Modal */}
             {!readingMode && isMounted && modalOpen && selectorsRef.current && (
