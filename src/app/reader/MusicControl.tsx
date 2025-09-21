@@ -149,10 +149,12 @@ export default function MusicControl() {
         if (isPlaying) {
             a.pause();
             setIsPlaying(false);
+            setUserInitiatedPlay(false); // <-- fix: persist pause intent
         } else {
             try {
                 await a.play();
                 setIsPlaying(true);
+                setUserInitiatedPlay(true);
             } catch {
                 setIsPlaying(false);
             }
