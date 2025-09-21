@@ -29,6 +29,10 @@ export default function SignupPage() {
 
     const handleContinue = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!name.trim()) {
+            setError('Full name is required.');
+            return;
+        }
         setLoading(true);
         setError(null);
         try {
@@ -69,7 +73,7 @@ export default function SignupPage() {
                     {error && <div className="text-red-600 text-sm">{error}</div>}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Enter your full name</label>
-                        <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border rounded-lg p-3" placeholder="Full Name" />
+                        <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border rounded-lg p-3" placeholder="Full Name" required />
                     </div>
 
                     <div>
