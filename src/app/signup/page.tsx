@@ -69,7 +69,7 @@ export default function SignupPage() {
                     {error && <div className="text-red-600 text-sm">{error}</div>}
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Enter your full name</label>
-                        <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border rounded-lg p-3" placeholder="Andriya George" />
+                        <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border rounded-lg p-3" placeholder="Full Name" />
                     </div>
 
                     <div>
