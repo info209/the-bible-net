@@ -3,7 +3,9 @@
 
 import React, { useState } from 'react';
 import { auth, googleProvider, facebookProvider, twitterProvider } from '../../lib/firebaseClient';
-import { signInWithPopup, fetchSignInMethodsForEmail } from 'firebase/auth';
+import { signInWithPopup, fetchSignInMethodsForEmail, getAdditionalUserInfo } from 'firebase/auth';
+import { FcGoogle } from 'react-icons/fc';
+import { FaFacebook, FaXTwitter } from 'react-icons/fa6';
 
 async function exchangeIdTokenForSession(idToken: string) {
     await fetch('/api/auth/sessionLogin', {
@@ -21,7 +23,12 @@ export default function SocialButtons() {
             const result = await signInWithPopup(auth, provider);
             const token = await result.user.getIdToken();
             await exchangeIdTokenForSession(token);
-            window.location.href = '/reader';
+            const additionalInfo = getAdditionalUserInfo(result);
+            if (additionalInfo?.isNewUser) {
+                window.location.href = '/signup/complete';
+            } else {
+                window.location.href = '/reader';
+            }
         } catch (err: any) {
             // Handle popup blocked or closed
             if (err.code === 'auth/popup-blocked') {
@@ -71,10 +78,31 @@ export default function SocialButtons() {
     return (
         <div>
             {socialError && <div className="text-red-600 mb-2">{socialError}</div>}
-            <div className="flex gap-2">
-                <button onClick={() => handlePopup(googleProvider)} className="flex-1 py-2 border rounded">Google</button>
-                <button onClick={() => handlePopup(facebookProvider)} className="flex-1 py-2 border rounded">Facebook</button>
-                <button onClick={() => handlePopup(twitterProvider)} className="flex-1 py-2 border rounded">X</button>
+            <div className="flex gap-6 justify-center">
+                <button
+                    onClick={() => handlePopup(googleProvider)}
+                    className="bg-white rounded-full shadow-md w-16 h-16 flex items-center justify-center transition hover:shadow-lg focus:outline-none"
+                    aria-label="Sign in with Google"
+                    type="button"
+                >
+                    <FcGoogle className="text-3xl" />
+                </button>
+                <button
+                    onClick={() => handlePopup(facebookProvider)}
+                    className="bg-white rounded-full shadow-md w-16 h-16 flex items-center justify-center transition hover:shadow-lg focus:outline-none"
+                    aria-label="Sign in with Facebook"
+                    type="button"
+                >
+                    <FaFacebook className="text-3xl text-blue-600" />
+                </button>
+                <button
+                    onClick={() => handlePopup(twitterProvider)}
+                    className="bg-white rounded-full shadow-md w-16 h-16 flex items-center justify-center transition hover:shadow-lg focus:outline-none"
+                    aria-label="Sign in with X"
+                    type="button"
+                >
+                    <FaXTwitter className="text-3xl text-black" />
+                </button>
             </div>
         </div>
     );
