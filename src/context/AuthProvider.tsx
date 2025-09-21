@@ -2,7 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { onAuthStateChanged, signOut as firebaseSignOut } from 'firebase/auth';
+import { onAuthStateChanged, signOut as firebaseSignOut, signInAnonymously } from 'firebase/auth';
 import { auth } from '../lib/firebaseClient';
 
 const AuthContext = createContext<any>(null);
@@ -13,6 +13,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, async (usr) => {
+            if (!usr) {
+                // If no user, sign in anonymously
+                try {
+                    const anonResult = await signInAnonymously(auth);
+                    setUser(anonResult.user);
+                } catch (err) {
+                    setUser(null);
+                }
+                setLoading(false);
+                return;
+            }
             setUser(usr);
             setLoading(false);
         });

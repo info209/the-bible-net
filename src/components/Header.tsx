@@ -32,15 +32,24 @@ export default function Header() {
                     {loading ? (
                         <span className="text-xs sm:text-sm">Loading...</span>
                     ) : user ? (
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs sm:text-sm">{user.displayName || user.email}</span>
-                            <button
-                                onClick={signOut}
+                        user.isAnonymous ? (
+                            <a
+                                href="/login"
                                 className="text-xs sm:text-sm px-2 py-1 border rounded"
                             >
-                                Logout
-                            </button>
-                        </div>
+                                Sign In
+                            </a>
+                        ) : (
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs sm:text-sm">{user.displayName || user.email}</span>
+                                <button
+                                    onClick={signOut}
+                                    className="text-xs sm:text-sm px-2 py-1 border rounded"
+                                >
+                                    Logout
+                                </button>
+                            </div>
+                        )
                     ) : (
                         <a
                             href="/login"
