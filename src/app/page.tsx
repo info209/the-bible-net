@@ -5,6 +5,7 @@ import Header from '@/components/Header';
 import VerseCard from '@/components/VerseCard';
 import FooterNav from '@/components/FooterNav';
 import { useEffect } from 'react';
+import { useAuth } from '../context/AuthProvider';
 
 const sampleCards = [
 	{
@@ -33,6 +34,7 @@ const API_BASE = 'https://australia-southeast1-the-bible-net.cloudfunctions.net/
 const fetchWithKey = (url: string) => fetch(url, { headers: { 'x-app-key': 'your_secret_key' } });
 
 export default function Home() {
+	const { user, loading } = useAuth();
 	useEffect(() => {
 		// Prefetch versions
 		fetchWithKey(`${API_BASE}/versions`)
@@ -70,10 +72,15 @@ export default function Home() {
 						>
 							<img src="/Vector.png" alt="New" className="h-6 w-6" />
 						</button>
-						<div className="text-lg font-medium">Shalom, Andriya</div>
+						<div className="text-lg font-medium">
+							{loading
+								? "Shalom..."
+								: user?.displayName
+									? `Shalom, ${user.displayName.split(" ")[0]}`
+									: "Shalom, Friend"}
+						</div>
 					</div>
 
-					{/* Verse cards */}
 					{sampleCards.map((c) => (
 						<VerseCard
 							key={c.id}
