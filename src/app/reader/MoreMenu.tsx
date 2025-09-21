@@ -267,18 +267,9 @@ export default function MoreMenu({
                             aria-pressed={activeTheme === "pink" ? "true" : "false"}
                             title="Pink"
                         >
-                            <svg className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="16" cy="16" r="7" fill="#fff1fb" stroke="#e9a8d4" strokeWidth="2"/>
-                                <g stroke="#222" strokeWidth="2">
-                                    <line x1="16" y1="5" x2="16" y2="9"/>
-                                    <line x1="16" y1="23" x2="16" y2="27"/>
-                                    <line x1="5" y1="16" x2="9" y2="16"/>
-                                    <line x1="23" y1="16" x2="27" y2="16"/>
-                                    <line x1="8.2" y1="8.2" x2="11" y2="11"/>
-                                    <line x1="21" y1="21" x2="23.8" y2="23.8"/>
-                                    <line x1="8.2" y1="23.8" x2="11" y2="21"/>
-                                    <line x1="21" y1="11" x2="23.8" y2="8.2"/>
-                                </g>
+                            {/* Heroicons Sun */}
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#e9a8d4" className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.343 17.657l-1.414 1.414M17.657 17.657l-1.414-1.414M6.343 6.343L4.929 4.929M12 8a4 4 0 100 8 4 4 0 000-8z" />
                             </svg>
                         </button>
                         {/* Sepia Theme: pill, border, sun icon */}
@@ -289,18 +280,9 @@ export default function MoreMenu({
                             aria-pressed={activeTheme === "sepia" ? "true" : "false"}
                             title="Sepia"
                         >
-                            <svg className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <circle cx="16" cy="16" r="7" fill="#fff8e1" stroke="#e5c78c" strokeWidth="2"/>
-                                <g stroke="#222" strokeWidth="2">
-                                    <line x1="16" y1="5" x2="16" y2="9"/>
-                                    <line x1="16" y1="23" x2="16" y2="27"/>
-                                    <line x1="5" y1="16" x2="9" y2="16"/>
-                                    <line x1="23" y1="16" x2="27" y2="16"/>
-                                    <line x1="8.2" y1="8.2" x2="11" y2="11"/>
-                                    <line x1="21" y1="21" x2="23.8" y2="23.8"/>
-                                    <line x1="8.2" y1="23.8" x2="11" y2="21"/>
-                                    <line x1="21" y1="11" x2="23.8" y2="8.2"/>
-                                </g>
+                            {/* Heroicons Sun (sepia color) */}
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#e5c78c" className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.343 17.657l-1.414 1.414M17.657 17.657l-1.414-1.414M6.343 6.343L4.929 4.929M12 8a4 4 0 100 8 4 4 0 000-8z" />
                             </svg>
                         </button>
                         {/* Dark Theme: pill, filled, moon icon */}
@@ -311,8 +293,9 @@ export default function MoreMenu({
                             aria-pressed={activeTheme === "dark" ? "true" : "false"}
                             title="Dark"
                         >
-                            <svg className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M22 16c0 4.418-3.582 8-8 8a8 8 0 0 1 0-16c.453 0 .9.036 1.34.108A9 9 0 1 0 22 16Z" stroke="#fff" strokeWidth="2" fill="none"/>
+                            {/* Heroicons Moon */}
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#fff" className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
                             </svg>
                         </button>
                     </div>
