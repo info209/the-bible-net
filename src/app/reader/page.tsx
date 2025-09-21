@@ -500,8 +500,7 @@ export default function ReaderPage() {
                 >
                     <div className="flex justify-center items-center w-full max-w-3xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
                         <span className="font-medium text-base sm:text-lg text-gray-900 dark:text-gray-100 truncate text-center w-full">
-                            {getBookDisplay(book)} · {String(chapter).padStart(2, "0")} · {selectedVersionObj?.displayName || ""}
-                            {selectedVersionObj ? ` (${extractAcronym(selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id)})` : ""}
+                            {getBookDisplay(book)} · {String(chapter).padStart(2, "0")} · {selectedVersionObj ? versionShortLabel : ""}
                         </span>
                     </div>
                 </div>
