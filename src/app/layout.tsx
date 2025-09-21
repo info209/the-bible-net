@@ -17,6 +17,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
         <html lang="en">
         <body className="antialiased">
         <AuthProvider>
+            {/* Persistent global audio element for music playback */}
+            <audio id="global-audio" style={{ position: 'fixed', left: '-9999px', width: 0, height: 0 }} />
             {children}
         </AuthProvider>
         <Analytics />
