@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useRef, useState, MutableRefObject } from "react";
+import React, { useEffect, useRef, useState, MutableRefObject, useLayoutEffect } from "react";
 import Header from "@/components/Header";
 import FooterNav from "@/components/FooterNav";
 import { bookMapping } from "@/components/bookMapping";
@@ -121,7 +121,7 @@ export default function ReaderPage() {
         if (storedFamily) setFontFamily(storedFamily);
         if (storedTheme === "default" || storedTheme === "pink" || storedTheme === "sepia" || storedTheme === "dark") setTheme(storedTheme);
         if (storedTrans === "slide" || storedTrans === "fade" || storedTrans === "flip") setTransition(storedTrans);
-        setHideFootnotes(storedHide === "1" ? true : false);
+        setHideFootnotes(storedHide === "1");
     }, [isMounted]);
 
     // persist selections
@@ -449,36 +449,54 @@ export default function ReaderPage() {
 
     // --- Sticky bar state for scroll ---
     const [showStickyBar, setShowStickyBar] = useState(false);
-    const scrollTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const [hasMounted, setHasMounted] = useState(false); // for transition
+    const lastShowStickyBar = useRef(false);
+    const throttleTimeout = useRef<NodeJS.Timeout | null>(null);
 
+    // Set hasMounted after first paint (for transitions)
     useEffect(() => {
-        if (readingMode) return; // Don't show sticky bar in reading mode
+        setHasMounted(true);
+    }, []);
+
+    // Synchronously check initial scroll position before first paint
+    useLayoutEffect(() => {
+        if (readingMode) return;
+        const initialScrollY = window.scrollY || window.pageYOffset;
+        const shouldShow = initialScrollY > 40;
+        setShowStickyBar(shouldShow);
+        lastShowStickyBar.current = shouldShow;
+    }, [readingMode]);
+
+    // Throttled scroll handler for sticky bar
+    useEffect(() => {
+        if (readingMode) return;
         const handleScroll = () => {
-            if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
-            // Use requestAnimationFrame for smoothness
-            scrollTimeoutRef.current = setTimeout(() => {
+            if (throttleTimeout.current) return;
+            throttleTimeout.current = setTimeout(() => {
                 const scrollY = window.scrollY || window.pageYOffset;
-                if (scrollY > 40) {
-                    setShowStickyBar(true);
-                } else {
-                    setShowStickyBar(false);
+                const shouldShow = scrollY > 40;
+                if (shouldShow !== lastShowStickyBar.current) {
+                    setShowStickyBar(shouldShow);
+                    lastShowStickyBar.current = shouldShow;
                 }
-            }, 10);
+                throttleTimeout.current = null;
+            }, 100);
         };
         window.addEventListener("scroll", handleScroll, { passive: true });
         return () => {
             window.removeEventListener("scroll", handleScroll);
-            if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+            if (throttleTimeout.current) clearTimeout(throttleTimeout.current);
         };
     }, [readingMode]);
 
     return (
         <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10]" : "min-h-screen flex flex-col"}>
-            {/* Sticky info bar: only when scrolled and not in reading mode */}
+            {/* Sticky info bar: always rendered, CSS handles show/hide */}
             {!readingMode && (
                 <div
-                    className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 ${showStickyBar ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'} bg-white/95 dark:bg-[#18181b]/95 backdrop-blur border-b border-gray-200 dark:border-gray-800`}
-                    style={{ minHeight: '44px', boxShadow: showStickyBar ? '0 2px 8px 0 rgba(0,0,0,0.04)' : 'none' }}
+                    className={`fixed top-0 left-0 w-full z-[100] bg-white/95 dark:bg-[#18181b]/95 backdrop-blur border-b border-gray-200 dark:border-gray-800
+                        ${showStickyBar ? 'stickybar-visible' : 'stickybar-hidden'}${hasMounted ? ' stickybar-transition' : ''}`}
+                    style={{ minHeight: '44px', boxShadow: '0 2px 8px 0 rgba(0,0,0,0.04)' }}
                 >
                     <div className="flex justify-center items-center w-full max-w-3xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
                         <span className="font-medium text-base sm:text-lg text-gray-900 dark:text-gray-100 truncate text-center w-full">
@@ -489,16 +507,17 @@ export default function ReaderPage() {
                 </div>
             )}
 
-            {/* Hide header/selectors/footer when sticky bar is shown */}
-            {!readingMode && !showStickyBar && <Header />}
+            {/* Always show Header in normal mode, only hide in reading mode */}
+            {!readingMode && <Header />}
 
-            <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : 'pt-4'}`}>
+            {/* Always apply top padding to prevent layout jumps */}
+            <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : ''}`}>
                 <div className="mx-auto w-full max-w-5xl">
                     {/* Hide selectors when sticky bar is shown */}
                     {!readingMode && !showStickyBar && (
                         <div
                             ref={selectorsRef}
-                            className="relative z-[70] flex flex-row flex-wrap gap-2 items-center mb-6"
+                            className="relative z-[70] flex flex-row flex-wrap gap-2 items-center mb-6 mt-4"
                         >
                             {/* Book */}
                             <button

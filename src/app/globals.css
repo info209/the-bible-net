@@ -18,3 +18,18 @@ body {
   background: var(--app-bg);
   color: var(--text-default);
 }
+
+/* Flicker-free sticky bar transitions */
+.stickybar-hidden {
+  transform: translateY(-100%);
+  opacity: 0;
+  pointer-events: none;
+}
+.stickybar-visible {
+  transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+}
+.stickybar-transition {
+  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.3s cubic-bezier(0.4,0,0.2,1);
+}
