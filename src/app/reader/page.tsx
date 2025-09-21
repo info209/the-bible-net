@@ -543,16 +543,6 @@ export default function ReaderPage() {
                             >
                                 {isMounted ? (selectedVersionObj ? versionShortLabel : "Ver") : "Ver"}
                             </button>
-                            {/* Reading mode button */}
-                            <button
-                                type="button"
-                                aria-label="Enter reading mode"
-                                title="Reading mode"
-                                onClick={enterReadingMode}
-                                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50"
-                            >
-                                📰
-                            </button>
                             {/* Music */}
                             <button
                                 type="button"
