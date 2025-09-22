@@ -6,6 +6,7 @@ import VerseCard from '@/components/VerseCard';
 import FooterNav from '@/components/FooterNav';
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider';
+import { FaCross } from "react-icons/fa";
 
 const sampleCards = [
 	{
@@ -70,7 +71,7 @@ export default function Home() {
 							aria-label="new"
 							className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-2xl"
 						>
-							<img src="/Vector.png" alt="New" className="h-6 w-6" />
+							<FaCross className="h-6 w-6" />
 						</button>
 						<div className="text-lg font-medium">
 							{loading
