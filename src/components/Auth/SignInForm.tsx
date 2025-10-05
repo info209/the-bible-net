@@ -171,7 +171,7 @@ export default function SignInForm() {
                 {/* IMPORTANT: keep type="button" so this does NOT submit the form */}
                 <button
                     type="button"
-                    className="text-sm text-rose-500 underline"
+                    className="text-sm text-teal-700 no-underline"
                     onClick={handleForgotPassword}
                 >
                     Forgot password?

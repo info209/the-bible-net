@@ -30,7 +30,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="flex justify-center mb-4">
-                    <img src="/logo.jpg" alt="logo" className="h-12" />
+                    <img src="/logo_white.png" alt="logo" className="h-12" />
                 </div>
 
                 <h1 className="text-2xl font-semibold text-center mb-1">Welcome to the Bible App</h1>
@@ -47,7 +47,7 @@ export default function LoginPage() {
                 <SocialButtons />
 
                 <div className="mt-6 text-center text-sm text-gray-600">
-                    Don't have an account? <a href="/signup" className="text-teal-700 underline">Create one</a>
+                    Don't have an account? <a href="/signup" className="text-teal-700 no-underline">Create one</a>
                 </div>
             </div>
         </div>

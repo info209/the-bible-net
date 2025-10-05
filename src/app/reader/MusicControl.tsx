@@ -51,7 +51,6 @@ export default function MusicControl() {
     // Initialize state from localStorage
     const [currentIndex, setCurrentIndexState] = useState(() => getMusicState().currentIndex);
     const [isPlaying, setIsPlaying] = useState(false);
-    const [speed, setSpeed] = useState(1);
     const [shuffleAll, setShuffleAllState] = useState(() => getMusicState().shuffleAll);
     const [shuffledOrder, setShuffledOrderState] = useState(() => getMusicState().shuffledOrder);
     const [shuffledPtr, setShuffledPtrState] = useState(() => getMusicState().shuffledPtr);
@@ -89,21 +88,18 @@ export default function MusicControl() {
         const a = getGlobalAudio();
         if (!a) return;
         a.onended = handleEnded;
-        a.playbackRate = speed;
         // Sync isPlaying state with actual audio element on mount
         setIsPlaying(a && !a.paused && !a.ended);
-        // Add event listeners to keep isPlaying in sync
         const handlePlay = () => setIsPlaying(true);
         const handlePause = () => setIsPlaying(false);
         a.addEventListener('play', handlePlay);
         a.addEventListener('pause', handlePause);
-        // Do NOT call a.play() or a.pause() here!
         return () => {
             a.onended = null;
             a.removeEventListener('play', handlePlay);
             a.removeEventListener('pause', handlePause);
         };
-    }, [speed]);
+    }, []);
 
     useEffect(() => {
         const a = getGlobalAudio();
@@ -113,18 +109,13 @@ export default function MusicControl() {
             const t = tracks[currentIndex];
             a.src = t.src;
             a.load();
-            a.playbackRate = speed;
             lastLoadedIndex.current = currentIndex;
             // Only play if user explicitly pressed play
             if (isPlaying) {
                 a.play().catch(() => setIsPlaying(false));
             }
-        } else {
-            // Always sync playback rate
-            a.playbackRate = speed;
         }
-        // Do NOT call a.play() or a.pause() here if the track hasn't changed!
-    }, [currentIndex, isPlaying, speed]);
+    }, [currentIndex, isPlaying]);
 
     // On mount, rehydrate state from localStorage
     useEffect(() => {
@@ -234,16 +225,6 @@ export default function MusicControl() {
                         {isPlaying ? <FaPause /> : <FaPlay />}
                         <span className="hidden sm:inline">{isPlaying ? "Pause" : "Play"}</span>
                     </button>
-                    <select
-                        value={speed}
-                        onChange={(e) => setSpeed(Number(e.target.value))}
-                        className="border rounded px-2 py-1 text-sm"
-                    >
-                        <option value={0.75}>0.75x</option>
-                        <option value={1}>1x</option>
-                        <option value={1.25}>1.25x</option>
-                        <option value={1.5}>1.5x</option>
-                    </select>
                 </div>
                 <button
                     onClick={toggleShuffle}

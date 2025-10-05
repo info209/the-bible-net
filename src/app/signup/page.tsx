@@ -64,7 +64,7 @@ export default function SignupPage() {
                 </div>
 
                 <div className="flex justify-center mb-4">
-                    <img src="/logo.jpg" alt="logo" className="h-12" />
+                    <img src="/logo_white.png" alt="logo" className="h-12" />
                 </div>
 
                 <h1 className="text-2xl font-semibold text-center mb-4">Create a new account</h1>
@@ -114,7 +114,7 @@ export default function SignupPage() {
                 </div>
 
                 <div className="mt-6 text-center text-sm">
-                    Already a member? <a href="/login" className="text-teal-700 underline">Login</a>
+                    Already a member? <a href="/login" className="text-teal-700 no-underline">Login</a>
                 </div>
             </div>
         </div>

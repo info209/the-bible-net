@@ -17,6 +17,7 @@ async function exchangeIdTokenForSession(idToken: string) {
 
 export default function SocialButtons() {
     const [socialError, setSocialError] = useState<string | null>(null);
+
     const handlePopup = async (provider: any) => {
         setSocialError(null);
         try {
@@ -30,7 +31,6 @@ export default function SocialButtons() {
                 window.location.href = '/reader';
             }
         } catch (err: any) {
-            // Handle popup blocked or closed
             if (err.code === 'auth/popup-blocked') {
                 setSocialError('Popup was blocked by your browser. Please allow popups and try again.');
             } else if (err.code === 'auth/popup-closed-by-user') {
@@ -63,45 +63,73 @@ export default function SocialButtons() {
                     } else {
                         message += ' Please sign in using your email and password.';
                     }
-                } catch (fetchErr) {
-                    message += ' However, we could not retrieve the available sign-in methods. Please try again later or contact support.';
+                } catch {
+                    message +=
+                        ' However, we could not retrieve the available sign-in methods. Please try again later or contact support.';
                 }
                 setSocialError(message);
             } else if (err.code === 'auth/invalid-credential') {
-                setSocialError('Twitter sign-in failed due to invalid credentials. Please check your Twitter app configuration in Firebase and Twitter Developer Portal, and ensure the callback URL is correct. If the problem persists, try again or contact support.');
+                setSocialError(
+                    'Twitter sign-in failed due to invalid credentials. Please check your configuration and try again.'
+                );
             } else {
                 console.error('social sign in error', err);
                 setSocialError('Social sign-in failed. Please try again or use another method.');
             }
         }
     };
+
     return (
         <div>
             {socialError && <div className="text-red-600 mb-2">{socialError}</div>}
-            <div className="flex gap-6 justify-center">
+
+            <div className="flex gap-6 justify-center items-center">
+                {/* Google */}
                 <button
                     onClick={() => handlePopup(googleProvider)}
-                    className="bg-white rounded-full shadow-md w-16 h-16 flex items-center justify-center transition hover:shadow-lg focus:outline-none"
+                    className="bg-white rounded-full shadow-md
+                               w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11
+                               flex items-center justify-center transition hover:shadow-lg focus:outline-none"
                     aria-label="Sign in with Google"
                     type="button"
                 >
-                    <FcGoogle className="text-3xl" />
+                    <FcGoogle
+                        className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7
+                                   transform scale-[1.05] translate-y-[1px]"
+                        aria-hidden="true"
+                    />
                 </button>
+
+                {/* Facebook */}
                 <button
                     onClick={() => handlePopup(facebookProvider)}
-                    className="bg-white rounded-full shadow-md w-16 h-16 flex items-center justify-center transition hover:shadow-lg focus:outline-none"
+                    className="bg-white rounded-full shadow-md
+                               w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11
+                               flex items-center justify-center transition hover:shadow-lg focus:outline-none"
                     aria-label="Sign in with Facebook"
                     type="button"
                 >
-                    <FaFacebook className="text-3xl text-blue-600" />
+                    <FaFacebook
+                        className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7
+                                   text-[#1877F2] transform scale-[1.0]"
+                        aria-hidden="true"
+                    />
                 </button>
+
+                {/* X (Twitter) */}
                 <button
                     onClick={() => handlePopup(twitterProvider)}
-                    className="bg-white rounded-full shadow-md w-16 h-16 flex items-center justify-center transition hover:shadow-lg focus:outline-none"
+                    className="bg-white rounded-full shadow-md
+                               w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11
+                               flex items-center justify-center transition hover:shadow-lg focus:outline-none"
                     aria-label="Sign in with X"
                     type="button"
                 >
-                    <FaXTwitter className="text-3xl text-black" />
+                    <FaXTwitter
+                        className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7
+                                   text-black transform scale-[0.95]"
+                        aria-hidden="true"
+                    />
                 </button>
             </div>
         </div>
