@@ -4,17 +4,17 @@ import Header from "@/components/Header";
 import FooterNav from "@/components/FooterNav";
 import { bookMapping } from "@/components/bookMapping";
 
-import ModalSelector from "@/app/reader/ModalSelector";
-import BookSelector from "@/app/reader/BookSelector";
-import ChapterSelector from "@/app/reader/ChapterSelector";
-import VerseSelector from "@/app/reader/VerseSelector";
-import VersionSelector from "@/app/reader/VersionSelector";
-import MoreMenu from "@/app/reader/MoreMenu";
+import ModalSelector from "@/app/bible/ModalSelector";
+import BookSelector from "@/app/bible/BookSelector";
+import ChapterSelector from "@/app/bible/ChapterSelector";
+import VerseSelector from "@/app/bible/VerseSelector";
+import VersionSelector from "@/app/bible/VersionSelector";
+import MoreMenu from "@/app/bible/MoreMenu";
 
 // framer-motion for page transitions
 import { motion, AnimatePresence } from "framer-motion";
 
-import MusicControl from "@/app/reader/MusicControl"; // <-- ADDED import
+import MusicControl from "@/app/bible/MusicControl"; // <-- ADDED import
 
 const API_BASE = "https://australia-southeast1-the-bible-net.cloudfunctions.net/api";
 const fetchWithKey = (url: string) =>

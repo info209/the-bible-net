@@ -16,7 +16,7 @@ export default function FooterNav() {
                 </Link>
 
                 <Link
-                    href="/reader"
+                    href="/bible"
                     className="flex flex-col items-center text-[#006A6F]"
                 >
           <span className="text-2xl">
