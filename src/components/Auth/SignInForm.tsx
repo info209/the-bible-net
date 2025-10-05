@@ -61,7 +61,7 @@ export default function SignInForm() {
                 const userCred = await signInWithEmailAndPassword(auth, email, password);
                 const token = await userCred.user.getIdToken();
                 await exchangeIdTokenForSession(token);
-                window.location.href = '/reader';
+                window.location.href = '/bible';
             }
         } catch (err: any) {
             setError(mapFirebaseError(err));

@@ -1,4 +1,4 @@
-// src/app/reader/MoreMenu.tsx
+// src/app/bible/MoreMenu.tsx
 "use client";
 import React, { useEffect, useState } from "react";
 import { PiSlideshow } from "react-icons/pi";
@@ -44,19 +44,19 @@ export default function MoreMenu({
     ];
 
     const [localFont, localSetFont] = useState<"small" | "medium" | "large" | "xlarge">(
-        (typeof window !== "undefined" && (localStorage.getItem("reader_fontSize") as any)) || "medium"
+        (typeof window !== "undefined" && (localStorage.getItem("bible_fontSize") as any)) || "medium"
     );
     const [localFamily, localSetFamily] = useState<string>(
-        (typeof window !== "undefined" && (localStorage.getItem("reader_fontFamily") as any)) || fonts[0]
+        (typeof window !== "undefined" && (localStorage.getItem("bible_fontFamily") as any)) || fonts[0]
     );
     const [localTheme, localSetTheme] = useState<"default" | "pink" | "sepia" | "dark">(
-        (typeof window !== "undefined" && (localStorage.getItem("reader_theme") as any)) || "default"
+        (typeof window !== "undefined" && (localStorage.getItem("bible_theme") as any)) || "default"
     );
     const [localTrans, localSetTrans] = useState<"slide" | "fade" | "flip">(
-        (typeof window !== "undefined" && (localStorage.getItem("reader_transition") as any)) || "slide"
+        (typeof window !== "undefined" && (localStorage.getItem("bible_transition") as any)) || "slide"
     );
     const [localHide, localSetHide] = useState<boolean>(
-        typeof window !== "undefined" && localStorage.getItem("reader_hideFootnotes") === "1" ? true : false
+        typeof window !== "undefined" && localStorage.getItem("bible_hideFootnotes") === "1" ? true : false
     );
 
     const activeFont = controlledFont ?? localFont;
@@ -92,11 +92,11 @@ export default function MoreMenu({
 
     useEffect(() => {
         try {
-            if (!controlledSetFont) localStorage.setItem("reader_fontSize", localFont);
-            if (!controlledSetFamily) localStorage.setItem("reader_fontFamily", localFamily);
-            if (!controlledSetTheme) localStorage.setItem("reader_theme", localTheme);
-            if (!controlledSetTransition) localStorage.setItem("reader_transition", localTrans);
-            if (!controlledSetHide) localStorage.setItem("reader_hideFootnotes", localHide ? "1" : "0");
+            if (!controlledSetFont) localStorage.setItem("bible_fontSize", localFont);
+            if (!controlledSetFamily) localStorage.setItem("bible_fontFamily", localFamily);
+            if (!controlledSetTheme) localStorage.setItem("bible_theme", localTheme);
+            if (!controlledSetTransition) localStorage.setItem("bible_transition", localTrans);
+            if (!controlledSetHide) localStorage.setItem("bible_hideFootnotes", localHide ? "1" : "0");
         } catch (e) {}
     }, [localFont, localFamily, localTheme, localTrans, localHide, controlledSetFont, controlledSetFamily, controlledSetTheme, controlledSetTransition, controlledSetHide]);
 

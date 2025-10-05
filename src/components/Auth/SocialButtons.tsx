@@ -28,7 +28,7 @@ export default function SocialButtons() {
             if (additionalInfo?.isNewUser) {
                 window.location.href = '/signup/complete';
             } else {
-                window.location.href = '/reader';
+                window.location.href = '/bible';
             }
         } catch (err: any) {
             if (err.code === 'auth/popup-blocked') {

@@ -1,6 +1,7 @@
 // src/lib/firebaseClient.ts
 import { initializeApp, getApps } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, FacebookAuthProvider, TwitterAuthProvider } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 // Client config from environment
 const firebaseConfig = {
@@ -17,6 +18,7 @@ if (!getApps().length) {
 }
 
 export const auth = getAuth();
+export const db = getFirestore();
 export const googleProvider = new GoogleAuthProvider();
 export const facebookProvider = new FacebookAuthProvider();
 export const twitterProvider = new TwitterAuthProvider();

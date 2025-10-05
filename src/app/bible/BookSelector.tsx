@@ -1,4 +1,4 @@
-// app/reader/BookSelector.tsx
+// src/app/bible/BookSelector.tsx
 "use client";
 import React from "react";
 

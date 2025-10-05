@@ -17,12 +17,12 @@ export default function SignupCompletePage() {
         // TODO: persist profile preferences to your DB if you have an endpoint
         setTimeout(() => {
             setLoading(false);
-            window.location.href = '/reader';
+            window.location.href = '/bible';
         }, 700);
     };
 
     const handleSkip = () => {
-        window.location.href = '/reader';
+        window.location.href = '/bible';
     };
 
     const handleBack = (e: React.MouseEvent) => {

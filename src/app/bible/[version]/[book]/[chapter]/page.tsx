@@ -1,5 +1,6 @@
+// src/app/bible/[version]/[book]/[chapter]/page.tsx
 "use client";
-import React, { useEffect, useRef, useState, MutableRefObject, useLayoutEffect } from "react";
+import React, { useEffect, useRef, useState, MutableRefObject, useLayoutEffect, useMemo } from "react";
 import Header from "@/components/Header";
 import FooterNav from "@/components/FooterNav";
 import { bookMapping } from "@/components/bookMapping";
@@ -12,6 +13,15 @@ import MoreMenu from "@/app/bible/MoreMenu";
 import { useParams, useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import MusicControl from "@/app/bible/MusicControl";
+
+// HIGHLIGHT imports
+import { db, auth } from "@/lib/firebaseClient";
+import { onAuthStateChanged } from "firebase/auth";
+import { useHighlightsForChapter } from "@/hooks/useHighlightsForChapter";
+import { createHighlight } from "@/lib/highlightApi";
+import { makeVerseId } from "@/lib/highlightHelpers";
+import HighlightToolbar from "@/components/HighlightToolbar";
+import "@/styles/highlights.css";
 
 const API_BASE = "https://australia-southeast1-the-bible-net.cloudfunctions.net/api";
 const fetchWithKey = (url: string) =>
@@ -86,6 +96,47 @@ export default function BibleDynamicPage() {
     const [theme, setTheme] = useState<"default" | "pink" | "sepia" | "dark">("default");
     const [transition, setTransition] = useState<"slide" | "fade" | "flip">("slide");
     const [hideFootnotes, setHideFootnotes] = useState(false);
+
+    // HIGHLIGHT state
+    const [authUser, setAuthUser] = useState<any | null>(null);
+    useEffect(() => {
+        const unsub = onAuthStateChanged(auth, (u) => setAuthUser(u));
+        return () => unsub();
+    }, []);
+
+    const [selectionMode, setSelectionMode] = useState<boolean>(false);
+    const [selectedVersesArray, setSelectedVersesArray] = useState<number[]>([]);
+    const selectedVersesSet = useMemo(() => new Set<number>(selectedVersesArray), [selectedVersesArray]);
+
+    function toggleVerseSelection(n: number) {
+        setSelectedVersesArray(prev => {
+            const s = new Set(prev);
+            if (s.has(n)) s.delete(n); else s.add(n);
+            return Array.from(s).sort((a,b)=>a-b);
+        });
+    }
+    function clearSelection() {
+        setSelectedVersesArray([]);
+        setSelectionMode(false);
+    }
+    function isVerseSelected(n: number) {
+        return selectedVersesArray.includes(n);
+    }
+
+    // toolbar visibility (FAB toggles this)
+    const [highlightToolbarOpen, setHighlightToolbarOpen] = useState<boolean>(false);
+
+    // subscribe to per-chapter highlights for coloring
+    const { highlights: chapterHighlights, loading: highlightsLoading } = useHighlightsForChapter(db, authUser, book, chapter);
+    const verseToColor: Record<string, string> = {};
+    for (const h of chapterHighlights || []) {
+        const color = h.color || "yellow";
+        for (const vid of h.coveredVerseIds || []) {
+            verseToColor[vid] = color;
+        }
+    }
+
+    const selectedVersionObjMemo = selectedVersionObj;
 
     // Fetch versions, books, chapters, verses (same as before)
     useEffect(() => {
@@ -359,9 +410,28 @@ export default function BibleDynamicPage() {
             if (throttleTimeout.current) clearTimeout(throttleTimeout.current);
         };
     }, [readingMode]);
+
+    // Create highlight handler used by quick UI (single verse)
+    async function handleCreateHighlight(startVerse: number, endVerse: number, color = "yellow") {
+        if (!authUser) {
+            alert("Please sign in to create highlights");
+            return;
+        }
+        try {
+            const highlightId = `${version}:${book}:${chapter}:${startVerse}-${endVerse}_${Date.now()}`;
+            await createHighlight(db, authUser, { version, book, chapter, startVerse, endVerse, color, highlightId });
+        } catch (err: any) {
+            console.error("createHighlight failed", err);
+            alert("Failed to save highlight: " + (err.message || err));
+        }
+    }
+
+    // TEMPORARY FLAG TO DISABLE HIGHLIGHT BUTTONS
+    const HIGHLIGHT_BUTTONS_ENABLED = false;
+
     return (
         <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10]" : "min-h-screen flex flex-col"}>
-            {/* Sticky info bar: always rendered, CSS handles show/hide */}
+            {/* Sticky info bar */}
             {!readingMode && (
                 <div
                     className={`fixed top-0 left-0 w-full z-[100] bg-white/95 dark:bg-[#18181b]/95 backdrop-blur border-b border-gray-200 dark:border-gray-800
@@ -376,64 +446,26 @@ export default function BibleDynamicPage() {
                 </div>
             )}
 
-            {/* Always show Header in normal mode, only hide in reading mode */}
             {!readingMode && <Header />}
 
-            {/* Always apply top padding to prevent layout jumps */}
             <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : ''}`}>
                 <div className="mx-auto w-full max-w-5xl">
-                    {/* Hide selectors when sticky bar is shown */}
                     {!readingMode && !showStickyBar && (
                         <div
                             ref={selectorsRef}
                             className="relative z-[70] flex flex-row flex-wrap gap-2 items-center mb-6 mt-4"
                         >
-                            {/* Book */}
-                            <button
-                                type="button"
-                                className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base flex-1 min-w-[90px] bg-white"
-                                onClick={() => openModalFor("books")}
-                            >
+                            <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base flex-1 min-w-[90px] bg-white" onClick={() => openModalFor("books")}>
                                 {isMounted ? getBookDisplay(book) : "Book"}
                             </button>
-                            {/* Chapter */}
-                            <button
-                                type="button"
-                                className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-14 sm:w-16 text-center bg-white"
-                                onClick={() => { !book ? openModalFor("books") : openModalFor("chapters"); }}
-                            >
+                            <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-14 sm:w-16 text-center bg-white" onClick={() => { !book ? openModalFor("books") : openModalFor("chapters"); }}>
                                 {isMounted ? String(chapter).padStart(2, "0") : "01"}
                             </button>
-                            {/* Version - show acronym / short only */}
-                            <button
-                                type="button"
-                                className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base min-w-[40px] sm:min-w-[120px] text-left bg-white"
-                                onClick={() => openModalFor("versions")}
-                                title={selectedVersionObj?.displayName || selectedVersionObj?.name || (loading ? "Loading versions..." : "")}
-                                disabled={loading || versions.length === 0}
-                            >
-                                {loading || versions.length === 0
-                                    ? <span className="text-gray-400 animate-pulse">Loading...</span>
-                                    : (selectedVersionObj ? versionShortLabel : version || "Ver")}
+                            <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base min-w-[40px] sm:min-w-[120px] text-left bg-white" onClick={() => openModalFor("versions")} title={selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id} disabled={loading || versions.length === 0}>
+                                {loading || versions.length === 0 ? <span className="text-gray-400 animate-pulse">Loading...</span> : (selectedVersionObj ? versionShortLabel : version || "Ver")}
                             </button>
-                            {/* Music */}
-                            <button
-                                type="button"
-                                aria-label="audio"
-                                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50"
-                                onClick={() => setMusicOpen(true)}
-                            >
-                                🎵
-                            </button>
-                            {/* More */}
-                            <button
-                                type="button"
-                                aria-label="more"
-                                className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50"
-                                onClick={() => setMoreOpen(true)}
-                            >
-                                ⋮
-                            </button>
+                            <button type="button" aria-label="audio" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={() => setMusicOpen(true)}>🎵</button>
+                            <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={() => setMoreOpen(true)}>⋮</button>
                         </div>
                     )}
 
@@ -447,47 +479,40 @@ export default function BibleDynamicPage() {
                     {loading && <div className="text-gray-500 mb-4">Loading...</div>}
                     {error && <div className="text-red-500 mb-4">{error}</div>}
 
-                    {/* Animated article - key by chapter so it animates when chapter changes */}
                     <AnimatePresence mode="wait" initial={false}>
-                        <motion.article
-                            key={`${version}_${book}_${chapter}`}
-                            style={articleStyle}
-                            className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}
-                            variants={variants[transition] || variants["fade"]}
-                            initial="initial"
-                            animate="animate"
-                            exit="exit"
-                            transition={{ duration: 0.36, ease: "easeInOut" }}
-                        >
-                            {verses.map((v: any) => (
-                                <div key={v.n} className={`flex gap-2 items-start ${readingMode ? "text-gray-100" : "text-gray-800"}`}>
-                                    <span className={`font-bold ${readingMode ? "text-rose-300" : "text-gray-400"} w-8 text-right`}>{v.n}</span>
-                                    <span>{v.text}</span>
-                                </div>
-                            ))}
-                            {/* footnotes placeholder example: conditionally hidden */}
+                        <motion.article key={`${version}_${book}_${chapter}`} style={articleStyle} className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"} variants={variants[transition] || variants["fade"]} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
+                            {verses.map((v: any) => {
+                                const vid = makeVerseId(book, chapter, v.n);
+                                const colorClass = verseToColor[vid] ? `hl-${verseToColor[vid]}` : "";
+                                const selectedClass = isVerseSelected(v.n) ? "selected-dotted" : "";
+                                const selectionCursor = selectionMode ? "selection-cursor" : "";
+                                return (
+                                    <div
+                                        key={v.n}
+                                        data-verse-id={vid}
+                                        className={`flex gap-2 items-start ${readingMode ? "text-gray-100" : "text-gray-800"} ${colorClass} ${selectedClass} ${selectionCursor}`}
+                                        onClick={() => { if (selectionMode) toggleVerseSelection(v.n); }}
+                                    >
+                                        <span className={`font-bold ${readingMode ? "text-rose-300" : "text-gray-400"} w-8 text-right`}>{v.n}</span>
+                                        <span>{v.text}</span>
+                                        {!selectionMode && HIGHLIGHT_BUTTONS_ENABLED && (
+                                            <button className="ml-3 text-xs px-2 py-1 border rounded text-gray-500" onClick={() => handleCreateHighlight(v.n, v.n, "yellow")} title="Highlight this verse">✦</button>
+                                        )}
+                                    </div>
+                                );
+                            })}
                             {!hideFootnotes && (
-                                <div className="mt-6 text-sm text-gray-500">
-                                    {/* example footnote area - real footnote rendering depends on API */}
-                                </div>
+                                <div className="mt-6 text-sm text-gray-500"></div>
                             )}
                         </motion.article>
                     </AnimatePresence>
                 </div>
             </main>
 
-            {/* Hide footer when sticky bar is shown */}
             {!readingMode && !showStickyBar && <FooterNav />}
 
-            {/* Modal */}
             {!readingMode && isMounted && modalOpen && selectorsRef.current && (
-                <ModalSelector
-                    portalKey={modalPortalKey}
-                    show={modalOpen}
-                    anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>}
-                    onClose={closeModal}
-                    title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" }
-                >
+                <ModalSelector portalKey={modalPortalKey} show={modalOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeModal} title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" }>
                     {mode === "books" && <BookSelector books={books} onSelect={handleBookSelect} active={book} isTelugu={isTelugu} />}
                     {mode === "chapters" && <ChapterSelector chapters={chapters} onSelect={handleChapterSelect} active={chapter} />}
                     {mode === "verses" && <VerseSelector verses={verses} onSelect={handleVerseSelect} onBack={() => setMode("chapters")} onDone={() => closeModal()} active={selectedVerse} />}
@@ -497,39 +522,50 @@ export default function BibleDynamicPage() {
 
             {!readingMode && isMounted && musicOpen && selectorsRef.current && (
                 <ModalSelector portalKey={modalPortalKey} show={musicOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={() => setMusicOpen(false)} title="Audio">
-                    <div className="p-3">
-                        <MusicControl />
-                    </div>
+                    <div className="p-3"><MusicControl /></div>
                 </ModalSelector>
             )}
 
-            {/* MORE MENU: use the new MoreMenu component (passes setters so changes apply immediately) */}
             {!readingMode && isMounted && moreOpen && selectorsRef.current && (
-                <ModalSelector
-                    portalKey={modalPortalKey}
-                    show={moreOpen}
-                    anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>}
-                    onClose={() => setMoreOpen(false)}
-                    title="More"
-                >
-                    <MoreMenu
-                        onClose={() => setMoreOpen(false)}
-                        fontSize={fontSize}
-                        setFontSize={(v: any) => setFontSize(v)}
-                        // fontFamily controller
-                        // @ts-ignore
-                        fontFamily={fontFamily}
-                        // @ts-ignore
-                        setFontFamily={(f: string) => setFontFamily(f)}
-                        theme={theme}
-                        setTheme={(t: any) => setTheme(t)}
-                        transition={transition}
-                        setTransition={(t: any) => setTransition(t)}
-                        hideFootnotes={hideFootnotes}
-                        setHideFootnotes={(h: boolean) => setHideFootnotes(h)}
-                    />
+                <ModalSelector portalKey={modalPortalKey} show={moreOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={() => setMoreOpen(false)} title="More">
+                    <MoreMenu onClose={() => setMoreOpen(false)} fontSize={fontSize} setFontSize={(v: any) => setFontSize(v)} fontFamily={fontFamily} setFontFamily={(f: string) => setFontFamily(f)} theme={theme} setTheme={(t: any) => setTheme(t)} transition={transition} setTransition={(t: any) => setTransition(t)} hideFootnotes={hideFootnotes} setHideFootnotes={(h: boolean) => setHideFootnotes(h)} />
                 </ModalSelector>
             )}
+
+            {/* Floating action button to open highlight toolbar */}
+            {HIGHLIGHT_BUTTONS_ENABLED && (
+            <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: highlightToolbarOpen ? 260 : 88, zIndex: 125 }}>
+                <button
+                    aria-label="open highlight"
+                    onClick={() => {
+                        setHighlightToolbarOpen(true);
+                        setSelectionMode(true); // Always enable selection mode when opening highlight toolbar
+                    }}
+                    className="rounded-full p-3 shadow-lg"
+                    style={{ background: "#0f766e", color: "white", border: "none" }}
+                >
+                    ✦
+                </button>
+            </div>
+            )}
+
+            {/* HIGHLIGHT toolbar (show controlled by highlightToolbarOpen) */}
+            <HighlightToolbar
+                db={db}
+                authUser={authUser}
+                version={version}
+                book={book}
+                chapter={chapter}
+                selectionMode={selectionMode}
+                setSelectionMode={setSelectionMode}
+                selectedVersesSet={selectedVersesSet}
+                onToggleVerse={(n) => toggleVerseSelection(n)}
+                clearSelection={() => clearSelection()}
+                verseToColor={verseToColor}
+                show={highlightToolbarOpen}
+                onAfterApply={(id) => { console.log("highlight saved", id); }}
+                onClose={() => setHighlightToolbarOpen(false)}
+            />
         </div>
     );
 }

@@ -1,0 +1,82 @@
+/* src/styles/highlights.css */
+
+/* selection dotted outline for selected verses */
+.selected-dotted {
+    outline: 3px dotted rgba(0,0,0,0.12);
+    border-radius: 6px;
+    padding: 6px 8px;
+    transition: background-color .12s ease;
+}
+.selection-cursor { cursor: pointer; }
+
+/* highlight colors */
+.hl-yellow { background: rgba(255,236,179,0.6); }
+.hl-pink { background: rgba(255,210,235,0.55); }
+.hl-blue { background: rgba(179,212,255,0.6); }
+.hl-green { background: rgba(179,255,200,0.6); }
+.hl-purple { background: rgba(228,209,255,0.6); }
+
+/* bottom sheet toolbar */
+.hb-bottom-sheet {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 120;
+    transform: translateY(110%);
+    transition: transform 280ms cubic-bezier(.22,.9,.35,1);
+    pointer-events: none;
+}
+.hb-sheet-open { transform: translateY(0%); pointer-events: auto; }
+.hb-sheet-inner {
+    background: #fff;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+    box-shadow: 0 -8px 32px rgba(0,0,0,0.08);
+    padding: 14px 16px;
+    max-width: 980px;
+    margin: 0 auto;
+}
+.hb-sheet-selected {
+    font-size: 0.95rem;
+    color: #4b5563;
+    text-align: center;
+    margin-bottom: 10px;
+}
+
+/* actions row layout */
+.hb-actions-row { display:flex; gap:12px; align-items:center; justify-content:center; flex-wrap:wrap; }
+.hb-color-picker { display:flex; gap:8px; align-items:center; padding:6px; background: #f6f6f7; border-radius: 8px; }
+.hb-color-swatch { width:28px; height:28px; border-radius: 50%; border: 2px solid rgba(0,0,0,0.06); cursor:pointer; }
+.hb-color-selected { box-shadow: 0 0 0 3px rgba(0,0,0,0.05) inset; transform: scale(1.06); }
+
+/* control buttons */
+.hb-controls { display:flex; gap:8px; align-items:center; margin-left: 6px; }
+.hb-action { background: #fff; border: 1px solid #e6e6e9; padding:8px 12px; border-radius:10px; cursor:pointer; }
+.hb-action-primary { background: linear-gradient(90deg,#fde68a,#fef3c7); border: none; }
+
+/* sign in popover */
+.hb-signin-popover {
+    position: fixed;
+    left: 16px;
+    bottom: 110px;
+    z-index: 130;
+}
+.hb-signin-inner {
+    width: 240px;
+    background: white;
+    border-radius: 12px;
+    padding: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    text-align: center;
+}
+.hb-signin-title { font-weight: 600; margin-bottom:6px; }
+.hb-signin-sub { font-size: 0.9rem; color: #6b7280; margin-bottom: 12px; }
+.hb-signin-actions { display:flex; gap:8px; justify-content:center; }
+.hb-btn { padding:8px 12px; border-radius:8px; border: 1px solid #e5e7eb; background: #fff; cursor:pointer; }
+.hb-btn-primary { background: #b91c1c; color: white; border: none; }
+
+@media (min-width: 640px) {
+    .hb-sheet-inner { padding: 18px 22px; }
+    .hb-color-swatch { width: 34px; height: 34px; }
+}
