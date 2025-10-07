@@ -33,8 +33,8 @@ export default function LoginPage() {
                     <img src="/logo_white.png" alt="logo" className="h-12" />
                 </div>
 
-                <h1 className="text-2xl font-semibold text-center mb-1">Welcome to the Bible App</h1>
-                <p className="text-center text-sm text-gray-500 mb-6">Please login to continue</p>
+                <h1 className="text-2xl font-semibold text-left mb-1">Welcome to the Bible App</h1>
+                <p className="text-left text-sm text-gray-500 mb-6">Please login to continue</p>
 
                 <SignInForm />
 

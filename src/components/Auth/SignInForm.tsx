@@ -117,7 +117,7 @@ export default function SignInForm() {
             {resetMessage && <div className="text-teal-700 text-sm">{resetMessage}</div>}
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Enter your email</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <div className="relative">
                     <span className="absolute left-3 top-3 text-gray-400">✉️</span>
                     <input
@@ -133,7 +133,7 @@ export default function SignInForm() {
             </div>
 
             <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Enter your password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                 <div className="relative">
                     <span className="absolute left-3 top-3 text-gray-400">🔒</span>
                     <input
