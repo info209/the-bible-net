@@ -23,7 +23,7 @@ export default function VersionSelector({ versions, onSelect, active, activeBook
                     <div className="font-semibold mb-2 text-xs text-gray-500">
                         {langNames[lang] || lang}
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <div className="flex flex-col gap-2 w-full">
                         {grouped[lang].map((v: any) => (
                             <button
                                 key={v.id}
@@ -38,7 +38,7 @@ export default function VersionSelector({ versions, onSelect, active, activeBook
                                     );
                                     onSelect(v);
                                 }}
-                                className={`text-left px-3 py-2 rounded transition ${
+                                className={`text-left px-3 py-2 rounded transition w-full ${
                                     active === v.id
                                         ? "bg-rose-50 border border-rose-200 font-semibold"
                                         : "hover:bg-gray-50"

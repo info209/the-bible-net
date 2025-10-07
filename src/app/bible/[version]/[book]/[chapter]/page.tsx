@@ -482,7 +482,7 @@ export default function BibleDynamicPage() {
                             <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-14 sm:w-16 text-center bg-white" onClick={() => { !book ? openModalFor("books") : openModalFor("chapters"); }}>
                                 {isMounted ? String(chapter).padStart(2, "0") : "01"}
                             </button>
-                            <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base min-w-[40px] sm:min-w-[120px] text-left bg-white" onClick={() => openModalFor("versions")} title={selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id} disabled={loading || versions.length === 0}>
+                            <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base min-w-[40px] sm:min-w-[120px] text-center flex justify-center items-center bg-white" onClick={() => openModalFor("versions")} title={selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id} disabled={loading || versions.length === 0}>
                                 {loading || versions.length === 0 ? <span className="text-gray-400 animate-pulse">Loading...</span> : (selectedVersionObj ? versionShortLabel : version || "Ver")}
                             </button>
                             <button type="button" aria-label="audio" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={() => setMusicOpen(true)}>🎵</button>
