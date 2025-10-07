@@ -1,7 +1,7 @@
 "use client";
 import React from "react";
 
-export default function VersionSelector({ versions, onSelect, active }: any) {
+export default function VersionSelector({ versions, onSelect, active, activeBook, activeChapter }: any) {
     // group by language
     const grouped = (versions || []).reduce((acc: any, v: any) => {
         const lang = v.language || "Other";
@@ -27,7 +27,17 @@ export default function VersionSelector({ versions, onSelect, active }: any) {
                         {grouped[lang].map((v: any) => (
                             <button
                                 key={v.id}
-                                onClick={() => onSelect(v)}
+                                onClick={() => {
+                                    localStorage.setItem(
+                                        "bible_last_selection",
+                                        JSON.stringify({
+                                            version: v.id,
+                                            book: activeBook,
+                                            chapter: activeChapter
+                                        })
+                                    );
+                                    onSelect(v);
+                                }}
                                 className={`text-left px-3 py-2 rounded transition ${
                                     active === v.id
                                         ? "bg-rose-50 border border-rose-200 font-semibold"

@@ -73,9 +73,15 @@ export default function BibleDynamicPage() {
     const [chaptersLoaded, setChaptersLoaded] = useState(false);
     const [verses, setVerses] = useState<any[]>([]);
     // Use params for version, book, chapter
-    const [version, setVersion] = useState<string>(params.version as string || "");
-    const [book, setBook] = useState<string>(params.book as string || "");
-    const [chapter, setChapter] = useState<number>(params.chapter ? Number(params.chapter) : 1);
+    const LAST_SELECTION_KEY = "bible_last_selection";
+    const savedSelection = typeof window !== "undefined" ? getCached(LAST_SELECTION_KEY) : null;
+    const initialVersion = (savedSelection && savedSelection.version) ? savedSelection.version : (params.version as string || "");
+    const initialBook = (savedSelection && savedSelection.book) ? savedSelection.book : (params.book as string || "");
+    const initialChapter = (savedSelection && savedSelection.chapter) ? savedSelection.chapter : (params.chapter ? Number(params.chapter) : 1);
+
+    const [version, setVersion] = useState<string>(initialVersion);
+    const [book, setBook] = useState<string>(initialBook);
+    const [chapter, setChapter] = useState<number>(initialChapter);
     const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
 
     // ...existing UI, modal, popover, readingMode, etc. state...
@@ -311,10 +317,14 @@ export default function BibleDynamicPage() {
     };
     const closeModal = () => setModalOpen(false);
     // --- URL-driven navigation for selectors ---
-    const handleBookSelect = (b: any) => {
-        router.push(`/bible/${version}/${b.slug}/${chapter}`);
-        closeModal();
-    };
+    function handleBookSelect(selectedBook: any) {
+        setBook(selectedBook.slug);
+        setChapter(1);
+        // Optionally, update the route if needed:
+        router.push(`/bible/${version}/${selectedBook.slug}/1`);
+        setModalOpen(false);
+        setMode("chapters");
+    }
     const handleChapterSelect = (n: number) => {
         router.push(`/bible/${version}/${book}/${n}`);
         setMode("verses");
@@ -429,6 +439,17 @@ export default function BibleDynamicPage() {
     // TEMPORARY FLAG TO DISABLE HIGHLIGHT BUTTONS
     const HIGHLIGHT_BUTTONS_ENABLED = false;
 
+    // Whenever selection changes, save to localStorage
+    useEffect(() => {
+        if (!isMounted) return;
+        localStorage.setItem(LAST_SELECTION_KEY, JSON.stringify({ version, book, chapter }));
+    }, [version, book, chapter, isMounted]);
+    useEffect(() => {
+        if (params.version && params.version !== version) setVersion(params.version as string);
+        if (params.book && params.book !== book) setBook(params.book as string);
+        if (params.chapter && Number(params.chapter) !== chapter) setChapter(Number(params.chapter));
+    }, [params.version, params.book, params.chapter]);
+
     return (
         <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10]" : "min-h-screen flex flex-col"}>
             {/* Sticky info bar */}
@@ -513,10 +534,10 @@ export default function BibleDynamicPage() {
 
             {!readingMode && isMounted && modalOpen && selectorsRef.current && (
                 <ModalSelector portalKey={modalPortalKey} show={modalOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeModal} title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" }>
-                    {mode === "books" && <BookSelector books={books} onSelect={handleBookSelect} active={book} isTelugu={isTelugu} />}
-                    {mode === "chapters" && <ChapterSelector chapters={chapters} onSelect={handleChapterSelect} active={chapter} />}
+                    {mode === "books" && <BookSelector books={books} onSelect={handleBookSelect} active={book} isTelugu={isTelugu} activeVersion={version} activeChapter={chapter} />}
+                    {mode === "chapters" && <ChapterSelector chapters={chapters} onSelect={handleChapterSelect} active={chapter} activeVersion={version} activeBook={book} />}
                     {mode === "verses" && <VerseSelector verses={verses} onSelect={handleVerseSelect} onBack={() => setMode("chapters")} onDone={() => closeModal()} active={selectedVerse} />}
-                    {mode === "versions" && <VersionSelector versions={versions} onSelect={handleVersionSelect} active={version} />}
+                    {mode === "versions" && <VersionSelector versions={versions} onSelect={handleVersionSelect} active={version} activeBook={book} activeChapter={chapter} />}
                 </ModalSelector>
             )}
 

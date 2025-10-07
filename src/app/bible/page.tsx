@@ -6,14 +6,23 @@ export default function BibleRootRedirect() {
   const router = useRouter();
   useEffect(() => {
     // Try to get last selection from localStorage
-    const version = typeof window !== "undefined" ? localStorage.getItem("bible_version") : null;
-    const book = typeof window !== "undefined" ? localStorage.getItem("bible_book") : null;
-    const chapter = typeof window !== "undefined" ? localStorage.getItem("bible_chapter") : null;
-    if (version && book && chapter) {
-      router.replace(`/bible/${version}/${book}/${chapter}`);
-    } else {
-      router.replace("/bible/akjv/genesis/1");
+    let version = "akjv";
+    let book = "genesis";
+    let chapter = 1;
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("bible_last_selection");
+      if (cached) {
+        try {
+          const obj = JSON.parse(cached);
+          if (obj.version && obj.book && obj.chapter) {
+            version = obj.version;
+            book = obj.book;
+            chapter = obj.chapter;
+          }
+        } catch {}
+      }
     }
+    router.replace(`/bible/${version}/${book}/${chapter}`);
   }, [router]);
   return null;
 }

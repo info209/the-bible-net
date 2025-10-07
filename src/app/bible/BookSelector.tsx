@@ -15,9 +15,11 @@ type Props = {
     onSelect: (b: Book) => void;
     active?: string | null;
     isTelugu?: boolean;
+    activeVersion: string;
+    activeChapter: number;
 };
 
-export default function BookSelector({ books, onSelect, active, isTelugu }: Props) {
+export default function BookSelector({ books, onSelect, active, isTelugu, activeVersion, activeChapter }: Props) {
     const oldList = books?.oldTestament || [];
     const newList = books?.newTestament || [];
 
@@ -27,12 +29,22 @@ export default function BookSelector({ books, onSelect, active, isTelugu }: Prop
         return isTelugu ? te : en;
     };
 
-    const BookRow: React.FC<{ b: Book }> = ({ b }) => {
+    const BookRow: React.FC<{ b: Book; activeVersion: string; activeChapter: number }> = ({ b, activeVersion, activeChapter }) => {
         const label = getLabel(b);
         const isActive = active === b.slug;
         return (
             <button
-                onClick={() => onSelect(b)}
+                onClick={() => {
+                    localStorage.setItem(
+                        "bible_last_selection",
+                        JSON.stringify({
+                            version: activeVersion,
+                            book: b.slug,
+                            chapter: activeChapter,
+                        })
+                    );
+                    onSelect(b);
+                }}
                 className={`w-full text-left px-3 py-2 rounded transition flex items-center gap-2 ${
                     isActive ? "bg-rose-50 border border-rose-200 font-semibold" : "hover:bg-gray-50"
                 }`}
@@ -68,7 +80,7 @@ export default function BookSelector({ books, onSelect, active, isTelugu }: Prop
                         {oldList.length === 0 ? (
                             <div className="text-sm text-gray-400 px-2 py-2">No books</div>
                         ) : (
-                            oldList.map((b) => <BookRow key={b.slug} b={b} />)
+                            oldList.map((b) => <BookRow key={b.slug} b={b} activeVersion={activeVersion} activeChapter={activeChapter} />)
                         )}
                     </div>
                 </div>
@@ -83,7 +95,7 @@ export default function BookSelector({ books, onSelect, active, isTelugu }: Prop
                         {newList.length === 0 ? (
                             <div className="text-sm text-gray-400 px-2 py-2">No books</div>
                         ) : (
-                            newList.map((b) => <BookRow key={b.slug} b={b} />)
+                            newList.map((b) => <BookRow key={b.slug} b={b} activeVersion={activeVersion} activeChapter={activeChapter} />)
                         )}
                     </div>
                 </div>
