@@ -132,14 +132,14 @@ export default function BibleDynamicPage() {
     function getInitialTheme() {
         if (typeof window !== "undefined") {
             const v = localStorage.getItem(THEME_KEY);
-            if (["default","pink","sepia","dark"].includes(v)) return v;
+            if (v && ["default","pink","sepia","dark"].includes(v)) return v;
         }
         return "default";
     }
     function getInitialTransition() {
         if (typeof window !== "undefined") {
             const v = localStorage.getItem(TRANSITION_KEY);
-            if (["slide","fade","flip"].includes(v)) return v;
+            if (v && ["slide","fade","flip"].includes(v)) return v;
         }
         return "slide";
     }
@@ -153,8 +153,8 @@ export default function BibleDynamicPage() {
     }
     const [fontSize, setFontSize] = useState<"small" | "medium" | "large" | "xlarge">(getInitialFontSize());
     const [fontFamily, setFontFamily] = useState<string>(getInitialFontFamily());
-    const [theme, setTheme] = useState<"default" | "pink" | "sepia" | "dark">(getInitialTheme());
-    const [transition, setTransition] = useState<"slide" | "fade" | "flip">(getInitialTransition());
+    const [theme, setTheme] = useState<"default" | "pink" | "sepia" | "dark">(getInitialTheme() as "default" | "pink" | "sepia" | "dark");
+    const [transition, setTransition] = useState<"slide" | "fade" | "flip">(getInitialTransition() as "slide" | "fade" | "flip");
     const [hideFootnotes, setHideFootnotes] = useState<boolean>(getInitialHideFootnotes());
 
     // Persist settings to localStorage when changed
