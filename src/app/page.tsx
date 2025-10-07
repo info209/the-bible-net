@@ -64,7 +64,7 @@ export default function Home() {
 
 			{/* Main content */}
 			<main className="flex-1 w-full pt-2 md:pt-6 pb-28">
-				<div className="mx-auto w-full max-w-md md:max-w-3xl lg:max-w-5xl space-y-4 md:space-y-6">
+				<div className="mx-auto w-full max-w-md md:max-w-3xl lg:max-w-xl space-y-4 md:space-y-6">
 					{/* Greeting row */}
 					<div className="flex items-center gap-3 md:gap-4 mb-2 md:mb-0">
 						<button

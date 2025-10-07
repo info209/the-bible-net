@@ -471,6 +471,7 @@ export default function BibleDynamicPage() {
 
             <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : ''}`}>
                 <div className="mx-auto w-full max-w-5xl">
+                    {/* Selectors section stays wide */}
                     {!readingMode && !showStickyBar && (
                         <div
                             ref={selectorsRef}
@@ -490,43 +491,44 @@ export default function BibleDynamicPage() {
                         </div>
                     )}
 
-                    {readingMode && (
-                        <div className="mb-4 text-rose-600 font-medium tracking-wide flex items-center gap-3">
-                            <div>{getBookDisplay(book)} · {String(chapter).padStart(2, "0")} · {selectedVersionObj?.displayName || ""}</div>
-                            <button onClick={() => setReadingMode(false)} className="text-sm text-gray-300 hover:text-gray-100">✕ Exit</button>
-                        </div>
-                    )}
-
-                    {loading && <div className="text-gray-500 mb-4">Loading...</div>}
-                    {error && <div className="text-red-500 mb-4">{error}</div>}
-
-                    <AnimatePresence mode="wait" initial={false}>
-                        <motion.article key={`${version}_${book}_${chapter}`} style={articleStyle} className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"} variants={variants[transition] || variants["fade"]} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
-                            {verses.map((v: any) => {
-                                const vid = makeVerseId(book, chapter, v.n);
-                                const colorClass = verseToColor[vid] ? `hl-${verseToColor[vid]}` : "";
-                                const selectedClass = isVerseSelected(v.n) ? "selected-dotted" : "";
-                                const selectionCursor = selectionMode ? "selection-cursor" : "";
-                                return (
-                                    <div
-                                        key={v.n}
-                                        data-verse-id={vid}
-                                        className={`flex gap-2 items-start ${readingMode ? "text-gray-100" : "text-gray-800"} ${colorClass} ${selectedClass} ${selectionCursor}`}
-                                        onClick={() => { if (selectionMode) toggleVerseSelection(v.n); }}
-                                    >
-                                        <span className={`font-bold ${readingMode ? "text-rose-300" : "text-gray-400"} w-8 text-right`}>{v.n}</span>
-                                        <span>{v.text}</span>
-                                        {!selectionMode && HIGHLIGHT_BUTTONS_ENABLED && (
-                                            <button className="ml-3 text-xs px-2 py-1 border rounded text-gray-500" onClick={() => handleCreateHighlight(v.n, v.n, "yellow")} title="Highlight this verse">✦</button>
-                                        )}
-                                    </div>
-                                );
-                            })}
-                            {!hideFootnotes && (
-                                <div className="mt-6 text-sm text-gray-500"></div>
-                            )}
-                        </motion.article>
-                    </AnimatePresence>
+                    {/* Bible verses/content area is constrained */}
+                    <div className="mx-auto w-full max-w-xl">
+                        {readingMode && (
+                            <div className="mb-4 text-rose-600 font-medium tracking-wide flex items-center gap-3">
+                                <div>{getBookDisplay(book)} · {String(chapter).padStart(2, "0")} · {selectedVersionObj?.displayName || ""}</div>
+                                <button onClick={() => setReadingMode(false)} className="text-sm text-gray-300 hover:text-gray-100">✕ Exit</button>
+                            </div>
+                        )}
+                        {loading && <div className="text-gray-500 mb-4">Loading...</div>}
+                        {error && <div className="text-red-500 mb-4">{error}</div>}
+                        <AnimatePresence mode="wait" initial={false}>
+                            <motion.article key={`${version}_${book}_${chapter}`} style={articleStyle} className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"} variants={variants[transition] || variants["fade"]} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
+                                {verses.map((v: any) => {
+                                    const vid = makeVerseId(book, chapter, v.n);
+                                    const colorClass = verseToColor[vid] ? `hl-${verseToColor[vid]}` : "";
+                                    const selectedClass = isVerseSelected(v.n) ? "selected-dotted" : "";
+                                    const selectionCursor = selectionMode ? "selection-cursor" : "";
+                                    return (
+                                        <div
+                                            key={v.n}
+                                            data-verse-id={vid}
+                                            className={`flex gap-2 items-start ${readingMode ? "text-gray-100" : "text-gray-800"} ${colorClass} ${selectedClass} ${selectionCursor}`}
+                                            onClick={() => { if (selectionMode) toggleVerseSelection(v.n); }}
+                                        >
+                                            <span className={`font-bold ${readingMode ? "text-rose-300" : "text-gray-400"} w-8 text-right`}>{v.n}</span>
+                                            <span>{v.text}</span>
+                                            {!selectionMode && HIGHLIGHT_BUTTONS_ENABLED && (
+                                                <button className="ml-3 text-xs px-2 py-1 border rounded text-gray-500" onClick={() => handleCreateHighlight(v.n, v.n, "yellow")} title="Highlight this verse">✦</button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                                {!hideFootnotes && (
+                                    <div className="mt-6 text-sm text-gray-500"></div>
+                                )}
+                            </motion.article>
+                        </AnimatePresence>
+                    </div>
                 </div>
             </main>
 
