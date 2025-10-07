@@ -104,46 +104,24 @@ export default function BibleDynamicPage() {
     const TRANSITION_KEY = "bible_transition";
     const HIDE_FOOTNOTES_KEY = "bible_hideFootnotes";
 
-    // Font size options (largest second, default is second)
-    const fontSizeOptions: Array<"small" | "xlarge" | "medium" | "large"> = ["small", "xlarge", "medium", "large"];
-    // Default font size is now the second size ("xlarge")
+    // Font size options (order unchanged)
+    const fontSizeOptions: Array<"small" | "medium" | "large" | "xlarge"> = ["small", "medium", "large", "xlarge"];
+    // Default font size is now medium, which is as big as previous xlarge
     function getInitialFontSize() {
         if (typeof window !== "undefined") {
             const v = localStorage.getItem(FONT_SIZE_KEY);
             if (fontSizeOptions.includes(v as any)) return v as any;
         }
-        return fontSizeOptions[1]; // "xlarge"
+        return "medium";
     }
-    function getInitialFontFamily() {
-        if (typeof window !== "undefined") {
-            const v = localStorage.getItem(FONT_FAMILY_KEY);
-            if (v) return v;
-        }
-        return "Times New Roman";
-    }
-    function getInitialTheme() {
-        if (typeof window !== "undefined") {
-            const v = localStorage.getItem(THEME_KEY);
-            if (["default","pink","sepia","dark"].includes(v)) return v;
-        }
-        return "default";
-    }
-    function getInitialTransition() {
-        if (typeof window !== "undefined") {
-            const v = localStorage.getItem(TRANSITION_KEY);
-            if (["slide","fade","flip"].includes(v)) return v;
-        }
-        return "slide";
-    }
-    function getInitialHideFootnotes() {
-        if (typeof window !== "undefined") {
-            const v = localStorage.getItem(HIDE_FOOTNOTES_KEY);
-            if (v === "1") return true;
-            if (v === "0") return false;
-        }
-        return false;
-    }
-    const [fontSize, setFontSize] = useState<"small" | "xlarge" | "medium" | "large">(getInitialFontSize());
+    // Font size values: medium is 1.25rem, others relative
+    const fontSizeMap: Record<string, string> = {
+        small: "1.05rem",   // smaller than medium
+        medium: "1.25rem", // now matches old xlarge
+        large: "1.45rem",  // bigger than medium
+        xlarge: "1.65rem", // biggest
+    };
+    const [fontSize, setFontSize] = useState<"small" | "medium" | "large" | "xlarge">(getInitialFontSize());
     const [fontFamily, setFontFamily] = useState<string>(getInitialFontFamily());
     const [theme, setTheme] = useState<"default" | "pink" | "sepia" | "dark">(getInitialTheme());
     const [transition, setTransition] = useState<"slide" | "fade" | "flip">(getInitialTransition());
@@ -420,13 +398,6 @@ export default function BibleDynamicPage() {
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
     }, [readingMode]);
-    // Update fontSizeMap to match new order
-    const fontSizeMap: Record<string, string> = {
-        small: "0.95rem",
-        xlarge: "1.25rem",
-        medium: "1rem",
-        large: "1.125rem",
-    };
     const articleStyle: React.CSSProperties = {
         fontSize: fontSizeMap[fontSize] || fontSizeMap["medium"],
         fontFamily: fontFamily ? `'${fontFamily}', serif` : undefined,
