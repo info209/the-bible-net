@@ -16,6 +16,27 @@ export default function VersionSelector({ versions, onSelect, active, activeBook
         te: "Telugu",
     };
 
+    function handleSelect(v: any) {
+        // Only update cache if selection changed
+        const cached = (() => {
+            try {
+                const val = localStorage.getItem("bible_last_selection");
+                return val ? JSON.parse(val) : null;
+            } catch {
+                return null;
+            }
+        })();
+        const newSelection = {
+            version: v.id,
+            book: activeBook,
+            chapter: activeChapter
+        };
+        if (!cached || cached.version !== newSelection.version || cached.book !== newSelection.book || cached.chapter !== newSelection.chapter) {
+            localStorage.setItem("bible_last_selection", JSON.stringify(newSelection));
+        }
+        onSelect(v);
+    }
+
     return (
         <div className="w-full max-w-2xl mx-auto">
             {Object.keys(grouped).map(lang => (
@@ -27,17 +48,7 @@ export default function VersionSelector({ versions, onSelect, active, activeBook
                         {grouped[lang].map((v: any) => (
                             <button
                                 key={v.id}
-                                onClick={() => {
-                                    localStorage.setItem(
-                                        "bible_last_selection",
-                                        JSON.stringify({
-                                            version: v.id,
-                                            book: activeBook,
-                                            chapter: activeChapter
-                                        })
-                                    );
-                                    onSelect(v);
-                                }}
+                                onClick={() => handleSelect(v)}
                                 className={`text-left px-3 py-2 rounded transition w-full ${
                                     active === v.id
                                         ? "bg-rose-50 border border-rose-200 font-semibold"

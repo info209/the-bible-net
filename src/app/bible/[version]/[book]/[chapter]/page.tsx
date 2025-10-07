@@ -104,78 +104,66 @@ export default function BibleDynamicPage() {
     const TRANSITION_KEY = "bible_transition";
     const HIDE_FOOTNOTES_KEY = "bible_hideFootnotes";
 
-    // Font size options (order unchanged)
+    // Font size options
     const fontSizeOptions: Array<"small" | "medium" | "large" | "xlarge"> = ["small", "medium", "large", "xlarge"];
-    // Default font size is now medium, which is as big as previous xlarge
-    function getInitialFontSize() {
-        if (typeof window !== "undefined") {
-            const v = localStorage.getItem(FONT_SIZE_KEY);
-            if (fontSizeOptions.includes(v as any)) return v as any;
-        }
-        return "medium";
-    }
-    // Font size values: medium is 1.25rem, others relative
     const fontSizeMap: Record<string, string> = {
-        small: "1.05rem",   // smaller than medium
-        medium: "1.25rem", // now matches old xlarge
-        large: "1.45rem",  // bigger than medium
-        xlarge: "1.65rem", // biggest
+        small: "1.05rem",
+        medium: "1.25rem",
+        large: "1.45rem",
+        xlarge: "1.65rem",
     };
-    // Fix: define getInitialFontFamily before use
-    function getInitialFontFamily() {
-        if (typeof window !== "undefined") {
-            const v = localStorage.getItem(FONT_FAMILY_KEY);
-            if (v) return v;
-        }
-        return "Times New Roman";
-    }
-    function getInitialTheme() {
-        if (typeof window !== "undefined") {
-            const v = localStorage.getItem(THEME_KEY);
-            if (v && ["default","pink","sepia","dark"].includes(v)) return v;
-        }
-        return "default";
-    }
-    function getInitialTransition() {
-        if (typeof window !== "undefined") {
-            const v = localStorage.getItem(TRANSITION_KEY);
-            if (v && ["slide","fade","flip"].includes(v)) return v;
-        }
-        return "slide";
-    }
-    function getInitialHideFootnotes() {
-        if (typeof window !== "undefined") {
-            const v = localStorage.getItem(HIDE_FOOTNOTES_KEY);
-            if (v === "1") return true;
-            if (v === "0") return false;
-        }
-        return false;
-    }
-    const [fontSize, setFontSize] = useState<"small" | "medium" | "large" | "xlarge">(getInitialFontSize());
-    const [fontFamily, setFontFamily] = useState<string>(getInitialFontFamily());
-    const [theme, setTheme] = useState<"default" | "pink" | "sepia" | "dark">(getInitialTheme() as "default" | "pink" | "sepia" | "dark");
-    const [transition, setTransition] = useState<"slide" | "fade" | "flip">(getInitialTransition() as "slide" | "fade" | "flip");
-    const [hideFootnotes, setHideFootnotes] = useState<boolean>(getInitialHideFootnotes());
 
-    // Persist settings to localStorage when changed
+    // Default states
+    const [fontSize, setFontSize] = useState<"small" | "medium" | "large" | "xlarge">();
+    const [fontFamily, setFontFamily] = useState<string>();
+    const [theme, setTheme] = useState<"default" | "pink" | "sepia" | "dark">();
+    const [transition, setTransition] = useState<"slide" | "fade" | "flip">();
+    const [hideFootnotes, setHideFootnotes] = useState<boolean>();
+
+    // On mount, read settings from localStorage (only once)
     useEffect(() => {
         if (typeof window === "undefined") return;
+        setFontSize(() => {
+            const fs = localStorage.getItem(FONT_SIZE_KEY);
+            return (fs && fontSizeOptions.includes(fs as any)) ? (fs as any) : "medium";
+        });
+        setFontFamily(() => {
+            const ff = localStorage.getItem(FONT_FAMILY_KEY);
+            return ff || "Times New Roman";
+        });
+        setTheme(() => {
+            const th = localStorage.getItem(THEME_KEY);
+            return (th && ["default","pink","sepia","dark"].includes(th)) ? (th as any) : "default";
+        });
+        setTransition(() => {
+            const tr = localStorage.getItem(TRANSITION_KEY);
+            return (tr && ["slide","fade","flip"].includes(tr)) ? (tr as any) : "slide";
+        });
+        setHideFootnotes(() => {
+            const hf = localStorage.getItem(HIDE_FOOTNOTES_KEY);
+            return hf === "1" ? true : false;
+        });
+    }, []);
+
+    // Persist settings to localStorage only when changed and defined
+    useEffect(() => {
+        if (typeof window === "undefined" || fontSize === undefined) return;
         localStorage.setItem(FONT_SIZE_KEY, fontSize);
     }, [fontSize]);
     useEffect(() => {
-        if (typeof window === "undefined") return;
+        if (typeof window === "undefined" || fontFamily === undefined) return;
         localStorage.setItem(FONT_FAMILY_KEY, fontFamily);
     }, [fontFamily]);
     useEffect(() => {
-        if (typeof window === "undefined") return;
+        if (typeof window === "undefined" || theme === undefined) return;
         localStorage.setItem(THEME_KEY, theme);
     }, [theme]);
     useEffect(() => {
-        if (typeof window === "undefined") return;
+        if (typeof window === "undefined" || transition === undefined) return;
         localStorage.setItem(TRANSITION_KEY, transition);
     }, [transition]);
     useEffect(() => {
-        if (typeof window === "undefined") return;
+        if (typeof window === "undefined" || hideFootnotes === undefined) return;
         localStorage.setItem(HIDE_FOOTNOTES_KEY, hideFootnotes ? "1" : "0");
     }, [hideFootnotes]);
 
@@ -428,9 +416,18 @@ export default function BibleDynamicPage() {
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
     }, [readingMode]);
+
+    // Ensure fontSize is always defined before using as index
+    const resolvedFontSize = fontSize !== undefined ? fontSize : "medium";
+    const resolvedFontFamily = fontFamily !== undefined ? fontFamily : "Times New Roman";
+    const resolvedTheme = theme !== undefined ? theme : "default";
+    const resolvedTransition = transition !== undefined ? transition : "slide";
+    const resolvedHideFootnotes = hideFootnotes !== undefined ? hideFootnotes : false;
+
+    // Use resolvedTransition for variants lookup
     const articleStyle: React.CSSProperties = {
-        fontSize: fontSizeMap[fontSize] || fontSizeMap["medium"],
-        fontFamily: fontFamily ? `'${fontFamily}', serif` : undefined,
+        fontSize: fontSizeMap[resolvedFontSize] || fontSizeMap["medium"],
+        fontFamily: resolvedFontFamily ? `'${resolvedFontFamily}', serif` : undefined,
     };
     const themeStyles: Record<string, React.CSSProperties> = {
         default: { backgroundColor: "#FEFEFE", color: "#111827" },
@@ -438,7 +435,7 @@ export default function BibleDynamicPage() {
         sepia: { backgroundColor: "#f4ecd8", color: "#2b2b2b" },
         dark: { backgroundColor: "#0f0f10", color: "#e6eef0" },
     };
-    const rootThemeStyle = !readingMode ? (themeStyles[theme] || themeStyles["default"]) : {};
+    const rootThemeStyle = !readingMode ? (themeStyles[resolvedTheme] || themeStyles["default"]) : {};
     const variants: Record<string, any> = {
         slide: {
             initial: { x: 80, opacity: 0 },
@@ -572,7 +569,11 @@ export default function BibleDynamicPage() {
                         {loading && <div className="text-gray-500 mb-4">Loading...</div>}
                         {error && <div className="text-red-500 mb-4">{error}</div>}
                         <AnimatePresence mode="wait" initial={false}>
-                            <motion.article key={`${version}_${book}_${chapter}`} style={articleStyle} className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"} variants={variants[transition] || variants["fade"]} initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
+                            <motion.article key={`${version}_${book}_${chapter}`}
+                                style={articleStyle}
+                                className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}
+                                variants={variants[resolvedTransition] || variants["fade"]}
+                                initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
                                 {verses.map((v: any) => {
                                     const vid = makeVerseId(book, chapter, v.n);
                                     const colorClass = verseToColor[vid] ? `hl-${verseToColor[vid]}` : "";
