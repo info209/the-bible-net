@@ -97,11 +97,79 @@ export default function BibleDynamicPage() {
     const selectedVersionObj = versions.find(v => v.id === version);
     const lang = (selectedVersionObj?.language || "").toLowerCase();
     const isTelugu = lang === "telugu" || lang === "te";
-    const [fontSize, setFontSize] = useState<"small" | "medium" | "large" | "xlarge">("medium");
-    const [fontFamily, setFontFamily] = useState<string>("Times New Roman");
-    const [theme, setTheme] = useState<"default" | "pink" | "sepia" | "dark">("default");
-    const [transition, setTransition] = useState<"slide" | "fade" | "flip">("slide");
-    const [hideFootnotes, setHideFootnotes] = useState(false);
+    // Settings cache keys
+    const FONT_SIZE_KEY = "bible_fontSize";
+    const FONT_FAMILY_KEY = "bible_fontFamily";
+    const THEME_KEY = "bible_theme";
+    const TRANSITION_KEY = "bible_transition";
+    const HIDE_FOOTNOTES_KEY = "bible_hideFootnotes";
+
+    // Font size options (largest second, default is second)
+    const fontSizeOptions: Array<"small" | "xlarge" | "medium" | "large"> = ["small", "xlarge", "medium", "large"];
+    // Default font size is now the second size ("xlarge")
+    function getInitialFontSize() {
+        if (typeof window !== "undefined") {
+            const v = localStorage.getItem(FONT_SIZE_KEY);
+            if (fontSizeOptions.includes(v as any)) return v as any;
+        }
+        return fontSizeOptions[1]; // "xlarge"
+    }
+    function getInitialFontFamily() {
+        if (typeof window !== "undefined") {
+            const v = localStorage.getItem(FONT_FAMILY_KEY);
+            if (v) return v;
+        }
+        return "Times New Roman";
+    }
+    function getInitialTheme() {
+        if (typeof window !== "undefined") {
+            const v = localStorage.getItem(THEME_KEY);
+            if (["default","pink","sepia","dark"].includes(v)) return v;
+        }
+        return "default";
+    }
+    function getInitialTransition() {
+        if (typeof window !== "undefined") {
+            const v = localStorage.getItem(TRANSITION_KEY);
+            if (["slide","fade","flip"].includes(v)) return v;
+        }
+        return "slide";
+    }
+    function getInitialHideFootnotes() {
+        if (typeof window !== "undefined") {
+            const v = localStorage.getItem(HIDE_FOOTNOTES_KEY);
+            if (v === "1") return true;
+            if (v === "0") return false;
+        }
+        return false;
+    }
+    const [fontSize, setFontSize] = useState<"small" | "xlarge" | "medium" | "large">(getInitialFontSize());
+    const [fontFamily, setFontFamily] = useState<string>(getInitialFontFamily());
+    const [theme, setTheme] = useState<"default" | "pink" | "sepia" | "dark">(getInitialTheme());
+    const [transition, setTransition] = useState<"slide" | "fade" | "flip">(getInitialTransition());
+    const [hideFootnotes, setHideFootnotes] = useState<boolean>(getInitialHideFootnotes());
+
+    // Persist settings to localStorage when changed
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        localStorage.setItem(FONT_SIZE_KEY, fontSize);
+    }, [fontSize]);
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        localStorage.setItem(FONT_FAMILY_KEY, fontFamily);
+    }, [fontFamily]);
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        localStorage.setItem(THEME_KEY, theme);
+    }, [theme]);
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        localStorage.setItem(TRANSITION_KEY, transition);
+    }, [transition]);
+    useEffect(() => {
+        if (typeof window === "undefined") return;
+        localStorage.setItem(HIDE_FOOTNOTES_KEY, hideFootnotes ? "1" : "0");
+    }, [hideFootnotes]);
 
     // HIGHLIGHT state
     const [authUser, setAuthUser] = useState<any | null>(null);
@@ -352,11 +420,12 @@ export default function BibleDynamicPage() {
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
     }, [readingMode]);
+    // Update fontSizeMap to match new order
     const fontSizeMap: Record<string, string> = {
         small: "0.95rem",
+        xlarge: "1.25rem",
         medium: "1rem",
         large: "1.125rem",
-        xlarge: "1.25rem",
     };
     const articleStyle: React.CSSProperties = {
         fontSize: fontSizeMap[fontSize] || fontSizeMap["medium"],
