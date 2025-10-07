@@ -121,6 +121,36 @@ export default function BibleDynamicPage() {
         large: "1.45rem",  // bigger than medium
         xlarge: "1.65rem", // biggest
     };
+    // Fix: define getInitialFontFamily before use
+    function getInitialFontFamily() {
+        if (typeof window !== "undefined") {
+            const v = localStorage.getItem(FONT_FAMILY_KEY);
+            if (v) return v;
+        }
+        return "Times New Roman";
+    }
+    function getInitialTheme() {
+        if (typeof window !== "undefined") {
+            const v = localStorage.getItem(THEME_KEY);
+            if (["default","pink","sepia","dark"].includes(v)) return v;
+        }
+        return "default";
+    }
+    function getInitialTransition() {
+        if (typeof window !== "undefined") {
+            const v = localStorage.getItem(TRANSITION_KEY);
+            if (["slide","fade","flip"].includes(v)) return v;
+        }
+        return "slide";
+    }
+    function getInitialHideFootnotes() {
+        if (typeof window !== "undefined") {
+            const v = localStorage.getItem(HIDE_FOOTNOTES_KEY);
+            if (v === "1") return true;
+            if (v === "0") return false;
+        }
+        return false;
+    }
     const [fontSize, setFontSize] = useState<"small" | "medium" | "large" | "xlarge">(getInitialFontSize());
     const [fontFamily, setFontFamily] = useState<string>(getInitialFontFamily());
     const [theme, setTheme] = useState<"default" | "pink" | "sepia" | "dark">(getInitialTheme());
