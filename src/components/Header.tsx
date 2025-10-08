@@ -25,37 +25,38 @@ export default function Header() {
     }, [menuOpen]);
 
     return (
-        <header className="bg-white w-full border-b">
-            <div className="max-w-5xl mx-auto px-3 sm:px-4 h-16 sm:h-20 flex items-center justify-between">
-                {/* Wider and shorter logo for clarity */}
-                <div className="flex items-center justify-center" style={{ minWidth: '260px', minHeight: '44px' }}>
+        <header className="bg-white w-full border-b-2 border-gray-100 shadow-sm mb-2">
+            <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pr-2 sm:pr-6 h-12 sm:h-16 md:h-20 flex items-center justify-between min-w-0">
+                {/* Responsive logo - w-auto for perfect alignment */}
+                <div className="flex items-center justify-center w-24 h-8 sm:w-32 sm:h-12 md:w-40 md:h-14 mr-2 sm:mr-3 flex-shrink-0">
                     <Image
                         src="/logo.jpg"
                         alt="App logo"
-                        width={260}
-                        height={44}
-                        style={{ width: '260px', height: '44px', objectFit: 'contain' }}
+                        fill={false}
+                        width={256}
+                        height={56}
+                        style={{ height: '100%', objectFit: 'contain', width: '100%' }}
                         priority
                     />
                 </div>
                 {/* right controls: language selector + menu/avatar */}
-                <div className="flex items-center gap-4 text-[rgba(49,57,58,0.8)]">
+                <div className="flex items-center gap-1 sm:gap-3 md:gap-5 min-w-0">
                     {/* Language selector */}
-                    <div className="flex items-center gap-2 text-gray-800 text-base font-medium">
-                        <span>En</span>
-                        <FaGlobe className="w-5 h-5" />
+                    <div className="flex items-center gap-1 sm:gap-2 text-gray-800 text-xs sm:text-base font-medium">
+                        <span className="hidden sm:inline">En</span>
+                        <FaGlobe className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                     {/* Menu+Avatar button */}
                     <div ref={menuRef} className="relative">
                         <button
-                            className="flex items-center gap-1 px-2 py-1 rounded-full border-2 border-transparent focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
+                            className="flex items-center gap-1 px-1 sm:px-2 py-1 rounded-full border-2 border-transparent focus:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-300 bg-white"
                             onClick={() => setMenuOpen((open) => !open)}
                             aria-label="Open menu"
                         >
-                            <div className="flex flex-col justify-center items-center" style={{height: '28px'}}>
-                                <div style={{width: '16px', height: '2px', background: '#222', borderRadius: '2px', marginBottom: '3px'}}></div>
-                                <div style={{width: '16px', height: '2px', background: '#222', borderRadius: '2px', marginBottom: '3px'}}></div>
-                                <div style={{width: '16px', height: '2px', background: '#222', borderRadius: '2px'}}></div>
+                            <div className="flex flex-col justify-center items-center" style={{height: '24px'}}>
+                                <div style={{width: '14px', height: '2px', background: '#222', borderRadius: '2px', marginBottom: '2px'}}></div>
+                                <div style={{width: '14px', height: '2px', background: '#222', borderRadius: '2px', marginBottom: '2px'}}></div>
+                                <div style={{width: '14px', height: '2px', background: '#222', borderRadius: '2px'}}></div>
                             </div>
                             {/* Avatar logic: show nothing if not logged in, else show photo or initial */}
                             {loading || !user ? null : (
