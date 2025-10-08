@@ -41,7 +41,7 @@ export default function Header() {
                             </a>
                         ) : (
                             <div className="flex items-center gap-2">
-                                <span className="text-xs sm:text-sm">{user.displayName || user.email}</span>
+                                <span className="text-xs sm:text-sm font-semibold">{user.fullName}</span>
                                 <button
                                     onClick={signOut}
                                     className="text-xs sm:text-sm px-2 py-1 border rounded"
@@ -50,14 +50,7 @@ export default function Header() {
                                 </button>
                             </div>
                         )
-                    ) : (
-                        <a
-                            href="/login"
-                            className="text-xs sm:text-sm px-2 py-1 border rounded"
-                        >
-                            Sign In
-                        </a>
-                    )}
+                    ) : null}
                 </div>
             </div>
         </header>

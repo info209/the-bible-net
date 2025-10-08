@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { auth } from '../../lib/firebaseClient';
-import { createUserWithEmailAndPassword, sendEmailVerification } from 'firebase/auth';
+import { createUserWithEmailAndPassword, sendEmailVerification, updateProfile } from 'firebase/auth';
 import SocialButtons from '../../components/Auth/SocialButtons';
 import { useRouter } from 'next/navigation';
 
@@ -41,7 +41,7 @@ export default function SignupPage() {
             await sendEmailVerification(userCred.user);
             try {
                 const displayName = `${firstName.trim()} ${lastName.trim()}`;
-                await (userCred.user as any).updateProfile({ displayName });
+                await updateProfile(userCred.user, { displayName });
             } catch {}
             const token = await userCred.user.getIdToken();
             await exchangeIdTokenForSession(token);

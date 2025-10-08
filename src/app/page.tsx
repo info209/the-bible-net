@@ -36,6 +36,14 @@ const fetchWithKey = (url: string) => fetch(url, { headers: { 'x-app-key': 'your
 
 export default function Home() {
 	const { user, loading } = useAuth();
+
+	// Extract first name from user object
+	let firstName = '';
+	if (user) {
+		const displayName = user.displayName || user.name || '';
+		firstName = displayName.split(' ')[0];
+	}
+
 	useEffect(() => {
 		// Prefetch versions
 		fetchWithKey(`${API_BASE}/versions`)

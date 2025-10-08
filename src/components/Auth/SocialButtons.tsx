@@ -7,14 +7,6 @@ import { signInWithPopup, fetchSignInMethodsForEmail, getAdditionalUserInfo } fr
 import { FcGoogle } from 'react-icons/fc';
 import { FaFacebook, FaXTwitter } from 'react-icons/fa6';
 
-async function exchangeIdTokenForSession(idToken: string) {
-    await fetch('/api/auth/sessionLogin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ idToken }),
-    });
-}
-
 export default function SocialButtons() {
     const [socialError, setSocialError] = useState<string | null>(null);
 
@@ -23,8 +15,26 @@ export default function SocialButtons() {
         try {
             const result = await signInWithPopup(auth, provider);
             const token = await result.user.getIdToken();
-            await exchangeIdTokenForSession(token);
             const additionalInfo = getAdditionalUserInfo(result);
+            let firstName = '';
+            let lastName = '';
+            if (
+                additionalInfo?.profile &&
+                typeof additionalInfo.profile === 'object' &&
+                additionalInfo.profile !== null
+            ) {
+                const profile = additionalInfo.profile as Record<string, unknown>;
+                firstName = typeof profile.given_name === 'string' ? profile.given_name :
+                            typeof profile.first_name === 'string' ? profile.first_name : '';
+                lastName = typeof profile.family_name === 'string' ? profile.family_name :
+                           typeof profile.last_name === 'string' ? profile.last_name : '';
+            }
+            // Send name info to backend for session
+            await fetch('/api/auth/sessionLogin', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken: token, firstName, lastName }),
+            });
             if (additionalInfo?.isNewUser) {
                 window.location.href = '/signup/complete';
             } else {

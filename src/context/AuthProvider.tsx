@@ -24,7 +24,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 setLoading(false);
                 return;
             }
-            setUser(usr);
+            // Extract first and last name from user metadata if available
+            let firstName = '';
+            let lastName = '';
+            let fullName = '';
+            if (usr.displayName) {
+                // Try to split displayName into first/last
+                const parts = usr.displayName.split(' ');
+                firstName = parts[0] || '';
+                lastName = parts.length > 1 ? parts.slice(1).join(' ') : '';
+                fullName = usr.displayName;
+            }
+            setUser({ ...usr, firstName, lastName, fullName });
             setLoading(false);
         });
         return () => unsub();
