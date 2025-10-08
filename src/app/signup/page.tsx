@@ -9,7 +9,8 @@ import { useRouter } from 'next/navigation';
 
 export default function SignupPage() {
     const router = useRouter();
-    const [name, setName] = useState('');
+    const [firstName, setFirstName] = useState('');
+    const [lastName, setLastName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [loading, setLoading] = useState(false);
@@ -29,8 +30,8 @@ export default function SignupPage() {
 
     const handleContinue = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!name.trim()) {
-            setError('Full name is required.');
+        if (!firstName.trim() || !lastName.trim()) {
+            setError('First name and Last name are required.');
             return;
         }
         setLoading(true);
@@ -38,7 +39,10 @@ export default function SignupPage() {
         try {
             const userCred = await createUserWithEmailAndPassword(auth, email, password);
             await sendEmailVerification(userCred.user);
-            try { if (name) await (userCred.user as any).updateProfile({ displayName: name }); } catch {}
+            try {
+                const displayName = `${firstName.trim()} ${lastName.trim()}`;
+                await (userCred.user as any).updateProfile({ displayName });
+            } catch {}
             const token = await userCred.user.getIdToken();
             await exchangeIdTokenForSession(token);
             window.location.href = '/signup/complete';
@@ -67,26 +71,40 @@ export default function SignupPage() {
                     <img src="/logo_white.png" alt="logo" className="h-12" />
                 </div>
 
-                <h1 className="text-2xl font-semibold text-center mb-4">Create a new account</h1>
+                <h1 className="text-2xl font-semibold text-left mb-4">Create a new account</h1>
 
                 <form onSubmit={handleContinue} className="space-y-4">
                     {error && <div className="text-red-600 text-sm">{error}</div>}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Enter your full name</label>
-                        <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 block w-full border rounded-lg p-3" placeholder="Full Name" required />
+                        <label className="block text-sm font-medium text-gray-700 mb-2">First name</label>
+                        <input value={firstName} onChange={(e) => setFirstName(e.target.value)} className="mt-1 block w-full border rounded-lg p-3" placeholder="First name" required />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Last name</label>
+                        <input value={lastName} onChange={(e) => setLastName(e.target.value)} className="mt-1 block w-full border rounded-lg p-3" placeholder="Last name" required />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Enter your email</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                         <input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full border rounded-lg p-3" type="email" placeholder="name@domain.com" required />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Enter your password</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                         <div className="relative">
                             <input value={password} onChange={(e)=>setPassword(e.target.value)} className="mt-1 block w-full border rounded-lg p-3 pr-12" type={showPassword ? 'text' : 'password'} placeholder="Min 8 characters" minLength={8} required />
                             <button type="button" onClick={toggleShowPassword} className="absolute right-3 top-3 text-gray-600" aria-label={showPassword ? 'Hide password' : 'Show password'}>
-                                {showPassword ? '🙈' : '👁️'}
+                                {showPassword ? (
+                                    // Eye-off (closed) SVG
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 002.25 12c1.68 4.418 6.03 8 9.75 8 1.563 0 3.06-.376 4.42-1.09M21.75 12c-.326-.813-.77-1.59-1.32-2.29M15 12a3 3 0 11-6 0 3 3 0 016 0zm6.75 9L3 3" />
+                                    </svg>
+                                ) : (
+                                    // Eye (open) SVG
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12c1.68 4.418 6.03 8 9.75 8s8.07-3.582 9.75-8c-1.68-4.418-6.03-8-9.75-8s-8.07 3.582-9.75 8zm9.75 3a3 3 0 100-6 3 3 0 000 6z" />
+                                    </svg>
+                                )}
                             </button>
                         </div>
                     </div>

@@ -152,8 +152,17 @@ export default function SignInForm() {
                         className="absolute right-3 top-3 text-gray-600"
                         aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
-                        {/* simple inline icon */}
-                        {showPassword ? '🙈' : '👁️'}
+                        {showPassword ? (
+                            // Eye-off (closed) SVG
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3.98 8.223A10.477 10.477 0 002.25 12c1.68 4.418 6.03 8 9.75 8 1.563 0 3.06-.376 4.42-1.09M21.75 12c-.326-.813-.77-1.59-1.32-2.29M15 12a3 3 0 11-6 0 3 3 0 016 0zm6.75 9L3 3" />
+                            </svg>
+                        ) : (
+                            // Eye (open) SVG
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12c1.68 4.418 6.03 8 9.75 8s8.07-3.582 9.75-8c-1.68-4.418-6.03-8-9.75-8s-8.07 3.582-9.75 8zm9.75 3a3 3 0 100-6 3 3 0 000 6z" />
+                            </svg>
+                        )}
                     </button>
                 </div>
             </div>

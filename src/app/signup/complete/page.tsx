@@ -38,12 +38,12 @@ export default function SignupCompletePage() {
                     <button onClick={handleBack} aria-label="Go back" className="inline-flex items-center text-2xl">←</button>
                 </div>
 
-                <h1 className="text-2xl font-semibold text-center mb-2">Complete your profile</h1>
-                <p className="text-center text-sm text-gray-500 mb-4">Help us personalize your Bible reading experience</p>
+                <h1 className="text-2xl font-semibold text-left mb-2">Complete your profile</h1>
+                <p className="text-left text-sm text-gray-500 mb-4">Help us personalize your Bible reading experience</p>
 
                 <form onSubmit={handleCreateNow} className="space-y-4">
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Enter your country</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
                         <select value={country} onChange={(e) => setCountry(e.target.value)} className="mt-1 block w-full border rounded-lg p-3">
                             <option>New Zealand</option>
                             <option>United States</option>
@@ -52,7 +52,7 @@ export default function SignupCompletePage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Enter your preferred language</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Preferred language</label>
                         <select value={language} onChange={(e) => setLanguage(e.target.value)} className="mt-1 block w-full border rounded-lg p-3">
                             <option>English (EN)</option>
                             <option>Telugu (TE)</option>
@@ -61,7 +61,7 @@ export default function SignupCompletePage() {
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Enter your preferred versions</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Preferred versions</label>
                         <select value={version} onChange={(e) => setVersion(e.target.value)} className="mt-1 block w-full border rounded-lg p-3">
                             <option>NKJV</option>
                             <option>ESV</option>
