@@ -341,13 +341,6 @@ export default function SignupCompletePage() {
 					>
 						Skip for now
 					</button>
-
-					<div className="mt-4">
-						<div className="h-3 rounded-full bg-pink-100 overflow-hidden">
-							<div className="h-3 rounded-full bg-pink-500" style={{ width: '100%' }} />
-						</div>
-						<div className="text-xs text-gray-500 mt-2">Step 2 of 2</div>
-					</div>
 				</form>
 			</div>
 		</div>

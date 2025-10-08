@@ -38,11 +38,10 @@ export default function SignupPage() {
         setError(null);
         try {
             const userCred = await createUserWithEmailAndPassword(auth, email, password);
-            await sendEmailVerification(userCred.user);
-            try {
-                const displayName = `${firstName.trim()} ${lastName.trim()}`;
-                await updateProfile(userCred.user, { displayName });
-            } catch {}
+            // Run email verification and profile update in background
+            sendEmailVerification(userCred.user);
+            const displayName = `${firstName.trim()} ${lastName.trim()}`;
+            updateProfile(userCred.user, { displayName });
             const token = await userCred.user.getIdToken();
             await exchangeIdTokenForSession(token);
             window.location.href = '/signup/complete';
@@ -65,10 +64,6 @@ export default function SignupPage() {
             <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg border">
                 <div className="flex justify-start mb-4">
                     <button onClick={handleBack} aria-label="Go back" className="inline-flex items-center text-2xl">←</button>
-                </div>
-
-                <div className="flex justify-center mb-4">
-                    <img src="/logo_white.png" alt="logo" className="h-12" />
                 </div>
 
                 <h1 className="text-2xl font-semibold text-left mb-4">Create a new account</h1>
@@ -109,16 +104,10 @@ export default function SignupPage() {
                         </div>
                     </div>
 
-                    <button disabled={loading} type="submit" className="w-full py-3 bg-teal-700 text-white rounded-lg">
-                        {loading ? 'Please wait...' : 'Continue'}
+                    <button disabled={loading} type="submit" className="w-full py-3 bg-teal-700 text-white rounded-lg flex items-center justify-center">
+                        {loading ? (<span className="loader mr-2"></span>) : null}
+                        {loading ? 'Please wait...' : 'Create account'}
                     </button>
-
-                    <div className="mt-4">
-                        <div className="h-3 rounded-full bg-pink-100 overflow-hidden">
-                            <div className="h-3 rounded-full bg-pink-500" style={{ width: '40%' }} />
-                        </div>
-                        <div className="text-xs text-gray-500 mt-2">Step 1 of 2</div>
-                    </div>
                 </form>
 
                 <div className="my-6 flex items-center">
@@ -135,6 +124,22 @@ export default function SignupPage() {
                     Already a member? <a href="/login" className="text-teal-700 no-underline">Login</a>
                 </div>
             </div>
+
+            {/* Add loader CSS */}
+            <style jsx>{`
+            .loader {
+              border: 2px solid #f3f3f3;
+              border-top: 2px solid #319795;
+              border-radius: 50%;
+              width: 18px;
+              height: 18px;
+              animation: spin 0.8s linear infinite;
+            }
+            @keyframes spin {
+              0% { transform: rotate(0deg); }
+              100% { transform: rotate(360deg); }
+            }
+            `}</style>
         </div>
     );
 }
