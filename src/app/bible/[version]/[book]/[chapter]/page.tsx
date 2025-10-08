@@ -94,6 +94,7 @@ export default function BibleDynamicPage() {
     const [moreOpen, setMoreOpen] = useState(false);
     const [readingMode, setReadingMode] = useState(false);
     const [modalPortalKey, setModalPortalKey] = useState<number>(0);
+    const [modalTitle, setModalTitle] = useState<string>("More"); // CHANGED: dynamic modal title for MoreMenu
     const selectedVersionObj = versions.find(v => v.id === version);
     const lang = (selectedVersionObj?.language || "").toLowerCase();
     const isTelugu = lang === "telugu" || lang === "te";
@@ -119,6 +120,8 @@ export default function BibleDynamicPage() {
     const [theme, setTheme] = useState<"default" | "pink" | "sepia" | "dark">();
     const [transition, setTransition] = useState<"slide" | "fade" | "flip">();
     const [hideFootnotes, setHideFootnotes] = useState<boolean>();
+    const [hideOuterClose, setHideOuterClose] = useState(false);
+
 
     // On mount, read settings from localStorage (only once)
     useEffect(() => {
@@ -635,10 +638,10 @@ export default function BibleDynamicPage() {
                         {error && <div className="text-red-500 mb-4">{error}</div>}
                         <AnimatePresence mode="wait" initial={false}>
                             <motion.article key={`${version}_${book}_${chapter}`}
-                                style={articleStyle}
-                                className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}
-                                variants={variants[resolvedTransition] || variants["fade"]}
-                                initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
+                                            style={articleStyle}
+                                            className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}
+                                            variants={variants[resolvedTransition] || variants["fade"]}
+                                            initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
                                 {verses.map((v: any) => {
                                     const vid = makeVerseId(book, chapter, v.n);
                                     const colorClass = verseToColor[vid] ? `hl-${verseToColor[vid]}` : "";
@@ -686,26 +689,59 @@ export default function BibleDynamicPage() {
             )}
 
             {!readingMode && isMounted && moreOpen && selectorsRef.current && (
-                <ModalSelector portalKey={modalPortalKey} show={moreOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={() => setMoreOpen(false)} title="More">
-                    <MoreMenu onClose={() => setMoreOpen(false)} fontSize={fontSize} setFontSize={(v: any) => setFontSize(v)} fontFamily={fontFamily} setFontFamily={(f: string) => setFontFamily(f)} theme={theme} setTheme={(t: any) => setTheme(t)} transition={transition} setTransition={(t: any) => setTransition(t)} hideFootnotes={hideFootnotes} setHideFootnotes={(h: boolean) => setHideFootnotes(h)} />
+                <ModalSelector
+                    portalKey={modalPortalKey}
+                    show={moreOpen}
+                    anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>}
+                    onClose={() => {
+                        setMoreOpen(false);
+                        // ensure outer close is restored when modal closes
+                        setHideOuterClose(false);
+                    }}
+                    // IMPORTANT: leave title empty so inner MoreMenu renders its own compact header/card
+                    title=""
+                    hideClose={hideOuterClose} // hide outer X when MoreMenu requests it
+                >
+                    <MoreMenu
+                        nested={true}
+                        onClose={() => {
+                            setMoreOpen(false);
+                            setHideOuterClose(false);
+                        }}
+                        onHideOuterClose={(hide: boolean) => {
+                            // called by MoreMenu to hide/show outer close button
+                            setHideOuterClose(hide);
+                        }}
+                        fontSize={fontSize}
+                        setFontSize={(v: any) => setFontSize(v)}
+                        fontFamily={fontFamily}
+                        setFontFamily={(f: string) => setFontFamily(f)}
+                        theme={theme}
+                        setTheme={(t: any) => setTheme(t)}
+                        transition={transition}
+                        setTransition={(t: any) => setTransition(t)}
+                        hideFootnotes={hideFootnotes}
+                        setHideFootnotes={(h: boolean) => setHideFootnotes(h)}
+                    />
                 </ModalSelector>
             )}
 
+
             {/* Floating action button to open highlight toolbar */}
             {HIGHLIGHT_BUTTONS_ENABLED && (
-            <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: highlightToolbarOpen ? 260 : 88, zIndex: 125 }}>
-                <button
-                    aria-label="open highlight"
-                    onClick={() => {
-                        setHighlightToolbarOpen(true);
-                        setSelectionMode(true); // Always enable selection mode when opening highlight toolbar
-                    }}
-                    className="rounded-full p-3 shadow-lg"
-                    style={{ background: "#0f766e", color: "white", border: "none" }}
-                >
-                    ✦
-                </button>
-            </div>
+                <div style={{ position: "fixed", left: "50%", transform: "translateX(-50%)", bottom: highlightToolbarOpen ? 260 : 88, zIndex: 125 }}>
+                    <button
+                        aria-label="open highlight"
+                        onClick={() => {
+                            setHighlightToolbarOpen(true);
+                            setSelectionMode(true); // Always enable selection mode when opening highlight toolbar
+                        }}
+                        className="rounded-full p-3 shadow-lg"
+                        style={{ background: "#0f766e", color: "white", border: "none" }}
+                    >
+                        ✦
+                    </button>
+                </div>
             )}
 
             {/* HIGHLIGHT toolbar (show controlled by highlightToolbarOpen) */}

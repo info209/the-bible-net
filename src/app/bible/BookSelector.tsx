@@ -101,7 +101,6 @@ export default function BookSelector({ books, onSelect, active, isTelugu, active
                 </div>
             </div>
 
-            <div className="mt-3 text-xs text-gray-400">Tap a book to select it. Columns will sit side-by-side when space allows; they stack on very narrow screens.</div>
         </div>
     );
 }
