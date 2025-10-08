@@ -19,7 +19,7 @@ export default function ChapterSelector({ chapters, onSelect, active, activeVers
                             );
                             onSelect(n);
                         }}
-                        className={`py-3 rounded-lg text-center border transition ${active === n ? "bg-rose-50 border-rose-200 font-semibold" : "bg-gray-50 hover:bg-gray-100"}`}
+                        className={`py-3 rounded-lg text-center border transition ${active === n ? "bg-rose-50 border-rose-200 font-semibold text-rose-600" : "bg-gray-50 hover:bg-gray-100"}`}
                     >
                         {String(n).padStart(2, "0")}
                     </button>

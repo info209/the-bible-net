@@ -1,6 +1,6 @@
 // src/app/bible/[version]/[book]/[chapter]/page.tsx
 "use client";
-import React, { useEffect, useRef, useState, MutableRefObject, useLayoutEffect, useMemo } from "react";
+import React, { useEffect, useRef, useState, MutableRefObject, useLayoutEffect, useMemo, useCallback } from "react";
 import Header from "@/components/Header";
 import FooterNav from "@/components/FooterNav";
 import { bookMapping } from "@/components/bookMapping";
@@ -517,23 +517,83 @@ export default function BibleDynamicPage() {
         if (params.chapter && Number(params.chapter) !== chapter) setChapter(Number(params.chapter));
     }, [params.version, params.book, params.chapter]);
 
+    // FooterNav visibility logic
+    const [showFooterNav, setShowFooterNav] = useState(true);
+    const lastScrollY = useRef(0); // Initialize with 0 for SSR safety
+    const [selectorsSticky, setSelectorsSticky] = useState(false);
+    // Set lastScrollY after mount
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            lastScrollY.current = window.scrollY;
+        }
+    }, []);
+    // IntersectionObserver for sticky detection
+    useEffect(() => {
+        const ref = selectorsRef.current;
+        if (!ref) return;
+        const observer = new window.IntersectionObserver(
+            ([entry]) => {
+                setSelectorsSticky(!entry.isIntersecting);
+            },
+            { root: null, threshold: 0.01 }
+        );
+        observer.observe(ref);
+        return () => observer.disconnect();
+    }, [selectorsRef]);
+    // Scroll direction tracking and FooterNav visibility
+    useEffect(() => {
+        let ticking = false;
+        const handleScroll = () => {
+            if (!selectorsSticky) {
+                setShowFooterNav(true);
+                lastScrollY.current = window.scrollY;
+                return;
+            }
+            if (!ticking) {
+                window.requestAnimationFrame(() => {
+                    const currentY = window.scrollY;
+                    if (currentY > lastScrollY.current) {
+                        // Scrolling down
+                        setShowFooterNav(false);
+                    } else if (currentY < lastScrollY.current) {
+                        // Scrolling up
+                        setShowFooterNav(true);
+                    }
+                    lastScrollY.current = currentY;
+                    ticking = false;
+                });
+                ticking = true;
+            }
+        };
+        window.addEventListener("scroll", handleScroll, { passive: true });
+        return () => window.removeEventListener("scroll", handleScroll);
+    }, [selectorsSticky]);
+
     return (
         <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10]" : "min-h-screen flex flex-col"}>
-            {/* Sticky info bar */}
-            {!readingMode && (
-                <div
-                    className={`fixed top-0 left-0 w-full z-[100] bg-white/95 dark:bg-[#18181b]/95 backdrop-blur border-b border-gray-200 dark:border-gray-800
-                        ${showStickyBar ? 'stickybar-visible' : 'stickybar-hidden'}${hasMounted ? ' stickybar-transition' : ''}`}
-                    style={{ minHeight: '44px', boxShadow: '0 2px 8px 0 rgba(0,0,0,0.04)' }}
-                >
-                    <div className="flex justify-center items-center w-full max-w-3xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
-                        <span className="font-medium text-base sm:text-lg text-gray-900 dark:text-gray-100 truncate text-center w-full">
+            {/* Sticky info bar for reading mode */}
+            {readingMode && (
+                <div className="sticky top-0 z-[100] w-full bg-rose-50 border-b border-rose-200 font-semibold text-rose-600">
+                    <div className="flex items-center w-full max-w-5xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
+                        <span className="truncate text-left text-rose-600 font-semibold">
                             {getBookDisplay(book)} · {String(chapter).padStart(2, "0")} · {selectedVersionObj ? versionShortLabel : ""}
                         </span>
                     </div>
                 </div>
             )}
-
+            {/* Sticky info bar for non-reading mode */}
+            {!readingMode && (
+                <div
+                    className={`fixed top-0 left-0 w-full z-[100] pointer-events-none bg-transparent border-none shadow-none transition-all duration-300 ${showStickyBar ? '' : 'opacity-0'}`}
+                    style={{ minHeight: '44px' }}
+                >
+                    <div className="flex items-center w-full max-w-5xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
+                        <span className="font-medium text-base sm:text-lg text-gray-900 dark:text-gray-100 truncate text-left bg-transparent">
+                            {getBookDisplay(book)} · {String(chapter).padStart(2, "0")} · {selectedVersionObj ? versionShortLabel : ""}
+                        </span>
+                    </div>
+                </div>
+            )}
             {!readingMode && <Header />}
 
             <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : ''}`}>
@@ -542,11 +602,22 @@ export default function BibleDynamicPage() {
                     {!readingMode && !showStickyBar && (
                         <div
                             ref={selectorsRef}
-                            className="relative z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 w-full"
+                            className={`z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 w-full bg-transparent border-none shadow-none transition-all duration-300`}
+                            style={{ background: 'none', boxShadow: 'none', border: 'none', position: 'sticky', top: 0 }}
                         >
-                            <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs truncate bg-white" onClick={() => openModalFor("books")}>{isMounted ? getBookDisplay(book) : "Book"}</button>
-                            <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center bg-white" onClick={() => { !book ? openModalFor("books") : openModalFor("chapters"); }}>{isMounted ? String(chapter).padStart(2, "0") : "01"}</button>
-                            <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs text-center flex justify-center items-center bg-white" onClick={() => openModalFor("versions")} title={selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id} disabled={loading || versions.length === 0}>{loading || versions.length === 0 ? <span className="text-gray-400 animate-pulse">Loading...</span> : (selectedVersionObj ? versionShortLabel : version || "Ver")}</button>
+                            {!readingMode ? (
+                                <>
+                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs truncate bg-white" onClick={() => openModalFor("books")}>{isMounted ? getBookDisplay(book) : "Book"}</button>
+                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center bg-white" onClick={() => { !book ? openModalFor("books") : openModalFor("chapters"); }}>{isMounted ? String(chapter).padStart(2, "0") : "01"}</button>
+                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs text-center flex justify-center items-center bg-white" onClick={() => openModalFor("versions")} title={selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id} disabled={loading || versions.length === 0}>{loading || versions.length === 0 ? <span className="text-gray-400 animate-pulse">Loading...</span> : (selectedVersionObj ? versionShortLabel : version || "Ver")}</button>
+                                </>
+                            ) : (
+                                <>
+                                    <span className="px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs truncate font-medium text-gray-700 bg-transparent transition-all duration-300">{getBookDisplay(book)}</span>
+                                    <span className="px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center font-medium text-gray-700 bg-transparent transition-all duration-300">{String(chapter).padStart(2, "0")}</span>
+                                    <span className="px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs text-center font-medium text-gray-700 bg-transparent transition-all duration-300">{selectedVersionObj ? versionShortLabel : version || "Ver"}</span>
+                                </>
+                            )}
                             <div className="flex-grow" />
                             <button type="button" aria-label="audio" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={() => setMusicOpen(true)}>🎵</button>
                             <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={() => setMoreOpen(true)}>⋮</button>
@@ -557,7 +628,6 @@ export default function BibleDynamicPage() {
                     <div className="mx-auto w-full max-w-xl">
                         {readingMode && (
                             <div className="mb-4 text-rose-600 font-medium tracking-wide flex items-center gap-3">
-                                <div>{getBookDisplay(book)} · {String(chapter).padStart(2, "0")} · {selectedVersionObj?.displayName || ""}</div>
                                 <button onClick={() => setReadingMode(false)} className="text-sm text-gray-300 hover:text-gray-100">✕ Exit</button>
                             </div>
                         )}
@@ -597,8 +667,8 @@ export default function BibleDynamicPage() {
                     </div>
                 </div>
             </main>
-
-            {!readingMode && !showStickyBar && <FooterNav />}
+            {/* FooterNav visibility logic */}
+            {!readingMode && showFooterNav && <FooterNav />}
 
             {!readingMode && isMounted && modalOpen && selectorsRef.current && (
                 <ModalSelector portalKey={modalPortalKey} show={modalOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeModal} title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" }>

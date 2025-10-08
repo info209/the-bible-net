@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { useAuth } from '../context/AuthProvider';
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { FaGlobe } from 'react-icons/fa';
 
 export default function Header() {
     const { user, loading, signOut } = useAuth();
@@ -26,20 +27,24 @@ export default function Header() {
     return (
         <header className="bg-white w-full border-b">
             <div className="max-w-5xl mx-auto px-3 sm:px-4 h-16 sm:h-20 flex items-center justify-between">
-                {/* logo badge */}
-                <div className="rounded-md w-[80px] sm:w-[104px] h-[32px] sm:h-[40px] flex items-center justify-center bg-gradient-to-r from-teal-400 to-teal-500 shadow-sm overflow-hidden">
+                {/* Wider and shorter logo for clarity */}
+                <div className="flex items-center justify-center" style={{ minWidth: '260px', minHeight: '44px' }}>
                     <Image
                         src="/logo.jpg"
                         alt="App logo"
-                        width={72}
-                        height={24}
-                        style={{ width: '72px', height: '24px', objectFit: 'contain' }}
+                        width={260}
+                        height={44}
+                        style={{ width: '260px', height: '44px', objectFit: 'contain' }}
                         priority
                     />
                 </div>
-
-                {/* right controls */}
-                <div className="flex items-center gap-1 sm:gap-2 text-[rgba(49,57,58,0.8)]">
+                {/* right controls: language selector + menu/avatar */}
+                <div className="flex items-center gap-4 text-[rgba(49,57,58,0.8)]">
+                    {/* Language selector */}
+                    <div className="flex items-center gap-2 text-gray-800 text-base font-medium">
+                        <span>En</span>
+                        <FaGlobe className="w-5 h-5" />
+                    </div>
                     {/* Menu+Avatar button */}
                     <div ref={menuRef} className="relative">
                         <button

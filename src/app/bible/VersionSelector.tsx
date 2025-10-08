@@ -51,7 +51,7 @@ export default function VersionSelector({ versions, onSelect, active, activeBook
                                 onClick={() => handleSelect(v)}
                                 className={`text-left px-3 py-2 rounded transition w-full ${
                                     active === v.id
-                                        ? "bg-rose-50 border border-rose-200 font-semibold"
+                                        ? "bg-rose-50 border border-rose-200 font-semibold text-rose-600"
                                         : "hover:bg-gray-50"
                                 }`}
                             >

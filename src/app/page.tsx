@@ -65,10 +65,8 @@ export default function Home() {
 
 	return (
 		<div className="min-h-screen flex flex-col bg-[#FEFEFE] px-2 md:px-4">
-			{/* Top header */}
-			<div className="mx-auto w-full max-w-md md:max-w-3xl lg:max-w-5xl mb-2 md:mb-6">
-				<Header />
-			</div>
+			{/* Top header - match bible page */}
+			<Header />
 
 			{/* Main content */}
 			<main className="flex-1 w-full pt-2 md:pt-6 pb-28">
