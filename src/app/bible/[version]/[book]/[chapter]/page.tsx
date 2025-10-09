@@ -391,8 +391,18 @@ export default function BibleDynamicPage() {
     function handleBookSelect(selectedBook: any) {
         setBook(selectedBook.slug);
         setChapter(1);
-        // Optionally, update the route if needed:
-        router.push(`/bible/${version}/${selectedBook.slug}/1`);
+        setSelectedVerse(1); // Reset verse to 1
+        // Update localStorage with verse: 1
+        if (typeof window !== "undefined") {
+            localStorage.setItem("bible_last_selection", JSON.stringify({
+                version,
+                book: selectedBook.slug,
+                chapter: 1,
+                verse: 1
+            }));
+        }
+        // Update the route to include verse=1
+        router.push(`/bible/${version}/${selectedBook.slug}/1?verse=1`);
         setModalOpen(false);
         setMode("chapters");
     }

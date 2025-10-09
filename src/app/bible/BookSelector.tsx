@@ -40,10 +40,11 @@ export default function BookSelector({ books, onSelect, active, isTelugu, active
                         JSON.stringify({
                             version: activeVersion,
                             book: b.slug,
-                            chapter: activeChapter,
+                            chapter: 1, // Reset chapter to 1 on book change
+                            verse: 1,    // Reset verse to 1 on book change
                         })
                     );
-                    onSelect(b);
+                    onSelect({ ...b, chapter: 1, verse: 1 }); // Pass verse: 1 to parent
                 }}
                 className={`w-full text-left px-3 py-2 rounded transition flex items-center gap-2 ${
                     isActive ? "bg-rose-50 border border-rose-200 font-semibold text-rose-600" : "hover:bg-gray-50"
