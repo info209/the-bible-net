@@ -43,7 +43,7 @@ export default function Header() {
                 <div className="flex items-center gap-1 sm:gap-3 md:gap-5 min-w-0">
                     {/* Language selector */}
                     <div className="flex items-center gap-1 sm:gap-2 text-gray-800 text-xs sm:text-base font-medium">
-                        <span className="hidden sm:inline">En</span>
+                        <span className="inline text-xs sm:text-base">En</span>
                         <FaGlobe className="w-4 h-4 sm:w-5 sm:h-5" />
                     </div>
                     {/* Menu+Avatar button */}
