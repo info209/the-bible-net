@@ -386,28 +386,7 @@ export default function BibleDynamicPage() {
         setModalOpen(true);
         selectorsRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
     };
-    const closeModal = () => {
-        // Validate selectedVerse against verses array
-        const validVerseNumbers = verses.map((v: any) => v.n);
-        let finalVerse = selectedVerse;
-        if (!validVerseNumbers.includes(selectedVerse || 1)) {
-            finalVerse = 1;
-            setSelectedVerse(1);
-            // Update cache
-            if (typeof window !== "undefined") {
-                localStorage.setItem("bible_last_selection", JSON.stringify({
-                    version,
-                    book,
-                    chapter,
-                    verse: 1
-                }));
-            }
-        }
-        // Update the route
-        router.push(`/bible/${version}/${book}/${chapter}?verse=${finalVerse}`);
-        setModalOpen(false);
-        setMode("chapters");
-    };
+    const closeModal = () => setModalOpen(false);
     // --- URL-driven navigation for selectors ---
     function handleBookSelect(selectedBook: any) {
         setBook(selectedBook.slug);
