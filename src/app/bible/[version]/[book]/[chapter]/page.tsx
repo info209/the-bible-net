@@ -408,6 +408,7 @@ export default function BibleDynamicPage() {
     }
     const handleChapterSelect = (n: number) => {
         setChapter(n);
+        setSelectedVerse(1); // Always select the first verse when opening verse selector
         setMode("verses");
         // Do NOT update the route here; wait until verse is selected
     };
