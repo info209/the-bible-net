@@ -9,6 +9,7 @@ export default function BibleRootRedirect() {
     let version = "akjv";
     let book = "genesis";
     let chapter = 1;
+    let verse: number | undefined = undefined;
     if (typeof window !== "undefined") {
       const cached = localStorage.getItem("bible_last_selection");
       if (cached) {
@@ -18,11 +19,18 @@ export default function BibleRootRedirect() {
             version = obj.version;
             book = obj.book;
             chapter = obj.chapter;
+            if (obj.verse) {
+              verse = obj.verse;
+            }
           }
         } catch {}
       }
     }
-    router.replace(`/bible/${version}/${book}/${chapter}`);
+    if (verse !== undefined) {
+      router.replace(`/bible/${version}/${book}/${chapter}?verse=${verse}`);
+    } else {
+      router.replace(`/bible/${version}/${book}/${chapter}`);
+    }
   }, [router]);
   return null;
 }

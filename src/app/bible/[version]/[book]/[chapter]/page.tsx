@@ -10,7 +10,7 @@ import ChapterSelector from "@/app/bible/ChapterSelector";
 import VerseSelector from "@/app/bible/VerseSelector";
 import VersionSelector from "@/app/bible/VersionSelector";
 import MoreMenu from "@/app/bible/MoreMenu";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import MusicControl from "@/app/bible/MusicControl";
 
@@ -63,6 +63,7 @@ function extractAcronym(displayName?: string) {
 export default function BibleDynamicPage() {
     const params = useParams();
     const router = useRouter();
+    const searchParams = useSearchParams();
     const [isMounted, setIsMounted] = useState(false);
     useEffect(() => setIsMounted(true), []);
 
@@ -78,11 +79,14 @@ export default function BibleDynamicPage() {
     const initialVersion = (savedSelection && savedSelection.version) ? savedSelection.version : (params.version as string || "");
     const initialBook = (savedSelection && savedSelection.book) ? savedSelection.book : (params.book as string || "");
     const initialChapter = (savedSelection && savedSelection.chapter) ? savedSelection.chapter : (params.chapter ? Number(params.chapter) : 1);
+    const initialVerse = searchParams?.get("verse")
+        ? Number(searchParams.get("verse"))
+        : (savedSelection && savedSelection.verse ? savedSelection.verse : 1);
 
     const [version, setVersion] = useState<string>(initialVersion);
     const [book, setBook] = useState<string>(initialBook);
     const [chapter, setChapter] = useState<number>(initialChapter);
-    const [selectedVerse, setSelectedVerse] = useState<number | null>(null);
+    const [selectedVerse, setSelectedVerse] = useState<number | null>(initialVerse);
 
     // ...existing UI, modal, popover, readingMode, etc. state...
     const [loading, setLoading] = useState(false);
@@ -393,8 +397,18 @@ export default function BibleDynamicPage() {
         setMode("chapters");
     }
     const handleChapterSelect = (n: number) => {
-        router.push(`/bible/${version}/${book}/${n}`);
+        setChapter(n);
         setMode("verses");
+        // Do NOT update the route here; wait until verse is selected
+    };
+    const handleVerseDone = () => {
+        // Update the route to start from the selected verse
+        if (selectedVerse) {
+            router.push(`/bible/${version}/${book}/${chapter}?verse=${selectedVerse}`);
+        } else {
+            router.push(`/bible/${version}/${book}/${chapter}`);
+        }
+        closeModal();
     };
     const handleVerseSelect = (n: number) => setSelectedVerse(n);
     const handleVersionSelect = (v: any) => {
@@ -512,8 +526,13 @@ export default function BibleDynamicPage() {
     // Whenever selection changes, save to localStorage
     useEffect(() => {
         if (!isMounted) return;
-        localStorage.setItem(LAST_SELECTION_KEY, JSON.stringify({ version, book, chapter }));
-    }, [version, book, chapter, isMounted]);
+        localStorage.setItem(LAST_SELECTION_KEY, JSON.stringify({
+            version,
+            book,
+            chapter,
+            verse: selectedVerse ?? undefined
+        }));
+    }, [version, book, chapter, selectedVerse, isMounted]);
     useEffect(() => {
         if (params.version && params.version !== version) setVersion(params.version as string);
         if (params.book && params.book !== book) setBook(params.book as string);
@@ -642,7 +661,7 @@ export default function BibleDynamicPage() {
                                             className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}
                                             variants={variants[resolvedTransition] || variants["fade"]}
                                             initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
-                                {verses.map((v: any) => {
+                                {(selectedVerse ? verses.filter((v: any) => v.n >= selectedVerse) : verses).map((v: any) => {
                                     const vid = makeVerseId(book, chapter, v.n);
                                     const colorClass = verseToColor[vid] ? `hl-${verseToColor[vid]}` : "";
                                     const selectedClass = isVerseSelected(v.n) ? "selected-dotted" : "";
@@ -677,7 +696,7 @@ export default function BibleDynamicPage() {
                 <ModalSelector portalKey={modalPortalKey} show={modalOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeModal} title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" }>
                     {mode === "books" && <BookSelector books={books} onSelect={handleBookSelect} active={book} isTelugu={isTelugu} activeVersion={version} activeChapter={chapter} />}
                     {mode === "chapters" && <ChapterSelector chapters={chapters} onSelect={handleChapterSelect} active={chapter} activeVersion={version} activeBook={book} />}
-                    {mode === "verses" && <VerseSelector verses={verses} onSelect={handleVerseSelect} onBack={() => setMode("chapters")} onDone={() => closeModal()} active={selectedVerse} />}
+                    {mode === "verses" && <VerseSelector verses={verses} onSelect={handleVerseSelect} onBack={() => setMode("chapters")} onDone={handleVerseDone} active={selectedVerse} />}
                     {mode === "versions" && <VersionSelector versions={versions} onSelect={handleVersionSelect} active={version} activeBook={book} activeChapter={chapter} />}
                 </ModalSelector>
             )}

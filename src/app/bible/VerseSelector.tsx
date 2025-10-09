@@ -1,7 +1,30 @@
 "use client";
 import React from "react";
 
-export default function VerseSelector({ verses, onSelect, onBack, onDone, active }: any) {
+export default function VerseSelector({ verses, onSelect, onBack, onDone, active, activeVersion, activeBook, activeChapter }: any) {
+    function handleSelect(verse: number) {
+        // Update cache with verse
+        if (typeof window !== "undefined") {
+            const cached = (() => {
+                try {
+                    const val = localStorage.getItem("bible_last_selection");
+                    return val ? JSON.parse(val) : {};
+                } catch {
+                    return {};
+                }
+            })();
+            localStorage.setItem(
+                "bible_last_selection",
+                JSON.stringify({
+                    version: activeVersion ?? cached.version,
+                    book: activeBook ?? cached.book,
+                    chapter: activeChapter ?? cached.chapter,
+                    verse: verse
+                })
+            );
+        }
+        onSelect(verse);
+    }
     return (
         <div className="w-full">
             <div className="flex items-center justify-between mb-3">
@@ -13,7 +36,7 @@ export default function VerseSelector({ verses, onSelect, onBack, onDone, active
                 {verses.map((v: any) => (
                     <button
                         key={v.n}
-                        onClick={() => onSelect(v.n)}
+                        onClick={() => handleSelect(v.n)}
                         className={`py-2 rounded-lg text-center border transition ${active === v.n ? "bg-rose-50 border-rose-200 font-semibold" : "bg-gray-50 hover:bg-gray-100"}`}
                     >
                         {String(v.n).padStart(2, "0")}

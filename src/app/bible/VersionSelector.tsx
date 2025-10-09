@@ -29,7 +29,8 @@ export default function VersionSelector({ versions, onSelect, active, activeBook
         const newSelection = {
             version: v.id,
             book: activeBook,
-            chapter: activeChapter
+            chapter: activeChapter,
+            verse: cached?.verse // preserve verse if present
         };
         if (!cached || cached.version !== newSelection.version || cached.book !== newSelection.book || cached.chapter !== newSelection.chapter) {
             localStorage.setItem("bible_last_selection", JSON.stringify(newSelection));

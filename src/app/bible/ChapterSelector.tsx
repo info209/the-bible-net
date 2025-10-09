@@ -9,12 +9,21 @@ export default function ChapterSelector({ chapters, onSelect, active, activeVers
                     <button
                         key={n}
                         onClick={() => {
+                            const cached = (() => {
+                                try {
+                                    const val = localStorage.getItem("bible_last_selection");
+                                    return val ? JSON.parse(val) : {};
+                                } catch {
+                                    return {};
+                                }
+                            })();
                             localStorage.setItem(
                                 "bible_last_selection",
                                 JSON.stringify({
                                     version: activeVersion,
                                     book: activeBook,
-                                    chapter: n
+                                    chapter: n,
+                                    verse: cached.verse // preserve verse if present
                                 })
                             );
                             onSelect(n);
