@@ -412,12 +412,24 @@ export default function BibleDynamicPage() {
         // Do NOT update the route here; wait until verse is selected
     };
     const handleVerseDone = () => {
-        // Update the route to start from the selected verse
-        if (selectedVerse) {
-            router.push(`/bible/${version}/${book}/${chapter}?verse=${selectedVerse}`);
-        } else {
-            router.push(`/bible/${version}/${book}/${chapter}`);
+        // Validate selectedVerse against verses array
+        const validVerseNumbers = verses.map((v: any) => v.n);
+        let finalVerse = selectedVerse;
+        if (!validVerseNumbers.includes(selectedVerse || 1)) {
+            finalVerse = 1;
+            setSelectedVerse(1);
+            // Update cache
+            if (typeof window !== "undefined") {
+                localStorage.setItem("bible_last_selection", JSON.stringify({
+                    version,
+                    book,
+                    chapter,
+                    verse: 1
+                }));
+            }
         }
+        // Update the route
+        router.push(`/bible/${version}/${book}/${chapter}?verse=${finalVerse}`);
         closeModal();
     };
     const handleVerseSelect = (n: number) => setSelectedVerse(n);

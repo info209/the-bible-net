@@ -44,7 +44,7 @@ export default function BookSelector({ books, onSelect, active, isTelugu, active
                             verse: 1,    // Reset verse to 1 on book change
                         })
                     );
-                    onSelect({ ...b, chapter: 1, verse: 1 }); // Pass verse: 1 to parent
+                    onSelect(b); // Only pass Book, let parent handle chapter/verse
                 }}
                 className={`w-full text-left px-3 py-2 rounded transition flex items-center gap-2 ${
                     isActive ? "bg-rose-50 border border-rose-200 font-semibold text-rose-600" : "hover:bg-gray-50"
