@@ -177,7 +177,7 @@ export default function MoreMenu({
                 >
                     ← Back
                 </button>
-                <div className="font-semibold text-lg">Fonts & Settings</div>
+                <div className="font-semibold text-sm">Fonts & Settings</div>
                 <button
                     type="button"
                     onClick={() => { onClose?.(); }}
@@ -203,12 +203,9 @@ export default function MoreMenu({
 
             <div className="mb-6 w-full">
                 <div className="text-sm text-gray-500 mb-2 text-left">Font size</div>
-                <div className="w-full px-2 py-3 bg-transparent">
-                    <div className="flex items-center justify-between mb-3">
-                        <span className="text-sm font-medium select-none">A-</span>
-                        <span className="text-sm font-medium select-none">A+</span>
-                    </div>
-                    <div className="relative h-10 flex items-center">
+                <div className="w-full flex items-center justify-between px-2 py-3 bg-transparent">
+                     <span className="text-sm font-medium select-none">A-</span>
+                    <div className="relative h-10 w-[80%] flex items-center">
                         <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-0.5 rounded-full bg-gray-300" />
                         <div
                             className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 rounded-full bg-rose-400"
@@ -259,6 +256,7 @@ export default function MoreMenu({
                             style={{ margin: 0 }}
                         />
                     </div>
+                     <span className="text-sm font-medium select-none">A+</span>
                 </div>
             </div>
 
