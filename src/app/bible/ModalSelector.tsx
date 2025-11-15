@@ -98,6 +98,7 @@ export default function ModalSelector({
             const rect = triggerEl ? triggerEl.getBoundingClientRect() : anchorRef.current.getBoundingClientRect();
 
             if (vw >= 768) {
+                // 
                 const scaled = Math.max(420, Math.min(rect.width * 2.2, vw * 0.8));
                 const modalWidth = Math.min(maxWidth, scaled);
 
