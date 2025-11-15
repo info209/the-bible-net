@@ -98,13 +98,13 @@ export default function SocialButtons() {
                 <button
                     onClick={() => handlePopup(googleProvider)}
                     className="bg-white rounded-full shadow-md
-                               w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11
+                               w-11 h-11 sm:w-11 sm:h-11 md:w-12 md:h-12
                                flex items-center justify-center transition hover:shadow-lg focus:outline-none"
                     aria-label="Sign in with Google"
                     type="button"
                 >
                     <FcGoogle
-                        className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7
+                        className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8
                                    transform scale-[1.05] translate-y-[1px]"
                         aria-hidden="true"
                     />
@@ -114,13 +114,13 @@ export default function SocialButtons() {
                 <button
                     onClick={() => handlePopup(facebookProvider)}
                     className="bg-white rounded-full shadow-md
-                               w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11
+                               w-11 h-11 sm:w-11 sm:h-11 md:w-12 md:h-12
                                flex items-center justify-center transition hover:shadow-lg focus:outline-none"
                     aria-label="Sign in with Facebook"
                     type="button"
                 >
                     <FaFacebook
-                        className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7
+                        className="w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8
                                    text-[#1877F2] transform scale-[1.0]"
                         aria-hidden="true"
                     />
@@ -130,7 +130,7 @@ export default function SocialButtons() {
                 <button
                     onClick={() => handlePopup(twitterProvider)}
                     className="bg-white rounded-full shadow-md
-                               w-9 h-9 sm:w-10 sm:h-10 md:w-11 md:h-11
+                               w-11 h-11 sm:w-10 sm:h-10 md:w-11 md:h-11
                                flex items-center justify-center transition hover:shadow-lg focus:outline-none"
                     aria-label="Sign in with X"
                     type="button"

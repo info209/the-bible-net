@@ -21,7 +21,7 @@ export default function LoginPage() {
                 </div>
 
                 <div className="flex justify-center mb-4">
-                    <img src="/logo_white.png" alt="logo" className="h-12" />
+                    <img src="/logo_white.png" alt="logo" className="h-24" />
                 </div>
 
                 <h1 className="text-2xl font-semibold text-left mb-1">Welcome</h1>

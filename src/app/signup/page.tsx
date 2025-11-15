@@ -66,6 +66,10 @@ export default function SignupPage() {
                     <button onClick={handleBack} aria-label="Go back" className="inline-flex items-center text-2xl">←</button>
                 </div>
 
+                <div className="flex justify-center mb-4">
+                    <img src="/logo_white.png" alt="logo" className="h-24" />
+                </div>
+
                 <h1 className="text-2xl font-semibold text-left mb-4">Create a new account</h1>
 
                 <form onSubmit={handleContinue} className="space-y-4">
@@ -81,7 +85,7 @@ export default function SignupPage() {
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                        <input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full border rounded-lg p-3" type="email" placeholder="name@domain.com" required />
+                        <input value={email} onChange={(e) => setEmail(e.target.value)} className="mt-1 block w-full border rounded-lg p-3" type="email" placeholder="email@domain.com" required />
                     </div>
 
                     <div>
