@@ -627,7 +627,7 @@ export default function BibleDynamicPage() {
                 </div>
             )}
             {/* Sticky info bar for non-reading mode */}
-            {!readingMode && (
+            {readingMode && (
                 <div
                     className={`fixed top-0 left-0 w-full z-[100] pointer-events-none bg-transparent border-none shadow-none transition-all duration-300 ${showStickyBar ? '' : 'opacity-0'}`}
                     style={{ minHeight: '44px' }}
@@ -639,7 +639,7 @@ export default function BibleDynamicPage() {
                     </div>
                 </div>
             )}
-            {!readingMode && <Header />}
+            {!readingMode &&  <Header />}
 
             <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : ''}`}>
                 <div className="mx-auto w-full max-w-5xl">
@@ -684,24 +684,24 @@ export default function BibleDynamicPage() {
                                             className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}
                                             variants={variants[resolvedTransition] || variants["fade"]}
                                             initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
-                                {(selectedVerse ? verses.filter((v: any) => v.n >= selectedVerse) : verses).map((v: any) => {
+                                {verses.map((v: any) => {
                                     const vid = makeVerseId(book, chapter, v.n);
                                     const colorClass = verseToColor[vid] ? `hl-${verseToColor[vid]}` : "";
                                     const selectedClass = isVerseSelected(v.n) ? "selected-dotted" : "";
                                     const selectionCursor = selectionMode ? "selection-cursor" : "";
                                     return (
-                                        <div
+                                        <span
                                             key={v.n}
                                             data-verse-id={vid}
-                                            className={`flex gap-2 items-start ${readingMode ? "text-gray-100" : "text-gray-800"} ${colorClass} ${selectedClass} ${selectionCursor}`}
-                                            onClick={() => { if (selectionMode) toggleVerseSelection(v.n); }}
+                                            className={` ${readingMode ? "text-gray-100" : "text-gray-800"} ${colorClass} ${selectedClass} ${selectionCursor}`}
+                                            onClick={() => { if (selectionMode) toggleVerseSelection(v.n); }} 
                                         >
-                                            <span className={`font-bold ${readingMode ? "text-rose-300" : "text-gray-400"} w-8 text-right`}>{v.n}</span>
-                                            <span>{v.text}</span>
+                                            <span className={`${readingMode ? "text-rose-300" : "text-[#D23952]"}`}>{v.n}</span>
+                                             {" "}<span>{v.text}</span>{" "}
                                             {!selectionMode && HIGHLIGHT_BUTTONS_ENABLED && (
                                                 <button className="ml-3 text-xs px-2 py-1 border rounded text-gray-500" onClick={() => handleCreateHighlight(v.n, v.n, "yellow")} title="Highlight this verse">✦</button>
                                             )}
-                                        </div>
+                                        </span>
                                     );
                                 })}
                                 {!hideFootnotes && (
@@ -716,7 +716,7 @@ export default function BibleDynamicPage() {
             {!readingMode && showFooterNav && <FooterNav />}
 
             {!readingMode && isMounted && modalOpen && selectorsRef.current && (
-                <ModalSelector portalKey={modalPortalKey} show={modalOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeModal} title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" }>
+                <ModalSelector portalKey={modalPortalKey} show={modalOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeModal} title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" } mode={mode} onBack={() => setMode("chapters")} onDone={handleVerseDone}>
                     {mode === "books" && <BookSelector books={books} onSelect={handleBookSelect} active={book} isTelugu={isTelugu} activeVersion={version} activeChapter={chapter} />}
                     {mode === "chapters" && <ChapterSelector chapters={chapters} onSelect={handleChapterSelect} active={chapter} activeVersion={version} activeBook={book} />}
                     {mode === "verses" && <VerseSelector verses={verses} onSelect={handleVerseSelect} onBack={() => setMode("chapters")} onDone={handleVerseDone} active={selectedVerse} />}

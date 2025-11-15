@@ -1,6 +1,8 @@
 // src/components/FooterNav.tsx
 'use client';
 import Link from 'next/link';
+import homeIcon from '../../public/assets/light_home_icon.png';
+import Image from 'next/image';
 
 export default function FooterNav() {
     return (
@@ -11,7 +13,14 @@ export default function FooterNav() {
                     href="/"
                     className="flex flex-col items-center text-[rgba(49,57,58,0.4)] hover:text-[#006A6F]"
                 >
-                    <span className="text-2xl">🏠</span>
+                    <span className="text-2xl">
+                         <span className="text-2xl flex items-center justify-center">
+                        <Image src={homeIcon} alt="Home"   width={24}
+              height={24}
+              className="transition duration-300 group-hover:brightness-0 group-hover:invert group-hover:sepia group-hover:saturate-[800%] group-hover:hue-rotate-[160deg]"
+              priority/>
+          </span>
+                    </span>
                     <span className="text-xs mt-1">Home</span>
                 </Link>
 

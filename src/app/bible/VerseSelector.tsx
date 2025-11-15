@@ -27,10 +27,10 @@ export default function VerseSelector({ verses, onSelect, onBack, onDone, active
     }
     return (
         <div className="w-full">
-            <div className="flex items-center justify-between mb-3">
+            {/* <div className="flex items-center justify-between mb-3">
                 <button onClick={onBack} className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100">← Back</button>
                 <button onClick={onDone} className="text-sm text-green-700 px-2 py-1 rounded hover:bg-green-50">Done</button>
-            </div>
+            </div> */}
 
             <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-10 gap-3 max-w-3xl mx-auto">
                 {verses.map((v: any) => (

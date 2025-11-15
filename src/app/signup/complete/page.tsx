@@ -319,7 +319,7 @@ export default function SignupCompletePage() {
     const cleanName = v.displayName.replace(/\s*\([^)]*\)/, '');
     return (
         <option key={v.id} value={v.id}>
-            {cleanName.trim()} [{v.id}] - {v.language === 'en' ? 'English' : v.language === 'te' ? 'Telugu' : v.language}
+            {cleanName.trim()} {v.id.toUpperCase()} - {v.language === 'en' ? 'English' : v.language === 'te' ? 'Telugu' : v.language}
         </option>
     );
 })}
@@ -331,7 +331,7 @@ export default function SignupCompletePage() {
 						type="submit"
 						className="w-full py-3 bg-teal-700 text-white rounded-lg"
 					>
-						{loading ? 'Please wait...' : 'Create now'}
+						{loading ? 'Please wait...' : 'Complete now'}
 					</button>
 
 					<button

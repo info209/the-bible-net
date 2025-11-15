@@ -3,6 +3,9 @@
 
 import React, { useRef, useState } from 'react';
 import { auth } from '../../lib/firebaseClient';
+import emailIcon from "../../../public/assets/email_icon.png"
+import passwordIcon from "../../../public/assets/password_icon.png"
+import Image from 'next/image';
 import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
@@ -119,14 +122,16 @@ export default function SignInForm() {
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
                 <div className="relative">
-                    <span className="absolute left-3 top-3 text-gray-400">✉️</span>
+                    <span className="absolute left-3 top-[17px] text-gray-400">
+                        <Image src={emailIcon} alt='Email' width={19} height={17}/>
+                    </span>
                     <input
                         ref={emailRef}
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         className="mt-1 block w-full border rounded-lg p-3 pl-11 placeholder-gray-400"
                         type="email"
-                        placeholder="name@domain.com"
+                        placeholder="email@domain.com"
                         required
                     />
                 </div>
@@ -135,7 +140,9 @@ export default function SignInForm() {
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                 <div className="relative">
-                    <span className="absolute left-3 top-3 text-gray-400">🔒</span>
+                    <span className="absolute left-3 top-3 text-gray-400">
+                        <Image src={passwordIcon} alt='password' width={17} height={17}/>
+                    </span>
                     <input
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
