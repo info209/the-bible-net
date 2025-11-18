@@ -315,7 +315,7 @@ export default function SignupCompletePage() {
 							className="mt-1 block w-full border rounded-lg p-3"
 						>
 							{versionOptions.sort((a,b)=> {
-								const order = {en:1, te:2}
+								const order: Record<string, number> = { en: 1, te: 2 };
 								 return (order[a.language] || 3) - (order[b.language] || 3);
 							}).map(v => {
 									// Remove acronym in parentheses from displayName
