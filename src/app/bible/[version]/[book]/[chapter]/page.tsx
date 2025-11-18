@@ -754,7 +754,8 @@ export default function BibleDynamicPage() {
             )}
 
             {!readingMode && isMounted && musicOpen && selectorsRef.current && (
-                <ModalSelector portalKey={modalPortalKey} show={musicOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={() => setMusicOpen(false)} title="Audio">
+                <ModalSelector portalKey={modalPortalKey} show={musicOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={() => setMusicOpen(false)}
+                onBack={()=>{}} onDone={()=>{}} title="Audio">
                     <div className="p-3"><MusicControl /></div>
                 </ModalSelector>
             )}
@@ -769,6 +770,7 @@ export default function BibleDynamicPage() {
                         // ensure outer close is restored when modal closes
                         setHideOuterClose(false);
                     }}
+                      onBack={()=>{}} onDone={()=>{}}
                     // IMPORTANT: leave title empty so inner MoreMenu renders its own compact header/card
                     title=""
                     hideClose={hideOuterClose} // hide outer X when MoreMenu requests it
