@@ -33,7 +33,7 @@ export default function Header() {
                 {/* Responsive logo - w-auto for perfect alignment */}
                 <div className="flex items-center justify-center w-24 h-8 sm:w-32 sm:h-12 md:w-40 md:h-14 mr-2 sm:mr-3 flex-shrink-0">
                     <Image
-                        src="/logo.jpg"
+                        src="/n_logo.png"
                         alt="App logo"
                         fill={false}
                         width={256}
