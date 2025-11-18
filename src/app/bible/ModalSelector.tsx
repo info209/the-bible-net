@@ -98,8 +98,8 @@ export default function ModalSelector({
             const rect = triggerEl ? triggerEl.getBoundingClientRect() : anchorRef.current.getBoundingClientRect();
 
             if (vw >= 768) {
-                // 
-                const scaled = Math.max(420, Math.min(rect.width * 2.2, vw * 0.8));
+                // Modal width changes 
+                const scaled = Math.max(320, Math.min(rect.width * 2.2, vw * 0.8));
                 const modalWidth = Math.min(maxWidth, scaled);
 
                 const leftCentered = rect.left + rect.width / 2 - modalWidth / 2;
@@ -200,7 +200,7 @@ export default function ModalSelector({
                 >
                     <div
                         className="bg-white border rounded-2xl shadow-xl overflow-hidden pointer-events-auto"
-                        style={{ maxHeight: "68vh" }}
+                        style={{ maxHeight: "50vh" }}
                     >
                         {/* Top header from the selector (optional). If title is empty, we skip rendering this header. */}
                         {title ? (

@@ -22,6 +22,9 @@ import { createHighlight } from "@/lib/highlightApi";
 import { makeVerseId } from "@/lib/highlightHelpers";
 import HighlightToolbar from "@/components/HighlightToolbar";
 import "@/styles/highlights.css";
+import Image from "next/image";
+import backArrowIcon from "../../../../../../public/assets/back_arrow_icon.png"
+import frontArrowIcon from '../../../../../../public/assets/front_arrow_icon.png'
 
 const API_BASE = "https://australia-southeast1-the-bible-net.cloudfunctions.net/api";
 const fetchWithKey = (url: string) =>
@@ -87,7 +90,6 @@ export default function BibleDynamicPage() {
     const [book, setBook] = useState<string>(initialBook);
     const [chapter, setChapter] = useState<number>(initialChapter);
     const [selectedVerse, setSelectedVerse] = useState<number | null>(initialVerse);
-
     // ...existing UI, modal, popover, readingMode, etc. state...
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -613,6 +615,7 @@ export default function BibleDynamicPage() {
         window.addEventListener("scroll", handleScroll, { passive: true });
         return () => window.removeEventListener("scroll", handleScroll);
     }, [selectorsSticky]);
+    
 
     return (
         <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10]" : "min-h-screen flex flex-col"}>
@@ -647,7 +650,7 @@ export default function BibleDynamicPage() {
                     {!readingMode && !showStickyBar && (
                         <div
                             ref={selectorsRef}
-                            className={`z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 w-full bg-transparent border-none shadow-none transition-all duration-300`}
+                            className={`z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-auto w-[86%] bg-transparent border-none shadow-none transition-all duration-300`}
                             style={{ background: 'none', boxShadow: 'none', border: 'none', position: 'sticky', top: 0 }}
                         >
                             {!readingMode ? (
@@ -707,6 +710,32 @@ export default function BibleDynamicPage() {
                                 {!hideFootnotes && (
                                     <div className="mt-6 text-sm text-gray-500"></div>
                                 )}
+                               
+                                {!loading || versions.length && (
+                                        <div className="flex justify-between">
+                                    <div  className={`w-10 h-10 flex border items-center justify-center rounded-full 
+                                                ${chapter === 1 ? 'bg-gray-300 scursor-not-allowed' : 'bg-white cursor-pointer'}`}
+                                        onClick={() => {
+                                            if (chapter > 1) {
+                                                setChapter(chapter - 1);
+                                            }
+                                        }}>
+                                        <Image src={backArrowIcon} alt="Back"/>
+                                    </div>
+                                    <div className={`w-10 h-10 flex border items-center justify-center rounded-full 
+                                                ${chapter >=chapters?.length ? 'bg-gray-300 scursor-not-allowed' : 'bg-white cursor-pointer'}`}
+                                    onClick={()=>{ 
+                                        if(chapter < chapters?.length){
+                                            setChapter( chapter + 1 )
+                                        }
+                                        }}
+                                    >
+                                        <Image src={frontArrowIcon} alt="Next"/>
+                                    </div>
+                                      
+                                </div>
+                                )}
+                               
                             </motion.article>
                         </AnimatePresence>
                     </div>

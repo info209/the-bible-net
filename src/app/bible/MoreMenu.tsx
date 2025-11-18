@@ -264,34 +264,34 @@ export default function MoreMenu({
                 <div className="text-sm text-gray-500 mb-3 text-left">Theme</div>
                 <div className="flex w-full justify-between items-center gap-2 sm:gap-4 md:gap-6">
                     <button type="button" onClick={() => updateTheme("default")}
-                            className={`h-10 w-20 sm:h-12 sm:w-28 md:h-14 md:w-32 flex items-center justify-center rounded-full border transition-all ${activeTheme === "default" ? "border-teal-400" : "border-gray-300"} bg-white hover:border-teal-400`}
+                            className={`h-10 w-20 sm:h-12 sm:w-28 md:h-10 md:w-25 flex items-center justify-center rounded-full border transition-all ${activeTheme === "default" ? "border-teal-400" : "border-gray-300"} bg-white hover:border-teal-400`}
                             aria-pressed={activeTheme === "default" ? "true" : "false"} title="Default">
-                        <svg className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-6 h-6 sm:w-8 sm:h-8 md:w-8 md:h-8" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <circle cx="16" cy="16" r="10" stroke="#14b8a6" strokeWidth="2" fill="none" />
                             <path d="M12.5 16.5l3 3 5-5" stroke="#14b8a6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                         </svg>
                     </button>
 
                     <button type="button" onClick={() => updateTheme("pink")}
-                            className={`h-10 w-20 sm:h-12 sm:w-28 md:h-14 md:w-32 flex items-center justify-center rounded-full border transition-all ${activeTheme === "pink" ? "border-pink-400" : "border-pink-200"} bg-pink-50 hover:border-pink-400`}
+                            className={`h-10 w-20 sm:h-12 sm:w-28 md:h-10 md:w-25 flex items-center justify-center rounded-full border transition-all ${activeTheme === "pink" ? "border-pink-400" : "border-pink-200"} bg-pink-50 hover:border-pink-400`}
                             aria-pressed={activeTheme === "pink" ? "true" : "false"} title="Pink">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#e9a8d4" className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#e9a8d4" className="w-6 h-6 sm:w-8 sm:h-8 md:w-8s md:h-8">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.343 17.657l-1.414 1.414M17.657 17.657l-1.414-1.414M6.343 6.343L4.929 4.929M12 8a4 4 0 100 8 4 4 0 000-8z" />
                         </svg>
                     </button>
 
                     <button type="button" onClick={() => updateTheme("sepia")}
-                            className={`h-10 w-20 sm:h-12 sm:w-28 md:h-14 md:w-32 flex items-center justify-center rounded-full border transition-all ${activeTheme === "sepia" ? "border-yellow-400" : "border-yellow-300"} bg-yellow-50 hover:border-yellow-400`}
+                            className={`h-10 w-20 sm:h-12 sm:w-28 md:h-10 md:w-25 flex items-center justify-center rounded-full border transition-all ${activeTheme === "sepia" ? "border-yellow-400" : "border-yellow-300"} bg-yellow-50 hover:border-yellow-400`}
                             aria-pressed={activeTheme === "sepia" ? "true" : "false"} title="Sepia">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#e5c78c" className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#e5c78c" className="w-6 h-6 sm:w-8 sm:h-8 md:w-8 md:h-8">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.364-6.364l-1.414 1.414M6.343 17.657l-1.414 1.414M17.657 17.657l-1.414-1.414M6.343 6.343L4.929 4.929M12 8a4 4 0 100 8 4 4 0 000-8z" />
                         </svg>
                     </button>
 
                     <button type="button" onClick={() => updateTheme("dark")}
-                            className={`h-10 w-20 sm:h-12 sm:w-28 md:h-14 md:w-32 flex items-center justify-center rounded-full border-0 transition-all ${activeTheme === "dark" ? "ring-2 ring-gray-400" : ""} bg-[#2d2d2d]`}
+                            className={`h-10 w-20 sm:h-12 sm:w-28 md:h-10 md:w-25 flex items-center justify-center rounded-full border-0 transition-all ${activeTheme === "dark" ? "ring-2 ring-gray-400" : ""} bg-[#2d2d2d]`}
                             aria-pressed={activeTheme === "dark" ? "true" : "false"} title="Dark">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#fff" className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="#fff" className="w-6 h-6 sm:w-8 sm:h-8 md:w-6 md:h-6">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z" />
                         </svg>
                     </button>
