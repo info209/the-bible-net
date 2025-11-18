@@ -12,6 +12,9 @@ type Props = {
     maxWidth?: number;
     portalKey?: string | number;
     hideClose?: boolean; // NEW - hide outer X when true
+    mode?: string;
+    onBack: () => void;
+    onDone: () => void;
 };
 
 export default function ModalSelector({
@@ -23,6 +26,9 @@ export default function ModalSelector({
                                           maxWidth = 960,
                                           portalKey,
                                           hideClose = false,
+                                          mode,
+                                          onBack,
+                                          onDone
                                       }: Props) {
     const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
@@ -198,12 +204,29 @@ export default function ModalSelector({
                         {/* Top header from the selector (optional). If title is empty, we skip rendering this header. */}
                         {title ? (
                             <div className="sticky top-0 z-30 bg-white border-b flex items-center justify-between px-4 py-3">
+                               {mode === "verses" && (
+                                          <button
+                                            onClick={onBack}
+                                            className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
+                                          >
+                                            ← Back
+                                          </button>
+                                        )}
                                 <div className="text-md font-semibold text-gray-700">{title}</div>
-                                <div className="flex items-center gap-2">
+                                
                                     {!hideClose && (
-                                        <button onClick={onClose} aria-label="Close" className="px-3 py-1 rounded text-gray-600 hover:bg-gray-100">✕</button>
+                                        <div className="flex items-center gap-2">
+                                            <button onClick={onClose} aria-label="Close" className="px-3 py-1 rounded text-gray-600 hover:bg-gray-100">✕</button>
+                                        </div>
                                     )}
-                                </div>
+{/*                               
+                                  {mode === "verses" && (
+                                        <button
+                                          onClick={onDone}
+                                          className="text-sm text-green-700 px-2 py-1 rounded hover:bg-green-50"
+                                          >
+                                            Done
+                                              </button>)} */}
                             </div>
                         ) : (
                             // If title is empty, we still render a small spacing to avoid visual jump; keep pointer area for close if not hidden.
