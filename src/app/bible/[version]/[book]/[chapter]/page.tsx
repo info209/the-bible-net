@@ -615,6 +615,23 @@ export default function BibleDynamicPage() {
         window.addEventListener("scroll", handleScroll, { passive: true });
         return () => window.removeEventListener("scroll", handleScroll);
     }, [selectorsSticky]);
+
+    useEffect(() => {
+          if (!selectedVerse) return;
+    if (selectedVerse === 1) return;
+   
+        const el = document.getElementById(`verse-${selectedVerse}`);
+        if (el) {
+            el.scrollIntoView({
+                behavior: "smooth",
+                block: "center"
+            });
+
+            
+        }
+    
+}, [selectedVerse]);
+
     
 
     return (
@@ -650,7 +667,7 @@ export default function BibleDynamicPage() {
                     {!readingMode && !showStickyBar && (
                         <div
                             ref={selectorsRef}
-                            className={`z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-auto w-[86%] bg-transparent border-none shadow-none transition-all duration-300`}
+                            className={`z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-4 md:ml-[40px] lg:ml-[50px] lg:w-[93%] md:w-[92%] w-[91%] bg-transparent border-none shadow-none transition-all duration-300`}
                             style={{ background: 'none', boxShadow: 'none', border: 'none', position: 'sticky', top: 0 }}
                         >
                             {!readingMode ? (
@@ -695,6 +712,7 @@ export default function BibleDynamicPage() {
                                     return (
                                         <span
                                             key={v.n}
+                                            id={`verse-${v.n}`}
                                             data-verse-id={vid}
                                             className={` ${readingMode ? "text-gray-100" : "text-gray-800"} ${colorClass} ${selectedClass} ${selectionCursor}`}
                                             onClick={() => { if (selectionMode) toggleVerseSelection(v.n); }} 
@@ -711,7 +729,7 @@ export default function BibleDynamicPage() {
                                     <div className="mt-6 text-sm text-gray-500"></div>
                                 )}
                                
-                                {!loading || versions.length && (
+                                {loading || versions.length > 0 && (
                                         <div className="flex justify-between">
                                     <div  className={`w-10 h-10 flex border items-center justify-center rounded-full 
                                                 ${chapter === 1 ? 'bg-gray-300 scursor-not-allowed' : 'bg-white cursor-pointer'}`}

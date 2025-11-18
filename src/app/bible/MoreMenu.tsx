@@ -300,15 +300,15 @@ export default function MoreMenu({
 
             <div className="mb-3 w-full">
                 <div className="text-sm sm:text-base text-gray-500 mb-3 text-left">Page transitions</div>
-                <div className="flex w-full gap-2 sm:gap-3 md:gap-4 justify-between items-end">
+                <div className="flex w-full gap-2 sm:gap-3 md:gap-4 justify-between items-start">
                     <button
                         type="button"
                         onClick={() => updateTrans("slide")}
                         className={`flex-1 flex flex-col items-center gap-1 group`}
                         aria-pressed={activeTrans === "slide" ? "true" : "false"}
                     >
-                        <span className={`flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-md border transition-all ${activeTrans === "slide" ? "bg-rose-50 ring-2 ring-rose-200 border-rose-300" : "bg-white border-gray-200"}`}>
-                            <PiSlideshow className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10" />
+                        <span className={`flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 md:h-8 md:w-10 rounded-md border transition-all ${activeTrans === "slide" ? "bg-rose-50 ring-2 ring-rose-200 border-rose-300" : "bg-white border-gray-200"}`}>
+                            <PiSlideshow className="w-6 h-6 sm:w-8 sm:h-8 md:w-6 md:h-6" />
                         </span>
                         <span className={`mt-1 text-xs sm:text-sm font-medium ${activeTrans === "slide" ? "text-rose-600" : "text-gray-500"}`}>Slide</span>
                     </button>
@@ -318,8 +318,8 @@ export default function MoreMenu({
                         className={`flex-1 flex flex-col items-center gap-1 group`}
                         aria-pressed={activeTrans === "fade" ? "true" : "false"}
                     >
-                        <span className={`flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-md border transition-all ${activeTrans === "fade" ? "bg-rose-50 ring-2 ring-rose-200 border-rose-300" : "bg-white border-gray-200"}`}>
-                            <MdBlurOn className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10" />
+                        <span className={`flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 md:h-8 md:w-10 rounded-md border transition-all ${activeTrans === "fade" ? "bg-rose-50 ring-2 ring-rose-200 border-rose-300" : "bg-white border-gray-200"}`}>
+                            <MdBlurOn className="w-6 h-6 sm:w-8 sm:h-8 md:w-6 md:h-6" />
                         </span>
                         <span className={`mt-1 text-xs sm:text-sm font-medium ${activeTrans === "fade" ? "text-rose-600" : "text-gray-500"}`}>Fade</span>
                     </button>
@@ -329,8 +329,8 @@ export default function MoreMenu({
                         className={`flex-1 flex flex-col items-center gap-1 group`}
                         aria-pressed={activeTrans === "flip" ? "true" : "false"}
                     >
-                        <span className={`flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14 rounded-md border transition-all ${activeTrans === "flip" ? "bg-rose-50 ring-2 ring-rose-200 border-rose-300" : "bg-white border-gray-200"}`}>
-                            <CgEditFlipH className="w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10" />
+                        <span className={`flex items-center justify-center h-10 w-10 sm:h-12 sm:w-12 md:h-8 md:w-10 rounded-md border transition-all ${activeTrans === "flip" ? "bg-rose-50 ring-2 ring-rose-200 border-rose-300" : "bg-white border-gray-200"}`}>
+                            <CgEditFlipH className="w-6 h-6 sm:w-8 sm:h-8 md:w-6 md:h-6" />
                         </span>
                         <span className={`mt-1 text-xs sm:text-sm font-medium ${activeTrans === "flip" ? "text-rose-600" : "text-gray-500"}`}>Flip</span>
                     </button>
