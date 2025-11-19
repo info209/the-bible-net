@@ -616,20 +616,19 @@ export default function BibleDynamicPage() {
         return () => window.removeEventListener("scroll", handleScroll);
     }, [selectorsSticky]);
 
-    useEffect(() => {
-          if (!selectedVerse) return;
-    if (selectedVerse === 1) return;
-   
-        const el = document.getElementById(`verse-${selectedVerse}`);
-        if (el) {
-            el.scrollIntoView({
-                behavior: "smooth",
-                block: "center"
-            });
+   useEffect(() => {
+  if (!selectedVerse || selectedVerse === 1) return;
 
-            
-        }
-    
+  const el = document.getElementById(`verse-${selectedVerse}`);
+  const container = document.getElementById("verses-container");
+
+  if (!el || !container) return;
+
+  container.scrollTo({
+    top: el.offsetTop - container.offsetTop - 100, // offset for header
+    behavior: "smooth",
+  });
+
 }, [selectedVerse]);
 
     
@@ -660,8 +659,10 @@ export default function BibleDynamicPage() {
                 </div>
             )}
             {!readingMode &&  <Header />}
-
+   
             <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : ''}`}>
+                 <div   id="verses-container"
+                        className="overflow-y-auto no-scrollbar h-[100vh]">
                 <div className="mx-auto w-full max-w-5xl">
                     {/* Selectors section stays wide */}
                     {!readingMode && !showStickyBar && (
@@ -698,12 +699,16 @@ export default function BibleDynamicPage() {
                         )}
                         {loading && <div className="text-gray-500 mb-4">Loading...</div>}
                         {error && <div className="text-red-500 mb-4">{error}</div>}
+                      
+
+                      
                         <AnimatePresence mode="wait" initial={false}>
                             <motion.article key={`${version}_${book}_${chapter}`}
                                             style={articleStyle}
                                             className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}
                                             variants={variants[resolvedTransition] || variants["fade"]}
                                             initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
+                                                 
                                 {verses.map((v: any) => {
                                     const vid = makeVerseId(book, chapter, v.n);
                                     const colorClass = verseToColor[vid] ? `hl-${verseToColor[vid]}` : "";
@@ -729,8 +734,26 @@ export default function BibleDynamicPage() {
                                     <div className="mt-6 text-sm text-gray-500"></div>
                                 )}
                                
-                                {loading || versions.length > 0 && (
-                                        <div className="flex justify-between">
+                             
+                            </motion.article>
+                        </AnimatePresence>
+                       
+                    </div>
+                </div> 
+                 </div>                
+            </main>
+           
+                        {loading || versions.length > 0 && (
+                                        <div
+                                                className="
+                                                    fixed flex justify-between
+                                                    top-[85%] left-1/2 -translate-x-1/2 -translate-y-1/2 
+                                                    w-[90%]
+                                                    md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 
+                                                    md:w-[90%]
+                                                    lg:w-[75%]
+                                                "
+                                                >
                                     <div  className={`w-10 h-10 flex border items-center justify-center rounded-full 
                                                 ${chapter === 1 ? 'bg-gray-300 scursor-not-allowed' : 'bg-white cursor-pointer'}`}
                                         onClick={() => {
@@ -753,12 +776,6 @@ export default function BibleDynamicPage() {
                                       
                                 </div>
                                 )}
-                               
-                            </motion.article>
-                        </AnimatePresence>
-                    </div>
-                </div>
-            </main>
             {/* FooterNav visibility logic */}
             {!readingMode && showFooterNav && <FooterNav />}
 

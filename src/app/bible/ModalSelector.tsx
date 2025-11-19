@@ -28,7 +28,6 @@ export default function ModalSelector({
                                           hideClose = false,
                                           mode,
                                           onBack,
-                                          onDone
                                       }: Props) {
     const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
 
@@ -98,7 +97,7 @@ export default function ModalSelector({
             const rect = triggerEl ? triggerEl.getBoundingClientRect() : anchorRef.current.getBoundingClientRect();
 
             if (vw >= 768) {
-                const scaled = Math.max(420, Math.min(rect.width * 2.2, vw * 0.8));
+                const scaled = Math.max(350, Math.min(rect.width * 2.2, vw * 0.8));
                 const modalWidth = Math.min(maxWidth, scaled);
 
                 const leftCentered = rect.left + rect.width / 2 - modalWidth / 2;
@@ -199,7 +198,7 @@ export default function ModalSelector({
                 >
                     <div
                         className="bg-white border rounded-2xl shadow-xl overflow-hidden pointer-events-auto"
-                        style={{ maxHeight: "68vh" }}
+                        // style={{ maxHeight: "50vh" }}
                     >
                         {/* Top header from the selector (optional). If title is empty, we skip rendering this header. */}
                         {title ? (
@@ -234,7 +233,7 @@ export default function ModalSelector({
                         )}
 
                         {/* content */}
-                        <div className="overflow-y-auto max-h-[64vh]">
+                        <div className="overflow-y-auto max-h-[45vh]">
                             {/* If title was empty, the children are responsible for their own header/controls */}
                             <div className="p-3">{children}</div>
                         </div>
