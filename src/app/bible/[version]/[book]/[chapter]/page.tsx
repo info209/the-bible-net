@@ -668,7 +668,7 @@ export default function BibleDynamicPage() {
                     {!readingMode && !showStickyBar && (
                         <div
                             ref={selectorsRef}
-                            className={`z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-4 md:ml-[40px] lg:ml-[50px] lg:w-[93%] md:w-[92%] w-[91%] bg-transparent border-none shadow-none transition-all duration-300`}
+                            className={`z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-4 md:ml-[150px] lg:ml-[166px] lg:w-[68%] md:w-[59%] w-[88%] bg-transparent border-none shadow-none transition-all duration-300`}
                             style={{ background: 'none', boxShadow: 'none', border: 'none', position: 'sticky', top: 0 }}
                         >
                             {!readingMode ? (

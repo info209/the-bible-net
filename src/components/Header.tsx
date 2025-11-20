@@ -5,9 +5,9 @@ import { useAuth } from '../context/AuthProvider';
 import React, { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { FaGlobe } from 'react-icons/fa';
-import profileIcon from '../../public/assets/profile_icon.png'
+import profileIcon from '../../public/assets/profile_icon.svg'
 import menuIcon from '../../public/assets/menu_icon.png'
-import languageIcon from '../../public/assets/language_change_icon.png'
+import languageIcon from '../../public/assets/earth_icons.svg'
 
 export default function Header() {
     const { user, loading, signOut } = useAuth();

@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { PiSlideshow } from "react-icons/pi";
 import { MdBlurOn } from "react-icons/md";
 import { CgEditFlipH } from "react-icons/cg";
+import Image from "next/image";
+import backButton from '../../../public/assets/back_button_icons.svg'
 
 type Props = {
     nested?: boolean;
@@ -171,12 +173,18 @@ export default function MoreMenu({
         <PanelWrapper>
             <div className="flex items-center justify-between w-full mb-3">
                 <button
-                    type="button"
-                    onClick={() => setView("main")}
-                    className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
-                >
-                    ← Back
-                </button>
+      type="button"
+      onClick={() => setView("main")}
+      className="flex items-center gap-1 text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
+    >
+      <Image
+        src={backButton}
+        alt="Back"
+        width={16}
+        height={16}
+      />
+      <span>Back</span>
+    </button>
                 <div className="font-semibold text-sm">Fonts & Settings</div>
                 <button
                     type="button"

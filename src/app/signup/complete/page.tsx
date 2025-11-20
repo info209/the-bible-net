@@ -261,7 +261,7 @@ export default function SignupCompletePage() {
 				<p className="text-left text-sm text-gray-500 mb-4">Help us personalize your Bible reading experience</p>
 
 				<form onSubmit={handleCreateNow} className="space-y-4">
-					<div>
+					<div className="text-gray-500 font-normal">
 						<label className="block text-sm font-medium text-gray-700 mb-2">Country</label>
 						<Select
 							options={countryOptions}
@@ -270,7 +270,7 @@ export default function SignupCompletePage() {
 							classNamePrefix="react-select"
 							placeholder="Select country..."
 							isSearchable
-							styles={{
+							styles ={{ 
 								control: (provided) => ({
 									...provided,
 									minHeight: '48px',
@@ -296,18 +296,117 @@ export default function SignupCompletePage() {
 					</div>
 
 					<div>
-						<label className="block text-sm font-medium text-gray-700 mb-2">Preferred language</label>
+						<label className="block text-sm font-medium text-gray-700 mb-2 " >Preferred language</label>
 						<select
 							value={language}
 							onChange={e => setLanguage(e.target.value)}
 							className="mt-1 block w-full border rounded-lg p-3"
 						>
-							<option>English (EN)</option>
-							<option>తెలుగు (TE)</option>
+							<option className="text-gray-500 font-normal">English </option>
+							<option className="text-gray-500 font-normal">తెలుగు (Telugu)</option>
+							<option className="text-gray-500 font-normal">ಕನ್ನಡ (Kannada)</option>
+							<option className="text-gray-500 font-normal">தமிழ் (Tamil)</option>
+							<option className="text-gray-500 font-normal">മലയാളം (Malayalam)</option>
+							<option className="text-gray-500 font-normal">हिंदी (Hindi)</option>						
 						</select>
 					</div>
 
 					<div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Preferred versions
+  </label>
+
+  <select
+    value={version}
+    onChange={(e) => setVersion(e.target.value)}
+    className="mt-1 block w-full border rounded-lg p-3"
+  >
+    {/* ---- English Group ---- */}
+    <optgroup label="English" className="text-gray-500 font-normal">
+      {versionOptions
+        .filter(v => v.language === "en")
+        .sort((a, b) => {
+          const order: Record<string, number> = { en: 1, te: 2 };
+          return (order[a.language] || 3) - (order[b.language] || 3);
+        })
+        .map(v => {
+          const cleanName = v.displayName.replace(/\s*\([^)]*\)/, "");
+          return (
+            <option key={v.id} value={v.id}>
+              {cleanName.trim()} {v.id.toUpperCase()}
+            </option>
+          );
+        })}
+    </optgroup>
+
+    {/* ---- Telugu Group ---- */}
+    <optgroup label="Telugu" className="text-gray-500 font-normal">
+      {versionOptions
+        .filter(v => v.language === "te")
+        .sort((a, b) => {
+          const order: Record<string, number> = { en: 1, te: 2 };
+          return (order[a.language] || 3) - (order[b.language] || 3);
+        })
+        .map(v => {
+          const cleanName = v.displayName.replace(/\s*\([^)]*\)/, "");
+          return (
+            <option key={v.id} value={v.id}>
+              {cleanName.trim()} {v.id.toUpperCase()}
+            </option>
+          );
+        })}
+    </optgroup>
+  </select>
+</div>
+
+					{/* <div>
+  <label className="block text-sm font-medium text-gray-700 mb-2">
+    Preferred versions
+  </label>
+
+  <select
+    value={version}
+    onChange={(e) => setVersion(e.target.value)}
+    className="mt-1 block w-full border rounded-lg p-3"
+  >
+   
+    <optgroup label="𝖤𝗇𝗀𝗅𝗂𝗌𝗁">
+      {versionOptions
+        .filter(v => v.language === "en")
+        .sort((a, b) => {
+          const order: Record<string, number> = { en: 1, te: 2 };
+          return (order[a.language] || 3) - (order[b.language] || 3);
+        })
+        .map(v => {
+          const cleanName = v.displayName.replace(/\s*\([^)]*\)/, "");
+          return (
+            <option key={v.id} value={v.id}>
+              {cleanName.trim()} {v.id.toUpperCase()}
+            </option>
+          );
+        })}
+    </optgroup>
+
+    <optgroup label="𝖳𝖾𝗅𝗎𝗀𝗎">
+      {versionOptions
+        .filter(v => v.language === "te")
+        .sort((a, b) => {
+          const order: Record<string, number> = { en: 1, te: 2 };
+          return (order[a.language] || 3) - (order[b.language] || 3);
+        })
+        .map(v => {
+          const cleanName = v.displayName.replace(/\s*\([^)]*\)/, "");
+          return (
+            <option key={v.id} value={v.id}>
+              {cleanName.trim()} {v.id.toUpperCase()}
+            </option>
+          );
+        })}
+    </optgroup>
+  </select>
+</div> */}
+
+					{/* <div>
 						<label className="block text-sm font-medium text-gray-700 mb-2">Preferred versions</label>
 						<select
 							value={version}
@@ -327,7 +426,7 @@ export default function SignupCompletePage() {
 									);
 								})}
 						</select>
-					</div>
+					</div> */}
 
 					<button
 						disabled={loading}
