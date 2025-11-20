@@ -24,15 +24,16 @@ const isDiscover = isActiveRoute("/discover");
     return (
         <nav className="fixed bottom-0 left-0 right-0 h-20 bg-white shadow-lg z-40">
             {/* Match max width with Header and Reader page (max-w-5xl) */}
-            <div className="mx-4
-                    h-full
-                    px-4 sm:px-6
-                    flex items-center justify-between
-
-                    md:ml-[18%] md:w-[62%]     /* Tablet (md) */
-                    lg:ml-[583px] lg:w-[40%] /* Desktop (lg) */
-                    max-w-5xl">
-                {/* className="lg:ml-[583px] lg:w-[40%] md:w-full max-w-5xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between"> */}
+            <div   className="
+                                  mx-4
+                                  h-full
+                                  px-4 sm:px-6
+                                  flex items-center justify-between
+                                  md:mx-auto md:w-[62%]
+                                  lg:mx-auto lg:w-[40%]
+                                  max-w-5xl
+                                ">
+                  {/* className="lg:ml-[583px] lg:w-[40%] md:w-full max-w-5xl mx-auto h-full px-4 sm:px-6 flex items-center justify-between"> */}
                 {/* mx-auto w-[86%] max-w-5xl h-full px-4 sm:px-6 flex items-center justify-between */}
                 {/* md:ml-[150px] lg:ml-[166px] lg:w-[68%] md:w-[59%] w-[80%] flex bg-transparent border-none shadow-none */}
 <Link
