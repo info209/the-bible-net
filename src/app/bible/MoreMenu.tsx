@@ -201,8 +201,8 @@ export default function MoreMenu({
                 </div>
             </div>
 
-            <div className="mb-6 w-full">
-                <div className="text-sm text-gray-500 mb-2 text-left">Font size</div>
+            <div className="mb-4 w-full">
+                <div className="text-sm text-gray-500 text-left">Font size</div>
                 <div className="w-full flex items-center justify-between px-2 py-3 bg-transparent">
                      <span className="text-sm font-medium select-none">A-</span>
                     <div className="relative h-10 w-[80%] flex items-center">
@@ -260,7 +260,7 @@ export default function MoreMenu({
                 </div>
             </div>
 
-            <div className="mb-6 w-full">
+            <div className="mb-5 w-full">
                 <div className="text-sm text-gray-500 mb-3 text-left">Theme</div>
                 <div className="flex w-full justify-between items-center gap-2 sm:gap-4 md:gap-6">
                     <button type="button" onClick={() => updateTheme("default")}
@@ -298,7 +298,7 @@ export default function MoreMenu({
                 </div>
             </div>
 
-            <div className="mb-3 w-full">
+            <div className="w-full">
                 <div className="text-sm sm:text-base text-gray-500 mb-3 text-left">Page transitions</div>
                 <div className="flex w-full gap-2 sm:gap-3 md:gap-4 justify-between items-start">
                     <button
