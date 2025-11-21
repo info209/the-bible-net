@@ -9,7 +9,7 @@ export default function VerseSelector({ verses, onSelect, onBack, onDone, active
                 try {
                     const val = localStorage.getItem("bible_last_selection");
                     onDone()
-                    return val ? JSON.parse(val) : {};
+                    return val ? JSON.parse(val) : {};s
                 } catch {
                     return {};
                 }
@@ -33,7 +33,7 @@ export default function VerseSelector({ verses, onSelect, onBack, onDone, active
                 <button onClick={onDone} className="text-sm text-green-700 px-2 py-1 rounded hover:bg-green-50">Done</button>
             </div> */}
 
-            <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-8 gap-2 max-w-3xl mx-auto">
+            <div className="grid grid-cols-5 sm:grid-cols-7 md:grid-cols-6 gap-2 max-w-3xl mx-auto">
                 {verses.map((v: any) => (
                     <button
                         key={v.n}

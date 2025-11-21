@@ -4,6 +4,8 @@ import React, { useEffect, useState } from "react";
 import { PiSlideshow } from "react-icons/pi";
 import { MdBlurOn } from "react-icons/md";
 import { CgEditFlipH } from "react-icons/cg";
+import Image from "next/image";
+import backButton from '../../../public/assets/back_button_icons.svg'
 
 type Props = {
     nested?: boolean;
@@ -105,9 +107,9 @@ export default function MoreMenu({
     }, [localFont, localFamily, localTheme, localTrans, localHide, controlledSetFont, controlledSetFamily, controlledSetTheme, controlledSetTransition, controlledSetHide]);
 
     const PanelWrapper = ({ children }: { children: React.ReactNode }) => (
-        <div className="w-full px-3 pb-4">
+        <div className="w-full">
             <div className="mx-auto" style={{ maxWidth: 720 }}>
-                <div className="bg-white rounded-2xl shadow-xl p-4 flex flex-col w-full">{children}</div>
+                <div className="p-2 flex flex-col w-full">{children}</div>
             </div>
         </div>
     );
@@ -171,12 +173,18 @@ export default function MoreMenu({
         <PanelWrapper>
             <div className="flex items-center justify-between w-full mb-3">
                 <button
-                    type="button"
-                    onClick={() => setView("main")}
-                    className="text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
-                >
-                    ← Back
-                </button>
+      type="button"
+      onClick={() => setView("main")}
+      className="flex items-center gap-1 text-sm text-gray-600 px-2 py-1 rounded hover:bg-gray-100"
+    >
+      <Image
+        src={backButton}
+        alt="Back"
+        width={16}
+        height={16}
+      />
+      <span>Back</span>
+    </button>
                 <div className="font-semibold text-sm">Fonts & Settings</div>
                 <button
                     type="button"
@@ -201,8 +209,8 @@ export default function MoreMenu({
                 </div>
             </div>
 
-            <div className="mb-6 w-full">
-                <div className="text-sm text-gray-500 mb-2 text-left">Font size</div>
+            <div className="mb-4 w-full">
+                <div className="text-sm text-gray-500 text-left">Font size</div>
                 <div className="w-full flex items-center justify-between px-2 py-3 bg-transparent">
                      <span className="text-sm font-medium select-none">A-</span>
                     <div className="relative h-10 w-[80%] flex items-center">
@@ -260,7 +268,7 @@ export default function MoreMenu({
                 </div>
             </div>
 
-            <div className="mb-6 w-full">
+            <div className="mb-5 w-full">
                 <div className="text-sm text-gray-500 mb-3 text-left">Theme</div>
                 <div className="flex w-full justify-between items-center gap-2 sm:gap-4 md:gap-6">
                     <button type="button" onClick={() => updateTheme("default")}
@@ -298,7 +306,7 @@ export default function MoreMenu({
                 </div>
             </div>
 
-            <div className="mb-3 w-full">
+            <div className="w-full">
                 <div className="text-sm sm:text-base text-gray-500 mb-3 text-left">Page transitions</div>
                 <div className="flex w-full gap-2 sm:gap-3 md:gap-4 justify-between items-start">
                     <button

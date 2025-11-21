@@ -4,7 +4,7 @@ import React from "react";
 export default function ChapterSelector({ chapters, onSelect, active, activeVersion, activeBook }: any) {
     return (
         <div className="w-full">
-            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-6 gap-2 justify-center max-w-3xl mx-auto">
+            <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-6 gap-3 justify-center max-w-3xl mx-auto">
                 {chapters.map((n: number) => (
                     <button
                         key={n}
