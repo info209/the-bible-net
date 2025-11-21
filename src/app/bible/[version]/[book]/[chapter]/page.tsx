@@ -631,8 +631,6 @@ export default function BibleDynamicPage() {
 
 }, [selectedVerse]);
 
-    
-
     return (
         <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10]" : "min-h-screen flex flex-col"}>
             {/* Sticky info bar for reading mode */}
@@ -661,8 +659,7 @@ export default function BibleDynamicPage() {
             {!readingMode &&  <Header />}
    
             <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : ''}`}>
-                 <div   id="verses-container"
-                        className="overflow-y-auto no-scrollbar h-[100vh]">
+              
                 <div className="mx-auto w-full max-w-5xl">
                     {/* Selectors section stays wide */}
                     {!readingMode && !showStickyBar && (
@@ -689,7 +686,9 @@ export default function BibleDynamicPage() {
                             <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={() => setMoreOpen(true)}>⋮</button>
                         </div>
                     )}
-
+   <div   id="verses-container"
+                        className="overflow-y-auto no-scrollbar h-[100vh]"
+                          style={{ paddingBottom: showFooterNav ? "250px":"" }}>
                     {/* Bible verses/content area is constrained */}
                     <div className="mx-auto w-full max-w-xl">
                         {readingMode && (
@@ -780,7 +779,7 @@ export default function BibleDynamicPage() {
             {!readingMode && showFooterNav && <FooterNav />}
 
             {!readingMode && isMounted && modalOpen && selectorsRef.current && (
-                <ModalSelector portalKey={modalPortalKey} show={modalOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeModal} title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" } mode={mode} onBack={() => setMode("chapters")} onDone={handleVerseDone}>
+                <ModalSelector portalKey={modalPortalKey} show={modalOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeModal} title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" } mode={mode} onBack={() => setMode("chapters")} onDone={handleVerseDone} maxWidth={400} customHeight={520}>
                     {mode === "books" && <BookSelector books={books} onSelect={handleBookSelect} active={book} isTelugu={isTelugu} activeVersion={version} activeChapter={chapter} />}
                     {mode === "chapters" && <ChapterSelector chapters={chapters} onSelect={handleChapterSelect} active={chapter} activeVersion={version} activeBook={book} />}
                     {mode === "verses" && <VerseSelector verses={verses} onSelect={handleVerseSelect} onBack={() => setMode("chapters")} onDone={handleVerseDone} active={selectedVerse} />}

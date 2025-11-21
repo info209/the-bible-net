@@ -109,7 +109,7 @@ export default function MoreMenu({
     const PanelWrapper = ({ children }: { children: React.ReactNode }) => (
         <div className="w-full">
             <div className="mx-auto" style={{ maxWidth: 720 }}>
-                <div className="p-4 flex flex-col w-full">{children}</div>
+                <div className="p-2 flex flex-col w-full">{children}</div>
             </div>
         </div>
     );
