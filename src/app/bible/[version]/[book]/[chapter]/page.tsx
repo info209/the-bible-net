@@ -732,8 +732,8 @@ export default function BibleDynamicPage() {
                                 {!hideFootnotes && (
                                     <div className="mt-6 text-sm text-gray-500"></div>
                                 )}
+                            
                                
-                             
                             </motion.article>
                         </AnimatePresence>
                        
