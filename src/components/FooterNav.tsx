@@ -14,11 +14,11 @@ import { usePathname } from "next/navigation";
 
 export default function FooterNav() {
     const pathname = usePathname();
-    const isActiveRoute = (route) => pathname.startsWith(route);
-      const isHome = pathname === "/";
-const isBible = isActiveRoute("/bible");
-const isLibrary = isActiveRoute("/library");
-const isDiscover = isActiveRoute("/discover");
+    const isActiveRoute = (route: string): boolean => pathname.startsWith(route);
+    const isHome = pathname === "/";
+    const isBible = isActiveRoute("/bible");
+    const isLibrary = isActiveRoute("/library");
+    const isDiscover = isActiveRoute("/discover");
 
 
     return (
