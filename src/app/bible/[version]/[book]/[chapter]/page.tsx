@@ -26,6 +26,9 @@ import Image from "next/image";
 import backArrowIcon from "../../../../../../public/assets/back_arrow_icon.png"
 import frontArrowIcon from '../../../../../../public/assets/front_arrow_icon.png'
 
+// Version mapping utility
+import { transformVersionsForFrontend, toBackendVersionId } from "@/lib/versionMapping";
+
 const API_BASE = "https://australia-southeast1-the-bible-net.cloudfunctions.net/api";
 const fetchWithKey = (url: string) =>
     fetch(url, { headers: { "x-app-key": "your_secret_key" } });
@@ -90,6 +93,13 @@ export default function BibleDynamicPage() {
     const [book, setBook] = useState<string>(initialBook);
     const [chapter, setChapter] = useState<number>(initialChapter);
     const [selectedVerse, setSelectedVerse] = useState<number | null>(initialVerse);
+
+    // Convert frontend version ID to backend version ID for API calls
+    const backendVersion = useMemo(() => {
+        const versionObj = versions.find(v => v.id === version);
+        return versionObj?._backendId || toBackendVersionId(version);
+    }, [version, versions]);
+
     // ...existing UI, modal, popover, readingMode, etc. state...
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -221,11 +231,17 @@ export default function BibleDynamicPage() {
     useEffect(() => {
         if (!isMounted) return;
         const cache = getCached("bible_versions");
-        if (cache && Array.isArray(cache)) { setVersions(cache); return; }
+        if (cache && Array.isArray(cache)) {
+            const transformedCache = transformVersionsForFrontend(cache);
+            setVersions(transformedCache);
+            return;
+        }
         setLoading(true);
         fetchWithKey(`${API_BASE}/versions`).then(r=>r.json()).then(data=>{
-            setVersions(data || []);
-            localStorage.setItem("bible_versions", JSON.stringify(data || []));
+            const backendVersions = data || [];
+            const transformedVersions = transformVersionsForFrontend(backendVersions);
+            setVersions(transformedVersions);
+            localStorage.setItem("bible_versions", JSON.stringify(backendVersions)); // Store original backend data
             setLoading(false);
         }).catch(()=>{ setError("Failed to load versions"); setLoading(false); });
     }, [isMounted]);
@@ -260,7 +276,7 @@ export default function BibleDynamicPage() {
         }
         setLoading(true);
         setChaptersLoaded(false);
-        fetchWithKey(`${API_BASE}/chapter-meta/${version}/${book}`)
+        fetchWithKey(`${API_BASE}/chapter-meta/${backendVersion}/${book}`)
             .then(async (res) => {
                 if (!res.ok) {
                     setChapters([]);
@@ -300,7 +316,7 @@ export default function BibleDynamicPage() {
                 setLoading(false);
                 setChapter(1);
             });
-    }, [version, book]);
+    }, [version, book, backendVersion]);
     const versesRequestIdRef = useRef(0);
     useEffect(() => {
         if (!version || !book || !chapter) {
@@ -367,11 +383,11 @@ export default function BibleDynamicPage() {
                 setLoading(false);
             }
         }
-        loadVersesFor(version, book, chapter);
+        loadVersesFor(backendVersion, book, chapter);
         return () => {
             versesRequestIdRef.current++;
         };
-    }, [version, book, chapter, chaptersLoaded, chapters]);
+    }, [version, book, chapter, chaptersLoaded, chapters, backendVersion]);
     useEffect(() => {
         if (!readingMode) {
             setModalOpen(false);
@@ -446,7 +462,9 @@ export default function BibleDynamicPage() {
         if (mapping) return isTelugu ? (mapping.telugu || mapping.english) : (mapping.english || mapping.telugu);
         return slug;
     };
-    const versionShortLabel = isMounted ? extractAcronym(selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id) : "Ver";
+    const versionShortLabel = isMounted
+        ? (selectedVersionObj?.acronym || extractAcronym(selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id))
+        : "Ver";
     const enterReadingMode = () => {
         setModalOpen(false);
         setMusicOpen(false);
@@ -537,8 +555,8 @@ export default function BibleDynamicPage() {
             return;
         }
         try {
-            const highlightId = `${version}:${book}:${chapter}:${startVerse}-${endVerse}_${Date.now()}`;
-            await createHighlight(db, authUser, { version, book, chapter, startVerse, endVerse, color, highlightId });
+            const highlightId = `${backendVersion}:${book}:${chapter}:${startVerse}-${endVerse}_${Date.now()}`;
+            await createHighlight(db, authUser, { version: backendVersion, book, chapter, startVerse, endVerse, color, highlightId });
         } catch (err: any) {
             console.error("createHighlight failed", err);
             alert("Failed to save highlight: " + (err.message || err));
@@ -657,9 +675,9 @@ export default function BibleDynamicPage() {
                 </div>
             )}
             {!readingMode &&  <Header />}
-   
+
             <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : ''}`}>
-              
+
                 <div className="mx-auto w-full max-w-5xl">
                     {/* Selectors section stays wide */}
                     {!readingMode && !showStickyBar && (
@@ -698,16 +716,16 @@ export default function BibleDynamicPage() {
                         )}
                         {loading && <div className="text-gray-500 mb-4">Loading...</div>}
                         {error && <div className="text-red-500 mb-4">{error}</div>}
-                      
 
-                      
+
+
                         <AnimatePresence mode="wait" initial={false}>
                             <motion.article key={`${version}_${book}_${chapter}`}
                                             style={articleStyle}
                                             className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}
                                             variants={variants[resolvedTransition] || variants["fade"]}
                                             initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
-                                                 
+
                                 {verses.map((v: any) => {
                                     const vid = makeVerseId(book, chapter, v.n);
                                     const colorClass = verseToColor[vid] ? `hl-${verseToColor[vid]}` : "";
@@ -719,7 +737,7 @@ export default function BibleDynamicPage() {
                                             id={`verse-${v.n}`}
                                             data-verse-id={vid}
                                             className={` ${readingMode ? "text-gray-100" : "text-gray-800"} ${colorClass} ${selectedClass} ${selectionCursor}`}
-                                            onClick={() => { if (selectionMode) toggleVerseSelection(v.n); }} 
+                                            onClick={() => { if (selectionMode) toggleVerseSelection(v.n); }}
                                         >
                                             <span className={`${readingMode ? "text-rose-300" : "text-[#D23952]"}`}>{v.n}</span>
                                              {" "}<span>{v.text}</span>{" "}
@@ -732,23 +750,23 @@ export default function BibleDynamicPage() {
                                 {!hideFootnotes && (
                                     <div className="mt-6 text-sm text-gray-500"></div>
                                 )}
-                            
-                               
+
+
                             </motion.article>
                         </AnimatePresence>
-                       
+
                     </div>
-                </div> 
-                 </div>                
+                </div>
+                 </div>
             </main>
-           
+
                         {loading || versions.length > 0 && (
                                         <div
                                                 className="
                                                     fixed flex justify-between
-                                                    top-[85%] left-1/2 -translate-x-1/2 -translate-y-1/2 
+                                                    top-[85%] left-1/2 -translate-x-1/2 -translate-y-1/2
                                                     w-[90%]
-                                                    md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 
+                                                    md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2
                                                     md:w-[90%]
                                                     lg:w-[75%]
                                                 "
@@ -764,7 +782,7 @@ export default function BibleDynamicPage() {
                                     </div>
                                     <div className={`w-10 h-10 flex border items-center justify-center rounded-full 
                                                 ${chapter >=chapters?.length ? 'bg-gray-300 scursor-not-allowed' : 'bg-white cursor-pointer'}`}
-                                    onClick={()=>{ 
+                                    onClick={()=>{
                                         if(chapter < chapters?.length){
                                             setChapter( chapter + 1 )
                                         }
@@ -772,7 +790,7 @@ export default function BibleDynamicPage() {
                                     >
                                         <Image src={frontArrowIcon} alt="Next"/>
                                     </div>
-                                      
+
                                 </div>
                                 )}
             {/* FooterNav visibility logic */}
@@ -855,7 +873,7 @@ export default function BibleDynamicPage() {
             <HighlightToolbar
                 db={db}
                 authUser={authUser}
-                version={version}
+                version={backendVersion}
                 book={book}
                 chapter={chapter}
                 selectionMode={selectionMode}
