@@ -447,9 +447,12 @@ export default function BibleDynamicPage() {
                 }));
             }
         }
-        // Update the route
-        router.push(`/bible/${version}/${book}/${chapter}?verse=${finalVerse}`);
+        // Close modal FIRST to prevent refresh during transition
         closeModal();
+        // Then update the route after a small delay
+        setTimeout(() => {
+            router.push(`/bible/${version}/${book}/${chapter}?verse=${finalVerse}`);
+        }, 50);
     };
     const handleVerseSelect = (n: number) => setSelectedVerse(n);
     const handleVersionSelect = (v: any) => {
@@ -580,7 +583,7 @@ export default function BibleDynamicPage() {
         if (params.version && params.version !== version) setVersion(params.version as string);
         if (params.book && params.book !== book) setBook(params.book as string);
         if (params.chapter && Number(params.chapter) !== chapter) setChapter(Number(params.chapter));
-    }, [params.version, params.book, params.chapter]);
+    }, [params.version, params.book, params.chapter, version, book, chapter]);
 
     // FooterNav visibility logic
     const [showFooterNav, setShowFooterNav] = useState(true);
