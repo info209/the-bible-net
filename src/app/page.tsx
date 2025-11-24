@@ -7,6 +7,7 @@ import FooterNav from '@/components/FooterNav';
 import { useEffect } from 'react';
 import { useAuth } from '../context/AuthProvider';
 import { FaCross } from "react-icons/fa";
+import { transformVersionsForFrontend } from '@/lib/versionMapping';
 
 const sampleCards = [
 	{
@@ -49,10 +50,12 @@ export default function Home() {
 		fetchWithKey(`${API_BASE}/versions`)
 			.then((res) => res.json())
 			.then((data) => {
+				// Store backend versions as-is for API calls
 				localStorage.setItem('bible_versions', JSON.stringify(data));
-				// Set default version if not present
+				// Set default version if not present (use frontend ID)
 				if (!localStorage.getItem('bible_version') && data.length > 0) {
-					localStorage.setItem('bible_version', data[0].id);
+					const transformedVersions = transformVersionsForFrontend(data);
+					localStorage.setItem('bible_version', transformedVersions[0].id);
 				}
 			});
 		// Prefetch books
