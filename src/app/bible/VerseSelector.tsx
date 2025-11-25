@@ -8,8 +8,7 @@ export default function VerseSelector({ verses, onSelect, onBack, onDone, active
             const cached = (() => {
                 try {
                     const val = localStorage.getItem("bible_last_selection");
-                    onDone()
-                    return val ? JSON.parse(val) : {}; 
+                    return val ? JSON.parse(val) : {};
                 } catch {
                     return {};
                 }
@@ -25,6 +24,7 @@ export default function VerseSelector({ verses, onSelect, onBack, onDone, active
             );
         }
         onSelect(verse);
+        onDone?.(verse);
     }
     return (
         <div className="w-full">
