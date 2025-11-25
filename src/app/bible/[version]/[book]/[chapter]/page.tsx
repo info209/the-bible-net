@@ -430,25 +430,33 @@ export default function BibleDynamicPage() {
         setMode("verses");
         // Do NOT update the route here; wait until verse is selected
     };
-    const handleVerseDone = () => {
-        // Validate selectedVerse against verses array
+    const handleVerseDone = (overrideVerse?: number) => {
         const validVerseNumbers = verses.map((v: any) => v.n);
-        let finalVerse = selectedVerse;
-        if (!validVerseNumbers.includes(selectedVerse || 1)) {
-            finalVerse = 1;
-            setSelectedVerse(1);
-            // Update cache
-            if (typeof window !== "undefined") {
-                localStorage.setItem("bible_last_selection", JSON.stringify({
-                    version,
-                    book,
-                    chapter,
-                    verse: 1
-                }));
+        const fallbackVerse = validVerseNumbers[0] || 1;
+        let finalVerse = overrideVerse ?? selectedVerse ?? fallbackVerse;
+        if (!validVerseNumbers.includes(finalVerse)) {
+            finalVerse = fallbackVerse;
+            setSelectedVerse(fallbackVerse);
+        } else if (overrideVerse && overrideVerse !== selectedVerse) {
+            setSelectedVerse(overrideVerse);
+        }
+        if (typeof window !== "undefined") {
+            localStorage.setItem("bible_last_selection", JSON.stringify({
+                version,
+                book,
+                chapter,
+                verse: finalVerse
+            }));
+            const nextPath = `/bible/${version}/${book}/${chapter}?verse=${finalVerse}`;
+            const currentPath = window.location.pathname + window.location.search;
+            if (currentPath !== nextPath) {
+                window.history.replaceState(null, "", nextPath);
+            } else {
+                const url = new URL(window.location.href);
+                url.searchParams.set("verse", String(finalVerse));
+                window.history.replaceState(null, "", url.toString());
             }
         }
-        // Update the route
-        router.push(`/bible/${version}/${book}/${chapter}?verse=${finalVerse}`);
         closeModal();
     };
     const handleVerseSelect = (n: number) => setSelectedVerse(n);
@@ -775,7 +783,10 @@ export default function BibleDynamicPage() {
                                                 ${chapter === 1 ? 'bg-gray-300 scursor-not-allowed' : 'bg-white cursor-pointer'}`}
                                         onClick={() => {
                                             if (chapter > 1) {
-                                                setChapter(chapter - 1);
+                                                const nextChapter = chapter - 1;
+                                                setChapter(nextChapter);
+                                                setSelectedVerse(1);
+                                                router.replace(`/bible/${version}/${book}/${nextChapter}?verse=1`, { scroll: false });
                                             }
                                         }}>
                                         <Image src={backArrowIcon} alt="Back"/>
@@ -784,7 +795,10 @@ export default function BibleDynamicPage() {
                                                 ${chapter >=chapters?.length ? 'bg-gray-300 scursor-not-allowed' : 'bg-white cursor-pointer'}`}
                                     onClick={()=>{
                                         if(chapter < chapters?.length){
-                                            setChapter( chapter + 1 )
+                                            const nextChapter = chapter + 1;
+                                            setChapter( nextChapter );
+                                            setSelectedVerse(1);
+                                            router.replace(`/bible/${version}/${book}/${nextChapter}?verse=1`, { scroll: false });
                                         }
                                         }}
                                     >
