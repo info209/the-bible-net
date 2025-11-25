@@ -4,6 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Select from 'react-select';
+import { transformVersionsForFrontend } from '@/lib/versionMapping';
 
 const countryOptions = [
 	{ value: 'Afghanistan', label: 'Afghanistan' },
@@ -222,7 +223,9 @@ export default function SignupCompletePage() {
 			if (cached) {
 				try {
 					const arr = JSON.parse(cached);
-					setVersionOptions(arr);
+					// Transform versions to use frontend IDs and display names
+					const transformedVersions = transformVersionsForFrontend(arr);
+					setVersionOptions(transformedVersions);
 				} catch {}
 			}
 		}
@@ -270,7 +273,7 @@ export default function SignupCompletePage() {
 							classNamePrefix="react-select"
 							placeholder="Select country..."
 							isSearchable
-							styles ={{ 
+							styles ={{
 								control: (provided) => ({
 									...provided,
 									minHeight: '48px',
@@ -307,7 +310,7 @@ export default function SignupCompletePage() {
 							<option className="text-gray-500 font-normal">ಕನ್ನಡ (Kannada)</option>
 							<option className="text-gray-500 font-normal">தமிழ் (Tamil)</option>
 							<option className="text-gray-500 font-normal">മലയാളം (Malayalam)</option>
-							<option className="text-gray-500 font-normal">हिंदी (Hindi)</option>						
+							<option className="text-gray-500 font-normal">हिंदी (Hindi)</option>
 						</select>
 					</div>
 
@@ -369,7 +372,7 @@ export default function SignupCompletePage() {
     onChange={(e) => setVersion(e.target.value)}
     className="mt-1 block w-full border rounded-lg p-3"
   >
-   
+
     <optgroup label="𝖤𝗇𝗀𝗅𝗂𝗌𝗁">
       {versionOptions
         .filter(v => v.language === "en")

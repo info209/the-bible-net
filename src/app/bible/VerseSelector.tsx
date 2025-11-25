@@ -9,7 +9,7 @@ export default function VerseSelector({ verses, onSelect, onBack, onDone, active
                 try {
                     const val = localStorage.getItem("bible_last_selection");
                     onDone()
-                    return val ? JSON.parse(val) : {};
+                    return val ? JSON.parse(val) : {}; 
                 } catch {
                     return {};
                 }
