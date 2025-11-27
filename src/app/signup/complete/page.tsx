@@ -259,7 +259,9 @@ export default function SignupCompletePage() {
 						←
 					</button>
 				</div>
-
+  					<div className="flex justify-center mb-4">
+                    <img src="/logo_white.png" alt="logo" className="h-24" />
+                </div>
 				<h1 className="text-2xl font-semibold text-left mb-2">Complete your profile</h1>
 				<p className="text-left text-sm text-gray-500 mb-4">Help us personalize your Bible reading experience</p>
 
@@ -336,7 +338,7 @@ export default function SignupCompletePage() {
           const cleanName = v.displayName.replace(/\s*\([^)]*\)/, "");
           return (
             <option key={v.id} value={v.id}>
-              {cleanName.trim()} {v.id.toUpperCase()}
+              {cleanName.trim()} ({v.id.toUpperCase()})
             </option>
           );
         })}
@@ -354,7 +356,7 @@ export default function SignupCompletePage() {
           const cleanName = v.displayName.replace(/\s*\([^)]*\)/, "");
           return (
             <option key={v.id} value={v.id}>
-              {cleanName.trim()} {v.id.toUpperCase()}
+              {cleanName.trim()} ({v.id.toUpperCase()})
             </option>
           );
         })}
