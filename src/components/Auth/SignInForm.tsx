@@ -3,8 +3,8 @@
 
 import React, { useRef, useState } from 'react';
 import { auth } from '../../lib/firebaseClient';
-import emailIcon from "../../../public/assets/email_icon.png"
-import passwordIcon from "../../../public/assets/password_icon.png"
+import emailIcon from "../../../public/assets/email_icon.svg"
+import passwordIcon from "../../../public/assets/password_icon.svg"
 import Image from 'next/image';
 import {
     signInWithEmailAndPassword,
@@ -141,7 +141,7 @@ export default function SignInForm() {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
                 <div className="relative">
                     <span className="absolute left-3 top-3 text-gray-400">
-                        <Image src={passwordIcon} alt='password' width={17} height={17}/>
+                        <Image src={passwordIcon} alt='password' width={22} height={22}/>
                     </span>
                     <input
                         value={password}

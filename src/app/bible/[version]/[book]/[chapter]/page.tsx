@@ -669,7 +669,61 @@ export default function BibleDynamicPage() {
 
 }, [selectedVerse]);
 
-console.log(!readingMode,"check")
+// All books in canonical order
+const allBooksInOrder = [...books.oldTestament, ...books.newTestament];
+const currentBookIndex = allBooksInOrder.findIndex(b => b.slug === book);
+
+const canGoPrev = () => {
+  if (chapter > 1) return true;
+  return currentBookIndex > 0;
+};
+
+const canGoNext = () => {
+  if (chapters && chapter < chapters.length) return true;
+  return currentBookIndex < allBooksInOrder.length - 1 && currentBookIndex !== -1;
+};
+
+const getBookChapterCount = (bookSlug: string): number => {
+  const bookData = allBooksInOrder.find(b => b.slug === bookSlug);
+  return bookData?.chapters || 151; // safe fallback
+};
+
+const handlePrev = () => {
+  if (!canGoPrev()) return;
+
+  if (chapter > 1) {
+    // Previous chapter in current book
+    const newChapter = chapter - 1;
+    setChapter(newChapter);
+    router.push(`/bible/${version}/${book}/${newChapter}?verse=1`);
+  } else if (currentBookIndex > 0) {
+    // Go to last chapter of previous book
+    const prevBook = allBooksInOrder[currentBookIndex - 1];
+    const lastChapter = getBookChapterCount(prevBook.slug);
+    setBook(prevBook.slug);
+    setChapter(lastChapter);
+    setSelectedVerse(1);
+    router.push(`/bible/${version}/${prevBook.slug}/${lastChapter}?verse=1`);
+  }
+};
+
+const handleNext = () => {
+  if (!canGoNext()) return;
+
+  if (chapters && chapter < chapters.length) {
+    // Next chapter in current book
+    const newChapter = chapter + 1;
+    setChapter(newChapter);
+    router.push(`/bible/${version}/${book}/${newChapter}?verse=1`);
+  } else if (currentBookIndex < allBooksInOrder.length - 1) {
+    // Go to chapter 1 of next book
+    const nextBook = allBooksInOrder[currentBookIndex + 1];
+    setBook(nextBook.slug);
+    setChapter(1);
+    setSelectedVerse(1);
+    router.push(`/bible/${version}/${nextBook.slug}/1?verse=1`);
+  }
+};
 
     return (
         <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10]" : "min-h-screen flex flex-col"}>
@@ -691,7 +745,8 @@ console.log(!readingMode,"check")
                 >
                     <div className="flex items-center lg:w-[68%] md:w-[59%] w-[88%] max-w-5xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
                         <span className="font-medium text-base sm:text-lg text-gray-900 dark:text-black truncate text-left bg-transparent">
-                            {getBookDisplay(book)} · {String(chapter).padStart(2, "0")} · {selectedVersionObj ? versionShortLabel : version || "Ver"}</span>
+                            {getBookDisplay(book)}  {String(chapter).padStart(2)} | {selectedVersionObj ? versionShortLabel : ""}
+                        </span>
                     </div>
                 </div>
             )}
@@ -795,21 +850,13 @@ console.log(!readingMode,"check")
                                                 "
                                                 >
                                     <div  className={`w-10 h-10 flex border items-center justify-center rounded-full 
-                                                ${chapter === 1 ? 'bg-gray-300 scursor-not-allowed' : 'bg-white cursor-pointer'}`}
-                                        onClick={() => {
-                                            if (chapter > 1) {
-                                                setChapter(chapter - 1);
-                                            }
-                                        }}>
+                                               ${canGoPrev() ? 'bg-white cursor-pointer hover:bg-gray-100 shadow-md' : 'bg-gray-300 cursor-not-allowed opacity-70'}`}
+                                        onClick={handlePrev}>
                                         <Image src={backArrowIcon} alt="Back"/>
                                     </div>
                                     <div className={`w-10 h-10 flex border items-center justify-center rounded-full 
-                                                ${chapter >=chapters?.length ? 'bg-gray-300 scursor-not-allowed' : 'bg-white cursor-pointer'}`}
-                                    onClick={()=>{
-                                        if(chapter < chapters?.length){
-                                            setChapter( chapter + 1 )
-                                        }
-                                        }}
+                                               ${canGoNext() ? 'bg-white cursor-pointer hover:bg-gray-100 shadow-md' : 'bg-gray-300 cursor-not-allowed opacity-70'}`}
+                                   onClick={handleNext}
                                     >
                                         <Image src={frontArrowIcon} alt="Next"/>
                                     </div>
