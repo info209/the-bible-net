@@ -4,8 +4,8 @@
 export const VERSION_MAPPING: Record<string, { frontendId: string; displayName: string; acronym?: string }> = {
     'irv': {
         frontendId: 'bsi',
-        displayName: 'బైబిల్ సొసైటీ ఆఫ్ ఇండియా (BSI)', // Bible Society of India in Telugu with English acronym
-        acronym: 'BSI' // Explicit acronym to display in compact views
+        displayName: 'పరిశుద్ధ గ్రంథం (TELBSI)', // Bible in Telugu with correct acronym
+        acronym: 'TELBSI' // Explicit acronym to display in compact views
     }
 };
 
@@ -67,4 +67,3 @@ export function transformVersionForFrontend(version: any): any {
 export function transformVersionsForFrontend(versions: any[]): any[] {
     return versions.map(transformVersionForFrontend);
 }
-

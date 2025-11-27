@@ -335,7 +335,18 @@ export default function SignupCompletePage() {
           return (order[a.language] || 3) - (order[b.language] || 3);
         })
         .map(v => {
-          const cleanName = v.displayName.replace(/\s*\([^)]*\)/, "");
+          // Always override display for TELBSI
+          const isTelbsi = v.id === 'bsi';
+          if (isTelbsi) {
+            // For TELBSI, show only 'పరిశుద్ధ గ్రంథం TELBSI' with no extra suffix
+            return (
+              <option key={v.id} value={v.id}>
+                పరిశుద్ధ గ్రంథం TELBSI
+              </option>
+            );
+          }
+          // For other versions, clean and add uppercase ID
+          const cleanName = v.displayName.replace(/\s*\([^)]*\)/, '').replace(/\s*BSI$/, '').trim();
           return (
             <option key={v.id} value={v.id}>
               {cleanName.trim()} ({v.id.toUpperCase()})
@@ -353,7 +364,18 @@ export default function SignupCompletePage() {
           return (order[a.language] || 3) - (order[b.language] || 3);
         })
         .map(v => {
-          const cleanName = v.displayName.replace(/\s*\([^)]*\)/, "");
+          // Always override display for TELBSI
+          const isTelbsi = v.id === 'bsi';
+          if (isTelbsi) {
+            // For TELBSI, show only 'పరిశుద్ధ గ్రంథం TELBSI' with no extra suffix
+            return (
+              <option key={v.id} value={v.id}>
+                పరిశుద్ధ గ్రంథం TELBSI
+              </option>
+            );
+          }
+          // For other versions, clean and add uppercase ID
+          const cleanName = v.displayName.replace(/\s*\([^)]*\)/, "").trim();
           return (
             <option key={v.id} value={v.id}>
               {cleanName.trim()} ({v.id.toUpperCase()})

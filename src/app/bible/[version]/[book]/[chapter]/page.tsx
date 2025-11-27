@@ -66,6 +66,14 @@ function extractAcronym(displayName?: string) {
     return letters.join("").toUpperCase();
 }
 
+// Version label override for TELBSI
+function getVersionDisplayName(versionId: string, displayName: string) {
+    return versionId === 'bsi' ? 'పరిశుద్ధ గ్రంథం (TELBSI)' : displayName;
+}
+function getVersionShortLabel(versionId: string, acronym: string | undefined) {
+    return versionId === 'bsi' ? 'TELBSI' : (acronym || versionId);
+}
+
 export default function BibleDynamicPage() {
     const params = useParams();
     const router = useRouter();
@@ -463,8 +471,9 @@ export default function BibleDynamicPage() {
         if (mapping) return isTelugu ? (mapping.telugu || mapping.english) : (mapping.english || mapping.telugu);
         return slug;
     };
+    const resolvedVersionName = getVersionDisplayName(version, selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id || "");
     const versionShortLabel = isMounted
-        ? (selectedVersionObj?.acronym || extractAcronym(selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id))
+        ? getVersionShortLabel(version, selectedVersionObj?.acronym)
         : "Ver";
     const enterReadingMode = () => {
         setModalOpen(false);
@@ -771,7 +780,7 @@ const handleNext = () => {
                             <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={() => setMoreOpen(true)}>⋮</button>
                         </div>
                     )}
-   <div  
+   <div
     id="verses-container" ref={versesContainerRef}
                         className="overflow-y-auto no-scrollbar h-[100vh]"
                           style={{ paddingBottom: showFooterNav ? "250px":"" }}
