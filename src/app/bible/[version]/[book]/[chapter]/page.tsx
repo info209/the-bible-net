@@ -23,8 +23,10 @@ import { makeVerseId } from "@/lib/highlightHelpers";
 import HighlightToolbar from "@/components/HighlightToolbar";
 import "@/styles/highlights.css";
 import Image from "next/image";
-import backArrowIcon from "../../../../../../public/assets/back_arrow_icon.png"
-import frontArrowIcon from '../../../../../../public/assets/front_arrow_icon.png'
+import backArrowIcon from "../../../../../../public/assets/back_arrow_icon.png";
+import frontArrowIcon from '../../../../../../public/assets/front_arrow_icon.png';
+import musicIcon from '../../../../../../public/assets/music_Icon.svg';
+import moreIcon from "../.../../../../../../../public/assets/more_icon.svg"
 
 // Version mapping utility
 import { transformVersionsForFrontend, toBackendVersionId } from "@/lib/versionMapping";
@@ -64,6 +66,14 @@ function extractAcronym(displayName?: string) {
         return words[0].slice(0, 3).toUpperCase();
     }
     return letters.join("").toUpperCase();
+}
+
+// Version label override for TELBSI
+function getVersionDisplayName(versionId: string, displayName: string) {
+    return versionId === 'bsi' ? 'పరిశుద్ధ గ్రంథం (TELBSI)' : displayName;
+}
+function getVersionShortLabel(versionId: string, acronym: string | undefined) {
+    return versionId === 'bsi' ? 'TELBSI' : (acronym || versionId);
 }
 
 export default function BibleDynamicPage() {
@@ -106,6 +116,7 @@ export default function BibleDynamicPage() {
     const [modalOpen, setModalOpen] = useState(false);
     const [mode, setMode] = useState<"books" | "chapters" | "verses" | "versions">("books");
     const selectorsRef = useRef<HTMLDivElement | null>(null);
+    const versesContainerRef = useRef<HTMLDivElement | null>(null);
     const [musicOpen, setMusicOpen] = useState(false);
     const [moreOpen, setMoreOpen] = useState(false);
     const [readingMode, setReadingMode] = useState(false);
@@ -430,7 +441,7 @@ export default function BibleDynamicPage() {
         setMode("verses");
         // Do NOT update the route here; wait until verse is selected
     };
-    const handleVerseDone = (overrideVerse?: number) => {
+     const handleVerseDone = (overrideVerse?: number) => {
         const validVerseNumbers = verses.map((v: any) => v.n);
         const fallbackVerse = validVerseNumbers[0] || 1;
         let finalVerse = overrideVerse ?? selectedVerse ?? fallbackVerse;
@@ -470,8 +481,9 @@ export default function BibleDynamicPage() {
         if (mapping) return isTelugu ? (mapping.telugu || mapping.english) : (mapping.english || mapping.telugu);
         return slug;
     };
+    const resolvedVersionName = getVersionDisplayName(version, selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id || "");
     const versionShortLabel = isMounted
-        ? (selectedVersionObj?.acronym || extractAcronym(selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id))
+        ? getVersionShortLabel(version, selectedVersionObj?.acronym)
         : "Ver";
     const enterReadingMode = () => {
         setModalOpen(false);
@@ -530,17 +542,21 @@ export default function BibleDynamicPage() {
     }, []);
     useLayoutEffect(() => {
         if (readingMode) return;
-        const initialScrollY = window.scrollY || window.pageYOffset;
+        const container = versesContainerRef.current;
+        if (!container) return; // Must have the ref element
+        const initialScrollY = container.scrollTop;
         const shouldShow = initialScrollY > 40;
         setShowStickyBar(shouldShow);
         lastShowStickyBar.current = shouldShow;
     }, [readingMode]);
     useEffect(() => {
         if (readingMode) return;
+        const container = versesContainerRef.current;
+        if (!container) return; // Must have the ref element
         const handleScroll = () => {
             if (throttleTimeout.current) return;
             throttleTimeout.current = setTimeout(() => {
-                const scrollY = window.scrollY || window.pageYOffset;
+                const scrollY = container.scrollTop;
                 const shouldShow = scrollY > 40;
                 if (shouldShow !== lastShowStickyBar.current) {
                     setShowStickyBar(shouldShow);
@@ -549,9 +565,9 @@ export default function BibleDynamicPage() {
                 throttleTimeout.current = null;
             }, 100);
         };
-        window.addEventListener("scroll", handleScroll, { passive: true });
+        container.addEventListener("scroll", handleScroll, { passive: true });
         return () => {
-            window.removeEventListener("scroll", handleScroll);
+            container.removeEventListener("scroll", handleScroll);
             if (throttleTimeout.current) clearTimeout(throttleTimeout.current);
         };
     }, [readingMode]);
@@ -592,6 +608,7 @@ export default function BibleDynamicPage() {
 
     // FooterNav visibility logic
     const [showFooterNav, setShowFooterNav] = useState(true);
+    const [showHeader, setShowHeader] = useState(true);
     const lastScrollY = useRef(0); // Initialize with 0 for SSR safety
     const [selectorsSticky, setSelectorsSticky] = useState(false);
     // Set lastScrollY after mount
@@ -616,21 +633,26 @@ export default function BibleDynamicPage() {
     // Scroll direction tracking and FooterNav visibility
     useEffect(() => {
         let ticking = false;
+        const container = versesContainerRef.current;
+        if (!container) return; // Must have the ref element
         const handleScroll = () => {
             if (!selectorsSticky) {
                 setShowFooterNav(true);
-                lastScrollY.current = window.scrollY;
+                setShowHeader(true);
+                lastScrollY.current = container.scrollTop;;
                 return;
             }
             if (!ticking) {
                 window.requestAnimationFrame(() => {
-                    const currentY = window.scrollY;
+                    const currentY = container.scrollTop;;
                     if (currentY > lastScrollY.current) {
                         // Scrolling down
                         setShowFooterNav(false);
+                        setShowHeader(false);
                     } else if (currentY < lastScrollY.current) {
                         // Scrolling up
                         setShowFooterNav(true);
+                        setShowHeader(true);
                     }
                     lastScrollY.current = currentY;
                     ticking = false;
@@ -638,8 +660,8 @@ export default function BibleDynamicPage() {
                 ticking = true;
             }
         };
-        window.addEventListener("scroll", handleScroll, { passive: true });
-        return () => window.removeEventListener("scroll", handleScroll);
+        container.addEventListener("scroll", handleScroll, { passive: true });
+        return () => container.removeEventListener("scroll", handleScroll);
     }, [selectorsSticky]);
 
    useEffect(() => {
@@ -657,6 +679,62 @@ export default function BibleDynamicPage() {
 
 }, [selectedVerse]);
 
+// All books in canonical order
+const allBooksInOrder = [...books.oldTestament, ...books.newTestament];
+const currentBookIndex = allBooksInOrder.findIndex(b => b.slug === book);
+
+const canGoPrev = () => {
+  if (chapter > 1) return true;
+  return currentBookIndex > 0;
+};
+
+const canGoNext = () => {
+  if (chapters && chapter < chapters.length) return true;
+  return currentBookIndex < allBooksInOrder.length - 1 && currentBookIndex !== -1;
+};
+
+const getBookChapterCount = (bookSlug: string): number => {
+  const bookData = allBooksInOrder.find(b => b.slug === bookSlug);
+  return bookData?.chapters || 151; // safe fallback
+};
+
+const handlePrev = () => {
+  if (!canGoPrev()) return;
+
+  if (chapter > 1) {
+    // Previous chapter in current book
+    const newChapter = chapter - 1;
+    setChapter(newChapter);
+    router.push(`/bible/${version}/${book}/${newChapter}?verse=1`);
+  } else if (currentBookIndex > 0) {
+    // Go to last chapter of previous book
+    const prevBook = allBooksInOrder[currentBookIndex - 1];
+    const lastChapter = getBookChapterCount(prevBook.slug);
+    setBook(prevBook.slug);
+    setChapter(lastChapter);
+    setSelectedVerse(1);
+    router.push(`/bible/${version}/${prevBook.slug}/${lastChapter}?verse=1`);
+  }
+};
+
+const handleNext = () => {
+  if (!canGoNext()) return;
+
+  if (chapters && chapter < chapters.length) {
+    // Next chapter in current book
+    const newChapter = chapter + 1;
+    setChapter(newChapter);
+    router.push(`/bible/${version}/${book}/${newChapter}?verse=1`);
+  } else if (currentBookIndex < allBooksInOrder.length - 1) {
+    // Go to chapter 1 of next book
+    const nextBook = allBooksInOrder[currentBookIndex + 1];
+    setBook(nextBook.slug);
+    setChapter(1);
+    setSelectedVerse(1);
+    router.push(`/bible/${version}/${nextBook.slug}/1?verse=1`);
+  }
+};
+
     return (
         <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10]" : "min-h-screen flex flex-col"}>
             {/* Sticky info bar for reading mode */}
@@ -670,19 +748,19 @@ export default function BibleDynamicPage() {
                 </div>
             )}
             {/* Sticky info bar for non-reading mode */}
-            {readingMode && (
+            {!readingMode && !showHeader &&(
                 <div
-                    className={`fixed top-0 left-0 w-full z-[100] pointer-events-none bg-transparent border-none shadow-none transition-all duration-300 ${showStickyBar ? '' : 'opacity-0'}`}
+                    className={`fixed top-0 left-0 w-full z-[70] pointer-events-none bg-transparent border-none shadow-none transition-all duration-300 ${showStickyBar ? '' : 'opacity-0'}`}
                     style={{ minHeight: '44px' }}
                 >
-                    <div className="flex items-center w-full max-w-5xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
-                        <span className="font-medium text-base sm:text-lg text-gray-900 dark:text-gray-100 truncate text-left bg-transparent">
-                            {getBookDisplay(book)} · {String(chapter).padStart(2, "0")} · {selectedVersionObj ? versionShortLabel : ""}
+                    <div className="flex items-center lg:w-[68%] md:w-[59%] w-[88%] max-w-5xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
+                        <span className="font-medium text-base sm:text-lg text-gray-900 dark:text-black truncate text-left bg-transparent">
+                            {getBookDisplay(book)}  {String(chapter).padStart(2)} | {selectedVersionObj ? versionShortLabel : ""}
                         </span>
                     </div>
                 </div>
             )}
-            {!readingMode &&  <Header />}
+            {!readingMode && showHeader &&  <Header />}
 
             <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : ''}`}>
 
@@ -691,13 +769,13 @@ export default function BibleDynamicPage() {
                     {!readingMode && !showStickyBar && (
                         <div
                             ref={selectorsRef}
-                            className={`z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-4 md:ml-[150px] lg:ml-[166px] lg:w-[68%] md:w-[59%] w-[88%] bg-transparent border-none shadow-none transition-all duration-300`}
+                            className={`fixed top-0 left-0 z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-4 md:ml-[150px] lg:ml-[166px] lg:w-[68%] md:w-[59%] w-[88%] bg-transparent border-none shadow-none transition-all duration-300`}
                             style={{ background: 'none', boxShadow: 'none', border: 'none', position: 'sticky', top: 0 }}
                         >
                             {!readingMode ? (
                                 <>
                                     <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs truncate bg-white" onClick={() => openModalFor("books")}>{isMounted ? getBookDisplay(book) : "Book"}</button>
-                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center bg-white" onClick={() => { !book ? openModalFor("books") : openModalFor("chapters"); }}>{isMounted ? String(chapter).padStart(2, "0") : "01"}</button>
+                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center bg-white" onClick={() => { !book ? openModalFor("books") : openModalFor("chapters"); }}>{isMounted ? String(chapter).padStart(2) : "1"}</button>
                                     <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs text-center flex justify-center items-center bg-white" onClick={() => openModalFor("versions")} title={selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id} disabled={loading || versions.length === 0}>{loading || versions.length === 0 ? <span className="text-gray-400 animate-pulse">Loading...</span> : (selectedVersionObj ? versionShortLabel : version || "Ver")}</button>
                                 </>
                             ) : (
@@ -708,13 +786,15 @@ export default function BibleDynamicPage() {
                                 </>
                             )}
                             <div className="flex-grow" />
-                            <button type="button" aria-label="audio" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={() => setMusicOpen(true)}>🎵</button>
-                            <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={() => setMoreOpen(true)}>⋮</button>
+                            <button type="button" aria-label="audio" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:bg-gray-50" onClick={() => setMusicOpen(true)}><Image src={musicIcon} alt="Music icon"/></button>
+                            <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full  flex items-center justify-center hover:bg-gray-50" onClick={() => setMoreOpen(true)}><Image src={moreIcon} alt="moreIcon" width={24}/></button>
                         </div>
                     )}
-   <div   id="verses-container"
+   <div
+    id="verses-container" ref={versesContainerRef}
                         className="overflow-y-auto no-scrollbar h-[100vh]"
-                          style={{ paddingBottom: showFooterNav ? "250px":"" }}>
+                          style={{ paddingBottom: showFooterNav ? "250px":"" }}
+                          >
                     {/* Bible verses/content area is constrained */}
                     <div className="mx-auto w-full max-w-xl">
                         {readingMode && (
@@ -780,27 +860,13 @@ export default function BibleDynamicPage() {
                                                 "
                                                 >
                                     <div  className={`w-10 h-10 flex border items-center justify-center rounded-full 
-                                                ${chapter === 1 ? 'bg-gray-300 scursor-not-allowed' : 'bg-white cursor-pointer'}`}
-                                        onClick={() => {
-                                            if (chapter > 1) {
-                                                const nextChapter = chapter - 1;
-                                                setChapter(nextChapter);
-                                                setSelectedVerse(1);
-                                                router.replace(`/bible/${version}/${book}/${nextChapter}?verse=1`, { scroll: false });
-                                            }
-                                        }}>
+                                               ${canGoPrev() ? 'bg-white cursor-pointer hover:bg-gray-100 shadow-md' : 'bg-gray-300 cursor-not-allowed opacity-70'}`}
+                                        onClick={handlePrev}>
                                         <Image src={backArrowIcon} alt="Back"/>
                                     </div>
                                     <div className={`w-10 h-10 flex border items-center justify-center rounded-full 
-                                                ${chapter >=chapters?.length ? 'bg-gray-300 scursor-not-allowed' : 'bg-white cursor-pointer'}`}
-                                    onClick={()=>{
-                                        if(chapter < chapters?.length){
-                                            const nextChapter = chapter + 1;
-                                            setChapter( nextChapter );
-                                            setSelectedVerse(1);
-                                            router.replace(`/bible/${version}/${book}/${nextChapter}?verse=1`, { scroll: false });
-                                        }
-                                        }}
+                                               ${canGoNext() ? 'bg-white cursor-pointer hover:bg-gray-100 shadow-md' : 'bg-gray-300 cursor-not-allowed opacity-70'}`}
+                                   onClick={handleNext}
                                     >
                                         <Image src={frontArrowIcon} alt="Next"/>
                                     </div>

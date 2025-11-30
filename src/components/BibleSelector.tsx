@@ -58,7 +58,9 @@ const BibleSelector: React.FC<BibleSelectorProps> = ({ versions, books }) => {
         onChange={e => handleVersionChange(e.target.value)}
       >
         {versions.map(version => (
-          <option key={version.id} value={version.id}>{version.displayName} ({version.language})</option>
+          <option key={version.id} value={version.id}>
+            {version.id === 'bsi' ? 'పరిశుద్ధ గ్రంథం (TELBSI)' : version.displayName} ({version.language})
+          </option>
         ))}
       </select>
 

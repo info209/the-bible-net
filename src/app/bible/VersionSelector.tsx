@@ -56,7 +56,7 @@ export default function VersionSelector({ versions, onSelect, active, activeBook
                                         : "hover:bg-gray-50"
                                 }`}
                             >
-                                {v.displayName}
+                                {v.id === 'bsi' ? 'పరిశుద్ధ గ్రంథం (TELBSI)' : v.displayName}
                             </button>
                         ))}
                     </div>

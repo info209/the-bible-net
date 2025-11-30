@@ -1,6 +1,12 @@
 /* src/styles/highlights.css */
 
 /* selection dotted outline for selected verses */
+html, body {
+  overflow: hidden !important;
+  height: 100%;
+}
+
+
 .selected-dotted {
     outline: 3px dotted rgba(0,0,0,0.12);
     border-radius: 6px;

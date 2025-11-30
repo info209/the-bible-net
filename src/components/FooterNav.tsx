@@ -2,7 +2,7 @@
 'use client';
 import Link from 'next/link';
 import homeIcon from '../../public/assets/plain_home_icon.svg';
-import coloredhomeIcon from '../../public/assets/color_home_icon.png';
+import coloredhomeIcon from '../../public/assets/color_home_icon.svg';
 import Image from 'next/image';
 import bible_book from '../../public/assets/plain_Book_icons.svg'
 import colored_bible_book from '../../public/assets/colored_book_icons.svg'

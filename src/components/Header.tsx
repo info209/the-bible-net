@@ -94,6 +94,7 @@ export default function Header() {
                                             </button>
                                         </li>
                                     ) : (
+                                        <>
                                         <li>
                                             <button
                                                 onClick={() => router.push('/login')}
@@ -102,6 +103,16 @@ export default function Header() {
                                                 Login
                                             </button>
                                         </li>
+                                          <li>
+                                            <button
+                                                onClick={() => router.push('/signup')}
+                                                className="w-full text-left px-4 py-2 hover:bg-gray-100 text-gray-800"
+                                            >
+                                                Create Account
+                                            </button>
+                                        </li>
+                                        </>
+                                        
                                     )}
                                 </ul>
                             </div>
