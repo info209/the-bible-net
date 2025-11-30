@@ -23,8 +23,10 @@ import { makeVerseId } from "@/lib/highlightHelpers";
 import HighlightToolbar from "@/components/HighlightToolbar";
 import "@/styles/highlights.css";
 import Image from "next/image";
-import backArrowIcon from "../../../../../../public/assets/back_arrow_icon.png"
-import frontArrowIcon from '../../../../../../public/assets/front_arrow_icon.png'
+import backArrowIcon from "../../../../../../public/assets/back_arrow_icon.png";
+import frontArrowIcon from '../../../../../../public/assets/front_arrow_icon.png';
+import musicIcon from '../../../../../../public/assets/music_Icon.svg';
+import moreIcon from "../.../../../../../../../public/assets/more_icon.svg"
 
 // Version mapping utility
 import { transformVersionsForFrontend, toBackendVersionId } from "@/lib/versionMapping";
@@ -759,13 +761,13 @@ const handleNext = () => {
                     {!readingMode && !showStickyBar && (
                         <div
                             ref={selectorsRef}
-                            className={`z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-4 md:ml-[150px] lg:ml-[166px] lg:w-[68%] md:w-[59%] w-[88%] bg-transparent border-none shadow-none transition-all duration-300`}
+                            className={`fixed top-0 left-0 z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-4 md:ml-[150px] lg:ml-[166px] lg:w-[68%] md:w-[59%] w-[88%] bg-transparent border-none shadow-none transition-all duration-300`}
                             style={{ background: 'none', boxShadow: 'none', border: 'none', position: 'sticky', top: 0 }}
                         >
                             {!readingMode ? (
                                 <>
                                     <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs truncate bg-white" onClick={() => openModalFor("books")}>{isMounted ? getBookDisplay(book) : "Book"}</button>
-                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center bg-white" onClick={() => { !book ? openModalFor("books") : openModalFor("chapters"); }}>{isMounted ? String(chapter).padStart(2, "0") : "01"}</button>
+                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center bg-white" onClick={() => { !book ? openModalFor("books") : openModalFor("chapters"); }}>{isMounted ? String(chapter).padStart(2) : "1"}</button>
                                     <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs text-center flex justify-center items-center bg-white" onClick={() => openModalFor("versions")} title={selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id} disabled={loading || versions.length === 0}>{loading || versions.length === 0 ? <span className="text-gray-400 animate-pulse">Loading...</span> : (selectedVersionObj ? versionShortLabel : version || "Ver")}</button>
                                 </>
                             ) : (
@@ -776,8 +778,8 @@ const handleNext = () => {
                                 </>
                             )}
                             <div className="flex-grow" />
-                            <button type="button" aria-label="audio" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={() => setMusicOpen(true)}>🎵</button>
-                            <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full border flex items-center justify-center hover:bg-gray-50" onClick={() => setMoreOpen(true)}>⋮</button>
+                            <button type="button" aria-label="audio" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:bg-gray-50" onClick={() => setMusicOpen(true)}><Image src={musicIcon} alt="Music icon"/></button>
+                            <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full  flex items-center justify-center hover:bg-gray-50" onClick={() => setMoreOpen(true)}><Image src={moreIcon} alt="moreIcon" width={24}/></button>
                         </div>
                     )}
    <div
