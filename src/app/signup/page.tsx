@@ -62,8 +62,13 @@ export default function SignupPage() {
     return (
         <div className="min-h-screen flex items-start sm:items-center justify-center bg-[#ffffff] px-4 py-8 sm:py-16">
             <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg border">
-                <div className="flex justify-start mb-4">
+                <div className="flex justify-between mb-4">
                     <button onClick={handleBack} aria-label="Go back" className="inline-flex items-center text-2xl">←</button>
+                    <button onClick={handleBack} aria-label="Go back" className="inline-flex items-center">
+                           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
                 </div>
 
                 <div className="flex justify-center mb-4">
