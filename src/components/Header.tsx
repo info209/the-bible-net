@@ -45,7 +45,7 @@ export default function Header() {
                 {/* right controls: language selector + menu/avatar */}
                 <div className="flex items-center gap-1 sm:gap-3 md:gap-5 min-w-0">
                     {/* Language selector */}
-                    <div className="flex items-center gap-1 sm:gap-2 text-white text-xs sm:text-base font-medium">
+                    <div className="flex items-center gap-1 sm:gap-2 text-xs sm:text-base font-medium"style={{color:"#F1F3F3"}}>
                         <span className="inline text-xs sm:text-base">En</span>
                        <Image src={languageIcon} alt='language'/>
                     </div>
@@ -57,9 +57,9 @@ export default function Header() {
                             aria-label="Open menu"
                         >
                             <div className="flex flex-col justify-center items-center" style={{height: '24px'}}>
-                                <div style={{width: '14px', height: '2px', background: '#fff', borderRadius: '2px', marginBottom: '2px'}}></div>
-                                <div style={{width: '14px', height: '2px', background: '#fff', borderRadius: '2px', marginBottom: '2px'}}></div>
-                                <div style={{width: '14px', height: '2px', background: '#fff', borderRadius: '2px'}}></div>
+                                <div style={{width: '14px', height: '2px', background: '#F1F3F3', borderRadius: '2px', marginBottom: '2px'}}></div>
+                                <div style={{width: '14px', height: '2px', background: '#F1F3F3', borderRadius: '2px', marginBottom: '2px'}}></div>
+                                <div style={{width: '14px', height: '2px', background: '#F1F3F3', borderRadius: '2px'}}></div>
                             </div>
                             {/* Avatar logic: show nothing if not logged in, else show photo or initial */}
                             {loading || !user ? null : (

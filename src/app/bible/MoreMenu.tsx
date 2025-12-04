@@ -125,7 +125,7 @@ export default function MoreMenu({
                     you can pass title="" into ModalSelector to avoid duplicate outer heading.
                     We still render this "More" block as the inner card content per your UI. */}
                 <div className="flex items-center justify-between w-full mb-3">
-                    <div className="text-lg font-semibold">More</div>
+                    <div className="text-lg font-semibold"></div>
                     <button
                         type="button"
                         onClick={() => onClose?.()}
@@ -145,7 +145,7 @@ export default function MoreMenu({
                             <div className="text-base font-medium">Fonts & Settings</div>
                             <div className="text-xs text-gray-400">Font family, size & theme</div>
                         </div>
-                        <div className="text-gray-300">›</div>
+                        {/* <div className="text-gray-300">›</div> */}
                     </button>
 
                     <div className="w-full bg-white px-4 py-4 flex items-center justify-between">

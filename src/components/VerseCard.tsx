@@ -2,6 +2,12 @@
 'use client';
 import Image from 'next/image';
 import { useState } from 'react';
+import { FaRegHeart, FaRegComment } from "react-icons/fa";
+import { RiShareForwardLine } from "react-icons/ri";
+import { GrExpand } from "react-icons/gr";
+
+
+
 
 type Props = {
   id?: string;
@@ -28,6 +34,12 @@ export default function VerseCard({
   const verseColor = variant === 'blue' ? 'text-[#E7B0D3]' : variant === 'pink' ? 'text-[#E17A8B]' : 'text-[#444]';
   const overlayFrom = variant === 'blue' ? 'from-transparent' : 'from-transparent';
   const overlayTo = variant === 'blue' ? 'to-white/40' : 'to-white/30';
+  const bibleIconColor =
+        variant === 'blue'
+        ? '#006A6F'
+        : variant === 'pink'
+        ? '#E17A8B'
+        : '#444';
 
   return (
     <article className="relative overflow-hidden rounded-xl shadow-card bg-white min-h-[280px]">
@@ -66,30 +78,37 @@ export default function VerseCard({
           {verseText}
         </p>
 
+      
         <div className="mt-6 flex items-center gap-6 border-t border-white/30 pt-3">
           <button onClick={() => setLiked(s => !s)} className="flex flex-col items-center text-sm">
             <div className="w-9 h-9 rounded-full bg-[#E6F0F1] flex items-center justify-center">
-              <svg width="16" height="16" viewBox="0 0 24 24" className="text-[#006A6F]">
-                {/* replace path with real heart SVG or import */}
-                <path fill="currentColor" d="M12 21s-6.716-4.35-9.11-7.133C-..." />
-              </svg>
+                        {/* <BiBible className="text-xl text-[#31393A]" /> */}
+                        <FaRegHeart className="text-xl" style={{ color: bibleIconColor }} />
             </div>
+              {/* <div className="mt-2 text-xs text-[rgba(49,57,58,0.8)]">Bible</div> */}
             <div className="mt-2 text-xs text-[rgba(49,57,58,0.8)]">{stats.likes}</div>
           </button>
 
           <div className="flex flex-col items-center text-sm">
-            <div className="w-9 h-9 rounded-full bg-[#E6F0F1] flex items-center justify-center">💬</div>
+            <div className="w-9 h-9 rounded-full bg-[#E6F0F1] flex items-center justify-center">
+            <FaRegComment className="text-xl" style={{ color: bibleIconColor }} />
+
+            </div>
             <div className="mt-2 text-xs text-[rgba(49,57,58,0.8)]">{stats.comments}</div>
           </div>
 
           <div className="flex flex-col items-center text-sm">
-            <div className="w-9 h-9 rounded-full bg-[#E6F0F1] flex items-center justify-center">↗</div>
+            <div className="w-9 h-9 rounded-full bg-[#E6F0F1] flex items-center justify-center">
+              <RiShareForwardLine className="text-xl" style={{ color: bibleIconColor }} />
+            </div>
             <div className="mt-2 text-xs text-[rgba(49,57,58,0.8)]">{stats.shares}</div>
           </div>
 
           <div className="flex-1" />
-          <button className="flex items-center gap-2 text-sm text-[rgba(49,57,58,0.8)]">
-            <div className="w-10 h-10 rounded bg-white/90 flex items-center justify-center">⤢</div>
+          <button className="flex flex-col items-center text-sm text-[rgba(49,57,58,0.8)]">
+            <div className="w-9 h-9 rounded-full bg-[#E6F0F1] flex items-center justify-center">
+            <GrExpand className="text-l" style={{ color: bibleIconColor }} />
+            </div>
             <div className="text-xs">Expand</div>
           </button>
         </div>

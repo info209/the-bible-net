@@ -760,9 +760,25 @@ const handleNext = () => {
                     </div>
                 </div>
             )}
-            {!readingMode && showHeader &&  <Header />}
+               {!readingMode && (
+                <div
+                    className={` w-full duration-500 ease-in-out
+                    ${showHeader ? "opacity-100" : "opacity-0 -translate-y-full"}
+                    `}
+                    style={{ minHeight: "52px" }}
+                >
+                    <Header />
+                </div>
+                )}
 
-            <main className={`flex-1 w-full pb-28 px-2 sm:px-4 transition-all duration-300 ${showStickyBar ? 'pt-[52px] sm:pt-[60px]' : ''}`}>
+
+
+            <main
+  className={`flex-1 w-full px-2 sm:px-4 transition-all duration-300 
+    ${readingMode ? 'pt-[52px] sm:pt-[60px]' : ''} 
+    ${showFooterNav ? 'pb-28' : 'pb-0'}`}
+>
+
 
                 <div className="mx-auto w-full max-w-5xl">
                     {/* Selectors section stays wide */}
@@ -774,9 +790,10 @@ const handleNext = () => {
                         >
                             {!readingMode ? (
                                 <>
-                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs truncate bg-white" onClick={() => openModalFor("books")}>{isMounted ? getBookDisplay(book) : "Book"}</button>
-                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center bg-white" onClick={() => { !book ? openModalFor("books") : openModalFor("chapters"); }}>{isMounted ? String(chapter).padStart(2) : "1"}</button>
-                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs text-center flex justify-center items-center bg-white" onClick={() => openModalFor("versions")} title={selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id} disabled={loading || versions.length === 0}>{loading || versions.length === 0 ? <span className="text-gray-400 animate-pulse">Loading...</span> : (selectedVersionObj ? versionShortLabel.toUpperCase() : version || "Ver")}</button>
+                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs truncate bg-white" onClick={() =>{setMusicOpen(false);
+                                        setMoreOpen(false); openModalFor("books")}}>{isMounted ? getBookDisplay(book) : "Book"}</button>
+                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center bg-white" onClick={() => {setMusicOpen(false);setMoreOpen(false); !book ? openModalFor("books") : openModalFor("chapters"); }}>{isMounted ? String(chapter).padStart(2) : "1"}</button>
+                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs text-center flex justify-center items-center bg-white" onClick={() => {setMusicOpen(false); setMoreOpen(false); openModalFor("versions")}} title={selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id} disabled={loading || versions.length === 0}>{loading || versions.length === 0 ? <span className="text-gray-400 animate-pulse">Loading...</span> : (selectedVersionObj ? versionShortLabel.toUpperCase() : version || "Ver")}</button>
                                 </>
                             ) : (
                                 <>
@@ -786,12 +803,23 @@ const handleNext = () => {
                                 </>
                             )}
                             <div className="flex-grow" />
-                            <button type="button" aria-label="audio" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:bg-gray-50" onClick={() => setMusicOpen(true)}><Image src={musicIcon} alt="Music icon"/></button>
-                            <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full  flex items-center justify-center hover:bg-gray-50" onClick={() => setMoreOpen(true)}><Image src={moreIcon} alt="moreIcon" width={24}/></button>
+                            <button type="button" aria-label="audio" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:bg-gray-50" 
+                            onClick={() => {
+                                handleVerseDone(); 
+                                setMusicOpen(true);
+                                setMoreOpen(false);
+                            }}><Image src={musicIcon} alt="Music icon"/></button>
+                            <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full  flex items-center justify-center hover:bg-gray-50" 
+                            onClick={() => {
+                                handleVerseDone(); 
+                                setMoreOpen(true);
+                                setMusicOpen(false);
+                                }}><Image src={moreIcon} alt="moreIcon" width={24}/></button>
                         </div>
                     )}
-   <div
-    id="verses-container" ref={versesContainerRef}
+                        <div
+                        id="verses-container" 
+                        ref={versesContainerRef}
                         className="overflow-y-auto no-scrollbar h-[100vh]"
                           style={{ paddingBottom: showFooterNav ? "250px":"" }}
                           >
@@ -810,7 +838,7 @@ const handleNext = () => {
                         <AnimatePresence mode="wait" initial={false}>
                             <motion.article key={`${version}_${book}_${chapter}`}
                                             style={articleStyle}
-                                            className={readingMode ? "prose max-w-none text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none"}
+                                            className={readingMode ? "prose max-w-none  text-lg leading-relaxed font-serif text-gray-100" : "prose max-w-none pb-[20%]"}
                                             variants={variants[resolvedTransition] || variants["fade"]}
                                             initial="initial" animate="animate" exit="exit" transition={{ duration: 0.36, ease: "easeInOut" }}>
 
@@ -874,7 +902,16 @@ const handleNext = () => {
                                 </div>
                                 )}
             {/* FooterNav visibility logic */}
-            {!readingMode && showFooterNav && <FooterNav />}
+           {!readingMode && (
+                    <div
+                        className={`fixed bottom-0 left-0 w-full z-[70] transition-all duration-500 ease-in-out
+                        ${showFooterNav ? "opacity-100 translate-y-0" : "opacity-0 translate-y-full"}`}
+                        style={{ minHeight: "60px" }}
+                    >
+                        <FooterNav />
+                    </div>
+                    )}
+
 
             {!readingMode && isMounted && modalOpen && selectorsRef.current && (
                 <ModalSelector portalKey={modalPortalKey} show={modalOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeModal} title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" } mode={mode} onBack={() => setMode("chapters")} onDone={handleVerseDone} maxWidth={400} customHeight={520}>
