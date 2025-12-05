@@ -755,7 +755,7 @@ const handleNext = () => {
                 >
                     <div className="flex items-center lg:w-[68%] md:w-[59%] w-[88%] max-w-5xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
                         <span className="font-medium text-base sm:text-lg text-gray-900 dark:text-black truncate text-left bg-transparent">
-                            {getBookDisplay(book)}  {String(chapter).padStart(2)} | {selectedVersionObj ? versionShortLabel : ""}
+                            {getBookDisplay(book)}  {String(chapter).padStart(2)} | {selectedVersionObj ? versionShortLabel.toUpperCase() : ""}
                         </span>
                     </div>
                 </div>
