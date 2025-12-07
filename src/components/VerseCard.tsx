@@ -107,9 +107,9 @@ export default function VerseCard({
           <div className="flex-1" />
           <button className="flex flex-col items-center text-sm text-[rgba(49,57,58,0.8)]">
             <div className="w-9 h-9 rounded-full bg-[#E6F0F1] flex items-center justify-center">
-            <GrExpand className="text-l" style={{ color: bibleIconColor }} />
+            <GrExpand className="text-l" strokeWidth={2} style={{ color: bibleIconColor }} />
             </div>
-            <div className="text-xs">Expand</div>
+            <div className="mt-2 text-xs text-[rgba(49,57,58,0.8)]">Expand</div>
           </button>
         </div>
       </div>

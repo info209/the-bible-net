@@ -25,8 +25,6 @@ import "@/styles/highlights.css";
 import Image from "next/image";
 import backArrowIcon from "../../../../../../public/assets/back_arrow_icon.png";
 import frontArrowIcon from '../../../../../../public/assets/front_arrow_icon.png';
-import musicIcon from '../../../../../../public/assets/music_Icon.svg';
-import moreIcon from "../.../../../../../../../public/assets/more_icon.svg"
 
 // Version mapping utility
 import { transformVersionsForFrontend, toBackendVersionId } from "@/lib/versionMapping";
@@ -475,12 +473,23 @@ export default function BibleDynamicPage() {
         router.push(`/bible/${v.id}/${book}/${chapter}`);
         closeModal();
     };
-    const getBookDisplay = (slug: string) => {
-        if (!slug) return "Book";
-        const mapping = [...bookMapping.oldTestament, ...bookMapping.newTestament].find(m => m.slug === slug);
-        if (mapping) return isTelugu ? (mapping.telugu || mapping.english) : (mapping.english || mapping.telugu);
-        return slug;
-    };
+
+
+
+    
+    const getBookDisplay = (slug?: string) => {
+  if (!slug) return "Book";
+  const mapping = [...bookMapping.oldTestament, ...bookMapping.newTestament]
+    .find(m => m.slug === slug);
+  if (mapping) {
+    return isTelugu ? (mapping.telugu || mapping.english) : (mapping.english || mapping.telugu);
+  }
+  return slug;
+};
+    const bookDisplay = useMemo(() => {
+  return book ? getBookDisplay(book) : "Book";
+}, [book, isTelugu]); // recompute only when book or language changes
+
     const resolvedVersionName = getVersionDisplayName(version, selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id || "");
     const versionShortLabel = isMounted
         ? getVersionShortLabel(version, selectedVersionObj?.acronym)
@@ -549,28 +558,34 @@ export default function BibleDynamicPage() {
         setShowStickyBar(shouldShow);
         lastShowStickyBar.current = shouldShow;
     }, [readingMode]);
-    useEffect(() => {
-        if (readingMode) return;
-        const container = versesContainerRef.current;
-        if (!container) return; // Must have the ref element
-        const handleScroll = () => {
-            if (throttleTimeout.current) return;
-            throttleTimeout.current = setTimeout(() => {
-                const scrollY = container.scrollTop;
-                const shouldShow = scrollY > 40;
-                if (shouldShow !== lastShowStickyBar.current) {
-                    setShowStickyBar(shouldShow);
-                    lastShowStickyBar.current = shouldShow;
-                }
-                throttleTimeout.current = null;
-            }, 100);
-        };
-        container.addEventListener("scroll", handleScroll, { passive: true });
-        return () => {
-            container.removeEventListener("scroll", handleScroll);
-            if (throttleTimeout.current) clearTimeout(throttleTimeout.current);
-        };
-    }, [readingMode]);
+
+// Sticky bar visibility (same behavior as header/footer)
+useEffect(() => {
+  if (readingMode) return;
+  const container = versesContainerRef.current;
+  if (!container) return;
+
+  let lastY = container.scrollTop;
+
+  const handleScroll = () => {
+    const currentY = container.scrollTop;
+
+    if (currentY > lastY && currentY > 40) {
+      // scrolling down past threshold → hide
+      setShowStickyBar(true);
+    } else if (currentY < lastY) {
+      // scrolling up → show
+      setShowStickyBar(false);
+    }
+
+    lastY = currentY;
+  };
+
+  container.addEventListener("scroll", handleScroll, { passive: true });
+  return () => container.removeEventListener("scroll", handleScroll);
+}, [readingMode]);
+
+
 
     // Create highlight handler used by quick UI (single verse)
     async function handleCreateHighlight(startVerse: number, endVerse: number, color = "yellow") {
@@ -705,7 +720,7 @@ const handlePrev = () => {
     // Previous chapter in current book
     const newChapter = chapter - 1;
     setChapter(newChapter);
-    router.push(`/bible/${version}/${book}/${newChapter}?verse=1`);
+    router.replace(`/bible/${version}/${book}/${newChapter}?verse=1`);
   } else if (currentBookIndex > 0) {
     // Go to last chapter of previous book
     const prevBook = allBooksInOrder[currentBookIndex - 1];
@@ -713,7 +728,7 @@ const handlePrev = () => {
     setBook(prevBook.slug);
     setChapter(lastChapter);
     setSelectedVerse(1);
-    router.push(`/bible/${version}/${prevBook.slug}/${lastChapter}?verse=1`);
+    router.replace(`/bible/${version}/${prevBook.slug}/${lastChapter}?verse=1`);
   }
 };
 
@@ -724,19 +739,42 @@ const handleNext = () => {
     // Next chapter in current book
     const newChapter = chapter + 1;
     setChapter(newChapter);
-    router.push(`/bible/${version}/${book}/${newChapter}?verse=1`);
+    router.replace(`/bible/${version}/${book}/${newChapter}?verse=1`);
   } else if (currentBookIndex < allBooksInOrder.length - 1) {
     // Go to chapter 1 of next book
     const nextBook = allBooksInOrder[currentBookIndex + 1];
     setBook(nextBook.slug);
     setChapter(1);
     setSelectedVerse(1);
-    router.push(`/bible/${version}/${nextBook.slug}/1?verse=1`);
+    router.replace(`/bible/${version}/${nextBook.slug}/1?verse=1`);
   }
 };
+const VerseSkeleton = ({ count = 5, readingMode = false }) => {
+  return (
+    <div className="animate-pulse space-y-4">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="flex items-start space-x-2">
+          <span
+            className={`flex-1 h-4 rounded ${
+              readingMode ? "bg-gray-600" : "bg-gray-200"
+            }`}
+          ></span>
+        </div>
+      ))}
+    </div>
+  );
+};
+
 
     return (
-        <div style={rootThemeStyle} data-theme={theme} className={readingMode ? "min-h-screen flex flex-col bg-[#0f0f10]" : "min-h-screen flex flex-col"}>
+        <div
+            style={rootThemeStyle}
+            data-theme={theme}
+            className={`bible_page min-h-screen flex flex-col ${
+                readingMode && "bg-[#0f0f10]"
+            }`}
+            >
+
             {/* Sticky info bar for reading mode */}
             {readingMode && (
                 <div className="sticky top-0 z-[100] w-full bg-rose-50 border-b border-rose-200 font-semibold text-rose-600">
@@ -764,59 +802,32 @@ const handleNext = () => {
                 <div
                     className={` w-full duration-500 ease-in-out
                     ${showHeader ? "opacity-100" : "opacity-0 -translate-y-full"}
-                    `}
-                    style={{ minHeight: "52px" }}
-                >
-                    <Header />
+                    `}>
+                  <Header
+                    selectorsRef={selectorsRef}
+                    readingMode={readingMode}
+                    showStickyBar={showStickyBar}
+                    book={book}
+                    chapter={chapter}
+                    version={version}
+                    versionShortLabel={versionShortLabel}
+                    openModalFor={openModalFor}
+                    handleVerseDone={handleVerseDone}
+                    setMusicOpen={setMusicOpen}
+                    setMoreOpen={setMoreOpen}
+                    isMounted={isMounted}
+                    selectedVersionObj={selectedVersionObj}
+                    versions={versions}
+                    bookDisplay={(slug) => getBookDisplay(slug)}
+                    />
                 </div>
                 )}
-
-
-
             <main
-  className={`flex-1 w-full px-2 sm:px-4 transition-all duration-300 
-    ${readingMode ? 'pt-[52px] sm:pt-[60px]' : ''} 
-    ${showFooterNav ? 'pb-28' : 'pb-0'}`}
->
-
-
+                className={`flex-1 w-full px-2 sm:px-4 transition-all duration-300 
+                ${readingMode ? 'pt-[52px] sm:pt-[60px]' : ''} 
+                ${showFooterNav ? 'pb-28' : 'pb-0'}`}>
                 <div className="mx-auto w-full max-w-5xl">
                     {/* Selectors section stays wide */}
-                    {!readingMode && !showStickyBar && (
-                        <div
-                            ref={selectorsRef}
-                            className={`fixed top-0 left-0 z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-4 md:ml-[150px] lg:ml-[166px] lg:w-[68%] md:w-[59%] w-[88%] bg-transparent border-none shadow-none transition-all duration-300`}
-                            style={{ background: 'none', boxShadow: 'none', border: 'none', position: 'sticky', top: 0 }}
-                        >
-                            {!readingMode ? (
-                                <>
-                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs truncate bg-white" onClick={() =>{setMusicOpen(false);
-                                        setMoreOpen(false); openModalFor("books")}}>{isMounted ? getBookDisplay(book) : "Book"}</button>
-                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center bg-white" onClick={() => {setMusicOpen(false);setMoreOpen(false); !book ? openModalFor("books") : openModalFor("chapters"); }}>{isMounted ? String(chapter).padStart(2) : "1"}</button>
-                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs text-center flex justify-center items-center bg-white" onClick={() => {setMusicOpen(false); setMoreOpen(false); openModalFor("versions")}} title={selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id} disabled={loading || versions.length === 0}>{loading || versions.length === 0 ? <span className="text-gray-400 animate-pulse">Loading...</span> : (selectedVersionObj ? versionShortLabel.toUpperCase() : version || "Ver")}</button>
-                                </>
-                            ) : (
-                                <>
-                                    <span className="px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs truncate font-medium text-gray-700 bg-transparent transition-all duration-300">{getBookDisplay(book)}</span>
-                                    <span className="px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center font-medium text-gray-700 bg-transparent transition-all duration-300">{String(chapter).padStart(2, "0")}</span>
-                                    <span className="px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs text-center font-medium text-gray-700 bg-transparent transition-all duration-300">{selectedVersionObj ? versionShortLabel : version || "Ver"}</span>
-                                </>
-                            )}
-                            <div className="flex-grow" />
-                            <button type="button" aria-label="audio" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:bg-gray-50" 
-                            onClick={() => {
-                                handleVerseDone(); 
-                                setMusicOpen(true);
-                                setMoreOpen(false);
-                            }}><Image src={musicIcon} alt="Music icon"/></button>
-                            <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full  flex items-center justify-center hover:bg-gray-50" 
-                            onClick={() => {
-                                handleVerseDone(); 
-                                setMoreOpen(true);
-                                setMusicOpen(false);
-                                }}><Image src={moreIcon} alt="moreIcon" width={24}/></button>
-                        </div>
-                    )}
                         <div
                         id="verses-container" 
                         ref={versesContainerRef}
@@ -830,7 +841,8 @@ const handleNext = () => {
                                 <button onClick={() => setReadingMode(false)} className="text-sm text-gray-300 hover:text-gray-100">✕ Exit</button>
                             </div>
                         )}
-                        {loading && <div className="text-gray-500 mb-4">Loading...</div>}
+                        {loading && <VerseSkeleton count={30} readingMode={readingMode} />}
+
                         {error && <div className="text-red-500 mb-4">{error}</div>}
 
 
@@ -880,7 +892,7 @@ const handleNext = () => {
                                         <div
                                                 className="
                                                     fixed flex justify-between
-                                                    top-[85%] left-1/2 -translate-x-1/2 -translate-y-1/2
+                                                    top-[83%] left-1/2 -translate-x-1/2 -translate-y-1/2
                                                     w-[90%]
                                                     md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2
                                                     md:w-[90%]
@@ -987,7 +999,7 @@ const handleNext = () => {
             )}
 
             {/* HIGHLIGHT toolbar (show controlled by highlightToolbarOpen) */}
-            <HighlightToolbar
+            {/* <HighlightToolbar
                 db={db}
                 authUser={authUser}
                 version={backendVersion}
@@ -1002,7 +1014,7 @@ const handleNext = () => {
                 show={highlightToolbarOpen}
                 onAfterApply={(id) => { console.log("highlight saved", id); }}
                 onClose={() => setHighlightToolbarOpen(false)}
-            />
+            /> */}
         </div>
     );
 }

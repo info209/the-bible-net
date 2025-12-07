@@ -1,7 +1,7 @@
 /* src/styles/highlights.css */
 
 /* selection dotted outline for selected verses */
-html, body {
+.bible_page {
   overflow: hidden !important;
   height: 100%;
 }
