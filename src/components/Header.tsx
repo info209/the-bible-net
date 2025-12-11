@@ -2,15 +2,52 @@
 'use client';
 import Image from 'next/image';
 import { useAuth } from '../context/AuthProvider';
-import React, { useState, useRef, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { FaGlobe } from 'react-icons/fa';
-import profileIcon from '../../public/assets/profile_icon.svg'
-import menuIcon from '../../public/assets/menu_icon.png'
-import languageIcon from '../../public/assets/earth_icons.svg'
+import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import profileIcon from '../../public/assets/profile_icon.svg';
+import menuIcon from '../../public/assets/menu_icon.png';
+import languageIcon from '../../public/assets/earth_icons.svg';
+import musicIcon from '../../public/assets/music_Icon.svg';
+import moreIcon from '../../public/assets/more_icon.svg';
+interface HeaderProps {
+  selectorsRef?: React.RefObject<HTMLDivElement | null>;
+  readingMode?: boolean;
+  showStickyBar?: boolean;
+  book?: string;
+  chapter?: number;
+  version?: string;
+  versionShortLabel?: string;
+  openModalFor?: (mode: "books" | "chapters" | "verses" | "versions") => void;
+  handleVerseDone?: () => void;
+  setMusicOpen?: (open: boolean) => void;
+  setMoreOpen?: (open: boolean) => void;
+  isMounted?: boolean;
+  selectedVersionObj?: any;
+  versions?: any[];
+  bookDisplay?: (slug: string) => string;
+}
 
-export default function Header() {
+export default function Header({
+  setMusicOpen = () => {},
+  setMoreOpen = () => {},
+  openModalFor = () => {},
+  handleVerseDone = () => {},
+  isMounted = false,
+  selectedVersionObj = null,
+  versions = [],
+  bookDisplay = (slug) => slug,
+  readingMode = false,
+  showStickyBar = false,
+  book = "",
+  chapter = 1,
+  version = "",
+  versionShortLabel = "",
+  selectorsRef
+}: HeaderProps) {
     const { user, loading, signOut } = useAuth();
+    const pathname = usePathname();
+
     const router = useRouter();
     const [menuOpen, setMenuOpen] = useState(false);
     const menuRef = useRef(null);
@@ -27,7 +64,27 @@ export default function Header() {
         return () => document.removeEventListener('mousedown', handleClick);
     }, [menuOpen]);
 
+     const versionLabel = useMemo(() => {
+  // Only compute when on /bible
+  if (pathname.startsWith("/bible")) {
+    if (versions?.length === 0) {
+      return "Loading…";
+    }
+
     return (
+      versionShortLabel?.toUpperCase() ||
+      version?.toUpperCase() ||
+      "VER"
+    );
+  }
+
+  // Fallback when not on /bible
+  return "";
+}, [pathname, loading, versions, versionShortLabel, version]);
+
+
+    return (
+        <>
         <header className="bg-[#41ADB0] w-full border-b-2 border-gray-100 shadow-sm mb-2">
             <div className="max-w-5xl mx-auto px-2 sm:px-4 md:px-8 pr-2 sm:pr-6 h-12 sm:h-16 md:h-20 flex items-center justify-between min-w-0">
                 {/* Responsive logo - w-auto for perfect alignment */}
@@ -120,6 +177,52 @@ export default function Header() {
                     </div>
                 </div>
             </div>
+ 
         </header>
+        {pathname.startsWith("/bible") && (
+        <AnimatePresence>  
+            {!readingMode && !showStickyBar && (
+                        <motion.div
+                            ref={selectorsRef}
+                            className={`fixed top-0 left-0 z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-4 md:ml-[150px] lg:ml-[166px] lg:w-[68%] md:w-[59%] w-[88%] bg-transparent border-none shadow-none transition-all duration-300`}
+                            style={{ background: 'none', boxShadow: 'none', border: 'none', position: 'sticky', top: 0 }}
+                        >
+                            {!readingMode && (
+                                <>
+                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs truncate bg-white" onClick={() =>{
+                                        setMusicOpen(false);
+                                        setMoreOpen(false); openModalFor("books")}}> {isMounted ? (book ? bookDisplay(book) : "Book") : "Book"}
+</button>
+
+                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-[64px] text-center bg-white" 
+                                     onClick={() => {
+                                        setMusicOpen(false);
+                                        setMoreOpen(false);
+                                        if (!book) {
+                                        openModalFor("books");
+                                        } else {
+                                        openModalFor("chapters");
+                                        }
+                                    }}
+                                    >{isMounted ? String(chapter).padStart(2) : "1"}</button>
+                                    <button type="button" className="border rounded px-2 py-1 text-sm sm:px-3 sm:py-2 sm:text-base w-auto min-w-0 max-w-xs text-center flex justify-center items-center bg-white" onClick={() => {setMusicOpen(false); setMoreOpen(false); openModalFor("versions")}} title={selectedVersionObj?.displayName || selectedVersionObj?.name || selectedVersionObj?.id} disabled={loading || versions.length === 0}>{loading || versions.length === 0 ? <span className="text-gray-400 animate-pulse">Loading...</span> : (versionLabel)}</button>
+                                </>
+                            )}
+                            <div className="flex-grow" />
+                            <button type="button" aria-label="audio" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center hover:bg-gray-50" 
+                            onClick={() => {
+                                handleVerseDone(); 
+                                setMusicOpen(true);
+                                setMoreOpen(false);
+                            }}><Image src={musicIcon} alt="Music icon"/></button>
+                            <button type="button" aria-label="more" className="w-9 h-9 sm:w-10 sm:h-10 rounded-full  flex items-center justify-center hover:bg-gray-50" 
+                            onClick={() => {
+                                handleVerseDone(); 
+                                setMoreOpen(true);
+                                setMusicOpen(false);
+                                }}><Image src={moreIcon} alt="moreIcon" width={24}/></button>
+                        </motion.div>
+                    )}</AnimatePresence>)}
+        </>
     );
 }
