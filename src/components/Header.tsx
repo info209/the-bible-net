@@ -11,41 +11,39 @@ import languageIcon from '../../public/assets/earth_icons.svg';
 import musicIcon from '../../public/assets/music_Icon.svg';
 import moreIcon from '../../public/assets/more_icon.svg';
 interface HeaderProps {
-    selectorsRef?: React.RefObject<HTMLDivElement | null>;
+  selectorsRef?: React.RefObject<HTMLDivElement | null>;
   readingMode?: boolean;
   showStickyBar?: boolean;
   book?: string;
   chapter?: number;
   version?: string;
   versionShortLabel?: string;
-//   getBookDisplay: (slug: string) => string;
-  openModalFor: (mode: "books" | "chapters" | "verses" | "versions") => void;
-  handleVerseDone: () => void;
-  setMusicOpen: (open: boolean) => void;
-  setMoreOpen: (open: boolean) => void;
-  isMounted: boolean;
-  selectedVersionObj: any;
-  versions: any[];
-  bookDisplay: (slug: string) => string;
+  openModalFor?: (mode: "books" | "chapters" | "verses" | "versions") => void;
+  handleVerseDone?: () => void;
+  setMusicOpen?: (open: boolean) => void;
+  setMoreOpen?: (open: boolean) => void;
+  isMounted?: boolean;
+  selectedVersionObj?: any;
+  versions?: any[];
+  bookDisplay?: (slug: string) => string;
 }
 
 export default function Header({
+  setMusicOpen = () => {},
+  setMoreOpen = () => {},
+  openModalFor = () => {},
+  handleVerseDone = () => {},
+  isMounted = false,
+  selectedVersionObj = null,
+  versions = [],
+  bookDisplay = (slug) => slug,
   readingMode = false,
   showStickyBar = false,
-  book,
-  chapter,
-  version,
-  versionShortLabel,
-//   getBookDisplay,
-  openModalFor, 
-  handleVerseDone,
-  setMusicOpen,
-  setMoreOpen,
-  selectorsRef,
-  isMounted,
-  selectedVersionObj,
-  versions,
-  bookDisplay
+  book = "",
+  chapter = 1,
+  version = "",
+  versionShortLabel = "",
+  selectorsRef
 }: HeaderProps) {
     const { user, loading, signOut } = useAuth();
     const pathname = usePathname();
@@ -69,7 +67,7 @@ export default function Header({
      const versionLabel = useMemo(() => {
   // Only compute when on /bible
   if (pathname.startsWith("/bible")) {
-    if (versions.length === 0) {
+    if (versions?.length === 0) {
       return "Loading…";
     }
 
