@@ -774,7 +774,6 @@ const handleNext = () => {
     router.replace(`/bible/${version}/${nextBook.slug}/1?verse=1`);
   }
 };
-console.log(readingMode,"cje")
 const VerseSkeleton = ({ count = 5, readingMode = false }) => {
   return (
     <div className="animate-pulse space-y-4">
