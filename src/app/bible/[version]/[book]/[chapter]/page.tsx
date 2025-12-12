@@ -646,38 +646,63 @@ useEffect(() => {
         return () => observer.disconnect();
     }, [selectorsRef]);
     // Scroll direction tracking and FooterNav visibility
-    useEffect(() => {
-        let ticking = false;
-        const container = versesContainerRef.current;
-        if (!container) return; // Must have the ref element
-        const handleScroll = () => {
-            if (!selectorsSticky) {
-                setShowFooterNav(true);
-                setShowHeader(true);
-                lastScrollY.current = container.scrollTop;;
-                return;
-            }
-            if (!ticking) {
-                window.requestAnimationFrame(() => {
-                    const currentY = container.scrollTop;;
-                    if (currentY > lastScrollY.current) {
-                        // Scrolling down
-                        setShowFooterNav(false);
-                        setShowHeader(false);
-                    } else if (currentY < lastScrollY.current) {
-                        // Scrolling up
-                        setShowFooterNav(true);
-                        setShowHeader(true);
-                    }
-                    lastScrollY.current = currentY;
-                    ticking = false;
-                });
-                ticking = true;
-            }
-        };
-        container.addEventListener("scroll", handleScroll, { passive: true });
-        return () => container.removeEventListener("scroll", handleScroll);
-    }, [selectorsSticky]);
+   useEffect(() => {
+  if (readingMode) return;
+  const container = versesContainerRef.current;
+  if (!container) return;
+
+  let lastY = container.scrollTop;
+  let ticking = false;
+
+  const handleScroll = () => {
+    if (!ticking) {
+      window.requestAnimationFrame(() => {
+        // Clamp overshoot values (avoid bounce at top/bottom)
+        const maxScroll = container.scrollHeight - container.clientHeight;
+        const currentY = Math.max(0, Math.min(container.scrollTop, maxScroll));
+
+        // Ignore tiny jitter (threshold)
+        if (Math.abs(currentY - lastY) < 5) {
+          ticking = false;
+          return;
+        }
+
+        // Header/Footer toggle
+        if (selectorsSticky) {
+          if (currentY > lastY) {
+            // scrolling down
+            setShowFooterNav(false);
+            setShowHeader(false);
+          } else {
+            // scrolling up
+            setShowFooterNav(true);
+            setShowHeader(true);
+          }
+        } else {
+          // always visible if not sticky
+          setShowFooterNav(true);
+          setShowHeader(true);
+        }
+
+        // Sticky bar toggle
+        if (currentY > 40 && currentY > lastY) {
+          setShowStickyBar(true);
+        } else if (currentY < lastY) {
+          setShowStickyBar(false);
+        }
+
+        lastY = currentY;
+        ticking = false;
+      });
+      ticking = true;
+    }
+  };
+
+  container.addEventListener("scroll", handleScroll, { passive: true });
+  return () => container.removeEventListener("scroll", handleScroll);
+}, [readingMode, selectorsSticky]);
+
+
 
    useEffect(() => {
   if (!selectedVerse || selectedVerse === 1) return;
@@ -749,6 +774,7 @@ const handleNext = () => {
     router.replace(`/bible/${version}/${nextBook.slug}/1?verse=1`);
   }
 };
+console.log(readingMode,"cje")
 const VerseSkeleton = ({ count = 5, readingMode = false }) => {
   return (
     <div className="animate-pulse space-y-4">
@@ -800,9 +826,9 @@ const VerseSkeleton = ({ count = 5, readingMode = false }) => {
             )}
                {!readingMode && (
                 <div
-                    className={` w-full duration-500 ease-in-out
-                    ${showHeader ? "opacity-100" : "opacity-0 -translate-y-full"}
-                    `}>
+                    className={`fixed top-0 left-0 w-full duration-500 ease-in-out ${
+    showHeader ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full"
+  }`}>
                   <Header
                     selectorsRef={selectorsRef}
                     readingMode={readingMode}
@@ -824,8 +850,8 @@ const VerseSkeleton = ({ count = 5, readingMode = false }) => {
                 )}
             <main
                 className={`flex-1 w-full px-2 sm:px-4 transition-all duration-300 
-                ${readingMode ? 'pt-[52px] sm:pt-[60px]' : ''} 
-                ${showFooterNav ? 'pb-28' : 'pb-0'}`}>
+                ${showHeader ? 'pt-[28%] md:pt-[20%] lg:pt-[15%] xl:pt-[10%]' : 'pt-[10%]  md:pt-[6%] lg:pt-[5%] xl:pt-[3%]'} 
+                ${showFooterNav ? 'pb-[80px]' : 'pb-0'}`}>
                 <div className="mx-auto w-full max-w-5xl">
                     {/* Selectors section stays wide */}
                         <div
