@@ -184,7 +184,7 @@ export default function Header({
             {!readingMode && !showStickyBar && (
                         <motion.div
                             ref={selectorsRef}
-                            className={`fixed top-0 left-0 z-[70] flex flex-row flex-wrap items-center gap-2 mb-6 mt-4 mx-4 md:ml-[150px] lg:ml-[166px] lg:w-[68%] md:w-[59%] w-[88%] bg-transparent border-none shadow-none transition-all duration-300`}
+                            className={`fixed top-0 left-0 z-[70] flex flex-row flex-wrap items-center gap-2 mb-2 mt-4 mx-4 md:ml-[150px] lg:ml-[166px] lg:w-[68%] md:w-[59%] w-[88%] bg-transparent border-none shadow-none transition-all duration-300`}
                             style={{ background: 'none', boxShadow: 'none', border: 'none', position: 'sticky', top: 0 }}
                         >
                             {!readingMode && (
