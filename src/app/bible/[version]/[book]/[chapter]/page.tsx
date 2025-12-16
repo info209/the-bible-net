@@ -849,7 +849,7 @@ const VerseSkeleton = ({ count = 5, readingMode = false }) => {
                 )}
             <main
                 className={`flex-1 w-full px-2 sm:px-4 transition-all duration-300 
-                ${showHeader ? 'pt-[28%] md:pt-[20%] lg:pt-[15%] xl:pt-[10%]' : 'pt-[10%]  md:pt-[6%] lg:pt-[5%] xl:pt-[3%]'} 
+                ${showHeader ? 'pt-[106px] md:pt-[145px] lg:pt-[160px] xl:pt-[150px]' : 'pt-[40px]  md:pt-[36px] lg:pt-[32px] xl:pt-[48px]'} 
                 ${showFooterNav ? 'pb-[80px]' : 'pb-0'}`}>
                 <div className="mx-auto w-full max-w-5xl">
                     {/* Selectors section stays wide */}

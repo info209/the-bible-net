@@ -9,11 +9,17 @@ import { useRouter } from 'next/navigation';
 export default function LoginPage() {
     const router = useRouter();
 
+       const handleBack = (e: React.MouseEvent) => {
+            e.preventDefault();
+            if (typeof window !== 'undefined' && window.history.length > 1) router.back();
+            else router.push('/');
+        };
+
     return (
         <div className="min-h-screen flex items-start sm:items-center justify-center bg-[#ffffff] px-4 py-8 sm:py-16">
             <div className="w-full max-w-md p-6 bg-white rounded-lg shadow-lg border">
                 <div className="flex justify-end">
-                    <button onClick={() => router.push('/')} aria-label="Cancel" className="inline-flex items-center text-base p-2 text-gray-700 hover:text-teal-700">
+                    <button onClick={handleBack} aria-label="Cancel" className="inline-flex items-center text-base p-2 text-gray-700 hover:text-teal-700">
                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" className="w-6 h-6">
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                         </svg>
