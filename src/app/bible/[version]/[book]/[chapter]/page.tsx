@@ -813,7 +813,7 @@ const VerseSkeleton = ({ count = 5, readingMode = false }) => {
             {/* Sticky info bar for non-reading mode */}
             {!readingMode && !showHeader &&(
                 <div
-                    className={`fixed top-0 left-0 w-full z-[70] pointer-events-none bg-transparent border-none shadow-none transition-all duration-300 ${showStickyBar ? '' : 'opacity-0'}`}
+                    className={`fixed top-0 left-0 w-full z-[70] pointer-events-none bg-transparent border-none shadow-none transition-all duration-300`}
                     style={{ minHeight: '44px' }}
                 >
                     <div className="flex items-center lg:w-[68%] md:w-[59%] w-[88%] max-w-5xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
