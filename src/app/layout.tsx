@@ -6,6 +6,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 
 // Import AuthProvider
 import { AuthProvider } from '../context/AuthProvider';
+import BodyClassController from './BodyClassController';
 
 export const metadata = {
     title: 'Bible App',
@@ -16,6 +17,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     return (
         <html lang="en">
         <body className="antialiased">
+            <BodyClassController/>
         <AuthProvider>
             {/* Persistent global audio element for music playback */}
             <audio id="global-audio" style={{ position: 'fixed', left: '-9999px', width: 0, height: 0 }} />
