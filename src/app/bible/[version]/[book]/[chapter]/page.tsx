@@ -951,7 +951,7 @@ const VerseSkeleton = ({ count = 5, readingMode = false }) => {
 
 
             {!readingMode && isMounted && modalOpen && selectorsRef.current && (
-                <ModalSelector portalKey={modalPortalKey} show={modalOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeModal} title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" } mode={mode} onBack={() => setMode("chapters")} onDone={handleVerseDone} maxWidth={400} customHeight={520}>
+                <ModalSelector portalKey={modalPortalKey} show={modalOpen} anchorRef={selectorsRef as MutableRefObject<HTMLDivElement>} onClose={closeModal} title={ mode === "books" ? "Select book" : mode === "chapters" ? "Select chapter" : mode === "verses" ? "Select verse" : "Select version" } mode={mode} onBack={() => setMode("chapters")} onDone={handleVerseDone} maxWidth={400} customHeight={420}>
                     {mode === "books" && <BookSelector books={books} onSelect={handleBookSelect} active={book} isTelugu={isTelugu} activeVersion={version} activeChapter={chapter} />}
                     {mode === "chapters" && <ChapterSelector chapters={chapters} onSelect={handleChapterSelect} active={chapter} activeVersion={version} activeBook={book} />}
                     {mode === "verses" && <VerseSelector verses={verses} onSelect={handleVerseSelect} onBack={() => setMode("chapters")} onDone={handleVerseDone} active={selectedVerse} />}
