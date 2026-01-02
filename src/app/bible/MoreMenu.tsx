@@ -107,11 +107,9 @@ export default function MoreMenu({
     }, [localFont, localFamily, localTheme, localTrans, localHide, controlledSetFont, controlledSetFamily, controlledSetTheme, controlledSetTransition, controlledSetHide]);
 
     const PanelWrapper = ({ children }: { children: React.ReactNode }) => (
-        <div className="w-full">
-            <div className="mx-auto" style={{ maxWidth: 720 }}>
-                <div className="p-2 flex flex-col w-full">{children}</div>
-            </div>
-        </div>
+       <div className="w-full max-w-[720px] mx-auto px-3 py-2">
+    {children}
+  </div>
     );
 
     const fontIndex = ["small", "medium", "large", "xlarge"].indexOf(activeFont as any);

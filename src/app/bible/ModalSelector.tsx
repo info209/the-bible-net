@@ -243,12 +243,10 @@ export default function ModalSelector({
 
                         {/* content */}
                        <div
-                            className="overflow-y-auto"
-                          style={
-        customHeight
-          ? { height: customHeight, overflowY: "auto" } // fills parent height
-          : { maxHeight: "45vh", overflowY: "auto" }
-      }
+                            className="overflow-y-auto bg-white"
+                                style={{
+                            maxHeight: customHeight ? customHeight : '80vh', // more space for long content
+                            }}
                             >
                             {/* If title was empty, the children are responsible for their own header/controls */}
                             <div className="p-3">{children}</div>
