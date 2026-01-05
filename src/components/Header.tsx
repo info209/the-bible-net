@@ -65,7 +65,7 @@ export default function Header({
     }, [menuOpen]);
 
      const versionLabel = useMemo(() => {
-  // Only compute when on /bible
+  // Only compute when on /bible.
   if (pathname.startsWith("/bible")) {
     if (versions?.length === 0) {
       return "Loading…";
