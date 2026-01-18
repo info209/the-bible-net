@@ -79,7 +79,8 @@ export default function BibleDynamicPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const [isMounted, setIsMounted] = useState(false);
-    useEffect(() => setIsMounted(true), []);
+    useEffect(() => setIsMounted(true), []); const lastScrollYRef = useRef(0);
+  const tickingRef = useRef(false);
 
     // data & selections
     const [versions, setVersions] = useState<any[]>([]);
@@ -585,6 +586,21 @@ useEffect(() => {
   return () => container.removeEventListener("scroll", handleScroll);
 }, [readingMode]);
 
+  useEffect(() => {
+    const container = versesContainerRef.current;
+    if (!container) return;
+
+    if (!readingMode) {
+      lastScrollYRef.current = container.scrollTop;
+
+      // Stabilize UI
+      setShowHeader(true);
+      setShowFooterNav(true);
+      setShowStickyBar(false);
+    }
+  }, [readingMode, versesContainerRef]);
+  
+
 
 
     // Create highlight handler used by quick UI (single verse)
@@ -646,61 +662,69 @@ useEffect(() => {
         return () => observer.disconnect();
     }, [selectorsRef]);
     // Scroll direction tracking and FooterNav visibility
-   useEffect(() => {
-  if (readingMode) return;
-  const container = versesContainerRef.current;
-  if (!container) return;
+ useEffect(() => {
+    if (readingMode) return;
 
-  let lastY = container.scrollTop;
-  let ticking = false;
+    const container = versesContainerRef.current;
+    if (!container) return;
 
-  const handleScroll = () => {
-    if (!ticking) {
-      window.requestAnimationFrame(() => {
-        // Clamp overshoot values (avoid bounce at top/bottom)
-        const maxScroll = container.scrollHeight - container.clientHeight;
-        const currentY = Math.max(0, Math.min(container.scrollTop, maxScroll));
+    const handleScroll = () => {
+      if (tickingRef.current) return;
 
-        // Ignore tiny jitter (threshold)
-        if (Math.abs(currentY - lastY) < 5) {
-          ticking = false;
+      tickingRef.current = true;
+
+      requestAnimationFrame(() => {
+        const maxScroll =
+          container.scrollHeight - container.clientHeight;
+
+        const currentY = Math.max(
+          0,
+          Math.min(container.scrollTop, maxScroll)
+        );
+
+        const lastY = lastScrollYRef.current;
+
+        // ⛔ Ignore jitter + top/bottom bounce
+        if (
+          Math.abs(currentY - lastY) < 6 ||
+          currentY <= 0 ||
+          currentY >= maxScroll - 2
+        ) {
+          tickingRef.current = false;
           return;
         }
 
-        // Header/Footer toggle
         if (selectorsSticky) {
-          if (currentY > lastY) {
-            // scrolling down
-            setShowFooterNav(false);
+          if (currentY > lastY && currentY > 40) {
+            // ⬇ scrolling down
             setShowHeader(false);
+            setShowFooterNav(false);
+            setShowStickyBar(true);
           } else {
-            // scrolling up
-            setShowFooterNav(true);
+            // ⬆ scrolling up
             setShowHeader(true);
+            setShowFooterNav(true);
+            setShowStickyBar(false);
           }
         } else {
-          // always visible if not sticky
-          setShowFooterNav(true);
+          // If sticky disabled → always visible
           setShowHeader(true);
-        }
-
-        // Sticky bar toggle
-        if (currentY > 40 && currentY > lastY) {
-          setShowStickyBar(true);
-        } else if (currentY < lastY) {
+          setShowFooterNav(true);
           setShowStickyBar(false);
         }
 
-        lastY = currentY;
-        ticking = false;
+        lastScrollYRef.current = currentY;
+        tickingRef.current = false;
       });
-      ticking = true;
-    }
-  };
+    };
 
-  container.addEventListener("scroll", handleScroll, { passive: true });
-  return () => container.removeEventListener("scroll", handleScroll);
-}, [readingMode, selectorsSticky]);
+    container.addEventListener("scroll", handleScroll, { passive: true });
+
+    return () => {
+      container.removeEventListener("scroll", handleScroll);
+    };
+  }, [readingMode, selectorsSticky, versesContainerRef]);
+
 
 
 
@@ -713,7 +737,7 @@ useEffect(() => {
   if (!el || !container) return;
 
   container.scrollTo({
-    top: el.offsetTop - container.offsetTop - 100, // offset for header
+    top: el.offsetTop - container.offsetTop - 40, // offset for header
     behavior: "smooth",
   });
 
@@ -813,7 +837,12 @@ const VerseSkeleton = ({ count = 5, readingMode = false }) => {
             {/* Sticky info bar for non-reading mode */}
             {!readingMode && !showHeader &&(
                 <div
-                    className={`fixed top-0 left-0 w-full z-[70] pointer-events-none bg-transparent border-none shadow-none transition-all duration-300`}
+                onClick={()=>{
+                    setShowFooterNav(true);
+                    setShowHeader(true);
+                    setShowStickyBar(false)
+                }}
+                    className={`fixed top-0 left-0 w-full z-[70]  bg-transparent border-none shadow-none transition-all duration-300`}
                     style={{ minHeight: '44px' }}
                 >
                     <div className="flex items-center lg:w-[68%] md:w-[59%] w-[88%] max-w-5xl mx-auto px-3 sm:px-6 min-h-[44px] sm:min-h-[52px]">
@@ -885,7 +914,7 @@ const VerseSkeleton = ({ count = 5, readingMode = false }) => {
                                     const selectedClass = isVerseSelected(v.n) ? "selected-dotted" : "";
                                     const selectionCursor = selectionMode ? "selection-cursor" : "";
                                     return (
-                                        <span
+                                        <div
                                             key={v.n}
                                             id={`verse-${v.n}`}
                                             data-verse-id={vid}
@@ -893,11 +922,11 @@ const VerseSkeleton = ({ count = 5, readingMode = false }) => {
                                             onClick={() => { if (selectionMode) toggleVerseSelection(v.n); }}
                                         >
                                             <span className={`${readingMode ? "text-rose-300" : "text-[#D23952]"}`}>{v.n}</span>
-                                             {" "}<span>{v.text}</span>{" "}
+                                             {" "}<span>{v.text.replace(/¶/g, "").trim()}</span>{" "}
                                             {!selectionMode && HIGHLIGHT_BUTTONS_ENABLED && (
                                                 <button className="ml-3 text-xs px-2 py-1 border rounded text-gray-500" onClick={() => handleCreateHighlight(v.n, v.n, "yellow")} title="Highlight this verse">✦</button>
                                             )}
-                                        </span>
+                                        </div>
                                     );
                                 })}
                                 {!hideFootnotes && (
@@ -925,12 +954,12 @@ const VerseSkeleton = ({ count = 5, readingMode = false }) => {
                                                 "
                                                 >
                                     <div  className={`w-10 h-10 flex border items-center justify-center rounded-full 
-                                               ${canGoPrev() ? 'bg-white cursor-pointer hover:bg-gray-100 shadow-md' : 'bg-gray-300 cursor-not-allowed opacity-70'}`}
+                                               ${canGoPrev() ? 'bg-white cursor-pointer hover:bg-gray-100 shadow-md' : 'opacity-0'}`}
                                         onClick={handlePrev}>
                                         <Image src={backArrowIcon} alt="Back"/>
                                     </div>
                                     <div className={`w-10 h-10 flex border items-center justify-center rounded-full 
-                                               ${canGoNext() ? 'bg-white cursor-pointer hover:bg-gray-100 shadow-md' : 'bg-gray-300 cursor-not-allowed opacity-70'}`}
+                                               ${canGoNext() ? 'bg-white cursor-pointer hover:bg-gray-100 shadow-md' : 'opacity-0'}`}
                                    onClick={handleNext}
                                     >
                                         <Image src={frontArrowIcon} alt="Next"/>
