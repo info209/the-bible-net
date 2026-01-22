@@ -855,7 +855,7 @@ const VerseSkeleton = ({ count = 5, readingMode = false }) => {
                {!readingMode && (
                 <div
                     className={`fixed top-0 left-0 w-full duration-500 ease-in-out ${
-    showHeader ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full"
+    showHeader ? "opacity-100 translate-y-0" : "opacity-0 -translate-y-full" 
   }`}>
                   <Header
                     selectorsRef={selectorsRef}
