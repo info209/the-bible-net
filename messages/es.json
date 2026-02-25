@@ -1,0 +1,19 @@
+{
+    "Index": {
+        "title": "La Red Bíblica",
+        "subtitle": "Lee, Estudia y Comparte la Palabra de Dios",
+        "getStarted": "Empezar",
+        "learnMore": "Aprender Más"
+    },
+    "Auth": {
+        "signin": "Iniciar Sesión",
+        "signout": "Cerrar Sesión",
+        "register": "Registrarse"
+    },
+    "Navigation": {
+        "home": "Inicio",
+        "read": "Leer",
+        "study": "Estudiar",
+        "community": "Comunidad"
+    }
+}
