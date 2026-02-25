@@ -1,4 +1,11 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# The Bible Net
+
+A multi-language Bible reading and study platform.
+
+## 📖 Documentation
+Detailed technical documentation is available in [TECHNICAL_DOCUMENTATION.md](./TECHNICAL_DOCUMENTATION.md).
+
+---
 
 ## Getting Started
 
