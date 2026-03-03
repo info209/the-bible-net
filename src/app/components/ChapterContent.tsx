@@ -509,7 +509,7 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
 
   // Select the appropriate Bible content
   // Fallback to mock data if API call fails or is loading
-  const content = apiContent || (mockBibleContent[book]?.[chapter] || defaultContent);
+  const content = apiContent || (mockBibleContent[book]?.[chapter]);
 
   // Scroll to specific verse when scrollToVerse changes
   useEffect(() => {

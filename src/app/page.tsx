@@ -1,14 +1,14 @@
-import AppHeader from "./components/AppHeader";
-import BibleReaderPage from "./components/BibleReaderPage";
-import ChapterContent from "./components/ChapterContent";
-import HomePage from "./components/HomePage";
-import "./globals.css"
+"use client";
+
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
 export default function Page() {
-  return (
-    <>
-    <AppHeader/>
-  <ChapterContent />
-  <BibleReaderPage/>
-  </>
-  )  
-};
+  const router = useRouter();
+
+  useEffect(() => {
+    router.push("/home");
+  }, [router]);
+
+  return null;
+}

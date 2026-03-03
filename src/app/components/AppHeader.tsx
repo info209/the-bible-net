@@ -6,7 +6,7 @@ interface AppHeaderProps {
 
 export default function AppHeader({ onMenuOpen }: AppHeaderProps) {
   return (
- <div className="bg-teal-600/30 backdrop-blur-md border-b border-white/20 shadow-sm px-4 py-4">
+ <div style={{background:"#41ADB0"}} className="bg-teal-600/30 backdrop-blur-md border-b border-white/20 shadow-sm px-4 py-4">
   <div className="max-w-3xl mx-auto flex items-center justify-between">
 
     {/* Logo / App Name */}

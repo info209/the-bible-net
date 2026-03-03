@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity } from 'lucide-react';
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill as EqualizerIcon, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
@@ -59,6 +60,58 @@ interface BibleReaderPageProps {
 }
 
 export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
+  // determine whether we are on bible page; if not, render only nav bar
+  const pathname = usePathname();
+  const isBiblePage = pathname === '/bible';
+
+  const BottomNav = () => (
+    <div className="fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)]">
+      <div className="max-w-3xl mx-auto px-4">
+        <div className="flex items-center justify-around h-16">
+          <button
+            onClick={() => onNavigate?.('home')}
+            className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
+          >
+            <div className={`p-2 rounded-full transition-all ${pathname === '/home' ? 'bg-[#006a6f]/10' : ''}`}>
+              <Home className={`size-6 ${pathname === '/home' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
+            </div>
+            <span className={`text-xs ${pathname === '/home' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Home</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate?.('bible')}
+            className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
+          >
+            <div className={`p-2 rounded-full transition-all ${isBiblePage ? 'bg-[#006a6f]/10' : ''}`}>
+              <Book className={`size-6 ${isBiblePage ? 'text-[#006a6f]' : 'text-gray-500'}`} />
+            </div>
+            <span className={`text-xs ${isBiblePage ? 'text-[#006a6f]' : 'text-gray-500'}`}>Bible</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate?.('library')}
+            className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
+          >
+            <div className={`p-2 rounded-full transition-all ${pathname === '/library' ? 'bg-[#006a6f]/10' : ''}`}>
+              <BookOpen className={`size-6 ${pathname === '/library' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
+            </div>
+            <span className={`text-xs ${pathname === '/library' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Library</span>
+          </button>
+
+          <button
+            onClick={() => onNavigate?.('explore')}
+            className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
+          >
+            <div className={`p-2 rounded-full transition-all ${pathname === '/explore' ? 'bg-[#006a6f]/10' : ''}`}>
+              <Compass className={`size-6 ${pathname === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
+            </div>
+            <span className={`text-xs ${pathname === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Explore</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   const [selectedBook, setSelectedBook] = useState('Genesis');
   const [selectedChapter, setSelectedChapter] = useState(1);
   const [selectedVersion, setSelectedVersion] = useState('KJV');
@@ -1116,6 +1169,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       console.log('[Chapter Change Effect] Auto-advance detected - skipping restart, narration will continue');
     }
   }, [selectedBook, selectedChapter]);
+
+  // if not on bible route just render bottom nav
+  if (!isBiblePage) {
+    return <BottomNav />;
+  }
 
   return (
     <div className="fixed inset-0 bg-[var(--color-bg-primary)] flex flex-col">
@@ -2273,10 +2331,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               onClick={() => onNavigate?.('explore')}
               className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
             >
-              <div className="p-2 rounded-full transition-all">
-                <Compass className="size-6 text-gray-500" />
+              <div className={`p-2 rounded-full transition-all ${pathname === '/explore' ? 'bg-[#006a6f]/10' : ''}`}>
+                <Compass className={`size-6 ${pathname === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
               </div>
-              <span className="text-xs text-gray-500">Explore</span>
+              <span className={`text-xs ${pathname === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Explore</span>
             </button>
           </div>
         </div>
