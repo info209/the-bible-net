@@ -1,5 +1,5 @@
 "use client";
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
 interface ChapterContentProps {
   book: string;
@@ -457,35 +457,77 @@ const defaultContent = {
 };
 
 export default function ChapterContent({ book, chapter, font, fontSize, version = 'NKJV', scrollToVerse, readingVerse, theme }: ChapterContentProps) {
-  // Select the appropriate Bible content based on version
-  let bibleData = mockBibleContent;
-  
-  if (version === 'TELBSI') {
-    bibleData = teluguBible as any;
-  } else if (version === 'HINBSI') {
-    bibleData = hindiBible as any;
-  }
-  
-  // Get the content for the current book and chapter, or use default
-  const content = bibleData[book]?.[chapter] || mockBibleContent[book]?.[chapter];
-  
+  const [apiContent, setApiContent] = useState<{ title: string; verses: { number: number; text: string }[] } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch Bible content from API
+  useEffect(() => {
+    let isMounted = true;
+
+    const fetchContent = async () => {
+      if (!book || !chapter || book === 'undefined' || !version) {
+        return;
+      }
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(`/api/v1/bible/${version}/${book}/${chapter}`);
+        const result = await response.json();
+
+        if (isMounted) {
+          if (result.success) {
+            // Map API data to the format used by the component
+            const data = result.data;
+            setApiContent({
+              title: `${data.book.name} ${data.chapter.number}`,
+              verses: data.verses
+            });
+          } else {
+            setError(result.error || 'Failed to fetch content');
+            setApiContent(null);
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError('An error occurred while fetching content');
+          setApiContent(null);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    fetchContent();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [book, chapter, version]);
+
+  // Select the appropriate Bible content
+  // Fallback to mock data if API call fails or is loading
+  const content = apiContent || (mockBibleContent[book]?.[chapter] || defaultContent);
+
   // Scroll to specific verse when scrollToVerse changes
   useEffect(() => {
-    if (scrollToVerse && scrollToVerse >= 1) {
+    if (scrollToVerse && scrollToVerse >= 1 && content?.verses.length > 0) {
       // Use a longer timeout to ensure the DOM and transitions are ready
       const timer = setTimeout(() => {
         const verseElement = document.getElementById(`verse-${book}-${chapter}-${scrollToVerse}`);
         if (verseElement) {
           // Get the scroll container (the main scrollable area)
           const scrollContainer = document.querySelector('[class*="overflow-y-auto"]');
-          
+
           if (scrollContainer) {
             // Calculate position with offset for sticky header (approximately 100px)
             const elementTop = verseElement.getBoundingClientRect().top;
             const containerTop = scrollContainer.getBoundingClientRect().top;
             const currentScroll = scrollContainer.scrollTop;
             const targetScroll = currentScroll + elementTop - containerTop - 100; // 100px offset for header
-            
+
             // Smooth scroll to position
             scrollContainer.scrollTo({
               top: targetScroll,
@@ -499,14 +541,14 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [scrollToVerse, book, chapter]);
-  
+  }, [scrollToVerse, book, chapter, content]);
+
   return (
     <div className="px-4 sm:px-6 py-4 sm:py-6 pb-[180px]">
       <div className="max-w-2xl mx-auto">
         {/* Chapter title */}
         <div className="mb-8">
-          <h2 
+          <h2
             className="text-xl font-bold mb-8"
             style={{ color: theme?.text }}
           >
@@ -517,18 +559,18 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
         {/* Bible text */}
         <div className="space-y-1.5 text-justify leading-7">
           {content?.verses.map(verse => (
-            <p 
+            <p
               key={verse.number}
               id={`verse-${book}-${chapter}-${verse.number}`}
               className="transition-all duration-500 rounded px-2 py-1"
-              style={{ 
+              style={{
                 fontFamily: font,
                 fontSize: `${fontSize}px`,
                 color: theme?.text,
                 backgroundColor: readingVerse === verse.number ? '#fbebee' : 'transparent'
               }}
             >
-              <sup 
+              <sup
                 className="font-bold mr-1"
                 style={{ color: theme?.verseNumber }}
               >

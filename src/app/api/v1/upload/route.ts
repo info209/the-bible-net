@@ -3,7 +3,7 @@ import { uploadToCloudinary } from '@/lib/cloudinary';
 
 /**
  * @swagger
- * /api/upload:
+ * /api/v1/upload:
  *   post:
  *     summary: Upload a file
  *     description: Upload a file to Cloudinary (max 10MB)

@@ -1,48 +1,54 @@
 import NextAuth from 'next-auth';
 import { authConfig } from '@/lib/auth.config';
-import createMiddleware from 'next-intl/middleware';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
+import { UserRole } from './types/user';
 
 const { auth } = NextAuth(authConfig);
 
-const locales = ['en', 'es', 'hi'];
-const publicPages = ['/auth/signin', '/auth/register', '/api/seed', '/api/docs', '/api/health'];
-
-const intlMiddleware = createMiddleware({
-    locales,
-    defaultLocale: 'en',
-    localePrefix: 'never'
-});
+// Define route categories
+const adminRoutes = ['/admin', '/api/v1/admin'];
+const onboardingProtectedRoutes = ['/dashboard', '/share', '/comment']; // Hypothetical app routes
+const authPageRoutes = ['/auth/login', '/auth/register', '/auth/verify'];
+const publicRoutes = ['/api/v1/bible', '/api/v1/daily', '/api/v1/content', '/api/v1/docs'];
 
 export default auth((req) => {
-    const { nextUrl } = req;
-    const isAuthenticated = !!req.auth;
+    const { nextUrl, auth: session } = req;
+    const isLoggedIn = !!session;
+    const isAuthPage = authPageRoutes.some((route) => nextUrl.pathname.startsWith(route));
+    const isAdminRoute = adminRoutes.some((route) => nextUrl.pathname.startsWith(route));
+    const isPublicRoute = publicRoutes.some((route) => nextUrl.pathname.startsWith(route)) || nextUrl.pathname === '/';
 
-    // 1. Determine Locale
-    // If user is logged in, their preference > Cookie > Header
-    let locale = 'en';
-    if (isAuthenticated && (req.auth?.user as any)?.language) {
-        locale = (req.auth?.user as any).language;
-    }
-    // Note: next-intl middleware handles cookie/header detection automatically if we don't force it.
-    // But to enforce User Preference from DB (via Session), we might need to set the cookie if it differs.
-
-    // 2. Protect Routes
-    const isPublicPage = publicPages.some(page => nextUrl.pathname.startsWith(page)) || nextUrl.pathname === '/';
-    const isAuthRoute = nextUrl.pathname.startsWith('/api/auth');
-
-    if (!isPublicPage && !isAuthRoute && !isAuthenticated) {
-        const signInUrl = new URL('/auth/signin', req.url);
-        signInUrl.searchParams.set('callbackUrl', req.nextUrl.pathname);
-        return NextResponse.redirect(signInUrl);
+    // 1. Redirect if trying to access auth pages while logged in
+    if (isAuthPage && isLoggedIn) {
+        return NextResponse.redirect(new URL('/dashboard', nextUrl));
     }
 
-    // 3. Chain next-intl middleware
-    // We pass the request to next-intl to handle locale setup
-    return intlMiddleware(req);
+    // 2. Protect Admin Routes (RBAC)
+    if (isAdminRoute) {
+        const isAdmin = session?.user?.role === UserRole.SUPER_ADMIN || session?.user?.role === UserRole.SUB_ADMIN;
+        if (!isAdmin) {
+            return NextResponse.redirect(new URL('/auth/login', nextUrl));
+        }
+    }
+
+    // 3. User Onboarding Flow: Redirect if onboarding not complete
+    if (isLoggedIn && !session.user.onboardingCompleted) {
+        const isOnboardingPage = nextUrl.pathname === '/auth/onboarding';
+        // Only allow access to the onboarding page itself if not complete
+        if (!isOnboardingPage && !isPublicRoute && !isAuthPage && !isAdminRoute) {
+            return NextResponse.redirect(new URL('/auth/onboarding', nextUrl));
+        }
+    }
+
+    // 4. Protect other Private Routes if not logged in
+    const isProtectedRoute = onboardingProtectedRoutes.some((route) => nextUrl.pathname.startsWith(route));
+    if (isProtectedRoute && !isLoggedIn) {
+        return NextResponse.redirect(new URL('/auth/login', nextUrl));
+    }
+
+    return NextResponse.next();
 });
 
 export const config = {
-    // Skip all paths that should not be internationalized
-    matcher: ['/((?!api|_next|.*\\..*).*)', '/api/user/:path*']
+    matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)', '/api/v1/admin/:path*', '/api/v1/user/:path*'],
 };

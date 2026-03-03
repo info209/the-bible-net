@@ -7,7 +7,7 @@ export async function GET(req: Request) {
         await connectDB();
         const { searchParams } = new URL(req.url);
 
-        // Example: /api/bible/verses?chapterId=...&page=1&limit=10
+        // Example: /api/v1/bible/verses?chapterId=...&page=1&limit=10
         const chapterId = searchParams.get('chapterId');
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '100'); // Default to full chapter usually, but support pagination

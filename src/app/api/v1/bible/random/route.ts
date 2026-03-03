@@ -4,7 +4,7 @@ import { connectDB } from '@/lib/db';
 
 /**
  * @swagger
- * /api/bible/random:
+ * /api/v1/bible/random:
  *   get:
  *     summary: Get a random Bible verse
  *     description: Returns a random verse from any version, book, and chapter

@@ -1,39 +1,35 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
-export interface IOTP extends Document {
-    identifier: string; // email or phone number
-    code: string;
-    type: 'email' | 'phone';
+export interface IOTPVerification extends Document {
+    userId: mongoose.Types.ObjectId;
+    otpHash: string;
     expiresAt: Date;
     createdAt: Date;
 }
 
-const OTPSchema = new Schema<IOTP>(
+const OTPSchema = new Schema<IOTPVerification>(
     {
-        identifier: {
-            type: String,
+        userId: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
             required: true,
-            trim: true,
-            lowercase: true,
+            index: true,
         },
-        code: {
+        otpHash: {
             type: String,
-            required: true,
-        },
-        type: {
-            type: String,
-            enum: ['email', 'phone'],
             required: true,
         },
         expiresAt: {
             type: Date,
             required: true,
-            index: { expires: 0 }, // TTL index: document will be deleted at expiresAt
+            index: { expires: '0s' }, // Auto-delete document on expiration using MongoDB TTL index
         },
     },
-    { timestamps: true }
+    {
+        timestamps: true,
+    }
 );
 
-const OTP: Model<IOTP> = mongoose.models.OTP || mongoose.model<IOTP>('OTP', OTPSchema);
-
-export default OTP;
+export const OTPVerification: Model<IOTPVerification> =
+    mongoose.models.OTPVerification ||
+    mongoose.model<IOTPVerification>('OTPVerification', OTPSchema);

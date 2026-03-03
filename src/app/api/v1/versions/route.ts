@@ -3,7 +3,7 @@ import { BibleService } from '@/services/bibleService';
 
 /**
  * @swagger
- * /api/versions:
+ * /api/v1/versions:
  *   get:
  *     summary: Get all Bible versions
  *     description: Retrieve a list of all available Bible versions with optional pagination

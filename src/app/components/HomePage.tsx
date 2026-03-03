@@ -12,19 +12,19 @@ export default function HomePage() {
   const dailyVerses = [
     {
       reference: "Psalm 23:1-3",
-      version: "NKJV",
+      version: "KJV",
       text: "The Lord is my shepherd; I shall not want. He makes me to lie down in green pastures; He leads me beside the still waters. He restores my soul.",
       bgColor: "from-cyan-400 to-teal-500"
     },
     {
       reference: "John 3:16",
-      version: "NKJV",
+      version: "KJV",
       text: "For God so loved the world that He gave His only begotten Son, that whoever believes in Him should not perish but have everlasting life.",
       bgColor: "from-blue-400 to-indigo-500"
     },
     {
       reference: "Philippians 4:13",
-      version: "NKJV",
+      version: "KJV",
       text: "I can do all things through Christ who strengthens me.",
       bgColor: "from-purple-400 to-pink-500"
     }
@@ -52,7 +52,7 @@ export default function HomePage() {
                 {/* Decorative elements */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
-                
+
                 {/* Content */}
                 <div className="relative z-10 flex-1 flex flex-col">
                   <div className="flex items-center justify-between mb-4">
@@ -109,9 +109,8 @@ export default function HomePage() {
             <button
               key={index}
               onClick={() => setCurrentSlide(index)}
-              className={`h-2 rounded-full transition-all ${
-                currentSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'
-              }`}
+              className={`h-2 rounded-full transition-all ${currentSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'
+                }`}
             />
           ))}
         </div>
@@ -122,13 +121,13 @@ export default function HomePage() {
         {/* Decorative elements */}
         <div className="absolute top-0 left-0 w-32 h-32 bg-rose-200/50 rounded-full -ml-16 -mt-16" />
         <div className="absolute bottom-0 right-0 w-24 h-24 bg-pink-300/50 rounded-full -mr-12 -mb-12" />
-        
+
         <div className="relative z-10">
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-gray-600 text-sm mb-1">Daily Devotional</p>
               <h3 className="text-gray-800 text-xl font-bold">Walking with God</h3>
-              <p className="text-gray-600 text-sm">Psalm 23:1-3 NKJV</p>
+              <p className="text-gray-600 text-sm">Psalm 23:1-3 KJV</p>
             </div>
             <button className="p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform">
               {audioPlaying ? <Pause className="size-5 text-[var(--color-accent-rose)]" /> : <Play className="size-5 text-[var(--color-accent-rose)]" />}
@@ -137,7 +136,7 @@ export default function HomePage() {
 
           <div className="space-y-4 my-6">
             <p className="text-gray-700 leading-relaxed text-justify">
-              The Lord is described as a shepherd, highlighting His role as a protector, provider, and guide. 
+              The Lord is described as a shepherd, highlighting His role as a protector, provider, and guide.
               Just as a shepherd cares for his sheep, God watches over us with tender love and compassion.
             </p>
             <div className="bg-white/60 backdrop-blur-sm p-4 rounded-lg border-l-4 border-[var(--color-accent-rose)]">
@@ -194,7 +193,7 @@ export default function HomePage() {
                 </div>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                <div 
+                <div
                   className="bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] h-2 rounded-full transition-all"
                   style={{ width: `${Math.round((23 + i) / 365 * 100)}%` }}
                 />

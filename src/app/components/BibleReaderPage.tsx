@@ -1,11 +1,10 @@
 "use client";
 import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity } from 'lucide-react';
-import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill } from 'react-icons/ri';
+import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill as EqualizerIcon, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
 import { motion, AnimatePresence } from 'framer-motion';
 import AppHeader from './AppHeader';
-// import EqualizerIcon from './EqualizerIcon';
 import ChapterContent, { mockBibleContent } from './ChapterContent';
 // import AudioControlPanel from './AudioControlPanel';
 // import BibleSearch from './BibleSearch';
@@ -27,7 +26,8 @@ const bibleBooks = {
   ]
 };
 
-const versions = [
+// Initial versions as fallback
+const initialVersions = [
   { name: 'NKJV', fullName: 'New King James Version', language: 'English' },
   { name: 'KJV', fullName: 'King James Version', language: 'English' },
   { name: 'NASB', fullName: 'New American Standard Bible', language: 'English' },
@@ -61,7 +61,7 @@ interface BibleReaderPageProps {
 export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [selectedBook, setSelectedBook] = useState('Genesis');
   const [selectedChapter, setSelectedChapter] = useState(1);
-  const [selectedVersion, setSelectedVersion] = useState('NKJV');
+  const [selectedVersion, setSelectedVersion] = useState('KJV');
   const [showBookSelector, setShowBookSelector] = useState(false);
   const [showChapterSelector, setShowChapterSelector] = useState(false);
   const [showVersionSelector, setShowVersionSelector] = useState(false);
@@ -75,28 +75,132 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [hideFootnotes, setHideFootnotes] = useState(false);
   const [showAudioControlPanel, setShowAudioControlPanel] = useState(false);
-  const [selectedVerse, setSelectedVerse] = useState<number>(1);
+  const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
   const [showVerseSelector, setShowVerseSelector] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(45); // in seconds
   const [audioDuration, setAudioDuration] = useState(216); // 3:36 in seconds
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const [showTimerMenu, setShowTimerMenu] = useState(false);
   const [selectedTimer, setSelectedTimer] = useState<'stop' | 'end-chapter' | '10-mins' | '15-mins' | '30-mins' | '1-hr' | '2-hrs'>('stop');
-  const [showSearch, setShowSearch] = useState(false);
-  
-  // Book sorting state
-  const [bookSortType, setBookSortType] = useState<'traditional' | 'alphabetical'>('traditional');
-  
-  // Reading settings state
-  const [selectedFont, setSelectedFont] = useState('Times New Roman');
-  const [fontSize, setFontSize] = useState(18); // Standard book reading size (18px)
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'sepia' | 'cream' | 'dark'>('light');
-  const [pageTransition, setPageTransition] = useState<'slide' | 'curl' | 'fade' | 'scroll'>('slide'); // Changed to 'slide' as default
-  
-  // Page transition state
-  const [transitionDirection, setTransitionDirection] = useState<'next' | 'prev' | null>(null);
+  const [selectedFont, setSelectedFont] = useState('Times New Roman');
+  const [fontSize, setFontSize] = useState(18);
+  const [pageTransition, setPageTransition] = useState<'slide' | 'curl' | 'fade' | 'scroll'>('slide');
   const [chapterKey, setChapterKey] = useState(0);
-  
+  const [transitionDirection, setTransitionDirection] = useState<'next' | 'prev'>('next');
+  const [showSearch, setShowSearch] = useState(false);
+  const [bookSortType, setBookSortType] = useState<'traditional' | 'alphabetical'>('traditional');
+
+  // Version state
+  const [bibleVersions, setBibleVersions] = useState<any[]>(initialVersions);
+  const [isLoadingVersions, setIsLoadingVersions] = useState(false);
+
+  // Book/Chapter state from API
+  const [bibleBooksState, setBibleBooksState] = useState<typeof bibleBooks>(bibleBooks);
+  const [currentBookChapters, setCurrentBookChapters] = useState<number>(bookChapters['Genesis']);
+  const [isLoadingBooks, setIsLoadingBooks] = useState(false);
+
+  // Current chapter verses for narration
+  const [currentChapterVerses, setCurrentChapterVerses] = useState<any[]>([]);
+  const [isLoadingContent, setIsLoadingContent] = useState(false);
+
+  // Fetch Bible Versions on mount
+  useEffect(() => {
+    const fetchVersions = async () => {
+      setIsLoadingVersions(true);
+      try {
+        const response = await fetch('/api/v1/bible/versions');
+        const result = await response.json();
+        if (result.success && result.data.length > 0) {
+          // Map API versions to match the UI format
+          const mappedVersions = result.data.map((v: any) => ({
+            name: v.abbreviation,
+            fullName: v.name,
+            language: v.language === 'en' ? 'English' : v.language === 'te' ? 'Telugu' : v.language === 'hi' ? 'Hindi' : v.language
+          }));
+          setBibleVersions(mappedVersions);
+        }
+      } catch (err) {
+        console.error('Failed to fetch versions:', err);
+      } finally {
+        setIsLoadingVersions(false);
+      }
+    };
+    fetchVersions();
+  }, []);
+
+  // Fetch books when version changes
+  useEffect(() => {
+    const fetchBooks = async () => {
+      if (!selectedVersion || selectedVersion === 'undefined') return;
+      setIsLoadingBooks(true);
+      try {
+        const response = await fetch(`/api/v1/bible/${selectedVersion}/books`);
+        const result = await response.json();
+        if (result.success) {
+          const books = result.data;
+          const ot = books.filter((b: any) => b.testament === 'OT').map((b: any) => b.name);
+          const nt = books.filter((b: any) => b.testament === 'NT').map((b: any) => b.name);
+          setBibleBooksState({
+            'Old Testament': ot,
+            'New Testament': nt
+          });
+        }
+      } catch (err) {
+        console.error('Failed to fetch books:', err);
+      } finally {
+        setIsLoadingBooks(false);
+      }
+    };
+    fetchBooks();
+  }, [selectedVersion]);
+
+  // Fetch chapter count when book changes
+  useEffect(() => {
+    const fetchChapters = async () => {
+      if (!selectedVersion || !selectedBook || selectedBook === 'undefined') return;
+      try {
+        const response = await fetch(`/api/v1/bible/${selectedVersion}/${selectedBook}/chapters`);
+        const result = await response.json();
+        if (result.success) {
+          // If chapters are returned, set the count
+          if (Array.isArray(result.data)) {
+            setCurrentBookChapters(result.data.length);
+          } else if (result.data && typeof result.data === 'object' && result.data.count) {
+            setCurrentBookChapters(result.data.count);
+          } else {
+            // Fallback
+            setCurrentBookChapters(bookChapters[selectedBook] || 1);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch chapters:', err);
+        setCurrentBookChapters(bookChapters[selectedBook] || 1);
+      }
+    };
+    fetchChapters();
+  }, [selectedBook, selectedVersion]);
+
+  // Fetch verses for narration
+  useEffect(() => {
+    const fetchVerses = async () => {
+      if (!selectedVersion || !selectedBook || !selectedChapter || selectedBook === 'undefined') return;
+      setIsLoadingContent(true);
+      try {
+        const response = await fetch(`/api/v1/bible/${selectedVersion}/${selectedBook}/${selectedChapter}`);
+        const result = await response.json();
+        if (result.success) {
+          setCurrentChapterVerses(result.data.verses);
+        }
+      } catch (err) {
+        console.error('Failed to fetch verses:', err);
+      } finally {
+        setIsLoadingContent(false);
+      }
+    };
+    fetchVerses();
+  }, [selectedBook, selectedChapter, selectedVersion]);
+
   // Touch/swipe state for interactive slide
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -105,7 +209,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const touchEndX = useRef<number>(0);
   const gestureDetected = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const contentRef = useRef<HTMLDivElement>(null);
-  
+
   // Scroll detection state - only for bottom nav
   const [showBottomNav, setShowBottomNav] = useState(true);
   const [showAudioControls, setShowAudioControls] = useState(true);
@@ -113,7 +217,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // Audio narration state
   const [narrationPlaying, setNarrationPlaying] = useState(false);
   const [currentReadingVerse, setCurrentReadingVerse] = useState<number | null>(null);
@@ -121,11 +225,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const narrationVerseIndexRef = useRef(0);
   const narrationPlayingRef = useRef(false);
   const isAutoAdvancingRef = useRef(false);
-  
+
   // Timer state for time-based narration
   const narrationTimerRef = useRef<NodeJS.Timeout | null>(null);
   const narrationStartTimeRef = useRef<number | null>(null);
-  
+
   // Music tracks
   const musicTracks = [
     { id: 'none', name: 'None', thumbnail: null },
@@ -144,13 +248,13 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   ];
 
   // Helper functions for navigation
-  const allBooks = [...bibleBooks['Old Testament'], ...bibleBooks['New Testament']];
+  const allBooks = [...bibleBooksState['Old Testament'], ...bibleBooksState['New Testament']];
   const currentBookIndex = allBooks.indexOf(selectedBook);
-  const isFirstChapterOfBible = selectedBook === 'Genesis' && selectedChapter === 1;
-  const isLastChapterOfBible = selectedBook === 'Revelation' && selectedChapter === bookChapters['Revelation'];
-  
-  const totalChapters = bookChapters[selectedBook] || 50;
-  
+  const isFirstChapterOfBible = selectedBook === allBooks[0] && selectedChapter === 1;
+  const isLastChapterOfBible = selectedBook === allBooks[allBooks.length - 1] && selectedChapter === currentBookChapters;
+
+  const totalChapters = currentBookChapters;
+
   // Get next chapter info for preview during drag
   const getNextChapter = () => {
     if (selectedChapter < totalChapters) {
@@ -160,18 +264,20 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     }
     return { book: selectedBook, chapter: selectedChapter };
   };
-  
+
   // Get previous chapter info for preview during drag
   const getPrevChapter = () => {
     if (selectedChapter > 1) {
       return { book: selectedBook, chapter: selectedChapter - 1 };
     } else if (currentBookIndex > 0) {
       const prevBook = allBooks[currentBookIndex - 1];
-      return { book: prevBook, chapter: bookChapters[prevBook] };
+      // Note: We don't have the chapter count for the previous book easily here 
+      // without extra state or a specific API call. For now we use bookChapters fallback.
+      return { book: prevBook, chapter: bookChapters[prevBook] || 50 };
     }
     return { book: selectedBook, chapter: selectedChapter };
   };
-  
+
   const nextChapterInfo = getNextChapter();
   const prevChapterInfo = getPrevChapter();
 
@@ -181,7 +287,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     setSelectedChapter(chapter);
     setSelectedVerse(verse);
     setShowSearch(false);
-    
+
     // Scroll to the verse after a short delay to allow state to update
     setTimeout(() => {
       const verseElement = document.getElementById(`verse-${book}-${chapter}-${verse}`);
@@ -190,7 +296,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
         const currentScroll = scrollContainerRef.current.scrollTop;
         const targetScroll = currentScroll + elementTop - containerTop - 100;
-        
+
         scrollContainerRef.current.scrollTo({
           top: targetScroll,
           behavior: 'smooth'
@@ -202,7 +308,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const handlePrevious = () => {
     setTransitionDirection('prev');
     setChapterKey(prev => prev + 1);
-    
+
     // Scroll to top immediately
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
@@ -210,7 +316,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         behavior: 'smooth'
       });
     }
-    
+
     setTimeout(() => {
       if (selectedChapter > 1) {
         // Go to previous chapter in same book
@@ -219,7 +325,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         // Go to last chapter of previous book
         const prevBook = allBooks[currentBookIndex - 1];
         setSelectedBook(prevBook);
-        setSelectedChapter(bookChapters[prevBook]);
+        setSelectedChapter(bookChapters[prevBook] || 50);
       }
     }, 50);
   };
@@ -227,7 +333,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const handleNext = () => {
     setTransitionDirection('next');
     setChapterKey(prev => prev + 1);
-    
+
     // Scroll to top immediately
     if (scrollContainerRef.current) {
       scrollContainerRef.current.scrollTo({
@@ -235,7 +341,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         behavior: 'smooth'
       });
     }
-    
+
     setTimeout(() => {
       if (selectedChapter < totalChapters) {
         // Go to next chapter in same book
@@ -248,11 +354,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       }
     }, 50);
   };
-  
+
   // Interactive drag handlers for slide transition
   const handleTouchStart = (e: React.TouchEvent) => {
     if (pageTransition !== 'slide') return;
-    
+
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     gestureDetected.current = 'none';
@@ -261,11 +367,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (pageTransition !== 'slide') return;
-    
+
     touchEndX.current = e.touches[0].clientX;
     const diffX = e.touches[0].clientX - touchStartX.current;
     const diffY = e.touches[0].clientY - touchStartY.current;
-    
+
     // Detect gesture direction only once
     if (gestureDetected.current === 'none' && (Math.abs(diffX) > 10 || Math.abs(diffY) > 10)) {
       if (Math.abs(diffY) > Math.abs(diffX)) {
@@ -275,18 +381,18 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         setIsDragging(true); // Only engage drag system for horizontal gestures
       }
     }
-    
+
     // If vertical scroll, do nothing - let native scrolling work
     if (gestureDetected.current === 'vertical') {
       return;
     }
-    
+
     // If horizontal and dragging is engaged, handle page navigation
     if (gestureDetected.current === 'horizontal' && isDragging) {
       // Limit drag to prevent going forward from last chapter or backward from first
       if (diffX < 0 && isLastChapterOfBible) return;
       if (diffX > 0 && isFirstChapterOfBible) return;
-      
+
       setDragOffset(diffX);
     }
   };
@@ -306,11 +412,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       }
       return;
     }
-    
+
     if (!isDragging) return;
-    
+
     const threshold = window.innerWidth * 0.3; // 30% of screen width
-    
+
     if (Math.abs(dragOffset) > threshold) {
       // Complete the transition
       if (dragOffset < 0 && !isLastChapterOfBible) {
@@ -321,17 +427,17 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         handlePrevious();
       }
     }
-    
+
     // Reset drag state
     setIsDragging(false);
     setDragOffset(0);
     gestureDetected.current = 'none';
   };
-  
+
   // Get transition animation variants
   const getTransitionVariants = () => {
     const direction = transitionDirection === 'next' ? 1 : -1;
-    
+
     switch (pageTransition) {
       case 'slide':
         return {
@@ -339,32 +445,32 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           animate: { x: 0, opacity: 1 },
           exit: { x: `${-100 * direction}%`, opacity: 1 }
         };
-      
+
       case 'curl':
         return {
-          initial: { 
+          initial: {
             rotateY: 90 * direction,
             opacity: 0,
             transformOrigin: direction > 0 ? 'left' : 'right'
           },
-          animate: { 
+          animate: {
             rotateY: 0,
             opacity: 1
           },
-          exit: { 
+          exit: {
             rotateY: -90 * direction,
             opacity: 0,
             transformOrigin: direction > 0 ? 'right' : 'left'
           }
         };
-      
+
       case 'fade':
         return {
           initial: { opacity: 0 },
           animate: { opacity: 1 },
           exit: { opacity: 0 }
         };
-      
+
       case 'scroll':
       default:
         return {
@@ -374,14 +480,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         };
     }
   };
-  
+
   const transitionConfig = {
     slide: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
     curl: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
     fade: { duration: 0.2, ease: 'easeInOut' },
     scroll: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
-  };
-  
+  } as const;
+
   // Theme configurations
   const themeConfig = {
     light: {
@@ -405,15 +511,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       verseNumber: '#ff6b85'
     }
   };
-  
+
   const currentTheme = themeConfig[selectedTheme];
-  
+
   // Reset selectedVerse when chapter or book changes - set to null so it doesn't auto-scroll
   useEffect(() => {
     // Clear selected verse so chapter opens at the top naturally
     setSelectedVerse(null);
   }, [selectedBook, selectedChapter]);
-  
+
   // Scroll detection logic
   useEffect(() => {
     const handleScroll = () => {
@@ -454,7 +560,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       if (scrollTimeout.current) {
         clearTimeout(scrollTimeout.current);
       }
-      
+
       if (currentScrollY > 100 && !scrolledToBottom) {
         scrollTimeout.current = setTimeout(() => {
           setShowBottomNav(false);
@@ -472,6 +578,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Bible narration functions
   const getBibleContent = () => {
+    if (currentChapterVerses.length > 0) {
+      return currentChapterVerses;
+    }
+
+    // Fallback to mock data if API data is not yet loaded
     let bibleData = mockBibleContent;
     if (selectedVersion === 'TELBSI') {
       bibleData = teluguBible as any;
@@ -490,13 +601,13 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
     // Stop any ongoing narration
     window.speechSynthesis.cancel();
-    
+
     // Clear any existing timer
     if (narrationTimerRef.current) {
       clearTimeout(narrationTimerRef.current);
       narrationTimerRef.current = null;
     }
-    
+
     // Start timer if time-based option is selected
     narrationStartTimeRef.current = Date.now();
     if (selectedTimer === '10-mins') {
@@ -520,7 +631,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         stopNarration();
       }, 2 * 60 * 60 * 1000); // 2 hours
     }
-    
+
     const verses = getBibleContent();
     console.log('Got verses:', verses.length, 'verses');
     if (verses.length === 0) return;
@@ -534,24 +645,24 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   const readNextVerse = (verses: any[], index: number) => {
     console.log('readNextVerse called with index:', index, 'of', verses.length, 'verses');
-    
+
     // At the beginning of each chapter, announce the book name and chapter number
     if (index === 0 && verses.length > 0) {
       const chapterAnnouncement = `${selectedBook} Chapter ${selectedChapter}`;
       console.log('Announcing chapter:', chapterAnnouncement);
-      
+
       const announcementUtterance = new SpeechSynthesisUtterance(chapterAnnouncement);
       announcementUtterance.rate = playbackSpeed;
       announcementUtterance.pitch = 1;
       announcementUtterance.volume = 1;
-      
+
       // After announcement finishes, continue with first verse (skip announcement on next call)
       announcementUtterance.onend = () => {
         console.log('Chapter announcement finished, continuing with first verse');
         // Start reading from verse 1 by incrementing index in the recursive call
         continueReadingFromFirstVerse(verses);
       };
-      
+
       // Handle errors during announcement
       announcementUtterance.onerror = (event: any) => {
         // Check if this is a real error or just a cancellation
@@ -559,15 +670,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           console.log('Chapter announcement canceled/interrupted (expected)');
           return;
         }
-        
+
         // Log actual errors with error type
         console.error('Chapter announcement error type:', event.error || 'unknown');
         console.error('Chapter announcement error details:', event);
-        
+
         // Continue anyway - don't let announcement errors block verse reading
         continueReadingFromFirstVerse(verses);
       };
-      
+
       const continueReadingFromFirstVerse = (verses: any[]) => {
         // Now read the actual first verse
         const verse = verses[0];
@@ -584,7 +695,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
             const currentScroll = scrollContainerRef.current.scrollTop;
             const targetScroll = currentScroll + elementTop - containerTop - 100;
-            
+
             scrollContainerRef.current.scrollTo({
               top: targetScroll,
               behavior: 'smooth'
@@ -614,12 +725,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
         verseUtterance.onerror = (event: any) => {
           console.log('[Error Handler] Verse:', verseNumber, 'Error Type:', event.error);
-          
+
           if (event.error === 'canceled' || event.error === 'interrupted') {
             console.log('[Error Handler] Ignoring expected cancellation/interruption');
             return;
           }
-          
+
           // For real errors, log and stop narration
           console.error('[Error Handler] Real error detected, stopping narration');
           console.error('[Error Handler] Full event:', event);
@@ -632,15 +743,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         utteranceRef.current = verseUtterance;
         window.speechSynthesis.speak(verseUtterance);
       };
-      
+
       window.speechSynthesis.speak(announcementUtterance);
       return; // Exit early, will continue after announcement
     }
-    
+
     if (index >= verses.length) {
       // Finished reading all verses in current chapter
       console.log('Finished chapter. Timer setting:', selectedTimer);
-      
+
       // Check timer setting to determine behavior
       if (selectedTimer === 'end-chapter') {
         // Stop at end of this chapter
@@ -651,15 +762,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         setAudioPlaying(false);
         return;
       }
-      
+
       // For 'stop' (default) or time-based timers (10-mins, 15-mins, 30-mins, 1-hr, 2-hrs), continue to next chapter
       // Time-based timers will be stopped by the setTimeout in startNarration
       const totalChapters = bookChapters[selectedBook] || 50;
       const currentBookIndex = allBooks.indexOf(selectedBook);
-      
+
       let nextBook = selectedBook;
       let nextChapter = selectedChapter;
-      
+
       if (selectedChapter < totalChapters) {
         // Move to next chapter in same book
         nextChapter = selectedChapter + 1;
@@ -676,19 +787,19 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         setAudioPlaying(false);
         return;
       }
-      
+
       console.log('Auto-continuing to next chapter:', nextBook, nextChapter);
-      
+
       // Set progress to 100% before moving to next chapter
       setAudioCurrentTime(audioDuration);
-      
+
       console.log('[Auto-Advance] Starting auto-advance to next chapter');
       console.log('[Auto-Advance] Current states - audioPlaying:', audioPlaying, 'narrationPlaying:', narrationPlayingRef.current);
       console.log('[Auto-Advance] Current chapter:', selectedBook, selectedChapter, '-> Next chapter:', nextBook, nextChapter);
-      
+
       // Set flag to indicate this is an auto-advance, not manual navigation
       isAutoAdvancingRef.current = true;
-      
+
       // Fetch verses for the next chapter using the nextBook/nextChapter variables
       // (not getBibleContent() which uses state that hasn't updated yet)
       let bibleData = mockBibleContent;
@@ -698,9 +809,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         bibleData = hindiBible as any;
       }
       const nextChapterVerses = bibleData[nextBook]?.[nextChapter]?.verses || [];
-      
+
       console.log('Auto-advance: Fetched', nextChapterVerses.length, 'verses for', nextBook, nextChapter);
-      
+
       if (nextChapterVerses.length === 0) {
         console.log('No verses found for next chapter, stopping');
         setNarrationPlaying(false);
@@ -710,31 +821,31 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         isAutoAdvancingRef.current = false;
         return;
       }
-      
+
       console.log('[Auto-Advance] Updating state to next chapter:', nextBook, nextChapter);
-      
+
       // Update the book and chapter state
       setSelectedBook(nextBook);
       setSelectedChapter(nextChapter);
       setSelectedVerse(1); // Reset to verse 1 for the new chapter
-      
+
       // Small delay to allow state to update and new chapter to load
       setTimeout(() => {
         console.log('[Auto-Advance] Timeout fired - starting narration of new chapter');
         console.log('[Auto-Advance] State should now be:', nextBook, nextChapter);
         console.log('[Auto-Advance] States before readNextVerse - audioPlaying:', audioPlaying, 'narrationPlaying:', narrationPlayingRef.current);
-        
+
         // Make sure narration is still supposed to be playing
         if (!narrationPlayingRef.current) {
           console.log('[Auto-Advance] Narration was stopped during chapter transition, aborting');
           isAutoAdvancingRef.current = false;
           return;
         }
-        
+
         narrationVerseIndexRef.current = 0;
         console.log('[Auto-Advance] Calling readNextVerse with', nextChapterVerses.length, 'verses');
         readNextVerse(nextChapterVerses, 0);
-        
+
         // Reset auto-advancing flag after narration starts successfully
         setTimeout(() => {
           console.log('[Auto-Advance] Resetting isAutoAdvancingRef flag');
@@ -742,7 +853,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           isAutoAdvancingRef.current = false;
         }, 1000); // Increased to 1000ms to ensure chapter announcement completes
       }, 1000); // 1 second delay between chapters
-      
+
       return;
     }
 
@@ -760,7 +871,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
         const currentScroll = scrollContainerRef.current.scrollTop;
         const targetScroll = currentScroll + elementTop - containerTop - 100;
-        
+
         scrollContainerRef.current.scrollTo({
           top: targetScroll,
           behavior: 'smooth'
@@ -783,7 +894,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       // Ensure highlight is set even if there was a delay
       setCurrentReadingVerse(verseNumber);
       console.log('Speech started for verse:', verseNumber);
-      
+
       // Update progress based on verse completion
       const totalVerses = verses.length;
       const verseProgress = (index / totalVerses) * audioDuration;
@@ -805,14 +916,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     utterance.onerror = (event: any) => {
       // Check if this is a cancellation error (which is expected when pausing)
       const errorType = event.error || '';
-      
+
       console.log('[Error Handler] Verse:', verseNumber, 'Error Type:', errorType);
-      
+
       if (errorType === 'canceled' || errorType === 'interrupted') {
         console.log('[Error Handler] Ignoring expected cancellation/interruption');
         return; // Ignore cancellation errors - this is normal when pausing
       }
-      
+
       // For real errors, log and stop narration
       console.error('[Error Handler] Real error detected, stopping narration');
       console.error('[Error Handler] Full event:', event);
@@ -835,13 +946,13 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       narrationPlayingRef.current = false;
       // Then cancel (this may trigger onerror with 'canceled', which we now ignore)
       window.speechSynthesis.cancel();
-      
+
       // Clear the timer but keep the start time for potential resume
       if (narrationTimerRef.current) {
         clearTimeout(narrationTimerRef.current);
         narrationTimerRef.current = null;
       }
-      
+
       // Keep currentReadingVerse so we can resume from here
       console.log('Cancelled speech synthesis, keeping currentReadingVerse:', currentReadingVerse);
     }
@@ -849,20 +960,20 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   const resumeNarration = () => {
     console.log('resumeNarration called. currentReadingVerse:', currentReadingVerse, 'selectedVerse:', selectedVerse);
-    
+
     // If there was a timer active, calculate remaining time and restart it
     if (narrationStartTimeRef.current && (selectedTimer === '10-mins' || selectedTimer === '15-mins' || selectedTimer === '30-mins' || selectedTimer === '1-hr' || selectedTimer === '2-hrs')) {
       const elapsed = Date.now() - narrationStartTimeRef.current;
       let totalDuration = 0;
-      
+
       if (selectedTimer === '10-mins') totalDuration = 10 * 60 * 1000;
       else if (selectedTimer === '15-mins') totalDuration = 15 * 60 * 1000;
       else if (selectedTimer === '30-mins') totalDuration = 30 * 60 * 1000;
       else if (selectedTimer === '1-hr') totalDuration = 60 * 60 * 1000;
       else if (selectedTimer === '2-hrs') totalDuration = 2 * 60 * 60 * 1000;
-      
+
       const remaining = totalDuration - elapsed;
-      
+
       if (remaining > 0) {
         // Restart timer with remaining time
         narrationTimerRef.current = setTimeout(() => {
@@ -874,11 +985,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         return;
       }
     }
-    
+
     // Resume from where we left off (currentReadingVerse) or start fresh
     const resumeFrom = currentReadingVerse || selectedVerse || 1;
     console.log('Resuming from verse:', resumeFrom);
-    
+
     // Don't call startNarration as it would reset the timer
     // Instead, manually start the narration
     const verses = getBibleContent();
@@ -892,14 +1003,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   const stopNarration = () => {
     window.speechSynthesis.cancel();
-    
+
     // Clear any active timer
     if (narrationTimerRef.current) {
       clearTimeout(narrationTimerRef.current);
       narrationTimerRef.current = null;
     }
     narrationStartTimeRef.current = null;
-    
+
     setNarrationPlaying(false);
     narrationPlayingRef.current = false;
     setCurrentReadingVerse(null);
@@ -939,7 +1050,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       stopNarration();
       if (audioPlaying) {
         setTimeout(() => {
-          startNarration(selectedVerse);
+          startNarration(selectedVerse ?? 1);
         }, 100);
       }
     }
@@ -948,7 +1059,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   // Update audio progress while playing (only for non-narration audio)
   useEffect(() => {
     let progressInterval: NodeJS.Timeout | null = null;
-    
+
     // Only use time-based progress when NOT using narration
     // Narration updates progress in the utterance.onstart callback based on verse completion
     if (audioPlaying && !narrationPlayingRef.current) {
@@ -967,7 +1078,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       // Reset to beginning when stopped (not paused)
       setAudioCurrentTime(0);
     }
-    
+
     return () => {
       if (progressInterval) {
         clearInterval(progressInterval);
@@ -979,22 +1090,22 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   useEffect(() => {
     console.log('[Chapter Change Effect] Book:', selectedBook, 'Chapter:', selectedChapter);
     console.log('[Chapter Change Effect] audioPlaying:', audioPlaying, 'narrationPlayingRef:', narrationPlayingRef.current, 'isAutoAdvancing:', isAutoAdvancingRef.current);
-    
+
     // Calculate duration based on chapter content
     const verses = getBibleContent();
     const estimatedSecondsPerVerse = 10; // Average time to read a verse
     const newDuration = verses.length * estimatedSecondsPerVerse;
-    
+
     setAudioDuration(newDuration);
     setAudioCurrentTime(0);
-    
+
     // Only restart narration if this is manual navigation (not auto-advance)
     // Auto-advance handles its own narration continuation
     if (audioPlaying && narrationPlayingRef.current && !isAutoAdvancingRef.current) {
       console.log('[Chapter Change Effect] Manual navigation detected - restarting narration');
       // Stop current narration
       window.speechSynthesis.cancel();
-      
+
       // Restart from verse 1
       setTimeout(() => {
         narrationVerseIndexRef.current = 0;
@@ -1009,15 +1120,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   return (
     <div className="fixed inset-0 bg-[var(--color-bg-primary)] flex flex-col">
       {/* Scrollable Content Area */}
-      <div 
+      <div
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto"
       >
         {/* Main Header/Navbar - SCROLLS AWAY */}
-        <AppHeader />
+        <AppHeader onMenuOpen={() => setMenuOpen(true)} />
 
         {/* Sub Navigation Bar - BECOMES STICKY */}
-        <div  className="sticky top-0 left-0 right-0 z-40 glass-light border-b border-white/20 shadow-[var(--shadow-xs)]">
+        <div className="sticky top-0 left-0 right-0 z-40 glass-light border-b border-white/20 shadow-[var(--shadow-xs)]">
           <div className="max-w-3xl mx-auto px-4 py-1">
             <div className="flex items-center justify-between">
               {/* Book/Chapter/Version selectors */}
@@ -1061,19 +1172,19 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
               {/* Right side tools - Audio, Music and Settings */}
               <div className="flex items-center -space-x-1 ml-auto mr-3">
-                <button 
+                <button
                   onClick={() => setShowMusicSelector(true)}
                   className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
                 >
                   <Music className="size-5 text-[var(--color-gray-900)]" />
                 </button>
-                <button 
+                <button
                   onClick={() => setShowSearch(true)}
                   className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
                 >
                   <FiSearch className="size-5 text-[var(--color-gray-900)]" />
                 </button>
-                <button 
+                <button
                   onClick={() => setShowMoreMenu(true)}
                   className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
                 >
@@ -1091,7 +1202,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               {/* Header */}
               <div className="flex items-center justify-between p-4">
                 <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Books</h3>
-                
+
                 <div className="flex items-center gap-3">
                   {/* Sort Toggle */}
                   <div className="flex items-center gap-2">
@@ -1101,39 +1212,35 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     <div className="flex bg-gray-200/80 rounded-full p-0.5">
                       <button
                         onClick={() => setBookSortType('traditional')}
-                        className={`p-1.5 rounded-full transition-all ${
-                          bookSortType === 'traditional'
+                        className={`p-1.5 rounded-full transition-all ${bookSortType === 'traditional'
                             ? 'bg-white shadow-sm'
                             : 'bg-transparent'
-                        }`}
+                          }`}
                         aria-label="Traditional sort"
                       >
-                        <RiSortDesc className={`size-4 ${
-                          bookSortType === 'traditional' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
-                        }`} />
+                        <RiSortDesc className={`size-4 ${bookSortType === 'traditional' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
+                          }`} />
                       </button>
                       <button
                         onClick={() => setBookSortType('alphabetical')}
-                        className={`p-1.5 rounded-full transition-all ${
-                          bookSortType === 'alphabetical'
+                        className={`p-1.5 rounded-full transition-all ${bookSortType === 'alphabetical'
                             ? 'bg-white shadow-sm'
                             : 'bg-transparent'
-                        }`}
+                          }`}
                         aria-label="Alphabetical sort"
                       >
-                        <RiSortAlphabetAsc className={`size-4 ${
-                          bookSortType === 'alphabetical' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
-                        }`} />
+                        <RiSortAlphabetAsc className={`size-4 ${bookSortType === 'alphabetical' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
+                          }`} />
                       </button>
                     </div>
                   </div>
-                  
+
                   <button onClick={() => setShowBookSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                     <X className="size-6 text-[var(--color-text-primary)]/60" />
                   </button>
                 </div>
               </div>
-              
+
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-4 pb-4">
                 <div className="grid grid-cols-2 gap-8">
@@ -1141,10 +1248,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   <div>
                     <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">Old Testament</h4>
                     <div className="space-y-2">
-                      {(bookSortType === 'alphabetical' 
-                        ? [...bibleBooks['Old Testament']].sort()
-                        : bibleBooks['Old Testament']
-                      ).map(book => (
+                      {(bookSortType === 'alphabetical'
+                        ? [...bibleBooksState['Old Testament']].sort()
+                        : bibleBooksState['Old Testament']
+                      ).map((book: string) => (
                         <button
                           key={book}
                           onClick={() => {
@@ -1152,26 +1259,25 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                             setShowBookSelector(false);
                             setSelectedChapter(1);
                           }}
-                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${
-                            selectedBook === book
+                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
                               ? 'text-[var(--color-accent-rose)] font-medium'
                               : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
-                          }`}
+                            }`}
                         >
                           {book}
                         </button>
                       ))}
                     </div>
                   </div>
-                  
+
                   {/* New Testament */}
                   <div>
                     <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">New Testament</h4>
                     <div className="space-y-2">
-                      {(bookSortType === 'alphabetical' 
-                        ? [...bibleBooks['New Testament']].sort()
-                        : bibleBooks['New Testament']
-                      ).map(book => (
+                      {(bookSortType === 'alphabetical'
+                        ? [...bibleBooksState['New Testament']].sort()
+                        : bibleBooksState['New Testament']
+                      ).map((book: string) => (
                         <button
                           key={book}
                           onClick={() => {
@@ -1179,11 +1285,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                             setShowBookSelector(false);
                             setSelectedChapter(1);
                           }}
-                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${
-                            selectedBook === book
+                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
                               ? 'text-[var(--color-accent-rose)] font-medium'
                               : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
-                          }`}
+                            }`}
                         >
                           {book}
                         </button>
@@ -1203,14 +1308,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
                 <div className="w-16"></div> {/* Spacer for centering */}
                 <h3 className="text-base font-normal text-[#31393a]">Select chapter</h3>
-                <button 
-                  onClick={() => setShowChapterSelector(false)} 
+                <button
+                  onClick={() => setShowChapterSelector(false)}
                   className="text-sm text-[#31393a] hover:text-[#d23952] transition-colors px-2"
                 >
                   Done
                 </button>
               </div>
-              
+
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-4 py-4">
                 <div className="grid grid-cols-5 gap-2">
@@ -1222,11 +1327,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                         setShowChapterSelector(false);
                         setShowVerseSelector(true);
                       }}
-                      className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${
-                        selectedChapter === chapter
+                      className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedChapter === chapter
                           ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
                           : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
-                      }`}
+                        }`}
                     >
                       {chapter.toString().padStart(2, '0')}
                     </button>
@@ -1242,28 +1346,28 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
               {/* Header with Back and Done buttons */}
               <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
-                <button 
+                <button
                   onClick={() => {
                     setShowVerseSelector(false);
                     setShowChapterSelector(true);
-                  }} 
+                  }}
                   className="flex items-center space-x-1 text-sm text-[#31393a] hover:text-[#d23952] transition-colors"
                 >
                   <ChevronLeft className="size-4" />
                   <span>Back</span>
                 </button>
                 <h3 className="text-base font-normal text-[#31393a]">Select verse</h3>
-                <button 
+                <button
                   onClick={() => {
                     setShowVerseSelector(false);
                     setShowChapterSelector(false);
-                  }} 
+                  }}
                   className="text-sm text-[#31393a] hover:text-[#d23952] transition-colors px-2"
                 >
                   Done
                 </button>
               </div>
-              
+
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-4 py-4">
                 <div className="grid grid-cols-5 gap-2">
@@ -1275,11 +1379,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                         setShowVerseSelector(false);
                         setShowChapterSelector(false);
                       }}
-                      className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${
-                        selectedVerse === verse
+                      className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedVerse === verse
                           ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
                           : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
-                      }`}
+                        }`}
                     >
                       {verse.toString().padStart(2, '0')}
                     </button>
@@ -1299,73 +1402,57 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   <X className="size-6 text-[#31393a]/60" />
                 </button>
               </div>
-              
+
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-4 pb-4">
                 <h4 className="font-bold text-[#d23952] mb-4 text-sm">Bible Versions</h4>
                 <div className="space-y-3">
-                  {/* English Section */}
-                  <div className="space-y-2">
-                    <p className="text-sm text-[#31393a]/60 mb-2">English</p>
-                    {versions.filter(v => v.language === 'English').map(version => (
-                      <button
-                        key={version.name}
-                        onClick={() => {
-                          setSelectedVersion(version.name);
-                          setShowVersionSelector(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 rounded transition-colors ${
-                          selectedVersion === version.name
-                            ? 'bg-[#fbebee] text-[#d23952]'
-                            : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
-                        }`}
-                      >
-                        <div className="text-base font-medium">{version.fullName} ({version.name})</div>
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Telugu Section */}
-                  <div className="space-y-2">
-                    <p className="text-sm text-[#31393a]/60 mb-2">Telugu</p>
-                    {versions.filter(v => v.language === 'Telugu').map(version => (
-                      <button
-                        key={version.name}
-                        onClick={() => {
-                          setSelectedVersion(version.name);
-                          setShowVersionSelector(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 rounded transition-colors ${
-                          selectedVersion === version.name
-                            ? 'bg-[#fbebee] text-[#d23952]'
-                            : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
-                        }`}
-                      >
-                        <div className="text-base font-medium">{version.fullName} ({version.name})</div>
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Hindi Section */}
-                  <div className="space-y-2">
-                    <p className="text-sm text-[#31393a]/60 mb-2">Hindi</p>
-                    {versions.filter(v => v.language === 'Hindi').map(version => (
-                      <button
-                        key={version.name}
-                        onClick={() => {
-                          setSelectedVersion(version.name);
-                          setShowVersionSelector(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 rounded transition-colors ${
-                          selectedVersion === version.name
-                            ? 'bg-[#fbebee] text-[#d23952]'
-                            : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
-                        }`}
-                      >
-                        <div className="text-base font-medium">{version.fullName} ({version.name})</div>
-                      </button>
-                    ))}
-                  </div>
+                  {/* List versions by language */}
+                  {['English', 'Telugu', 'Hindi'].map(lang => (
+                    <div key={lang} className="space-y-2">
+                      <p className="text-sm text-[#31393a]/60 mb-2">{lang}</p>
+                      {bibleVersions.filter(v => v.language === lang).map(version => (
+                        <button
+                          key={version.name}
+                          onClick={() => {
+                            setSelectedVersion(version.name);
+                            setShowVersionSelector(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
+                              ? 'bg-[#fbebee] text-[#d23952]'
+                              : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
+                            }`}
+                        >
+                          <div className="text-base font-medium">{version.fullName} ({version.name})</div>
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+
+                  {/* Any other languages */}
+                  {Array.from(new Set(bibleVersions.map(v => v.language)))
+                    .filter(lang => !['English', 'Telugu', 'Hindi'].includes(lang))
+                    .map(lang => (
+                      <div key={lang} className="space-y-2">
+                        <p className="text-sm text-[#31393a]/60 mb-2">{lang}</p>
+                        {bibleVersions.filter(v => v.language === lang).map(version => (
+                          <button
+                            key={version.name}
+                            onClick={() => {
+                              setSelectedVersion(version.name);
+                              setShowVersionSelector(false);
+                            }}
+                            className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
+                                ? 'bg-[#fbebee] text-[#d23952]'
+                                : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
+                              }`}
+                          >
+                            <div className="text-base font-medium">{version.fullName} ({version.name})</div>
+                          </button>
+                        ))}
+                      </div>
+                    ))
+                  }
                 </div>
               </div>
             </div>
@@ -1379,11 +1466,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               <div className="flex items-center justify-between px-4 pt-4 pb-2">
                 {/* Empty left side for alignment */}
                 <div className="w-10"></div>
-                
+
                 {/* Right side - Shuffle/Loop, Play, and Close buttons */}
                 <div className="flex items-center space-x-2">
                   {/* Loop/Shuffle/Repeat Toggle */}
-                  <button 
+                  <button
                     onClick={() => {
                       const modes: Array<'shuffle' | 'repeat-all' | 'repeat-one'> = ['shuffle', 'repeat-all', 'repeat-one'];
                       const currentIndex = modes.indexOf(musicLoopMode);
@@ -1408,9 +1495,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       </>
                     )}
                   </button>
-                  
+
                   {/* Play button */}
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       if (selectedMusic && selectedMusic !== 'none') {
@@ -1418,11 +1505,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       }
                     }}
                     disabled={!selectedMusic || selectedMusic === 'none'}
-                    className={`p-2 rounded-full transition-colors ${
-                      selectedMusic && selectedMusic !== 'none'
+                    className={`p-2 rounded-full transition-colors ${selectedMusic && selectedMusic !== 'none'
                         ? 'hover:bg-gray-100 cursor-pointer'
                         : 'opacity-40 cursor-not-allowed'
-                    }`}
+                      }`}
                   >
                     {audioPlaying ? (
                       <Pause className="size-5 text-[#31393a] fill-current" />
@@ -1430,14 +1516,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       <Play className="size-5 text-[#31393a] fill-current" />
                     )}
                   </button>
-                  
+
                   {/* Close button */}
                   <button onClick={() => setShowMusicSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                     <X className="size-6 text-[#31393a]/60" />
                   </button>
                 </div>
               </div>
-              
+
               {/* Content - Music list (max 5 tracks visible) */}
               <div className="overflow-y-auto px-4 pb-4 max-h-[360px]">
                 <div className="space-y-3">
@@ -1445,11 +1531,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     <button
                       key={track.id}
                       onClick={() => setSelectedMusic(track.id)}
-                      className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${
-                        selectedMusic === track.id
+                      className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${selectedMusic === track.id
                           ? 'bg-[#fbebee]'
                           : 'bg-transparent hover:bg-gray-50'
-                      }`}
+                        }`}
                     >
                       {/* Left side - Thumbnail and name */}
                       <div className="flex items-center space-x-3">
@@ -1460,7 +1545,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                           ) : (
                             <div className="size-full bg-black" />
                           )}
-                          
+
                           {/* Play icon overlay for selected music */}
                           {selectedMusic === track.id && track.id !== 'none' && (
                             <div className="absolute inset-0 flex items-center justify-center bg-black/30">
@@ -1470,11 +1555,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                         </div>
 
                         {/* Track name */}
-                        <span className={`text-base ${
-                          selectedMusic === track.id
+                        <span className={`text-base ${selectedMusic === track.id
                             ? 'text-[#d23952] font-medium'
                             : 'text-[#31393a]'
-                        }`}>
+                          }`}>
                           {track.name}
                         </span>
                       </div>
@@ -1512,13 +1596,13 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         {/* Timer Menu */}
         {showTimerMenu && (
           <div className="fixed inset-0 z-[110] bg-black/20" onClick={() => setShowTimerMenu(false)}>
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border-t border-white/30 rounded-t-[32px] shadow-[0px_8px_12px_6px_rgba(0,0,0,0.15),0px_4px_4px_0px_rgba(0,0,0,0.3)] max-w-[600px] mx-auto max-h-[70vh] overflow-hidden flex flex-col" 
+            <div
+              className="absolute bottom-0 left-0 right-0 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border-t border-white/30 rounded-t-[32px] shadow-[0px_8px_12px_6px_rgba(0,0,0,0.15),0px_4px_4px_0px_rgba(0,0,0,0.3)] max-w-[600px] mx-auto max-h-[70vh] overflow-hidden flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
               <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <button 
+                <button
                   onClick={() => setShowTimerMenu(false)}
                   className="flex items-center gap-1 text-[#31393a]"
                 >
@@ -1526,7 +1610,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   <span className="text-base">Back</span>
                 </button>
                 <h3 className="text-lg font-semibold text-[#31393a]">Timer</h3>
-                <button 
+                <button
                   onClick={() => setShowTimerMenu(false)}
                   className="text-base text-[#006a6f] font-medium"
                 >
@@ -1543,11 +1627,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     className="w-full flex items-center justify-between py-4 border-b border-gray-200"
                   >
                     <span className="text-base text-[#31393a]">Timer Off</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === 'stop' 
-                        ? 'bg-[#d23952] border-[#d23952]' 
+                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'stop'
+                        ? 'bg-[#d23952] border-[#d23952]'
                         : 'border-gray-300'
-                    }`} />
+                      }`} />
                   </button>
 
                   {/* End of this chapter */}
@@ -1556,11 +1639,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     className="w-full flex items-center justify-between py-4 border-b border-gray-200"
                   >
                     <span className="text-base text-[#31393a]">End of this chapter</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === 'end-chapter' 
-                        ? 'bg-[#d23952] border-[#d23952]' 
+                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'end-chapter'
+                        ? 'bg-[#d23952] border-[#d23952]'
                         : 'border-gray-300'
-                    }`} />
+                      }`} />
                   </button>
 
                   {/* 10 mins */}
@@ -1569,11 +1651,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     className="w-full flex items-center justify-between py-4 border-b border-gray-200"
                   >
                     <span className="text-base text-[#31393a]">10 mins</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === '10-mins' 
-                        ? 'bg-[#d23952] border-[#d23952]' 
+                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '10-mins'
+                        ? 'bg-[#d23952] border-[#d23952]'
                         : 'border-gray-300'
-                    }`} />
+                      }`} />
                   </button>
 
                   {/* 15 mins */}
@@ -1582,11 +1663,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     className="w-full flex items-center justify-between py-4 border-b border-gray-200"
                   >
                     <span className="text-base text-[#31393a]">15 mins</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === '15-mins' 
-                        ? 'bg-[#d23952] border-[#d23952]' 
+                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '15-mins'
+                        ? 'bg-[#d23952] border-[#d23952]'
                         : 'border-gray-300'
-                    }`} />
+                      }`} />
                   </button>
 
                   {/* 30 mins */}
@@ -1595,11 +1675,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     className="w-full flex items-center justify-between py-4 border-b border-gray-200"
                   >
                     <span className="text-base text-[#31393a]">30 mins</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === '30-mins' 
-                        ? 'bg-[#d23952] border-[#d23952]' 
+                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '30-mins'
+                        ? 'bg-[#d23952] border-[#d23952]'
                         : 'border-gray-300'
-                    }`} />
+                      }`} />
                   </button>
 
                   {/* 1 hr */}
@@ -1608,11 +1687,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     className="w-full flex items-center justify-between py-4 border-b border-gray-200"
                   >
                     <span className="text-base text-[#31393a]">1 hr</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === '1-hr' 
-                        ? 'bg-[#d23952] border-[#d23952]' 
+                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '1-hr'
+                        ? 'bg-[#d23952] border-[#d23952]'
                         : 'border-gray-300'
-                    }`} />
+                      }`} />
                   </button>
 
                   {/* 2 hrs */}
@@ -1621,11 +1699,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     className="w-full flex items-center justify-between py-4 border-b border-gray-200"
                   >
                     <span className="text-base text-[#31393a]">2 hrs</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === '2-hrs' 
-                        ? 'bg-[#d23952] border-[#d23952]' 
+                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '2-hrs'
+                        ? 'bg-[#d23952] border-[#d23952]'
                         : 'border-gray-300'
-                    }`} />
+                      }`} />
                   </button>
                 </div>
               </div>
@@ -1648,7 +1725,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 >
                   Fonts & Settings
                 </button>
-                
+
                 {/* Hide Footnotes Toggle */}
                 <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 transition-colors">
                   <span className="text-base text-[#31393a]">Hide footnotes</span>
@@ -1657,14 +1734,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       e.stopPropagation();
                       setHideFootnotes(!hideFootnotes);
                     }}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${
-                      hideFootnotes ? 'bg-[#006a6f]' : 'bg-gray-300'
-                    }`}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${hideFootnotes ? 'bg-[#006a6f]' : 'bg-gray-300'
+                      }`}
                   >
                     <div
-                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                        hideFootnotes ? 'translate-x-5' : 'translate-x-0'
-                      }`}
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${hideFootnotes ? 'translate-x-5' : 'translate-x-0'
+                        }`}
                     />
                   </button>
                 </div>
@@ -1688,7 +1763,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   Done
                 </button>
               </div>
-              
+
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
                 {/* Font Family Selection */}
@@ -1752,38 +1827,34 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setSelectedTheme('light')}
-                      className={`size-11 rounded-full border-2 transition-all ${
-                        selectedTheme === 'light'
+                      className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'light'
                           ? 'border-[#31393a] scale-110'
                           : 'border-gray-300'
-                      }`}
+                        }`}
                       style={{ backgroundColor: '#ffffff' }}
                     />
                     <button
                       onClick={() => setSelectedTheme('sepia')}
-                      className={`size-11 rounded-full border-2 transition-all ${
-                        selectedTheme === 'sepia'
+                      className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'sepia'
                           ? 'border-[#31393a] scale-110'
                           : 'border-gray-300'
-                      }`}
+                        }`}
                       style={{ backgroundColor: '#f5e6d3' }}
                     />
                     <button
                       onClick={() => setSelectedTheme('cream')}
-                      className={`size-11 rounded-full border-2 transition-all ${
-                        selectedTheme === 'cream'
+                      className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'cream'
                           ? 'border-[#31393a] scale-110'
                           : 'border-gray-300'
-                      }`}
+                        }`}
                       style={{ backgroundColor: '#fef3e2' }}
                     />
                     <button
                       onClick={() => setSelectedTheme('dark')}
-                      className={`size-11 rounded-full border-2 transition-all ${
-                        selectedTheme === 'dark'
+                      className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'dark'
                           ? 'border-[#ffffff] scale-110'
                           : 'border-gray-300'
-                      }`}
+                        }`}
                       style={{ backgroundColor: '#2e3737' }}
                     />
                   </div>
@@ -1795,44 +1866,40 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setPageTransition('slide')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${
-                        pageTransition === 'slide'
+                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'slide'
                           ? 'border-[#31393a] bg-gray-50'
                           : 'border-gray-200'
-                      }`}
+                        }`}
                     >
                       <ArrowRightLeft className="size-6 text-[#31393a]" />
                       <span className="text-xs text-[#31393a]">Slide</span>
                     </button>
                     <button
                       onClick={() => setPageTransition('curl')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${
-                        pageTransition === 'curl'
+                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'curl'
                           ? 'border-[#31393a] bg-gray-50'
                           : 'border-gray-200'
-                      }`}
+                        }`}
                     >
                       <FileText className="size-6 text-[#31393a]" />
                       <span className="text-xs text-[#31393a]">Curl</span>
                     </button>
                     <button
                       onClick={() => setPageTransition('fade')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${
-                        pageTransition === 'fade'
+                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'fade'
                           ? 'border-[#31393a] bg-gray-50'
                           : 'border-gray-200'
-                      }`}
+                        }`}
                     >
                       <Zap className="size-6 text-[#31393a]" />
                       <span className="text-xs text-[#31393a]">Fast Fade</span>
                     </button>
                     <button
                       onClick={() => setPageTransition('scroll')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${
-                        pageTransition === 'scroll'
+                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'scroll'
                           ? 'border-[#31393a] bg-gray-50'
                           : 'border-gray-200'
-                      }`}
+                        }`}
                     >
                       <ScrollText className="size-6 text-[#31393a]" />
                       <span className="text-xs text-[#31393a]">Scroll</span>
@@ -1845,7 +1912,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         )}
 
         {/* Main Reading Content */}
-        <div 
+        <div
           className="transition-colors duration-300 relative overflow-hidden"
           style={{ backgroundColor: currentTheme.bg }}
           onTouchStart={handleTouchStart}
@@ -1857,7 +1924,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             <>
               {/* Next page (shows when dragging left) */}
               {dragOffset < 0 && (
-                <div 
+                <div
                   className="absolute inset-0"
                   style={{
                     transform: `translateX(${100 + (dragOffset / window.innerWidth) * 100}%)`,
@@ -1876,10 +1943,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   />
                 </div>
               )}
-              
+
               {/* Previous page (shows when dragging right) */}
               {dragOffset > 0 && (
-                <div 
+                <div
                   className="absolute inset-0"
                   style={{
                     transform: `translateX(${-100 + (dragOffset / window.innerWidth) * 100}%)`,
@@ -1898,9 +1965,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   />
                 </div>
               )}
-              
+
               {/* Current page */}
-              <div 
+              <div
                 className="relative"
                 style={{
                   transform: `translateX(${(dragOffset / window.innerWidth) * 100}%)`,
@@ -1947,16 +2014,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       </div>
 
       {/* Audio Controls - MOVES UP/DOWN WITH SCROLL */}
-      <div 
-        className={`fixed left-0 right-0 z-30 pointer-events-none transition-all duration-700 ease-in-out ${
-          showAudioControls ? 'bottom-[90px]' : 'bottom-4'
-        }`}
+      <div
+        className={`fixed left-0 right-0 z-30 pointer-events-none transition-all duration-700 ease-in-out ${showAudioControls ? 'bottom-[90px]' : 'bottom-4'
+          }`}
       >
         <div className="max-w-3xl mx-auto px-6 sm:px-8">
           <div className="flex items-center justify-between pointer-events-auto">
             {/* Previous Button - Left side - Only show if not at first chapter */}
             {!isFirstChapterOfBible && (
-              <button 
+              <button
                 onClick={handlePrevious}
                 className="ml-[7px] bg-white/50 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 p-2.5 rounded-full shadow-[0px_4px_8px_3px_rgba(0,0,0,0.15),0px_1px_3px_0px_rgba(0,0,0,0.3)] hover:bg-white/70 transition-all"
               >
@@ -1972,33 +2038,33 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               {audioControlExpanded ? (
                 <motion.div
                   key="expanded"
-                  initial={{ 
+                  initial={{
                     width: 56,
                     opacity: 0,
                     scale: 0.95
                   }}
-                  animate={{ 
+                  animate={{
                     width: 'auto',
                     opacity: 1,
                     scale: 1
                   }}
-                  exit={{ 
+                  exit={{
                     width: 56,
                     opacity: 0,
                     scale: 0.95
                   }}
-                  transition={{ 
-                    width: { 
-                      duration: 0.4, 
-                      ease: [0.32, 0.72, 0, 1] // iOS-style easing
+                  transition={{
+                    width: {
+                      duration: 0.4,
+                      ease: [0.32, 0.72, 0, 1] as const // iOS-style easing
                     },
-                    opacity: { 
+                    opacity: {
                       duration: 0.3,
                       ease: 'easeInOut'
                     },
                     scale: {
                       duration: 0.3,
-                      ease: [0.32, 0.72, 0, 1]
+                      ease: [0.32, 0.72, 0, 1] as const
                     }
                   }}
                   className="bg-white/70 backdrop-blur-xl backdrop-saturate-[180%] border border-white/40 rounded-full shadow-[0px_4px_8px_3px_rgba(0,0,0,0.15),0px_1px_3px_0px_rgba(0,0,0,0.3)] px-1.5 py-0.5 flex items-center gap-2"
@@ -2008,10 +2074,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     initial={{ opacity: 0, x: -8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: -8 }}
-                    transition={{ 
+                    transition={{
                       duration: 0.25,
                       delay: 0.1,
-                      ease: [0.32, 0.72, 0, 1]
+                      ease: [0.32, 0.72, 0, 1] as const
                     }}
                     onClick={() => setShowAudioControlPanel(true)}
                     className="p-0.5 rounded-full hover:bg-white/40 transition-colors flex-shrink-0"
@@ -2024,10 +2090,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     initial={{ opacity: 0, scale: 0.9 }}
                     animate={{ opacity: 1, scale: 1 }}
                     exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{ 
+                    transition={{
                       duration: 0.25,
                       delay: 0.15,
-                      ease: [0.32, 0.72, 0, 1]
+                      ease: [0.32, 0.72, 0, 1] as const
                     }}
                     onClick={handleNarrationPlayPause}
                     className="relative flex-shrink-0 w-[40px] h-[40px]"
@@ -2088,10 +2154,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     initial={{ opacity: 0, x: 8 }}
                     animate={{ opacity: 1, x: 0 }}
                     exit={{ opacity: 0, x: 8 }}
-                    transition={{ 
+                    transition={{
                       duration: 0.25,
                       delay: 0.2,
-                      ease: [0.32, 0.72, 0, 1]
+                      ease: [0.32, 0.72, 0, 1] as const
                     }}
                     onClick={() => {
                       console.log('[Close Button] Closing audio control and resetting narration to verse 1');
@@ -2112,30 +2178,30 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               ) : (
                 <motion.button
                   key="collapsed"
-                  initial={{ 
-                    scale: 0.8, 
+                  initial={{
+                    scale: 0.8,
                     opacity: 0,
                     y: 8
                   }}
-                  animate={{ 
-                    scale: 1, 
+                  animate={{
+                    scale: 1,
                     opacity: 1,
                     y: 0
                   }}
-                  exit={{ 
-                    scale: 0.8, 
+                  exit={{
+                    scale: 0.8,
                     opacity: 0,
                     y: 8
                   }}
-                  transition={{ 
+                  transition={{
                     duration: 0.35,
-                    ease: [0.32, 0.72, 0, 1]
+                    ease: [0.32, 0.72, 0, 1] as const
                   }}
-                  whileHover={{ 
+                  whileHover={{
                     scale: 1.05,
                     transition: { duration: 0.2 }
                   }}
-                  whileTap={{ 
+                  whileTap={{
                     scale: 0.95,
                     transition: { duration: 0.1 }
                   }}
@@ -2155,7 +2221,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
             {/* Next Button - Right side - Only show if not at last chapter */}
             {!isLastChapterOfBible && (
-              <button 
+              <button
                 onClick={handleNext}
                 className="mr-[7px] bg-white/50 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 p-2.5 rounded-full shadow-[0px_4px_8px_3px_rgba(0,0,0,0.15),0px_1px_3px_0px_rgba(0,0,0,0.3)] hover:bg-white/70 transition-all"
               >
@@ -2167,10 +2233,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       </div>
 
       {/* Bottom Navigation Bar - FADES IN/OUT */}
-      <div 
-        className={`fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)] transition-all duration-700 ease-in-out ${
-          showBottomNav ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
-        }`}
+      <div
+        className={`fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)] transition-all duration-700 ease-in-out ${showBottomNav ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
+          }`}
       >
         <div className="max-w-3xl mx-auto px-4">
           <div className="flex items-center justify-around h-16">
@@ -2219,11 +2284,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       {/* Side Menu Overlay */}
       {menuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-[100] backdrop-blur-sm"
           onClick={() => setMenuOpen(false)}
         >
-          <div 
+          <div
             className="absolute right-0 top-0 h-full w-80 bg-white shadow-2xl p-6"
             onClick={(e) => e.stopPropagation()}
           >

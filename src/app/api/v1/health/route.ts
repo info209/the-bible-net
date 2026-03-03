@@ -4,7 +4,7 @@ import { isDBConnected } from '@/lib/db';
 
 /**
  * Health Check API
- * GET /api/health
+ * GET /api/v1/health
  * Returns status of the application and database connection
  */
 export async function GET(request: NextRequest) {

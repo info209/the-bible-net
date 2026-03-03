@@ -1,7 +1,8 @@
 import NextAuth from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
-import { UserService } from '@/services/userService';
 import { authConfig } from './auth.config';
+import { UserService } from '@/services/userService';
+import { UserRole } from '@/types/user';
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig,
@@ -14,25 +15,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                 password: { label: 'Password', type: 'password' },
             },
             async authorize(credentials) {
-                const email = credentials?.email;
-                const password = credentials?.password;
+                if (!credentials?.email || !credentials?.password) return null;
 
-                if (!email || !password || typeof email !== 'string' || typeof password !== 'string') {
-                    throw new Error('Email and password are required');
-                }
+                const user = await UserService.verifyCredentials(
+                    credentials.email as string,
+                    credentials.password as string
+                );
 
-                const user = await UserService.verifyCredentials(email, password);
-
-                if (!user) {
-                    throw new Error('Invalid email or password');
-                }
+                if (!user) return null;
 
                 return {
                     id: user._id.toString(),
                     email: user.email,
-                    name: user.name,
+                    role: user.role as UserRole,
+                    onboardingCompleted: user.onboardingCompleted as boolean,
+                    emailVerified: user.emailVerified as any,
+                    firstName: user.firstName,
+                    lastName: user.lastName,
                     image: user.image,
-                    language: user.preferences.language,
                 };
             },
         }),
@@ -40,16 +40,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     callbacks: {
         ...authConfig.callbacks,
         async signIn({ user, account, profile }) {
-            if (account?.provider === 'google' || account?.provider === 'facebook') {
+            if (account?.provider === 'google' || account?.provider === 'facebook' || account?.provider === 'twitter') {
                 try {
-                    await UserService.findOrCreateOAuthUser({
+                    const dbUser = await UserService.findOrCreateOAuthUser({
                         email: user.email!,
-                        name: user.name!,
-                        image: user.image,
+                        firstName: profile?.given_name || user.name?.split(' ')[0] || 'Unknown',
+                        lastName: profile?.family_name || user.name?.split(' ')[1] || 'Unknown',
+                        image: user.image || undefined,
                         provider: account.provider,
                         providerAccountId: account.providerAccountId,
-                        access_token: account.access_token,
                     });
+
+                    // Inject DB data into user for the JWT callback
+                    user.id = dbUser._id.toString();
+                    user.role = dbUser.role as UserRole;
+                    user.onboardingCompleted = dbUser.onboardingCompleted as boolean;
+                    user.emailVerified = dbUser.emailVerified as any;
+
                     return true;
                 } catch (error) {
                     console.error('OAuth sign-in error:', error);

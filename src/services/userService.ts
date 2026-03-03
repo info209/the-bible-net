@@ -1,165 +1,131 @@
-import User, { IUser } from '@/models/User';
 import bcrypt from 'bcryptjs';
-
-/**
- * User Service Layer
- * Handles all user-related business logic
- */
+import { UserRepository } from '@/repositories/user/userRepository';
+import { OTPRepository } from '@/repositories/otp/otpRepository';
+import { OTPUtils } from '@/utils/otpUtils';
+import { EmailService } from '@/utils/email/emailService';
+import { IUser } from '@/models/User';
+import { UserRole } from '@/types/user';
 
 export class UserService {
     /**
-     * Create a new user with credentials
+     * Registers a new user and sends an OTP for verification.
      */
-    static async createUser(data: {
-        name: string;
-        email: string;
-        password?: string;
-        country?: string;
-        language?: string;
-        bibleVersion?: string;
-        image?: string;
-    }): Promise<IUser> {
-        // Check if user already exists
-        const email = data.email.toLowerCase();
-        const existingUser = await User.findOne({ email });
+    static async registerUser(userData: Partial<IUser>): Promise<{ userId: string; email: string }> {
+        const { email, password } = userData;
+        if (!email || !password) throw new Error('Email and password are required');
 
+        // 1. Check if user already exists
+        const existingUser = await UserRepository.findByEmail(email);
         if (existingUser) {
-            throw new Error('User with this email already exists');
-        }
-
-        // Hash password if provided
-        let hashedPassword;
-        if (data.password) {
-            hashedPassword = await bcrypt.hash(data.password, 12);
-        }
-
-        // Create user
-        const user = await User.create({
-            name: data.name,
-            email,
-            password: hashedPassword,
-            image: data.image,
-            accounts: [],
-            role: 'user',
-            profile: {
-                country: data.country,
-            },
-            preferences: {
-                language: data.language || 'en',
-                bibleVersion: data.bibleVersion,
+            if (!existingUser.emailVerified) {
+                // Resend OTP if not verified
+                await this.resendOTP(existingUser.id, email);
+                return { userId: existingUser.id, email: existingUser.email };
             }
+            throw new Error('Email already registered and verified');
+        }
+
+        // 2. Hash Password
+        const hashedPassword = await bcrypt.hash(password, 12);
+
+        // 3. Create User
+        const user = await UserRepository.create({
+            ...userData,
+            password: hashedPassword,
+            emailVerified: false,
         });
 
-        return user;
+        // 4. Send OTP
+        await this.sendNewOTP(user.id, email);
+
+        return { userId: user.id, email: user.email };
     }
 
     /**
-     * Find or create user from OAuth provider
+     * Generates, hashes, stores, and sends a new OTP.
+     */
+    static async sendNewOTP(userId: string, email: string): Promise<void> {
+        const rawOTP = OTPUtils.generateOTP();
+        const otpHash = await OTPUtils.hashOTP(rawOTP);
+        const expiresAt = OTPUtils.getExpirationDate();
+
+        // Store in DB (Clear previous ones)
+        await OTPRepository.clearAllForUser(userId);
+        await OTPRepository.create({ userId: userId as any, otpHash, expiresAt });
+
+        // Send Email
+        await EmailService.sendOTP(email, rawOTP);
+    }
+
+    static async resendOTP(userId: string, email: string) {
+        await this.sendNewOTP(userId, email);
+    }
+
+    /**
+     * Verifies the OTP and activates the user account.
+     */
+    static async verifyOTP(userId: string, otp: string): Promise<boolean> {
+        const otpRecord = await OTPRepository.findLatestByUserId(userId);
+        if (!otpRecord) throw new Error('OTP not found or expired');
+
+        const isValid = await OTPUtils.verifyOTP(otp, otpRecord.otpHash);
+        if (!isValid) return false;
+
+        // Success: Mark user as verified
+        await UserRepository.update(userId, { emailVerified: true });
+        await OTPRepository.clearAllForUser(userId);
+        return true;
+    }
+
+    /**
+     * For Social Logins: auto-creates verified user or finds existing.
      */
     static async findOrCreateOAuthUser(data: {
         email: string;
-        name: string;
+        firstName: string;
+        lastName: string;
         image?: string;
         provider: string;
         providerAccountId: string;
-        access_token?: string;
     }): Promise<IUser> {
-        let user = await User.findOne({ email: data.email.toLowerCase() });
-
-        if (user) {
-            // Check if this provider is already linked
-            const accountExists = user.accounts.some(
-                (acc) => acc.provider === data.provider && acc.providerAccountId === data.providerAccountId
-            );
-
-            if (!accountExists) {
-                // Link new provider to existing user
-                user.accounts.push({
+        const existing = await UserRepository.findByEmail(data.email);
+        if (existing) {
+            // If found, update provider info if not set
+            if (!existing.provider) {
+                return await UserRepository.update(existing.id, {
                     provider: data.provider,
-                    type: 'oauth',
                     providerAccountId: data.providerAccountId,
-                    access_token: data.access_token,
-                });
-                await user.save();
+                    emailVerified: true // OAuth providers verify email
+                }) as IUser;
             }
-        } else {
-            // Create new user
-            user = await User.create({
-                name: data.name,
-                email: data.email.toLowerCase(),
-                image: data.image,
-                accounts: [
-                    {
-                        provider: data.provider,
-                        type: 'oauth',
-                        providerAccountId: data.providerAccountId,
-                        access_token: data.access_token,
-                    },
-                ],
-                role: 'user',
-            });
+            return existing;
         }
 
-        return user;
+        // Create new account
+        return await UserRepository.create({
+            ...data,
+            emailVerified: true,
+            onboardingCompleted: false, // Must complete profile fields later
+        });
     }
 
     /**
-     * Verify user credentials
+     * Completes onboarding fields.
      */
-    static async verifyCredentials(email: string, password: string): Promise<IUser | null> {
-        const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-        if (!user || !user.password) {
-            return null;
-        }
-
-        const isValid = await bcrypt.compare(password, user.password);
-        if (!isValid) {
-            return null;
-        }
-
-        return user;
+    static async completeOnboarding(userId: string, fields: Partial<IUser>): Promise<IUser | null> {
+        return await UserRepository.update(userId, {
+            ...fields,
+            onboardingCompleted: true,
+        });
     }
 
-    /**
-     * Get user by ID
-     */
-    static async getUserById(id: string): Promise<IUser | null> {
-        return User.findById(id);
-    }
+    static async verifyCredentials(email: string, passwordAttempt: string): Promise<IUser | null> {
+        const user = await UserRepository.findByEmail(email);
+        if (!user || !user.password) return null;
 
-    /**
-     * Get user by email
-     */
-    static async getUserByEmail(email: string): Promise<IUser | null> {
-        return User.findOne({ email: email.toLowerCase() });
-    }
+        if (!user.emailVerified) throw new Error('Email not verified. Please verify your account first.');
 
-    /**
-     * Update user profile
-     */
-    static async updateProfile(
-        userId: string,
-        data: {
-            name?: string;
-            image?: string;
-            profile?: {
-                bio?: string;
-                location?: string;
-                website?: string;
-            };
-            preferences?: {
-                theme?: 'light' | 'dark' | 'system';
-                fontSize?: number;
-                notificationsEnabled?: boolean;
-            };
-        }
-    ): Promise<IUser | null> {
-        const updateData: any = {};
-        if (data.name) updateData.name = data.name;
-        if (data.image) updateData.image = data.image;
-        if (data.profile) updateData.profile = data.profile;
-        if (data.preferences) updateData.preferences = data.preferences;
-
-        return User.findByIdAndUpdate(userId, updateData, { new: true, runValidators: true });
+        const isMatch = await bcrypt.compare(passwordAttempt, user.password);
+        return isMatch ? user : null;
     }
 }
