@@ -1,5 +1,5 @@
-import { User, IUser, UserRole } from '@/models/User';
-
+import { User, IUser } from '@/models/User';
+import { UserRole } from '@/types/user';
 export class UserRepository {
     static async create(data: Partial<IUser>): Promise<IUser> {
         const user = new User(data);

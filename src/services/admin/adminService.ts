@@ -1,5 +1,5 @@
 import { UserRepository } from '@/repositories/user/userRepository';
-import { UserRole } from '@/models/User';
+import { UserRole } from '@/types/user';
 
 export class AdminService {
     /**

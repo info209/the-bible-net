@@ -5,7 +5,6 @@ import { useEffect, useState } from "react";
 import AppHeader from "./components/AppHeader";
 import BibleReaderPage from "./components/BibleReaderPage";
 import HomePage from "./components/HomePage";
-import ChapterContent from "./components/ChapterContent";
 import "./globals.css"
 
 export default function RootLayout({
@@ -49,16 +48,6 @@ export default function RootLayout({
             {isHomePage && (
               <div className="relative z-0 pb-24">
                 <HomePage />
-              </div>
-            )}
-            {isLibraryPage && (
-              <div className="relative z-0 pb-24">
-                <ChapterContent />
-              </div>
-            )}
-            {isExplorePage && (
-              <div className="relative z-0 pb-24">
-                <ChapterContent />
               </div>
             )}
 

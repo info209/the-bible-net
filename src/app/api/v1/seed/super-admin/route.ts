@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { User, UserRole } from '@/models/User';
+import { User } from '@/models/User';
+import { UserRole } from '@/types/user';
 import bcrypt from 'bcryptjs';
 
 /**

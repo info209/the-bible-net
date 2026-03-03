@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { AdminService } from '@/services/admin/adminService';
-import { UserRole } from '@/models/User';
+import { UserRole } from '@/types/user';
 
 /**
  * @swagger

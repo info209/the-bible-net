@@ -2301,40 +2301,40 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               onClick={() => onNavigate?.('home')}
               className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
             >
-              <div className="p-2 rounded-full transition-all">
-                <Home className="size-6 text-gray-500" />
+              <div className={`p-2 rounded-full transition-all ${(pathname as string) === '/home' ? 'bg-[#006a6f]/10' : ''}`}>
+                <Home className={`size-6 ${(pathname as string) === '/home' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
               </div>
-              <span className="text-xs text-gray-500">Home</span>
+              <span className={`text-xs ${(pathname as string) === '/home' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Home</span>
             </button>
 
             <button
               onClick={() => onNavigate?.('bible')}
               className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
             >
-              <div className="p-2 rounded-full bg-[#006a6f]/10 transition-all">
-                <Book className="size-6 text-[#006a6f]" />
+              <div className={`p-2 rounded-full transition-all ${isBiblePage ? 'bg-[#006a6f]/10' : ''}`}>
+                <Book className={`size-6 ${isBiblePage ? 'text-[#006a6f]' : 'text-gray-500'}`} />
               </div>
-              <span className="text-xs text-[#006a6f]">Bible</span>
+              <span className={`text-xs ${isBiblePage ? 'text-[#006a6f]' : 'text-gray-500'}`}>Bible</span>
             </button>
 
             <button
               onClick={() => onNavigate?.('library')}
               className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
             >
-              <div className="p-2 rounded-full transition-all">
-                <BookOpen className="size-6 text-gray-500" />
+              <div className={`p-2 rounded-full transition-all ${(pathname as string) === '/library' ? 'bg-[#006a6f]/10' : ''}`}>
+                <BookOpen className={`size-6 ${(pathname as string) === '/library' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
               </div>
-              <span className="text-xs text-gray-500">Library</span>
+              <span className={`text-xs ${(pathname as string) === '/library' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Library</span>
             </button>
 
             <button
               onClick={() => onNavigate?.('explore')}
               className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
             >
-              <div className={`p-2 rounded-full transition-all ${pathname === '/explore' ? 'bg-[#006a6f]/10' : ''}`}>
-                <Compass className={`size-6 ${pathname === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
+              <div className={`p-2 rounded-full transition-all ${(pathname as string) === '/explore' ? 'bg-[#006a6f]/10' : ''}`}>
+                <Compass className={`size-6 ${(pathname as string) === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
               </div>
-              <span className={`text-xs ${pathname === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Explore</span>
+              <span className={`text-xs ${(pathname as string) === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Explore</span>
             </button>
           </div>
         </div>
