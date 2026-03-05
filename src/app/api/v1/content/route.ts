@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ContentService } from '@/services/contentService';
 import { ContentType } from '@/models/Content';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * @swagger
  * /api/v1/content:

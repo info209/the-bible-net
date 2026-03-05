@@ -1,9 +1,25 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
+
+// Fix for querySrv ECONNREFUSED on some networks (e.g., Windows or certain ISPs)
+// This forces Node.js to use public DNS servers for resolving MongoDB Atlas SRV records
+if (process.env.NODE_ENV !== 'test') {
+  try {
+    dns.setServers(['1.1.1.1', '8.8.8.8']);
+  } catch (e) {
+    console.warn('Failed to set custom DNS servers:', e);
+  }
+}
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+  throw new Error('Please define the MONGODB_URI environment variable');
+}
+
+// Debug log for MONGODB_URI (masked for security)
+if (process.env.NODE_ENV !== 'test') {
+  console.log(`📡 Database URI: ${MONGODB_URI.substring(0, 15)}...`);
 }
 
 interface MongooseCache {
