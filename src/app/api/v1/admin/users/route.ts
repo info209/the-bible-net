@@ -3,6 +3,8 @@ import { auth } from '@/lib/auth';
 import { AdminService } from '@/services/admin/adminService';
 import { UserRole } from '@/types/user';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * @swagger
  * /api/v1/admin/users:

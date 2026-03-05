@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BibleService } from '@/services/bibleService';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * @swagger
  * /api/v1/versions:

@@ -1,0 +1,17 @@
+{
+	"id": "bible-net-env-987",
+	"name": "Bible Net Local",
+	"values": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:3000",
+			"enabled": true
+		},
+		{
+			"key": "admin_token",
+			"value": "INSERT_TOKEN_HERE",
+			"enabled": true
+		}
+	],
+	"_postman_variable_scope": "environment"
+}

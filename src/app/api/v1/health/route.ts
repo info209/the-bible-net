@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import mongoose from 'mongoose';
 import { isDBConnected } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * Health Check API
  * GET /api/v1/health

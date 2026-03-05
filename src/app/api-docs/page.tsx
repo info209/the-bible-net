@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 export default function ApiDocs() {
     return (
-        <div className="container mx-auto p-4 bg-white dark:bg-gray-900 min-h-screen">
+        <div className="bg-white min-h-screen">
             <SwaggerClient />
         </div>
     );

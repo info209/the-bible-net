@@ -35,6 +35,17 @@ export default function RootLayout({
   const isLibraryPage = pathname === '/library';
   const isExplorePage = pathname === '/explore';
 
+  // If we're on the api-docs page, return only the children to ensure it's completely isolated
+  if (pathname.startsWith('/api-docs')) {
+    return (
+      <html lang="en">
+        <body className="bg-white">
+          {children}
+        </body>
+      </html>
+    );
+  }
+
   return (
     <html lang="en">
       <body>
@@ -43,7 +54,7 @@ export default function RootLayout({
           <>
             {/* Header - Always visible */}
             <AppHeader />
-            
+
             {/* Content Area - Only for non-Bible pages */}
             {isHomePage && (
               <div className="relative z-0 pb-24">
@@ -52,7 +63,8 @@ export default function RootLayout({
             )}
 
             {/* Bible Reader - for all pages the component renders its content/nav */}
-            <BibleReaderPage onNavigate={handleNavigate} />          </>
+            <BibleReaderPage onNavigate={handleNavigate} />
+          </>
         )}
         {children}
       </body>

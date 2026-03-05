@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DailyContentService } from '@/services/dailyContentService';
 import { ContentType } from '@/models/Content';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * @swagger
  * /api/v1/daily:

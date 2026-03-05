@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { BibleService } from '@/services/bibleService';
 import { connectDB } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+
 /**
  * @swagger
  * /api/v1/bible/random:
