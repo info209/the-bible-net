@@ -2072,8 +2072,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       </div>
 
       {/* Audio Controls - MOVES UP/DOWN WITH SCROLL */}
-      <div
-        className={`fixed left-0 right-0 z-30 pointer-events-none transition-all duration-700 ease-in-out ${showAudioControls ? 'bottom-[90px]' : 'bottom-4'
+    <div
+        className={`fixed bottom-20 left-0 right-0 z-30 pointer-events-none transition-all duration-700 ease-in-out ${showAudioControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y- pointer-events-none'
           }`}
       >
         <div className="max-w-3xl mx-auto px-6 sm:px-8">
