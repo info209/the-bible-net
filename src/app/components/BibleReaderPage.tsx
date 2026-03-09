@@ -1304,7 +1304,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 <div className="grid grid-cols-2 gap-8">
                   {/* Old Testament */}
                   <div>
-                    <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">Old Testament</h4>
+                    <h4 style={{background:"#f6f6f6"}} className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 text-sm font-semibold z-10">Old Testament</h4>
                     <div className="space-y-2">
                       {(bookSortType === 'alphabetical'
                         ? [...bibleBooksState['Old Testament']].sort()
@@ -1330,7 +1330,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
                   {/* New Testament */}
                   <div>
-                    <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">New Testament</h4>
+                    <h4 style={{background:"#f6f6f6"}} className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 text-sm font-semibold z-10">New Testament</h4>
                     <div className="space-y-2">
                       {(bookSortType === 'alphabetical'
                         ? [...bibleBooksState['New Testament']].sort()
@@ -2072,8 +2072,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       </div>
 
       {/* Audio Controls - MOVES UP/DOWN WITH SCROLL */}
-      <div
-        className={`fixed left-0 right-0 z-30 pointer-events-none transition-all duration-700 ease-in-out ${showAudioControls ? 'bottom-[90px]' : 'bottom-4'
+    <div
+        className={`fixed bottom-20 left-0 right-0 z-30 pointer-events-none transition-all duration-700 ease-in-out ${showAudioControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y- pointer-events-none'
           }`}
       >
         <div className="max-w-3xl mx-auto px-6 sm:px-8">

@@ -8,8 +8,185 @@
 
 /* simple tokens */
 :root {
-  --app-bg: #FEFEFE;
+  /* ===== BRAND COLORS ===== */
+  /* Teal/Cyan - Primary Spiritual Color */
+  --color-primary-teal: #41adb0;
+  --color-primary-teal-dark: #35898c;
+  --color-primary-teal-light: #6bc2c5;
+  --color-primary-teal-lighter: #a0d8da;
+  --color-primary-teal-lightest: #d0ecec;
+  --color-primary-teal-subtle: rgba(65, 173, 176, 0.1);
+  --color-primary-teal-subtle-medium: rgba(65, 173, 176, 0.15);
+  
+  /* Rose/Pink - Accent & Emphasis */
+  --color-accent-rose: #d23952;
+  --color-accent-rose-light: #eaa4af;
+  --color-accent-rose-lighter: #fbebee;
+  
+  /* ===== NEUTRAL COLORS ===== */
+  /* Text Colors */
+  --color-text-primary: #31393a;
+  --color-text-secondary: #7c7c7c;
+  --color-text-tertiary: #9ca3a3;
+  --color-text-light: #f1f3f3;
+  
+  /* Background Colors */
+  --color-bg-primary: #fefefe;
+  --color-bg-secondary: #f2f2f2;
+  --color-bg-tertiary: #d9d9d9;
+  
+  /* Gray Scale */
+  --color-gray-50: #f8f8f8;
+  --color-gray-100: #f2f2f2;
+  --color-gray-200: #e5e5e5;
+  --color-gray-300: #d9d9d9;
+  --color-gray-400: #9ca3a3;
+  --color-gray-500: #7c7c7c;
+  --color-gray-600: #5c6464;
+  --color-gray-700: #3c3c43;
+  --color-gray-800: #31393a;
+  --color-gray-900: #2e3737;
+  
+  /* ===== SHADOW SYSTEM ===== */
+  --shadow-xs: 0px 1px 2px 0px rgba(0, 0, 0, 0.05);
+  --shadow-sm: 0px 1px 2px 0px rgba(0, 0, 0, 0.3), 0px 2px 6px 2px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0px 4px 8px 3px rgba(0, 0, 0, 0.15), 0px 1px 3px 0px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0px 8px 16px 0px rgba(0, 0, 0, 0.2), 0px 2px 6px 0px rgba(0, 0, 0, 0.15);
+  --shadow-xl: 0px -8px 32px 0px rgba(0, 0, 0, 0.16);
+  --shadow-ambient: 0px 4px 12px 0px rgba(0, 0, 0, 0.12);
+  
+  /* ===== BORDER RADIUS ===== */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+  --radius-full: 9999px;
+  
+  /* ===== OVERLAY & BACKDROP ===== */
+  --overlay-dark: rgba(0, 0, 0, 0.3);
+  --overlay-light: rgba(0, 0, 0, 0.15);
+  --overlay-brand: rgba(0, 106, 111, 0.9);
+  
+  /* ===== SPACING SCALE ===== */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+  --space-16: 64px;
+  
+  /* ===== TYPOGRAPHY ===== */
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+  --text-3xl: 30px;
+  
+  --font-normal: 400;
+  --font-medium: 500;
+  --font-semibold: 600;
+  --font-bold: 700;
+  
+  /* ===== TRANSITIONS ===== */
+  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-ios: cubic-bezier(0.4, 0.0, 0.2, 1);
+  --ease-smooth: cubic-bezier(0.25, 0.1, 0.25, 1);
+  --page-slide-duration: 400ms;
+  --page-slide-easing: cubic-bezier(0.65, 0, 0.35, 1);
+  
+  /* ===== DRAG HANDLE ===== */
+  --drag-handle-color: rgba(60, 60, 67, 0.4);
+  --drag-handle-width: 100px;
+  --drag-handle-height: 5px;
+  
+  /* ===== LEGACY VARIABLES (for compatibility) ===== */
+  --font-size: 16px;
+  --background: #ffffff;
+  --foreground: oklch(0.145 0 0);
+  --card: #ffffff;
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: #030213;
+  --primary-foreground: oklch(1 0 0);
+  --secondary: oklch(0.95 0.0058 264.53);
+  --secondary-foreground: #030213;
+  --muted: #ececf0;
+  --muted-foreground: #717182;
+  --accent: #e9ebef;
+  --accent-foreground: #030213;
+  --destructive: #d4183d;
+  --destructive-foreground: #ffffff;
+  --border: rgba(0, 0, 0, 0.1);
+  --input: transparent;
+  --input-background: #f3f3f5;
+  --switch-background: #cbced4;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: #030213;
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+   --app-bg: #FEFEFE;
   --text-default: #171717;
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
 }
 
 html, body, #__next { height: 100%; }
@@ -54,4 +231,25 @@ body {
       0 4px 16px rgba(0, 0, 0, 0.1),
       0 1px 4px rgba(255, 255, 255, 0.15);
 }
+
+
   
+
+
+@layer utilities {
+  .animate-equalizer-1 {
+    animation: equalizer-1 0.8s ease-in-out infinite;
+  }
+  
+  .animate-equalizer-2 {
+    animation: equalizer-2 0.8s ease-in-out infinite 0.2s;
+  }
+  
+  .animate-equalizer-3 {
+    animation: equalizer-3 0.8s ease-in-out infinite 0.4s;
+  }
+  
+  .animate-spin-slow {
+    animation: spin 2s linear infinite;
+  }
+}
