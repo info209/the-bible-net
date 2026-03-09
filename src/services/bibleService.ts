@@ -2,6 +2,9 @@ import mongoose from 'mongoose';
 import { BibleVersion, Book, Chapter, Verse, IBibleVersion, IBook, IChapter, IVerse } from '@/models/Bible';
 import redis from '@/lib/redis';
 import { getPaginationMeta, PaginationMeta } from '@/utils/pagination';
+import { getBookDetails } from '@/utils/bibleBooks';
+import connectDB from '@/lib/db';
+
 
 /**
  * Bible Service Layer
@@ -42,10 +45,7 @@ export class BibleService {
      * Get all Bible versions with optional pagination
      */
     static async getAllVersions(page?: number, limit?: number): Promise<any> {
-        const cacheKey = `bible:versions${page ? `:${page}:${limit}` : ''}`;
-        const cached = await this.getFromCache(cacheKey);
-        if (cached) return cached;
-
+        // No cache for admin list to ensure progress is seen
         let query = BibleVersion.find().sort({ abbreviation: 1 });
         let total = 0;
 
@@ -61,7 +61,6 @@ export class BibleService {
             pagination: getPaginationMeta(total, page, limit)
         } : versions;
 
-        await this.setInCache(cacheKey, result);
         return result;
     }
 
@@ -271,4 +270,152 @@ export class BibleService {
             } : null,
         };
     }
+
+    /**
+     * Delete a Bible Version and all its associated data
+     */
+    static async deleteVersion(versionId: string): Promise<boolean> {
+        await connectDB();
+        const session = await mongoose.startSession();
+        session.startTransaction();
+        try {
+            await Promise.all([
+                Verse.deleteMany({ version: versionId }).session(session),
+                Chapter.deleteMany({ version: versionId }).session(session),
+                Book.deleteMany({ version: versionId }).session(session),
+                BibleVersion.findByIdAndDelete(versionId).session(session)
+            ]);
+            await session.commitTransaction();
+            return true;
+        } catch (error) {
+            await session.abortTransaction();
+            console.error('Delete version error:', error);
+            return false;
+        } finally {
+            session.endSession();
+        }
+    }
+
+    /**
+     * Import a Bible Version from JSON data
+     */
+    static async importVersion(data: any): Promise<string> {
+        await connectDB();
+        const { metadata, verses } = data;
+
+        // 1. Create/Update BibleVersion
+        const versionDoc = await BibleVersion.findOneAndUpdate(
+            { abbreviation: metadata.shortname.toUpperCase() },
+            {
+                name: metadata.name,
+                abbreviation: metadata.shortname.toUpperCase(),
+                language: metadata.lang_short,
+                copyright: metadata.copyright_statement || `Copyright ${metadata.year || ''}`,
+                status: 'importing',
+                importProgress: 0
+            },
+            { upsert: true, returnDocument: 'after' }
+        );
+
+        const versionId = versionDoc._id;
+
+        // Start background import process
+        this.runImportProcess(versionId.toString(), verses).catch(err => {
+            console.error('Background import failed:', err);
+            BibleVersion.findByIdAndUpdate(versionId, { status: 'failed' }).catch(console.error);
+        });
+
+        return versionId.toString();
+    }
+
+    private static async runImportProcess(versionId: string, verses: any[]): Promise<void> {
+        const batchSize = 1000;
+
+        // Group verses by book
+        const versesByBook = new Map<number, any[]>();
+        for (const v of verses) {
+            if (!versesByBook.has(v.book)) {
+                versesByBook.set(v.book, []);
+            }
+            versesByBook.get(v.book)!.push(v);
+        }
+
+        const bookNumbers = Array.from(versesByBook.keys()).sort((a, b) => a - b);
+        const totalBooks = bookNumbers.length;
+
+        for (let i = 0; i < totalBooks; i++) {
+            const bookNum = bookNumbers[i];
+            const bookVerses = versesByBook.get(bookNum)!;
+            const bookDetails = getBookDetails(bookNum);
+
+            const bookName = bookVerses[0].book_name || bookDetails?.name || `Book ${bookNum}`;
+            const bookAbbr = bookDetails?.abbreviation || bookName.substring(0, 3).toUpperCase();
+            const testament = bookDetails?.testament || (bookNum <= 39 ? 'OT' : 'NT');
+
+            const bookDoc = await Book.findOneAndUpdate(
+                { version: versionId, order: bookNum },
+                {
+                    name: bookName,
+                    abbreviation: bookAbbr,
+                    testament: testament,
+                    version: versionId,
+                    order: bookNum
+                },
+                { upsert: true, returnDocument: 'after' }
+            );
+
+            const bookId = bookDoc._id;
+
+            // Group by chapter
+            const versesByChapter = new Map<number, any[]>();
+            for (const v of bookVerses) {
+                if (!versesByChapter.has(v.chapter)) {
+                    versesByChapter.set(v.chapter, []);
+                }
+                versesByChapter.get(v.chapter)!.push(v);
+            }
+
+            const chapterNumbers = Array.from(versesByChapter.keys()).sort((a, b) => a - b);
+
+            for (const chapNum of chapterNumbers) {
+                const chapVerses = versesByChapter.get(chapNum)!;
+
+                const chapterDoc = await Chapter.findOneAndUpdate(
+                    { book: bookId, number: chapNum },
+                    {
+                        number: chapNum,
+                        book: bookId,
+                        version: versionId
+                    },
+                    { upsert: true, returnDocument: 'after' }
+                );
+
+                const chapterId = chapterDoc._id;
+
+                // Clear existing verses for this chapter if any
+                await Verse.deleteMany({ chapter: chapterId });
+
+                const verseDocs = chapVerses.map(v => ({
+                    number: v.verse,
+                    text: v.text,
+                    chapter: chapterId,
+                    book: bookId,
+                    version: versionId
+                }));
+
+                for (let j = 0; j < verseDocs.length; j += batchSize) {
+                    const chunk = verseDocs.slice(j, j + batchSize);
+                    await Verse.insertMany(chunk);
+                }
+            }
+
+            // Update progress
+            const progress = Math.round(((i + 1) / totalBooks) * 100);
+            await BibleVersion.findByIdAndUpdate(versionId, { importProgress: progress });
+        }
+
+        // Finalize status
+        await BibleVersion.findByIdAndUpdate(versionId, { status: 'active', importProgress: 100 });
+    }
 }
+

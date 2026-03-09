@@ -4,6 +4,23 @@ import { connectDB } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * @swagger
+ * /api/v1/bible/versions:
+ *   get:
+ *     summary: List all available Bible versions
+ *     tags: [Bible]
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer }
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function GET(req: NextRequest) {
     try {
         await connectDB();

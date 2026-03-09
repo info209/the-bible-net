@@ -1,0 +1,44 @@
+import { NextResponse } from 'next/server';
+import { User } from '@/models/User';
+import { UserRepository } from '@/repositories/user/userRepository';
+import { resetPasswordSchema } from '@/lib/validations/admin';
+import crypto from 'crypto';
+import bcrypt from 'bcryptjs';
+
+export async function POST(req: Request) {
+    try {
+        const body = await req.json();
+        const { password, token } = resetPasswordSchema.parse(body);
+
+        const resetTokenHash = crypto
+            .createHash('sha256')
+            .update(token)
+            .digest('hex');
+
+        // Find user by token and check expiry
+        const user = await User.findOne({
+            passwordResetTokenHash: resetTokenHash,
+            passwordResetExpires: { $gt: Date.now() },
+        });
+
+        if (!user) {
+            return NextResponse.json({ error: 'Token is invalid or has expired' }, { status: 400 });
+        }
+
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(password, 12);
+
+        // Update user and clear token fields
+        await UserRepository.update(user.id, {
+            password: hashedPassword,
+            passwordResetTokenHash: undefined,
+            passwordResetExpires: undefined,
+            failedLoginAttempts: 0,
+            accountLockedUntil: undefined,
+        } as any);
+
+        return NextResponse.json({ message: 'Password has been reset successfully' });
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message || 'Something went wrong' }, { status: 400 });
+    }
+}

@@ -1,16 +1,6 @@
 import mongoose from 'mongoose';
-import dns from 'dns';
 
-// Fix for querySrv ECONNREFUSED on some networks (e.g., Windows or certain ISPs)
-// This forces Node.js to use public DNS servers for resolving MongoDB Atlas SRV records
-if (process.env.NODE_ENV !== 'test') {
-  try {
-    dns.setServers(['1.1.1.1', '8.8.8.8']);
-  } catch (e) {
-    console.warn('Failed to set custom DNS servers:', e);
-  }
-}
-
+// MongoDB Connection logic
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {

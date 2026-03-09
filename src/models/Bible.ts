@@ -7,7 +7,10 @@ export interface IBibleVersion extends Document {
     abbreviation: string; // e.g. "KJV"
     language: string;  // e.g. "en"
     copyright?: string;
+    status: 'active' | 'importing' | 'failed';
+    importProgress: number;
 }
+
 
 export interface IBook extends Document {
     name: string;        // e.g. "Genesis"
@@ -57,7 +60,19 @@ const BibleVersionSchema = new Schema<IBibleVersion>({
         trim: true
     },
     copyright: { type: String, maxlength: [500, 'Copyright notice too long'] },
+    status: {
+        type: String,
+        enum: ['active', 'importing', 'failed'],
+        default: 'active'
+    },
+    importProgress: {
+        type: Number,
+        default: 0,
+        min: 0,
+        max: 100
+    },
 });
+
 
 const BookSchema = new Schema<IBook>({
     name: {

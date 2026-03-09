@@ -4,6 +4,27 @@ import { connectDB } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * @swagger
+ * /api/v1/bible/verses:
+ *   get:
+ *     summary: Get raw verses for a chapter
+ *     tags: [Bible]
+ *     parameters:
+ *       - in: query
+ *         name: chapterId
+ *         required: true
+ *         schema: { type: string }
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 100 }
+ *     responses:
+ *       200:
+ *         description: Success
+ */
 export async function GET(req: Request) {
     try {
         await connectDB();

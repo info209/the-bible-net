@@ -15,7 +15,7 @@ export class UserRepository {
     }
 
     static async update(id: string, data: Partial<IUser>): Promise<IUser | null> {
-        return await User.findByIdAndUpdate(id, data, { new: true });
+        return await User.findByIdAndUpdate(id, data, { returnDocument: 'after' });
     }
 
     static async listUsers(
@@ -57,5 +57,12 @@ export class UserRepository {
 
     static async countByRole(role: UserRole): Promise<number> {
         return await User.countDocuments({ role });
+    }
+
+    static async findUserByResetToken(tokenHash: string): Promise<IUser | null> {
+        return await User.findOne({
+            passwordResetTokenHash: tokenHash,
+            passwordResetExpires: { $gt: Date.now() }
+        });
     }
 }

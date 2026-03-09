@@ -8,11 +8,17 @@
 
 /* simple tokens */
 :root {
-  --app-bg: #FEFEFE;
-  --text-default: #171717;
+  --app-bg: #ffffff;
+  --text-default: #0f172a;
+  --color-primary-teal: #41ADB0;
 }
 
-html, body, #__next { height: 100%; }
+html,
+body,
+#__next {
+  height: 100%;
+}
+
 body {
   font-family: 'Nunito Sans', system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
   background: var(--app-bg);
@@ -25,18 +31,20 @@ body {
   opacity: 0;
   pointer-events: none;
 }
+
 .stickybar-visible {
   transform: translateY(0);
   opacity: 1;
   pointer-events: auto;
 }
+
 .stickybar-transition {
-  transition: transform 0.3s cubic-bezier(0.4,0,0.2,1), opacity 0.3s cubic-bezier(0.4,0,0.2,1);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .glass-light {
   background: rgba(255, 255, 255, 0.3);
-   backdrop-filter: blur(0.5px) saturate(180%) brightness(1.08);
+  backdrop-filter: blur(0.5px) saturate(180%) brightness(1.08);
   -webkit-backdrop-filter: blur(20px) saturate(150%);
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
@@ -44,14 +52,43 @@ body {
 
 
 .glass-medium {
-     background: rgba(255, 255, 255, 0.3);
-    backdrop-filter: blur(0.5px) saturate(180%) brightness(1.12);
-    -webkit-backdrop-filter: blur(200px) saturate(180%) brightness(1.12);
-    border: 1px solid rgba(255, 255, 255, 0.7);
-    box-shadow: 
-      inset 0 1.5px 1px rgba(255, 255, 255, 0.85),
-      inset 0 -0.5px 0.5px rgba(255, 255, 255, 0.3),
-      0 4px 16px rgba(0, 0, 0, 0.1),
-      0 1px 4px rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.3);
+  backdrop-filter: blur(0.5px) saturate(180%) brightness(1.12);
+  -webkit-backdrop-filter: blur(200px) saturate(180%) brightness(1.12);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  box-shadow:
+    inset 0 1.5px 1px rgba(255, 255, 255, 0.85),
+    inset 0 -0.5px 0.5px rgba(255, 255, 255, 0.3),
+    0 4px 16px rgba(0, 0, 0, 0.1),
+    0 1px 4px rgba(255, 255, 255, 0.15);
 }
-  
+
+/* Premium iOS Glassmorphism (Anchored) */
+.glass-ios {
+  background: rgba(255, 255, 255, 0.7) !important;
+  backdrop-filter: blur(20px) saturate(180%) brightness(1.2) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(180%) brightness(1.2) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.8) !important;
+  box-shadow: 0 -0.5px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* Premium iOS Floating Pill */
+.apple-nav-floating {
+  background: rgba(255, 255, 255, 0.65) !important;
+  backdrop-filter: blur(25px) saturate(190%) brightness(1.15) !important;
+  -webkit-backdrop-filter: blur(25px) saturate(190%) brightness(1.15) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.9) !important;
+  box-shadow:
+    0 8px 30px rgba(0, 0, 0, 0.05),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.5);
+  border-radius: 28px;
+}
+
+/* Safe Area Helpers */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.mb-safe {
+  margin-bottom: env(safe-area-inset-bottom, 0px);
+}

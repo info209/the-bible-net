@@ -1,22 +1,22 @@
 import nodemailer from 'nodemailer';
 
 export class EmailService {
-    private static transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST,
-        port: parseInt(process.env.EMAIL_PORT || '587'),
-        secure: process.env.EMAIL_SECURE === 'true',
-        auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
-        },
-    });
+  private static transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: parseInt(process.env.EMAIL_PORT || '587'),
+    secure: process.env.EMAIL_SECURE === 'true',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 
-    static async sendOTP(email: string, otp: string): Promise<void> {
-        const mailOptions = {
-            from: `"The Bible Net" <${process.env.EMAIL_USER}>`,
-            to: email,
-            subject: 'Your Verification Code',
-            html: `
+  static async sendOTP(email: string, otp: string): Promise<void> {
+    const mailOptions = {
+      from: `"The Bible Net" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Your Verification Code',
+      html: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
           <h2 style="color: #333; text-align: center;">Verify Your Account</h2>
           <p>Hello,</p>
@@ -32,13 +32,44 @@ export class EmailService {
           </p>
         </div>
       `,
-        };
+    };
 
-        try {
-            await this.transporter.sendMail(mailOptions);
-        } catch (error) {
-            console.error('Email sending failed:', error);
-            throw new Error('Could not send verification email. Please try again.');
-        }
+    try {
+      await this.transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error('Email sending failed:', error);
+      throw new Error('Could not send verification email. Please try again.');
     }
+  }
+
+  static async sendPasswordReset(email: string, resetLink: string): Promise<void> {
+    const mailOptions = {
+      from: `"The Bible Net" <${process.env.EMAIL_USER}>`,
+      to: email,
+      subject: 'Password Reset Request',
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #ddd; border-radius: 10px;">
+          <h2 style="color: #333; text-align: center;">Reset Your Password</h2>
+          <p>Hello,</p>
+          <p>You requested to reset your password. Click the button below to set a new password:</p>
+          <div style="text-align: center; margin: 30px 0;">
+            <a href="${resetLink}" style="background-color: #41ADB0; color: white; padding: 15px 25px; text-decoration: none; border-radius: 5px; font-weight: bold;">Reset Password</a>
+          </div>
+          <p>This link will expire in 15 minutes.</p>
+          <p>If you didn't request this, please ignore this email.</p>
+          <hr />
+          <p style="font-size: 12px; color: #777; text-align: center;">
+            &copy; ${new Date().getFullYear()} The Bible Net. All rights reserved.
+          </p>
+        </div>
+      `,
+    };
+
+    try {
+      await this.transporter.sendMail(mailOptions);
+    } catch (error) {
+      console.error('Password reset email failed:', error);
+      throw new Error('Could not send password reset email.');
+    }
+  }
 }

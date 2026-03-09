@@ -18,7 +18,7 @@ export class ContentRepository {
 
     static async update(id: string, data: Partial<IContent>): Promise<IContent | null> {
         if (!mongoose.Types.ObjectId.isValid(id)) return null;
-        return await Content.findByIdAndUpdate(id, data, { new: true, runValidators: true });
+        return await Content.findByIdAndUpdate(id, data, { returnDocument: 'after', runValidators: true });
     }
 
     static async delete(id: string): Promise<boolean> {

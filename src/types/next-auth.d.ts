@@ -1,4 +1,4 @@
-import { UserRole } from '../models/User';
+import { UserRole } from '@/types/user';
 
 declare module 'next-auth' {
     interface User {
@@ -8,6 +8,7 @@ declare module 'next-auth' {
         emailVerified?: boolean;
         firstName?: string;
         lastName?: string;
+        sessionType?: 'ADMIN' | 'USER';
     }
     interface Session {
         user: User;
@@ -20,5 +21,6 @@ declare module 'next-auth/jwt' {
         role: UserRole;
         onboardingCompleted: boolean;
         emailVerified: boolean;
+        sessionType: 'ADMIN' | 'USER';
     }
 }

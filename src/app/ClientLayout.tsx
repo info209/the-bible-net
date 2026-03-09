@@ -1,0 +1,61 @@
+"use client";
+
+import { useRouter, usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import AppHeader from "./components/AppHeader";
+import BibleReaderPage from "./components/BibleReaderPage";
+import BottomNav from "./components/BottomNav";
+
+export default function ClientLayout({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    // Redirect root to /home
+    if (pathname === '/') {
+      router.push('/home');
+    }
+
+    // Set body background for API docs
+    if (pathname.startsWith('/api-docs')) {
+      document.body.classList.add('bg-white');
+    } else {
+      document.body.classList.remove('bg-white');
+    }
+  }, [pathname, router]);
+
+  const handleNavigate = (page: 'home' | 'bible' | 'library' | 'explore') => {
+    router.push(`/${page}`);
+  };
+
+  if (!mounted) return <>{children}</>;
+
+  const isAdminRoute = pathname.startsWith('/admin');
+  const isApiDocs = pathname.startsWith('/api-docs');
+  const isAuthRoute = pathname.startsWith('/auth');
+  const isBiblePage = pathname.startsWith('/bible');
+  const isPublicAppPage = pathname !== '/' && !isAdminRoute && !isApiDocs && !isAuthRoute;
+
+  return (
+    <>
+      {/* 
+        Optimization: 
+        1. On /bible, BibleReaderPage renders its own AppHeader (internal to its design).
+        2. On Home/Library/Explore, ClientLayout renders a static AppHeader.
+      */}
+      {isPublicAppPage && !isBiblePage && <AppHeader />}
+      
+      {/* Heavy Bible reader only mounts on /bible */}
+      {isBiblePage && <BibleReaderPage onNavigate={handleNavigate} />}
+      
+      {/* Standard BottomNav for all app pages */}
+      {isPublicAppPage && <BottomNav onNavigate={handleNavigate} />}
+
+      <main className={isPublicAppPage ? "max-w-3xl mx-auto px-4 pt-4 pb-24" : ""}>
+        {children}
+      </main>
+    </>
+  );
+}

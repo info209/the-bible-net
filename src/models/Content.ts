@@ -7,6 +7,10 @@ export interface IContent extends Document {
     title?: string;
     reference?: string;
     text: string;
+    summary?: string;
+    highlightQuote?: string;
+    likeCount: number;
+    commentCount: number;
     createdBy: string;
     createdAt: Date;
     updatedAt: Date;
@@ -30,7 +34,7 @@ const ContentSchema = new Schema<IContent>(
         reference: {
             type: String,
             required: function (this: IContent) {
-                return this.type === 'verse';
+                return this.type === 'verse' || this.type === 'devotion'; // Devotions also have a reference
             },
             trim: true,
             maxlength: [100, 'Reference cannot exceed 100 characters'],
@@ -39,6 +43,24 @@ const ContentSchema = new Schema<IContent>(
             type: String,
             required: [true, 'Text content is required'],
             trim: true,
+        },
+        summary: {
+            type: String,
+            trim: true,
+            maxlength: [1000, 'Summary cannot exceed 1000 characters'],
+        },
+        highlightQuote: {
+            type: String,
+            trim: true,
+            maxlength: [500, 'Highlight quote cannot exceed 500 characters'],
+        },
+        likeCount: {
+            type: Number,
+            default: 0,
+        },
+        commentCount: {
+            type: Number,
+            default: 0,
         },
         createdBy: {
             type: String,

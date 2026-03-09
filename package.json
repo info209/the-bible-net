@@ -11,6 +11,7 @@
     "watch:css": "tailwindcss -i ./src/app/globals.css -o ./public/tw-debug.css --watch"
   },
   "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
     "@vercel/analytics": "^1.5.0",
     "@vercel/speed-insights": "^1.2.0",
     "bcryptjs": "^3.0.3",
@@ -28,6 +29,7 @@
     "nodemailer": "^7.0.13",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "react-hook-form": "^7.71.2",
     "react-icons": "^5.5.0",
     "react-select": "^5.10.2",
     "swagger-jsdoc": "^6.2.8",

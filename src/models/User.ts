@@ -16,6 +16,12 @@ export interface IUser extends Document {
     image?: string;
     provider?: string;
     providerAccountId?: string;
+    failedLoginAttempts: number;
+    accountLockedUntil?: Date;
+    lastLoginAt?: Date;
+    passwordResetTokenHash?: string;
+    passwordResetExpires?: Date;
+    isActive: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -75,6 +81,22 @@ const UserSchema = new Schema<IUser>(
             type: Boolean,
             default: false,
         },
+        failedLoginAttempts: {
+            type: Number,
+            default: 0,
+        },
+        accountLockedUntil: {
+            type: Date,
+        },
+        lastLoginAt: {
+            type: Date,
+        },
+        isActive: {
+            type: Boolean,
+            default: true,
+        },
+        passwordResetTokenHash: String,
+        passwordResetExpires: Date,
         image: String,
         provider: String,
         providerAccountId: String,

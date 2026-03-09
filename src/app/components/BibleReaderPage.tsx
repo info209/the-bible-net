@@ -62,55 +62,7 @@ interface BibleReaderPageProps {
 export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   // determine whether we are on bible page; if not, render only nav bar
   const pathname = usePathname();
-  const isBiblePage = pathname === '/bible';
-
-  const BottomNav = () => (
-    <div className="fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)]">
-      <div className="max-w-3xl mx-auto px-4">
-        <div className="flex items-center justify-around h-16">
-          <button
-            onClick={() => onNavigate?.('home')}
-            className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-          >
-            <div className={`p-2 rounded-full transition-all ${pathname === '/home' ? 'bg-[#006a6f]/10' : ''}`}>
-              <Home className={`size-6 ${pathname === '/home' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
-            </div>
-            <span className={`text-xs ${pathname === '/home' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Home</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate?.('bible')}
-            className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-          >
-            <div className={`p-2 rounded-full transition-all ${isBiblePage ? 'bg-[#006a6f]/10' : ''}`}>
-              <Book className={`size-6 ${isBiblePage ? 'text-[#006a6f]' : 'text-gray-500'}`} />
-            </div>
-            <span className={`text-xs ${isBiblePage ? 'text-[#006a6f]' : 'text-gray-500'}`}>Bible</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate?.('library')}
-            className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-          >
-            <div className={`p-2 rounded-full transition-all ${pathname === '/library' ? 'bg-[#006a6f]/10' : ''}`}>
-              <BookOpen className={`size-6 ${pathname === '/library' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
-            </div>
-            <span className={`text-xs ${pathname === '/library' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Library</span>
-          </button>
-
-          <button
-            onClick={() => onNavigate?.('explore')}
-            className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-          >
-            <div className={`p-2 rounded-full transition-all ${pathname === '/explore' ? 'bg-[#006a6f]/10' : ''}`}>
-              <Compass className={`size-6 ${pathname === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
-            </div>
-            <span className={`text-xs ${pathname === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Explore</span>
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const isBiblePage = pathname?.startsWith('/bible') || false;
 
   const [selectedBook, setSelectedBook] = useState('Genesis');
   const [selectedChapter, setSelectedChapter] = useState(1);
@@ -159,6 +111,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Fetch Bible Versions on mount
   useEffect(() => {
+    // Optimization: Don't hit Bible APIs if not on Bible page
+    if (!isBiblePage) return;
+
     const fetchVersions = async () => {
       setIsLoadingVersions(true);
       try {
@@ -184,6 +139,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Fetch books when version changes
   useEffect(() => {
+    // Optimization: Don't hit Bible APIs if not on Bible page
+    if (!isBiblePage) return;
+
     const fetchBooks = async () => {
       if (!selectedVersion || selectedVersion === 'undefined') return;
       setIsLoadingBooks(true);
@@ -210,6 +168,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Fetch chapter count when book changes
   useEffect(() => {
+    // Optimization: Don't hit Bible APIs if not on Bible page
+    if (!isBiblePage) return;
+
     const fetchChapters = async () => {
       if (!selectedVersion || !selectedBook || selectedBook === 'undefined') return;
       try {
@@ -236,6 +197,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Fetch verses for narration
   useEffect(() => {
+    // Optimization: Don't hit Bible APIs if not on Bible page
+    if (!isBiblePage) return;
+
     const fetchVerses = async () => {
       if (!selectedVersion || !selectedBook || !selectedChapter || selectedBook === 'undefined') return;
       setIsLoadingContent(true);
@@ -631,11 +595,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Bible narration functions
   const getBibleContent = () => {
-    if (currentChapterVerses.length > 0) {
+    if (currentChapterVerses && currentChapterVerses.length > 0) {
       return currentChapterVerses;
     }
 
     // Fallback to mock data if API data is not yet loaded
+    /*
     let bibleData = mockBibleContent;
     if (selectedVersion === 'TELBSI') {
       bibleData = teluguBible as any;
@@ -643,6 +608,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       bibleData = hindiBible as any;
     }
     return bibleData[selectedBook]?.[selectedChapter]?.verses || [];
+    */
+    return [];
   };
 
   const startNarration = (fromVerse: number = 1) => {
@@ -1170,13 +1137,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     }
   }, [selectedBook, selectedChapter]);
 
-  // if not on bible route just render bottom nav
-  if (!isBiblePage) {
-    return <BottomNav />;
-  }
 
   return (
-    <div className="fixed inset-0 bg-[var(--color-bg-primary)] flex flex-col">
+    <div className="fixed inset-0 bg-[var(--app-bg)] flex flex-col z-[100]">
       {/* Scrollable Content Area */}
       <div
         ref={scrollContainerRef}
@@ -1186,7 +1149,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         <AppHeader onMenuOpen={() => setMenuOpen(true)} />
 
         {/* Sub Navigation Bar - BECOMES STICKY */}
-        <div className="sticky top-0 left-0 right-0 z-40 glass-light border-b border-white/20 shadow-[var(--shadow-xs)]">
+        <div className="sticky top-0 left-0 right-0 z-40 glass-ios border-b border-white/20 shadow-sm">
           <div className="max-w-3xl mx-auto px-4 py-1">
             <div className="flex items-center justify-between">
               {/* Book/Chapter/Version selectors */}
@@ -1271,8 +1234,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       <button
                         onClick={() => setBookSortType('traditional')}
                         className={`p-1.5 rounded-full transition-all ${bookSortType === 'traditional'
-                            ? 'bg-white shadow-sm'
-                            : 'bg-transparent'
+                          ? 'bg-white shadow-sm'
+                          : 'bg-transparent'
                           }`}
                         aria-label="Traditional sort"
                       >
@@ -1282,8 +1245,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       <button
                         onClick={() => setBookSortType('alphabetical')}
                         className={`p-1.5 rounded-full transition-all ${bookSortType === 'alphabetical'
-                            ? 'bg-white shadow-sm'
-                            : 'bg-transparent'
+                          ? 'bg-white shadow-sm'
+                          : 'bg-transparent'
                           }`}
                         aria-label="Alphabetical sort"
                       >
@@ -1301,59 +1264,66 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-4 pb-4">
-                <div className="grid grid-cols-2 gap-8">
-                  {/* Old Testament */}
-                  <div>
-                    <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">Old Testament</h4>
-                    <div className="space-y-2">
-                      {(bookSortType === 'alphabetical'
-                        ? [...bibleBooksState['Old Testament']].sort()
-                        : bibleBooksState['Old Testament']
-                      ).map((book: string) => (
-                        <button
-                          key={book}
-                          onClick={() => {
-                            setSelectedBook(book);
-                            setShowBookSelector(false);
-                            setSelectedChapter(1);
-                          }}
-                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
+                {isLoadingBooks ? (
+                  <div className="flex flex-col items-center justify-center py-20 gap-3">
+                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary-teal)]"></div>
+                    <p className="text-sm font-medium text-gray-500 animate-pulse">Loading books...</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-8">
+                    {/* Old Testament */}
+                    <div>
+                      <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">Old Testament</h4>
+                      <div className="space-y-2">
+                        {(bookSortType === 'alphabetical'
+                          ? [...bibleBooksState['Old Testament']].sort()
+                          : bibleBooksState['Old Testament']
+                        ).map((book: string) => (
+                          <button
+                            key={book}
+                            onClick={() => {
+                              setSelectedBook(book);
+                              setShowBookSelector(false);
+                              setSelectedChapter(1);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
                               ? 'text-[var(--color-accent-rose)] font-medium'
                               : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
-                            }`}
-                        >
-                          {book}
-                        </button>
-                      ))}
+                              }`}
+                          >
+                            {book}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* New Testament */}
-                  <div>
-                    <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">New Testament</h4>
-                    <div className="space-y-2">
-                      {(bookSortType === 'alphabetical'
-                        ? [...bibleBooksState['New Testament']].sort()
-                        : bibleBooksState['New Testament']
-                      ).map((book: string) => (
-                        <button
-                          key={book}
-                          onClick={() => {
-                            setSelectedBook(book);
-                            setShowBookSelector(false);
-                            setSelectedChapter(1);
-                          }}
-                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
+                    {/* New Testament */}
+                    <div>
+                      <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">New Testament</h4>
+                      <div className="space-y-2">
+                        {(bookSortType === 'alphabetical'
+                          ? [...bibleBooksState['New Testament']].sort()
+                          : bibleBooksState['New Testament']
+                        ).map((book: string) => (
+                          <button
+                            key={book}
+                            onClick={() => {
+                              setSelectedBook(book);
+                              setShowBookSelector(false);
+                              setSelectedChapter(1);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
                               ? 'text-[var(--color-accent-rose)] font-medium'
                               : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
-                            }`}
-                        >
-                          {book}
-                        </button>
-                      ))}
+                              }`}
+                          >
+                            {book}
+                          </button>
+                        ))}
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>
@@ -1386,8 +1356,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                         setShowVerseSelector(true);
                       }}
                       className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedChapter === chapter
-                          ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
-                          : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
+                        ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
+                        : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
                         }`}
                     >
                       {chapter.toString().padStart(2, '0')}
@@ -1438,8 +1408,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                         setShowChapterSelector(false);
                       }}
                       className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedVerse === verse
-                          ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
-                          : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
+                        ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
+                        : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
                         }`}
                     >
                       {verse.toString().padStart(2, '0')}
@@ -1464,33 +1434,16 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-4 pb-4">
                 <h4 className="font-bold text-[#d23952] mb-4 text-sm">Bible Versions</h4>
-                <div className="space-y-3">
-                  {/* List versions by language */}
-                  {['English', 'Telugu', 'Hindi'].map(lang => (
-                    <div key={lang} className="space-y-2">
-                      <p className="text-sm text-[#31393a]/60 mb-2">{lang}</p>
-                      {bibleVersions.filter(v => v.language === lang).map(version => (
-                        <button
-                          key={version.name}
-                          onClick={() => {
-                            setSelectedVersion(version.name);
-                            setShowVersionSelector(false);
-                          }}
-                          className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
-                              ? 'bg-[#fbebee] text-[#d23952]'
-                              : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
-                            }`}
-                        >
-                          <div className="text-base font-medium">{version.fullName} ({version.name})</div>
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-
-                  {/* Any other languages */}
-                  {Array.from(new Set(bibleVersions.map(v => v.language)))
-                    .filter(lang => !['English', 'Telugu', 'Hindi'].includes(lang))
-                    .map(lang => (
+                
+                {isLoadingVersions ? (
+                  <div className="flex flex-col items-center justify-center py-12 gap-3">
+                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[var(--color-primary-teal)]"></div>
+                    <p className="text-sm font-medium text-gray-500 animate-pulse">Loading versions...</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {/* List versions by language */}
+                    {['English', 'Telugu', 'Hindi'].map(lang => (
                       <div key={lang} className="space-y-2">
                         <p className="text-sm text-[#31393a]/60 mb-2">{lang}</p>
                         {bibleVersions.filter(v => v.language === lang).map(version => (
@@ -1501,17 +1454,41 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                               setShowVersionSelector(false);
                             }}
                             className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
-                                ? 'bg-[#fbebee] text-[#d23952]'
-                                : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
+                              ? 'bg-[#fbebee] text-[#d23952]'
+                              : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
                               }`}
                           >
                             <div className="text-base font-medium">{version.fullName} ({version.name})</div>
                           </button>
                         ))}
                       </div>
-                    ))
-                  }
-                </div>
+                    ))}
+
+                    {/* Any other languages */}
+                    {Array.from(new Set(bibleVersions.map(v => v.language)))
+                      .filter(lang => !['English', 'Telugu', 'Hindi'].includes(lang))
+                      .map(lang => (
+                        <div key={lang} className="space-y-2">
+                          <p className="text-sm text-[#31393a]/60 mb-2">{lang}</p>
+                          {bibleVersions.filter(v => v.language === lang).map(version => (
+                            <button
+                              key={version.name}
+                              onClick={() => {
+                                setSelectedVersion(version.name);
+                                setShowVersionSelector(false);
+                              }}
+                              className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
+                                ? 'bg-[#fbebee] text-[#d23952]'
+                                : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
+                                }`}
+                            >
+                              <div className="text-base font-medium">{version.fullName} ({version.name})</div>
+                            </button>
+                          ))}
+                        </div>
+                      ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1564,8 +1541,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     }}
                     disabled={!selectedMusic || selectedMusic === 'none'}
                     className={`p-2 rounded-full transition-colors ${selectedMusic && selectedMusic !== 'none'
-                        ? 'hover:bg-gray-100 cursor-pointer'
-                        : 'opacity-40 cursor-not-allowed'
+                      ? 'hover:bg-gray-100 cursor-pointer'
+                      : 'opacity-40 cursor-not-allowed'
                       }`}
                   >
                     {audioPlaying ? (
@@ -1590,8 +1567,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       key={track.id}
                       onClick={() => setSelectedMusic(track.id)}
                       className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${selectedMusic === track.id
-                          ? 'bg-[#fbebee]'
-                          : 'bg-transparent hover:bg-gray-50'
+                        ? 'bg-[#fbebee]'
+                        : 'bg-transparent hover:bg-gray-50'
                         }`}
                     >
                       {/* Left side - Thumbnail and name */}
@@ -1614,8 +1591,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
                         {/* Track name */}
                         <span className={`text-base ${selectedMusic === track.id
-                            ? 'text-[#d23952] font-medium'
-                            : 'text-[#31393a]'
+                          ? 'text-[#d23952] font-medium'
+                          : 'text-[#31393a]'
                           }`}>
                           {track.name}
                         </span>
@@ -1686,8 +1663,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   >
                     <span className="text-base text-[#31393a]">Timer Off</span>
                     <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'stop'
-                        ? 'bg-[#d23952] border-[#d23952]'
-                        : 'border-gray-300'
+                      ? 'bg-[#d23952] border-[#d23952]'
+                      : 'border-gray-300'
                       }`} />
                   </button>
 
@@ -1698,8 +1675,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   >
                     <span className="text-base text-[#31393a]">End of this chapter</span>
                     <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'end-chapter'
-                        ? 'bg-[#d23952] border-[#d23952]'
-                        : 'border-gray-300'
+                      ? 'bg-[#d23952] border-[#d23952]'
+                      : 'border-gray-300'
                       }`} />
                   </button>
 
@@ -1710,8 +1687,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   >
                     <span className="text-base text-[#31393a]">10 mins</span>
                     <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '10-mins'
-                        ? 'bg-[#d23952] border-[#d23952]'
-                        : 'border-gray-300'
+                      ? 'bg-[#d23952] border-[#d23952]'
+                      : 'border-gray-300'
                       }`} />
                   </button>
 
@@ -1722,8 +1699,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   >
                     <span className="text-base text-[#31393a]">15 mins</span>
                     <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '15-mins'
-                        ? 'bg-[#d23952] border-[#d23952]'
-                        : 'border-gray-300'
+                      ? 'bg-[#d23952] border-[#d23952]'
+                      : 'border-gray-300'
                       }`} />
                   </button>
 
@@ -1734,8 +1711,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   >
                     <span className="text-base text-[#31393a]">30 mins</span>
                     <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '30-mins'
-                        ? 'bg-[#d23952] border-[#d23952]'
-                        : 'border-gray-300'
+                      ? 'bg-[#d23952] border-[#d23952]'
+                      : 'border-gray-300'
                       }`} />
                   </button>
 
@@ -1746,8 +1723,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   >
                     <span className="text-base text-[#31393a]">1 hr</span>
                     <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '1-hr'
-                        ? 'bg-[#d23952] border-[#d23952]'
-                        : 'border-gray-300'
+                      ? 'bg-[#d23952] border-[#d23952]'
+                      : 'border-gray-300'
                       }`} />
                   </button>
 
@@ -1758,8 +1735,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   >
                     <span className="text-base text-[#31393a]">2 hrs</span>
                     <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '2-hrs'
-                        ? 'bg-[#d23952] border-[#d23952]'
-                        : 'border-gray-300'
+                      ? 'bg-[#d23952] border-[#d23952]'
+                      : 'border-gray-300'
                       }`} />
                   </button>
                 </div>
@@ -1808,15 +1785,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
         {/* Settings Menu */}
         {showSettingsMenu && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowSettingsMenu(false)}>
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[100] bg-white/5 shadow-2xl backdrop-blur-sm" onClick={() => setShowSettingsMenu(false)}>
+            <div className="absolute top-24 left-1/2 -translate-x-1/2 apple-nav-floating w-[90%] max-w-[380px] max-h-[80vh] overflow-hidden flex flex-col transition-all duration-500 animate-in fade-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-200">
                 <div className="w-12" /> {/* Spacer instead of Back button */}
-                <h3 className="text-lg font-semibold text-[#31393a]">Fonts & Settings</h3>
+                <h3 className="text-lg font-bold text-[#0f172a]">Fonts & Settings</h3>
                 <button
                   onClick={() => setShowSettingsMenu(false)}
-                  className="text-sm text-[#31393a]/60 hover:text-[#31393a] transition-colors"
+                  className="text-sm font-bold text-[#006a6f] hover:text-[#005a5f] transition-colors"
                 >
                   Done
                 </button>
@@ -1826,12 +1803,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
                 {/* Font Family Selection */}
                 <div className="space-y-2">
-                  <label className="text-xs text-[#31393a]/60">Font family</label>
+                  <label className="text-sm font-bold text-[#0f172a]/80 uppercase tracking-wide">Font family</label>
                   <div className="relative">
                     <select
                       value={selectedFont}
                       onChange={(e) => setSelectedFont(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-base text-[#31393a] appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#d23952] focus:border-transparent"
+                      className="w-full px-4 py-3 bg-white/50 border border-gray-300 rounded-xl text-base font-medium text-[#0f172a] appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#006a6f] transition-all"
                     >
                       <option value="Times New Roman">Times New Roman</option>
                       <option value="Georgia">Georgia</option>
@@ -1845,10 +1822,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 </div>
 
                 {/* Font Size Slider */}
-                <div className="space-y-2">
-                  <label className="text-xs text-[#31393a]/60">Font size</label>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-[#31393a]">A-</span>
+                <div className="space-y-3">
+                  <label className="text-sm font-bold text-[#0f172a]/80 uppercase tracking-wide">Font size</label>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs font-bold text-[#0f172a]">A</span>
                     <div className="flex-1 relative">
                       <input
                         type="range"
@@ -1880,38 +1857,38 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 </div>
 
                 {/* Theme Selection */}
-                <div className="space-y-2">
-                  <label className="text-xs text-[#31393a]/60">Theme</label>
+                <div className="space-y-3">
+                  <label className="text-sm font-bold text-[#0f172a]/80 uppercase tracking-wide">Theme</label>
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setSelectedTheme('light')}
                       className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'light'
-                          ? 'border-[#31393a] scale-110'
-                          : 'border-gray-300'
+                        ? 'border-[#31393a] scale-110'
+                        : 'border-gray-300'
                         }`}
                       style={{ backgroundColor: '#ffffff' }}
                     />
                     <button
                       onClick={() => setSelectedTheme('sepia')}
                       className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'sepia'
-                          ? 'border-[#31393a] scale-110'
-                          : 'border-gray-300'
+                        ? 'border-[#31393a] scale-110'
+                        : 'border-gray-300'
                         }`}
                       style={{ backgroundColor: '#f5e6d3' }}
                     />
                     <button
                       onClick={() => setSelectedTheme('cream')}
                       className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'cream'
-                          ? 'border-[#31393a] scale-110'
-                          : 'border-gray-300'
+                        ? 'border-[#31393a] scale-110'
+                        : 'border-gray-300'
                         }`}
                       style={{ backgroundColor: '#fef3e2' }}
                     />
                     <button
                       onClick={() => setSelectedTheme('dark')}
                       className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'dark'
-                          ? 'border-[#ffffff] scale-110'
-                          : 'border-gray-300'
+                        ? 'border-[#ffffff] scale-110'
+                        : 'border-gray-300'
                         }`}
                       style={{ backgroundColor: '#2e3737' }}
                     />
@@ -1919,14 +1896,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 </div>
 
                 {/* Page Transitions */}
-                <div className="space-y-2">
-                  <label className="text-xs text-[#31393a]/60">Page transitions</label>
+                <div className="space-y-3">
+                  <label className="text-sm font-bold text-[#0f172a]/80 uppercase tracking-wide">Page transitions</label>
                   <div className="grid grid-cols-2 gap-3">
                     <button
                       onClick={() => setPageTransition('slide')}
                       className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'slide'
-                          ? 'border-[#31393a] bg-gray-50'
-                          : 'border-gray-200'
+                        ? 'border-[#31393a] bg-gray-50'
+                        : 'border-gray-200'
                         }`}
                     >
                       <ArrowRightLeft className="size-6 text-[#31393a]" />
@@ -1935,8 +1912,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     <button
                       onClick={() => setPageTransition('curl')}
                       className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'curl'
-                          ? 'border-[#31393a] bg-gray-50'
-                          : 'border-gray-200'
+                        ? 'border-[#31393a] bg-gray-50'
+                        : 'border-gray-200'
                         }`}
                     >
                       <FileText className="size-6 text-[#31393a]" />
@@ -1945,8 +1922,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     <button
                       onClick={() => setPageTransition('fade')}
                       className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'fade'
-                          ? 'border-[#31393a] bg-gray-50'
-                          : 'border-gray-200'
+                        ? 'border-[#31393a] bg-gray-50'
+                        : 'border-gray-200'
                         }`}
                     >
                       <Zap className="size-6 text-[#31393a]" />
@@ -1955,8 +1932,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     <button
                       onClick={() => setPageTransition('scroll')}
                       className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'scroll'
-                          ? 'border-[#31393a] bg-gray-50'
-                          : 'border-gray-200'
+                        ? 'border-[#31393a] bg-gray-50'
+                        : 'border-gray-200'
                         }`}
                     >
                       <ScrollText className="size-6 text-[#31393a]" />
@@ -2290,64 +2267,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         </div>
       </div>
 
-      {/* Bottom Navigation Bar - FADES IN/OUT */}
-      <div
-        className={`fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)] transition-all duration-700 ease-in-out ${showBottomNav ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
-          }`}
-      >
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="flex items-center justify-around h-16">
-            <button
-              onClick={() => onNavigate?.('home')}
-              className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-            >
-              <div className={`p-2 rounded-full transition-all ${(pathname as string) === '/home' ? 'bg-[#006a6f]/10' : ''}`}>
-                <Home className={`size-6 ${(pathname as string) === '/home' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
-              </div>
-              <span className={`text-xs ${(pathname as string) === '/home' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Home</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate?.('bible')}
-              className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-            >
-              <div className={`p-2 rounded-full transition-all ${isBiblePage ? 'bg-[#006a6f]/10' : ''}`}>
-                <Book className={`size-6 ${isBiblePage ? 'text-[#006a6f]' : 'text-gray-500'}`} />
-              </div>
-              <span className={`text-xs ${isBiblePage ? 'text-[#006a6f]' : 'text-gray-500'}`}>Bible</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate?.('library')}
-              className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-            >
-              <div className={`p-2 rounded-full transition-all ${(pathname as string) === '/library' ? 'bg-[#006a6f]/10' : ''}`}>
-                <BookOpen className={`size-6 ${(pathname as string) === '/library' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
-              </div>
-              <span className={`text-xs ${(pathname as string) === '/library' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Library</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate?.('explore')}
-              className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-            >
-              <div className={`p-2 rounded-full transition-all ${(pathname as string) === '/explore' ? 'bg-[#006a6f]/10' : ''}`}>
-                <Compass className={`size-6 ${(pathname as string) === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`} />
-              </div>
-              <span className={`text-xs ${(pathname as string) === '/explore' ? 'text-[#006a6f]' : 'text-gray-500'}`}>Explore</span>
-            </button>
-          </div>
-        </div>
-      </div>
-
       {/* Side Menu Overlay */}
       {menuOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-[100] backdrop-blur-sm"
+          className="fixed inset-0 bg-white/5 z-[100] backdrop-blur-sm shadow-2xl"
           onClick={() => setMenuOpen(false)}
         >
           <div
-            className="absolute right-0 top-0 h-full w-80 bg-white shadow-2xl p-6"
+            className="absolute right-0 top-0 h-full w-80 glass-ios shadow-2xl p-6 border-l border-white/20"
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-bold text-[#006a6f] mb-6">Settings</h2>

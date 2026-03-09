@@ -509,11 +509,11 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
 
   // Select the appropriate Bible content
   // Fallback to mock data if API call fails or is loading
-  const content = apiContent || (mockBibleContent[book]?.[chapter]);
+  const content = apiContent; // || (mockBibleContent[book]?.[chapter]);
 
   // Scroll to specific verse when scrollToVerse changes
   useEffect(() => {
-    if (scrollToVerse && scrollToVerse >= 1 && content?.verses.length > 0) {
+    if (scrollToVerse && scrollToVerse >= 1 && content?.verses?.length && content.verses.length > 0) {
       // Use a longer timeout to ensure the DOM and transitions are ready
       const timer = setTimeout(() => {
         const verseElement = document.getElementById(`verse-${book}-${chapter}-${scrollToVerse}`);
@@ -543,6 +543,35 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
     }
   }, [scrollToVerse, book, chapter, content]);
 
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary-teal)]"></div>
+        <p className="text-sm font-medium text-gray-500 animate-pulse">Loading Bible content...</p>
+      </div>
+    );
+  }
+
+  if (error && !content) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] px-6 text-center">
+        <div className="size-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+          <svg className="size-8 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+          </svg>
+        </div>
+        <h3 className="text-lg font-bold text-gray-900 mb-2">Failed to load content</h3>
+        <p className="text-gray-500 max-w-xs">{error}</p>
+        <button 
+          onClick={() => window.location.reload()}
+          className="mt-6 px-6 py-2 bg-[#006a6f] text-white rounded-full font-medium shadow-lg shadow-[#006a6f]/20 hover:bg-[#005a5f] transition-all"
+        >
+          Try Again
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div className="px-4 sm:px-6 py-4 sm:py-6 pb-[180px]">
       <div className="max-w-2xl mx-auto">
@@ -558,7 +587,7 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
 
         {/* Bible text */}
         <div className="space-y-1.5 text-justify leading-7">
-          {content?.verses.map(verse => (
+          {content?.verses?.map(verse => (
             <p
               key={verse.number}
               id={`verse-${book}-${chapter}-${verse.number}`}
