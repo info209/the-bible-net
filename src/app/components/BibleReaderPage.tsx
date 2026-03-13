@@ -1264,29 +1264,23 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-4 pb-4">
-                {isLoadingBooks ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-3">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary-teal)]"></div>
-                    <p className="text-sm font-medium text-gray-500 animate-pulse">Loading books...</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-8">
-                    {/* Old Testament */}
-                    <div>
-                      <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">Old Testament</h4>
-                      <div className="space-y-2">
-                        {(bookSortType === 'alphabetical'
-                          ? [...bibleBooksState['Old Testament']].sort()
-                          : bibleBooksState['Old Testament']
-                        ).map((book: string) => (
-                          <button
-                            key={book}
-                            onClick={() => {
-                              setSelectedBook(book);
-                              setShowBookSelector(false);
-                              setSelectedChapter(1);
-                            }}
-                            className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
+                <div className="grid grid-cols-2 gap-8">
+                  {/* Old Testament */}
+                  <div>
+                    <h4 style={{background:"#f6f6f6"}} className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 text-sm font-semibold z-10">Old Testament</h4>
+                    <div className="space-y-2">
+                      {(bookSortType === 'alphabetical'
+                        ? [...bibleBooksState['Old Testament']].sort()
+                        : bibleBooksState['Old Testament']
+                      ).map((book: string) => (
+                        <button
+                          key={book}
+                          onClick={() => {
+                            setSelectedBook(book);
+                            setShowBookSelector(false);
+                            setSelectedChapter(1);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
                               ? 'text-[var(--color-accent-rose)] font-medium'
                               : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
                               }`}
@@ -1297,22 +1291,22 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       </div>
                     </div>
 
-                    {/* New Testament */}
-                    <div>
-                      <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">New Testament</h4>
-                      <div className="space-y-2">
-                        {(bookSortType === 'alphabetical'
-                          ? [...bibleBooksState['New Testament']].sort()
-                          : bibleBooksState['New Testament']
-                        ).map((book: string) => (
-                          <button
-                            key={book}
-                            onClick={() => {
-                              setSelectedBook(book);
-                              setShowBookSelector(false);
-                              setSelectedChapter(1);
-                            }}
-                            className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
+                  {/* New Testament */}
+                  <div>
+                    <h4 style={{background:"#f6f6f6"}} className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 text-sm font-semibold z-10">New Testament</h4>
+                    <div className="space-y-2">
+                      {(bookSortType === 'alphabetical'
+                        ? [...bibleBooksState['New Testament']].sort()
+                        : bibleBooksState['New Testament']
+                      ).map((book: string) => (
+                        <button
+                          key={book}
+                          onClick={() => {
+                            setSelectedBook(book);
+                            setShowBookSelector(false);
+                            setSelectedChapter(1);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
                               ? 'text-[var(--color-accent-rose)] font-medium'
                               : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
                               }`}
@@ -2049,8 +2043,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       </div>
 
       {/* Audio Controls - MOVES UP/DOWN WITH SCROLL */}
-      <div
-        className={`fixed left-0 right-0 z-30 pointer-events-none transition-all duration-700 ease-in-out ${showAudioControls ? 'bottom-[90px]' : 'bottom-4'
+    <div
+        className={`fixed bottom-20 left-0 right-0 z-30 pointer-events-none transition-all duration-700 ease-in-out ${showAudioControls ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y- pointer-events-none'
           }`}
       >
         <div className="max-w-3xl mx-auto px-6 sm:px-8">

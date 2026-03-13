@@ -187,8 +187,8 @@ export default function HomePage() {
       <div className="relative overflow-hidden">
         <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
           {dailyVerses.map((verse, index) => (
-            <div key={index} className="w-full flex-shrink-0">
-              <div className={`bg-gradient-to-br ${verse.bgColor || 'from-teal-600 to-teal-500'} rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex flex-col`}>
+            <div key={index} className="min-w-full flex-shrink-0">
+              <div className={`bg-gradient-to-br ${verse.bgColor} rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex flex-col`}>
                 {/* Decorative elements */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
