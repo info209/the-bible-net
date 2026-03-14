@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
         
         const validatedData = likeSchema.safeParse(body);
         if (!validatedData.success) {
-            return NextResponse.json({ error: validatedData.error.errors[0].message }, { status: 400 });
+            return NextResponse.json({ error: validatedData.error.issues[0].message }, { status: 400 });
         }
 
         const { contentId, type } = validatedData.data;

@@ -30,8 +30,9 @@ export async function POST(req: Request) {
             passwordResetExpires: new Date(Date.now() + 15 * 60 * 1000),
         } as any);
 
-        // Send Email (pass raw token)
-        await EmailService.sendPasswordResetEmail(email, resetToken);
+        // Send Email with reset link
+        const resetLink = `${process.env.NEXTAUTH_URL}/admin/reset-password?token=${resetToken}`;
+        await EmailService.sendPasswordReset(email, resetLink);
 
         return NextResponse.json({ message: 'If an account exists, a reset link has been sent.' });
     } catch (error: any) {

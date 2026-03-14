@@ -28,7 +28,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         const updated = await UserRepository.update(id, { isActive: false });
 
         await LoggingService.logAdminAction({
-            adminId: session!.user.id,
+            adminId: session!.user.id as string,
             action: 'DEACTIVATE_USER',
             details: `Deactivated user ID: ${id} (${userToDeactivate.email})`,
         });

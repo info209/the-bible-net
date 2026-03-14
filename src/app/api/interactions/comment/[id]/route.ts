@@ -13,7 +13,7 @@ export async function DELETE(
         }
 
         const commentId = params.id;
-        const success = await CommentRepository.deleteComment(commentId, session.user.id);
+        const success = await CommentRepository.deleteComment(commentId, session.user.id as string);
 
         if (!success) {
             return NextResponse.json({ error: 'Comment not found or unauthorized' }, { status: 404 });

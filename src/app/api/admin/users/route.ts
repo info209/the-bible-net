@@ -53,8 +53,8 @@ export async function GET(req: NextRequest) {
         const country = searchParams.get('country') || undefined;
         const preferredLanguage = searchParams.get('language') || undefined;
         const preferredBibleVersion = searchParams.get('version') || undefined;
-        const registrationDateStart = searchParams.get('dateStart') ? new Date(searchParams.get('dateStart')!) : undefined;
-        const registrationDateEnd = searchParams.get('dateEnd') ? new Date(searchParams.get('dateEnd')!) : undefined;
+        const registrationDateStart = searchParams.get('dateStart') || undefined;
+        const registrationDateEnd = searchParams.get('dateEnd') || undefined;
         const page = parseInt(searchParams.get('page') || '1');
         const limit = parseInt(searchParams.get('limit') || '20');
 

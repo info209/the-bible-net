@@ -47,7 +47,7 @@ export async function POST(req: Request) {
         });
 
         await LoggingService.logAdminAction({
-            adminId: session.user.id,
+            adminId: session.user.id as string,
             action: 'CREATE_SUB_ADMIN',
             details: `Created sub-admin: ${newSubAdmin.email}`,
         });

@@ -38,12 +38,12 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const validatedData = commentSchema.safeParse(body);
         if (!validatedData.success) {
-            return NextResponse.json({ error: validatedData.error.errors[0].message }, { status: 400 });
+            return NextResponse.json({ error: validatedData.error.issues[0].message }, { status: 400 });
         }
 
         const { contentId, type, comment: commentText } = validatedData.data;
 
-        const comment = await CommentRepository.addComment(contentId, type, session.user.id, commentText);
+        const comment = await CommentRepository.addComment(contentId, type, session.user.id as string, commentText);
 
         return NextResponse.json({ success: true, comment });
     } catch (error: any) {

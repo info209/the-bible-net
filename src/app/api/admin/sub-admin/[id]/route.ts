@@ -19,7 +19,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
         await LoggingService.logAdminAction({
-            adminId: session.user.id,
+            adminId: session.user.id as string,
             action: 'UPDATE_SUB_ADMIN',
             details: `Updated sub-admin ID: ${id}`,
         });
@@ -45,7 +45,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
         if (!updated) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
         await LoggingService.logAdminAction({
-            adminId: session.user.id,
+            adminId: session.user.id as string,
             action: 'DEACTIVATE_SUB_ADMIN',
             details: `Deactivated sub-admin ID: ${id}`,
         });
