@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Mail, ArrowRight, RefreshCcw, AlertCircle } from 'lucide-react';
 
-export default function VerifyOTP() {
+function VerifyOTPContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const userId = searchParams.get('userId');
@@ -162,5 +162,13 @@ export default function VerifyOTP() {
                 </div>
             </motion.div>
         </div>
+    );
+}
+
+export default function VerifyOTP() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <VerifyOTPContent />
+        </Suspense>
     );
 }

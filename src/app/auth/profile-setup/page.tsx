@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Globe, Languages, Book, ArrowRight, UserCircle2 } from 'lucide-react';
 
-export default function ProfileSetup() {
+function ProfileSetupContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const userId = searchParams.get('userId');
@@ -135,5 +135,13 @@ export default function ProfileSetup() {
                 </div>
             </motion.div>
         </div>
+    );
+}
+
+export default function ProfileSetup() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <ProfileSetupContent />
+        </Suspense>
     );
 }

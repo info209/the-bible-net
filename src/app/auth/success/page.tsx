@@ -1,11 +1,11 @@
 'use client';
 
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { CheckCircle, ShieldCheck, ArrowRight, Home, LogIn } from 'lucide-react';
 
-export default function SuccessPage() {
+function SuccessPageContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const type = searchParams.get('type') || 'account';
@@ -84,5 +84,13 @@ export default function SuccessPage() {
                 </div>
             </motion.div>
         </div>
+    );
+}
+
+export default function SuccessPage() {
+    return (
+        <Suspense fallback={<div>Loading...</div>}>
+            <SuccessPageContent />
+        </Suspense>
     );
 }
