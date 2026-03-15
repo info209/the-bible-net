@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import NextAuth from 'next-auth';
-import { adminAuthConfig } from '@/lib/auth/admin.config';
-import { userAuthConfig } from '@/lib/auth/user.config';
+import { getToken } from 'next-auth/jwt';
 import { UserRole } from './types/user';
 
-// Initialize light auth instances for Edge (Middleware)
-const { auth: thinAdminAuth } = NextAuth(adminAuthConfig);
-const { auth: thinUserAuth } = NextAuth(userAuthConfig);
+const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
 
 // Route Categories
 const adminProtectedRoutes = ['/admin', '/api/v1/admin'];
@@ -25,9 +21,10 @@ export default async function middleware(req: NextRequest) {
 
     // 1. ADMIN FLOW ISOLATION
     if (pathname.startsWith('/admin') || pathname.startsWith('/api/v1/admin')) {
-        // @ts-ignore - NextAuth types in v5 middleware can be tricky
-        const session = await thinAdminAuth(req);
-        const isLoggedIn = !!session;
+        const token = await getToken({ req, secret, cookieName: 'admin_session' }) || 
+                      await getToken({ req, secret, cookieName: '__Secure-admin_session' });
+        
+        const isLoggedIn = !!token;
         const isAdminAuthPage = adminAuthPageRoutes.some(route => pathname.startsWith(route));
 
         // Redirect from /admin pages if not logged in
@@ -41,7 +38,8 @@ export default async function middleware(req: NextRequest) {
         }
 
         // Extra Role Check
-        if (isLoggedIn && session?.user?.role === UserRole.USER) {
+        const role = typeof token?.role === 'string' ? token.role : String(token?.role);
+        if (isLoggedIn && (role === 'USER' || role === UserRole.USER)) {
             return NextResponse.redirect(new URL('/auth/login?error=Admin access required', nextUrl));
         }
 
@@ -49,9 +47,9 @@ export default async function middleware(req: NextRequest) {
     }
 
     // 2. USER FLOW ISOLATION
-    // @ts-ignore
-    const userSession = await thinUserAuth(req);
-    const isUserLoggedIn = !!userSession;
+    const userToken = await getToken({ req, secret, cookieName: 'user_session' }) ||
+                      await getToken({ req, secret, cookieName: '__Secure-user_session' });
+    const isUserLoggedIn = !!userToken;
     const isUserAuthPage = authPageRoutes.some(route => pathname.startsWith(route));
     const isUserProtectedRoute = userProtectedPageRoutes.some(route => pathname.startsWith(route));
 
@@ -69,13 +67,8 @@ export default async function middleware(req: NextRequest) {
         return NextResponse.redirect(new URL('/auth/login', nextUrl));
     }
 
-    // Onboarding Check
-    if (isUserLoggedIn && !userSession?.user?.onboardingCompleted && !pathname.startsWith('/auth/profile-setup')) {
-        // Only enforce if not on a public route or if specifically a protected app area
-        if (isUserProtectedRoute || (!isUserAuthPage && !publicRoutes.some(r => pathname === r))) {
-             return NextResponse.redirect(new URL('/auth/profile-setup', nextUrl));
-        }
-    }
+    // Onboarding Check (Removed forced redirect to allow voluntary profile setup)
+    // Users can now navigate freely without being forced to complete their profile.
 
     // GUEST FLOW (implicit if no session exists above)
     // Guests can access public routes but not profile, library, etc.

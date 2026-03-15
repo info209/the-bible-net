@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { AdminService } from '@/services/admin/adminService';
 import { UserRole } from '@/types/user';
+import { connectDB } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,6 +52,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(req: NextRequest) {
     try {
+        await connectDB();
         const session = await auth();
         const isAdmin = session?.user?.role === UserRole.SUPER_ADMIN || session?.user?.role === UserRole.SUB_ADMIN;
 

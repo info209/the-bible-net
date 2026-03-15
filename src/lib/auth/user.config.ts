@@ -2,6 +2,7 @@ import { NextAuthConfig } from 'next-auth';
 import { UserRole } from '@/types/user';
 
 export const userAuthConfig: NextAuthConfig = {
+    secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
     session: {
         strategy: 'jwt',
         maxAge: 30 * 24 * 60 * 60, // 30 days
@@ -9,7 +10,7 @@ export const userAuthConfig: NextAuthConfig = {
     basePath: '/api/auth/user',
     cookies: {
         sessionToken: {
-            name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}user_session_token`,
+            name: 'user_session',
             options: {
                 httpOnly: true,
                 sameSite: 'lax',

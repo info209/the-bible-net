@@ -38,8 +38,19 @@ const LikeSchema = new Schema<ILike>(
 
 // Index for fast count and duplicate prevention
 LikeSchema.index({ contentId: 1, contentType: 1 });
-LikeSchema.index({ contentId: 1, userId: 1 }, { unique: true, sparse: true });
-LikeSchema.index({ contentId: 1, guestIdentifier: 1 }, { unique: true, sparse: true });
+LikeSchema.index(
+    { contentId: 1, userId: 1 }, 
+    { unique: true, partialFilterExpression: { userId: { $exists: true } } }
+);
+LikeSchema.index(
+    { contentId: 1, guestIdentifier: 1 }, 
+    { unique: true, partialFilterExpression: { guestIdentifier: { $exists: true } } }
+);
 
 export const Like: Model<ILike> =
     mongoose.models.Like || mongoose.model<ILike>('Like', LikeSchema);
+
+// Drop obsolete index if it exists, to fix duplicate key error for guests
+Like.collection.dropIndex('userId_verseId').catch(() => {
+    // Index might not exist, silently ignore
+});

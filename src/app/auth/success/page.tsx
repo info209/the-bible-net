@@ -19,6 +19,14 @@ function SuccessPageContent() {
             buttonAction: () => router.push('/'),
             showSkip: true,
         },
+        profile: {
+            title: 'Profile Updated!',
+            message: 'Your profile has been successfully personalized. You are all set to explore!',
+            icon: <CheckCircle className="w-12 h-12 text-white" />,
+            buttonText: 'Go to Home',
+            buttonAction: () => router.push('/home'),
+            showSkip: false,
+        },
         password: {
             title: 'Password Updated Successfully',
             message: 'Your password has been changed. You can now login with your new credentials.',

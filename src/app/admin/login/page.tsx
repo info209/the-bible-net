@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, SessionProvider } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -48,6 +48,7 @@ export default function AdminLoginPage() {
     };
 
     return (
+        <SessionProvider basePath="/api/auth/admin">
         <div className="min-h-screen flex items-center justify-center bg-[#0a0a0a] bg-[radial-gradient(circle_at_center,_#1a1a1a_0%,_#0a0a0a_100%)]">
             <div className="w-full max-w-md p-8 rounded-2xl bg-[#111] border border-white/10 shadow-2xl backdrop-blur-xl">
                 <div className="text-center mb-8">
@@ -107,5 +108,6 @@ export default function AdminLoginPage() {
                 </form>
             </div>
         </div>
+        </SessionProvider>
     );
 }

@@ -61,6 +61,12 @@ export async function POST(req: NextRequest) {
             guestIdentifier = guestId;
         }
 
+        // Temporary debug logs
+        console.log("Session:", session ? JSON.stringify(session) : "null");
+        console.log("Session Type:", sessionType);
+        console.log("Role:", session?.user?.role || "GUEST");
+        console.log("Guest ID:", guestIdentifier || "N/A");
+
         // Check if already liked
         const hasLiked = await LikeRepository.hasLiked(contentId, userId, guestIdentifier);
         if (hasLiked) {

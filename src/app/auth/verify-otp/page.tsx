@@ -64,7 +64,7 @@ function VerifyOTPContent() {
                 const data = await res.json();
                 setError(data.error || 'Verification failed');
             } else {
-                router.push(`/auth/profile-setup?userId=${userId}`);
+                router.push('/home');
             }
         } catch (err) {
             setError('Connection failed. Please check your internet.');

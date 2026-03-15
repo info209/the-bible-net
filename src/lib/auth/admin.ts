@@ -30,7 +30,9 @@ export const {
                     if (!user) return null;
 
                     // STRICT ROLE CHECK: Admins ONLY
-                    if (user.role !== UserRole.SUPER_ADMIN && user.role !== UserRole.SUB_ADMIN) {
+                    const adminUserRole = typeof user.role === 'string' ? user.role : String(user.role);
+                    if (adminUserRole !== 'SUPER_ADMIN' && adminUserRole !== UserRole.SUPER_ADMIN && 
+                        adminUserRole !== 'SUB_ADMIN' && adminUserRole !== UserRole.SUB_ADMIN) {
                         throw new Error('Access denied. Admin privileges required.');
                     }
 

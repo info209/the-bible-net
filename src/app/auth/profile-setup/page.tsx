@@ -4,11 +4,13 @@ import React, { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Globe, Languages, Book, ArrowRight, UserCircle2 } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 
 function ProfileSetupContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const userId = searchParams.get('userId');
+    const { data: session, update } = useSession();
 
     const [formData, setFormData] = useState({
         country: 'New Zealand',
@@ -29,7 +31,10 @@ function ProfileSetupContent() {
             });
 
             if (res.ok) {
-                router.push('/auth/success?type=account');
+                if (session) {
+                    await update({ user: { ...session.user, onboardingCompleted: true } });
+                }
+                router.push('/auth/success?type=profile');
             } else {
                 alert('Failed to save profile. You can skip for now.');
             }

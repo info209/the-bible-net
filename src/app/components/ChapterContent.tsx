@@ -472,7 +472,8 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/v1/bible/${version}/${book}/${chapter}`);
+        console.log("Bible request:", book, chapter, version);
+        const response = await fetch(`/api/v1/bible/${encodeURIComponent(version)}/${encodeURIComponent(book)}/${chapter}`);
         const result = await response.json();
 
         if (isMounted) {
@@ -543,15 +544,6 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
     }
   }, [scrollToVerse, book, chapter, content]);
 
-  if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary-teal)]"></div>
-        <p className="text-sm font-medium text-gray-500 animate-pulse">Loading Bible content...</p>
-      </div>
-    );
-  }
-
   if (error && !content) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] px-6 text-center">
@@ -568,6 +560,15 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
         >
           Try Again
         </button>
+      </div>
+    );
+  }
+
+  if (isLoading || !book || !version || book === 'undefined' || !apiContent) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary-teal)]"></div>
+        <p className="text-sm font-medium text-gray-500 animate-pulse">Loading Bible content...</p>
       </div>
     );
   }

@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserService } from '@/services/userService';
 import { z } from 'zod';
+import { connectDB } from '@/lib/db';
+
+import { userAuth } from '@/lib/auth/user';
 
 const profileSetupSchema = z.object({
-    userId: z.string().min(1, 'User ID is required'),
+    userId: z.string().nullable().optional(),
     country: z.string().optional(),
     preferredLanguage: z.string().optional(),
     preferredBibleVersion: z.string().optional(),
@@ -39,10 +42,24 @@ const profileSetupSchema = z.object({
  */
 export async function POST(req: NextRequest) {
     try {
+        await connectDB();
         const body = await req.json();
         const { userId, ...fields } = profileSetupSchema.parse(body);
 
-        const updatedUser = await UserService.completeOnboarding(userId, fields);
+        let targetUserId = userId;
+        
+        // Fallback to session if userId is not explicitly provided in the payload
+        if (!targetUserId) {
+            // @ts-ignore
+            const session = await userAuth();
+            targetUserId = session?.user?.id;
+        }
+
+        if (!targetUserId) {
+            return NextResponse.json({ success: false, error: 'User ID is required or user must be logged in' }, { status: 400 });
+        }
+
+        const updatedUser = await UserService.completeOnboarding(targetUserId, fields);
         if (!updatedUser) {
             return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
         }
