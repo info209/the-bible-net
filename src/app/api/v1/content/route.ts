@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ContentService } from '@/services/contentService';
 import { ContentType } from '@/models/Content';
+import { connectDB } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +43,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
     try {
+        await connectDB();
         const body = await req.json();
         const { type, title, reference, text, createdBy } = body;
 
@@ -98,6 +100,7 @@ export async function POST(req: NextRequest) {
  */
 export async function GET(req: NextRequest) {
     try {
+        await connectDB();
         const { searchParams } = new URL(req.url);
         const type = searchParams.get('type') as ContentType;
 

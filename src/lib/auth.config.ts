@@ -29,7 +29,7 @@ export const authConfig: NextAuthConfig = {
                 token.id = user.id as string;
                 token.role = user.role || UserRole.USER;
                 token.onboardingCompleted = user.onboardingCompleted ?? false;
-                token.emailVerified = user.emailVerified ?? false;
+                token.emailVerified = !!user.emailVerified;
             }
             if (trigger === 'update' && session?.user) {
                 token.onboardingCompleted = session.user.onboardingCompleted;

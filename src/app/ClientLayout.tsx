@@ -10,14 +10,25 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const router = useRouter();
   const pathname = usePathname();
   const [mounted, setMounted] = useState(false);
+  const [hideBottomNav, setHideBottomNav] = useState(false);
+
+  useEffect(() => {
+    const handleReadingMode = (e: any) => {
+      setHideBottomNav(e.detail.isReadingMode);
+    };
+    window.addEventListener('bible-reading-mode', handleReadingMode);
+    return () => window.removeEventListener('bible-reading-mode', handleReadingMode);
+  }, []);
+
+  // Reset reading mode when leaving Bible page
+  useEffect(() => {
+    if (!pathname.startsWith('/bible')) {
+      setHideBottomNav(false);
+    }
+  }, [pathname]);
 
   useEffect(() => {
     setMounted(true);
-    // Redirect root to /home
-    if (pathname === '/') {
-      router.push('/home');
-    }
-
     // Set body background for API docs
     if (pathname.startsWith('/api-docs')) {
       document.body.classList.add('bg-white');
@@ -51,7 +62,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       {isBiblePage && <BibleReaderPage onNavigate={handleNavigate} />}
       
       {/* Standard BottomNav for all app pages */}
-      {isPublicAppPage && <BottomNav onNavigate={handleNavigate} />}
+      {isPublicAppPage && <BottomNav isVisible={!hideBottomNav} onNavigate={handleNavigate} />}
 
       <main className={isPublicAppPage ? "max-w-3xl mx-auto px-4 pt-4 pb-24" : ""}>
         {children}

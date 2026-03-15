@@ -37,8 +37,8 @@ export async function GET(
 ) {
     try {
         await connectDB();
-        const versionAbbr = params.version;
-        const bookName = params.book;
+        const versionId = params.version;
+        const bookId = params.book;
         const chapterNum = parseInt(params.chapter);
 
         if (isNaN(chapterNum)) {
@@ -47,7 +47,7 @@ export async function GET(
 
         const { searchParams } = new URL(req.url);
         const q = searchParams.get('q');
-        const data = await BibleService.getChapterContent(versionAbbr, bookName, chapterNum, q || undefined);
+        const data = await BibleService.getChapterContent(versionId, bookId, chapterNum, q || undefined);
 
         return NextResponse.json({
             success: true,

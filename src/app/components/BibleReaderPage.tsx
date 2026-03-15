@@ -33,8 +33,8 @@ const initialVersions = [
   { name: 'KJV', fullName: 'King James Version', language: 'English' },
   { name: 'NASB', fullName: 'New American Standard Bible', language: 'English' },
   { name: 'AMP', fullName: 'Amplified Bible', language: 'English' },
-  { name: 'TELBSI', fullName: 'పవిత్ర గ్రంథము', language: 'Telugu' },
-  { name: 'HINBSI', fullName: 'पवित्र बाइबिल', language: 'Hindi' },
+  { name: 'TEL', fullName: 'పవిత్ర గ్రంథము', language: 'Telugu' },
+  { name: 'HIN', fullName: 'पवित्र बाइबिल', language: 'Hindi' },
 ];
 
 // Chapter counts for each book
@@ -64,9 +64,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const pathname = usePathname();
   const isBiblePage = pathname?.startsWith('/bible') || false;
 
-  const [selectedBook, setSelectedBook] = useState('Genesis');
+  const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  const [displayBookName, setDisplayBookName] = useState('Genesis');
   const [selectedChapter, setSelectedChapter] = useState(1);
-  const [selectedVersion, setSelectedVersion] = useState('KJV');
+  const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
+  const [displayVersionName, setDisplayVersionName] = useState('KJV');
   const [showBookSelector, setShowBookSelector] = useState(false);
   const [showChapterSelector, setShowChapterSelector] = useState(false);
   const [showVersionSelector, setShowVersionSelector] = useState(false);
@@ -101,7 +103,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
 
   // Book/Chapter state from API
-  const [bibleBooksState, setBibleBooksState] = useState<typeof bibleBooks>(bibleBooks);
+  const [bibleBooksState, setBibleBooksState] = useState<{ 'Old Testament': { id: string, name: string }[], 'New Testament': { id: string, name: string }[] }>({ 'Old Testament': bibleBooks['Old Testament'].map(n => ({ id: n, name: n })), 'New Testament': bibleBooks['New Testament'].map(n => ({ id: n, name: n })) });
   const [currentBookChapters, setCurrentBookChapters] = useState<number>(bookChapters['Genesis']);
   const [isLoadingBooks, setIsLoadingBooks] = useState(false);
 
@@ -122,11 +124,17 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         if (result.success && result.data.length > 0) {
           // Map API versions to match the UI format
           const mappedVersions = result.data.map((v: any) => ({
+            id: v._id,
             name: v.abbreviation,
             fullName: v.name,
             language: v.language === 'en' ? 'English' : v.language === 'te' ? 'Telugu' : v.language === 'hi' ? 'Hindi' : v.language
           }));
           setBibleVersions(mappedVersions);
+          if (mappedVersions.length > 0 && !selectedVersionId) {
+            const kjvVersion = mappedVersions.find((v: any) => v.name === 'KJV' || v.name === 'KJV-BSI') || mappedVersions[0];
+            setSelectedVersionId(kjvVersion.id);
+            setDisplayVersionName(kjvVersion.fullName);
+          }
         }
       } catch (err) {
         console.error('Failed to fetch versions:', err);
@@ -143,19 +151,45 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     if (!isBiblePage) return;
 
     const fetchBooks = async () => {
-      if (!selectedVersion || selectedVersion === 'undefined') return;
+      if (!selectedVersionId) return;
+      
+      
+
       setIsLoadingBooks(true);
       try {
-        const response = await fetch(`/api/v1/bible/${selectedVersion}/books`);
+        const response = await fetch(`/api/v1/bible/${selectedVersionId}/books`);
         const result = await response.json();
         if (result.success) {
           const books = result.data;
-          const ot = books.filter((b: any) => b.testament === 'OT').map((b: any) => b.name);
-          const nt = books.filter((b: any) => b.testament === 'NT').map((b: any) => b.name);
+          const ot = books.filter((b: any) => b.testament === 'OT').map((b: any) => ({ id: b._id, name: b.name }));
+          const nt = books.filter((b: any) => b.testament === 'NT').map((b: any) => ({ id: b._id, name: b.name }));
           setBibleBooksState({
             'Old Testament': ot,
             'New Testament': nt
           });
+          
+          const allNewBooks = [...ot, ...nt];
+          
+          if (!selectedBookId) {
+            if (ot.length > 0) {
+              const genesisBook = ot.find((b: any) => b.name === 'Genesis') || ot[0];
+              setSelectedBookId(genesisBook.id);
+              setDisplayBookName(genesisBook.name);
+            } else if (nt.length > 0) {
+              setSelectedBookId(nt[0].id);
+              setDisplayBookName(nt[0].name);
+            }
+          } else {
+            // Version switched: find the equivalent book ID in the newly fetched books
+            const matchingBook = allNewBooks.find((b: any) => b.name === displayBookName);
+            if (matchingBook) {
+              setSelectedBookId(matchingBook.id);
+              // displayBookName remains the same
+            } else if (allNewBooks.length > 0) {
+              setSelectedBookId(allNewBooks[0].id);
+              setDisplayBookName(allNewBooks[0].name);
+            }
+          }
         }
       } catch (err) {
         console.error('Failed to fetch books:', err);
@@ -164,7 +198,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       }
     };
     fetchBooks();
-  }, [selectedVersion]);
+  }, [selectedVersionId]);
 
   // Fetch chapter count when book changes
   useEffect(() => {
@@ -172,9 +206,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     if (!isBiblePage) return;
 
     const fetchChapters = async () => {
-      if (!selectedVersion || !selectedBook || selectedBook === 'undefined') return;
+      if (!selectedVersionId || !selectedBookId) return;
+      
+      
+
       try {
-        const response = await fetch(`/api/v1/bible/${selectedVersion}/${selectedBook}/chapters`);
+        const response = await fetch(`/api/v1/bible/${selectedVersionId}/${selectedBookId}/chapters`);
         const result = await response.json();
         if (result.success) {
           // If chapters are returned, set the count
@@ -184,16 +221,16 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             setCurrentBookChapters(result.data.count);
           } else {
             // Fallback
-            setCurrentBookChapters(bookChapters[selectedBook] || 1);
+            setCurrentBookChapters(bookChapters[displayBookName] || 1);
           }
         }
       } catch (err) {
         console.error('Failed to fetch chapters:', err);
-        setCurrentBookChapters(bookChapters[selectedBook] || 1);
+        setCurrentBookChapters(bookChapters[displayBookName] || 1);
       }
     };
     fetchChapters();
-  }, [selectedBook, selectedVersion]);
+  }, [selectedBookId, selectedVersionId]);
 
   // Fetch verses for narration
   useEffect(() => {
@@ -201,10 +238,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     if (!isBiblePage) return;
 
     const fetchVerses = async () => {
-      if (!selectedVersion || !selectedBook || !selectedChapter || selectedBook === 'undefined') return;
+      if (!selectedVersionId || !selectedBookId || !selectedChapter) return;
+      
+      
+
+      console.log("Bible request:", selectedBookId, selectedChapter, selectedVersionId);
+      
       setIsLoadingContent(true);
       try {
-        const response = await fetch(`/api/v1/bible/${selectedVersion}/${selectedBook}/${selectedChapter}`);
+        const response = await fetch(`/api/v1/bible/${selectedVersionId}/${selectedBookId}/${selectedChapter}`);
         const result = await response.json();
         if (result.success) {
           setCurrentChapterVerses(result.data.verses);
@@ -216,7 +258,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       }
     };
     fetchVerses();
-  }, [selectedBook, selectedChapter, selectedVersion]);
+  }, [selectedBookId, selectedChapter, selectedVersionId, bibleVersions]);
 
   // Touch/swipe state for interactive slide
   const [isDragging, setIsDragging] = useState(false);
@@ -266,48 +308,46 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Helper functions for navigation
   const allBooks = [...bibleBooksState['Old Testament'], ...bibleBooksState['New Testament']];
-  const currentBookIndex = allBooks.indexOf(selectedBook);
-  const isFirstChapterOfBible = selectedBook === allBooks[0] && selectedChapter === 1;
-  const isLastChapterOfBible = selectedBook === allBooks[allBooks.length - 1] && selectedChapter === currentBookChapters;
+  const currentBookIndex = allBooks.findIndex(b => b.id === selectedBookId);
+  const isFirstChapterOfBible = selectedBookId === allBooks[0]?.id && selectedChapter === 1;
+  const isLastChapterOfBible = selectedBookId === allBooks[allBooks.length - 1]?.id && selectedChapter === currentBookChapters;
 
   const totalChapters = currentBookChapters;
 
   // Get next chapter info for preview during drag
   const getNextChapter = () => {
     if (selectedChapter < totalChapters) {
-      return { book: selectedBook, chapter: selectedChapter + 1 };
+      return { book: displayBookName, chapter: selectedChapter + 1 };
     } else if (currentBookIndex < allBooks.length - 1) {
-      return { book: allBooks[currentBookIndex + 1], chapter: 1 };
+      return { book: allBooks[currentBookIndex + 1].name, chapter: 1 };
     }
-    return { book: selectedBook, chapter: selectedChapter };
+    return { book: displayBookName, chapter: selectedChapter };
   };
 
   // Get previous chapter info for preview during drag
   const getPrevChapter = () => {
     if (selectedChapter > 1) {
-      return { book: selectedBook, chapter: selectedChapter - 1 };
+      return { book: displayBookName, chapter: selectedChapter - 1 };
     } else if (currentBookIndex > 0) {
       const prevBook = allBooks[currentBookIndex - 1];
-      // Note: We don't have the chapter count for the previous book easily here 
-      // without extra state or a specific API call. For now we use bookChapters fallback.
-      return { book: prevBook, chapter: bookChapters[prevBook] || 50 };
+      return { book: prevBook.name, chapter: bookChapters[prevBook.name] || 50 };
     }
-    return { book: selectedBook, chapter: selectedChapter };
+    return { book: displayBookName, chapter: selectedChapter };
   };
-
   const nextChapterInfo = getNextChapter();
   const prevChapterInfo = getPrevChapter();
 
   // Navigate to specific verse from search
-  const handleNavigateToVerse = (book: string, chapter: number, verse: number) => {
-    setSelectedBook(book);
+  const handleNavigateToVerse = (book: { id: string, name: string }, chapter: number, verse: number) => {
+    setSelectedBookId(book.id);
+                              setDisplayBookName(book.name);
     setSelectedChapter(chapter);
     setSelectedVerse(verse);
     setShowSearch(false);
 
     // Scroll to the verse after a short delay to allow state to update
     setTimeout(() => {
-      const verseElement = document.getElementById(`verse-${book}-${chapter}-${verse}`);
+      const verseElement = document.getElementById(`verse-${book.id}-${chapter}-${verse}`);
       if (verseElement && scrollContainerRef.current) {
         const elementTop = verseElement.getBoundingClientRect().top;
         const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
@@ -341,8 +381,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       } else if (currentBookIndex > 0) {
         // Go to last chapter of previous book
         const prevBook = allBooks[currentBookIndex - 1];
-        setSelectedBook(prevBook);
-        setSelectedChapter(bookChapters[prevBook] || 50);
+        setSelectedBookId(prevBook.id);
+        setDisplayBookName(prevBook.name);
+        setSelectedChapter(bookChapters[prevBook.name] || 50);
       }
     }, 50);
   };
@@ -366,7 +407,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       } else if (currentBookIndex < allBooks.length - 1) {
         // Go to first chapter of next book
         const nextBook = allBooks[currentBookIndex + 1];
-        setSelectedBook(nextBook);
+        setSelectedBookId(nextBook.id);
+        setDisplayBookName(nextBook.name);
         setSelectedChapter(1);
       }
     }, 50);
@@ -535,7 +577,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   useEffect(() => {
     // Clear selected verse so chapter opens at the top naturally
     setSelectedVerse(null);
-  }, [selectedBook, selectedChapter]);
+  }, [selectedBookId, selectedChapter]);
 
   // Scroll detection logic
   useEffect(() => {
@@ -593,6 +635,13 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     }
   }, []);
 
+  // Dispatch reading mode event to client layout
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent('bible-reading-mode', { detail: { isReadingMode: !showBottomNav } })
+    );
+  }, [showBottomNav]);
+
   // Bible narration functions
   const getBibleContent = () => {
     if (currentChapterVerses && currentChapterVerses.length > 0) {
@@ -602,9 +651,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     // Fallback to mock data if API data is not yet loaded
     /*
     let bibleData = mockBibleContent;
-    if (selectedVersion === 'TELBSI') {
+    if (selectedVersionId === 'TEL' || selectedVersionId === 'TELBSI') {
       bibleData = teluguBible as any;
-    } else if (selectedVersion === 'HINBSI') {
+    } else if (selectedVersionId === 'HIN' || selectedVersionId === 'HINBSI') {
       bibleData = hindiBible as any;
     }
     return bibleData[selectedBook]?.[selectedChapter]?.verses || [];
@@ -668,7 +717,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
     // At the beginning of each chapter, announce the book name and chapter number
     if (index === 0 && verses.length > 0) {
-      const chapterAnnouncement = `${selectedBook} Chapter ${selectedChapter}`;
+      const chapterAnnouncement = `${displayBookName} Chapter ${selectedChapter}`;
       console.log('Announcing chapter:', chapterAnnouncement);
 
       const announcementUtterance = new SpeechSynthesisUtterance(chapterAnnouncement);
@@ -709,7 +758,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
         // Scroll to the verse being read
         setTimeout(() => {
-          const verseElement = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verseNumber}`);
+          const verseElement = document.getElementById(`verse-${selectedBookId}-${selectedChapter}-${verseNumber}`);
           if (verseElement && scrollContainerRef.current) {
             const elementTop = verseElement.getBoundingClientRect().top;
             const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
@@ -785,10 +834,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       // For 'stop' (default) or time-based timers (10-mins, 15-mins, 30-mins, 1-hr, 2-hrs), continue to next chapter
       // Time-based timers will be stopped by the setTimeout in startNarration
-      const totalChapters = bookChapters[selectedBook] || 50;
-      const currentBookIndex = allBooks.indexOf(selectedBook);
+      const totalChapters = bookChapters[displayBookName] || 50;
+      const currentBookIndex = allBooks.findIndex((b) => b.id === selectedBookId);
 
-      let nextBook = selectedBook;
+      let nextBookObj = allBooks[currentBookIndex] || { id: selectedBookId, name: displayBookName };
       let nextChapter = selectedChapter;
 
       if (selectedChapter < totalChapters) {
@@ -796,7 +845,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         nextChapter = selectedChapter + 1;
       } else if (currentBookIndex < allBooks.length - 1) {
         // Move to first chapter of next book
-        nextBook = allBooks[currentBookIndex + 1];
+        nextBookObj = allBooks[currentBookIndex + 1];
         nextChapter = 1;
       } else {
         // Reached the end of the Bible
@@ -808,29 +857,29 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         return;
       }
 
-      console.log('Auto-continuing to next chapter:', nextBook, nextChapter);
+      console.log('Auto-continuing to next chapter:', nextBookObj.name, nextChapter);
 
       // Set progress to 100% before moving to next chapter
       setAudioCurrentTime(audioDuration);
 
       console.log('[Auto-Advance] Starting auto-advance to next chapter');
       console.log('[Auto-Advance] Current states - audioPlaying:', audioPlaying, 'narrationPlaying:', narrationPlayingRef.current);
-      console.log('[Auto-Advance] Current chapter:', selectedBook, selectedChapter, '-> Next chapter:', nextBook, nextChapter);
+      console.log('[Auto-Advance] Current chapter:', selectedBookId, selectedChapter, '-> Next chapter:', nextBookObj.name, nextChapter);
 
       // Set flag to indicate this is an auto-advance, not manual navigation
       isAutoAdvancingRef.current = true;
 
-      // Fetch verses for the next chapter using the nextBook/nextChapter variables
+      // Fetch verses for the next chapter using the nextBookObj/nextChapter variables
       // (not getBibleContent() which uses state that hasn't updated yet)
       let bibleData = mockBibleContent;
-      if (selectedVersion === 'TELBSI') {
-        bibleData = teluguBible as any;
-      } else if (selectedVersion === 'HINBSI') {
-        bibleData = hindiBible as any;
+      if (selectedVersionId === 'TEL' || selectedVersionId === 'TELBSI') {
+        bibleData = teluguBible;
+      } else if (selectedVersionId === 'HIN' || selectedVersionId === 'HINBSI') {
+        bibleData = hindiBible;
       }
-      const nextChapterVerses = bibleData[nextBook]?.[nextChapter]?.verses || [];
+      const nextChapterVerses = bibleData[nextBookObj.name]?.[nextChapter]?.verses || [];
 
-      console.log('Auto-advance: Fetched', nextChapterVerses.length, 'verses for', nextBook, nextChapter);
+      console.log('Auto-advance: Fetched', nextChapterVerses.length, 'verses for', nextBookObj.name, nextChapter);
 
       if (nextChapterVerses.length === 0) {
         console.log('No verses found for next chapter, stopping');
@@ -842,18 +891,30 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         return;
       }
 
-      console.log('[Auto-Advance] Updating state to next chapter:', nextBook, nextChapter);
+      console.log('[Auto-Advance] Updating state to next chapter:', nextBookObj.name, nextChapter);
 
       // Update the book and chapter state
-      setSelectedBook(nextBook);
+      setSelectedBookId(nextBookObj.id);
+      setDisplayBookName(nextBookObj.name);
       setSelectedChapter(nextChapter);
       setSelectedVerse(1); // Reset to verse 1 for the new chapter
 
       // Small delay to allow state to update and new chapter to load
       setTimeout(() => {
         console.log('[Auto-Advance] Timeout fired - starting narration of new chapter');
-        console.log('[Auto-Advance] State should now be:', nextBook, nextChapter);
+        console.log('[Auto-Advance] State should now be:', nextBookObj.name, nextChapter);
         console.log('[Auto-Advance] States before readNextVerse - audioPlaying:', audioPlaying, 'narrationPlaying:', narrationPlayingRef.current);
+
+        // Make sure narration is still supposed to be playing
+        if (!narrationPlayingRef.current) {
+          console.log('[Auto-Advance] Narration was stopped during chapter transition, aborting');
+          isAutoAdvancingRef.current = false;
+          return;
+        }
+
+        narrationVerseIndexRef.current = 0;
+        console.log('[Auto-Advance] Calling readNextVerse with', nextChapterVerses.length, 'verses');
+        readNextVerse(nextChapterVerses, 0);
 
         // Make sure narration is still supposed to be playing
         if (!narrationPlayingRef.current) {
@@ -885,7 +946,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
     // Scroll to the verse being read
     setTimeout(() => {
-      const verseElement = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verseNumber}`);
+      const verseElement = document.getElementById(`verse-${selectedBookId}-${selectedChapter}-${verseNumber}`);
       if (verseElement && scrollContainerRef.current) {
         const elementTop = verseElement.getBoundingClientRect().top;
         const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
@@ -1060,7 +1121,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     } else {
       console.log('[Stop Narration Effect] Skipping stop - auto-advance in progress');
     }
-  }, [selectedBook, selectedChapter]);
+  }, [selectedBookId, selectedChapter]);
 
   // Update playback speed when it changes
   useEffect(() => {
@@ -1108,7 +1169,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Reset progress tracker when chapter changes
   useEffect(() => {
-    console.log('[Chapter Change Effect] Book:', selectedBook, 'Chapter:', selectedChapter);
+    console.log('[Chapter Change Effect] Book:', displayBookName, 'Chapter:', selectedChapter);
     console.log('[Chapter Change Effect] audioPlaying:', audioPlaying, 'narrationPlayingRef:', narrationPlayingRef.current, 'isAutoAdvancing:', isAutoAdvancingRef.current);
 
     // Calculate duration based on chapter content
@@ -1135,7 +1196,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     } else if (isAutoAdvancingRef.current) {
       console.log('[Chapter Change Effect] Auto-advance detected - skipping restart, narration will continue');
     }
-  }, [selectedBook, selectedChapter]);
+  }, [selectedBookId, selectedChapter]);
 
 
   return (
@@ -1145,11 +1206,17 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto"
       >
-        {/* Main Header/Navbar - SCROLLS AWAY */}
-        <AppHeader onMenuOpen={() => setMenuOpen(true)} />
+        {/* Header Section Grouped for Reading Mode */}
+        <div 
+          className={`sticky top-0 left-0 right-0 z-50 flex flex-col transition-all duration-300 ease-in-out ${
+            !showBottomNav ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
+          }`}
+        >
+          {/* Main Header/Navbar - SCROLLS AWAY */}
+          <AppHeader onMenuOpen={() => setMenuOpen(true)} className="!static" />
 
-        {/* Sub Navigation Bar - BECOMES STICKY */}
-        <div className="sticky top-0 left-0 right-0 z-40 glass-ios border-b border-white/20 shadow-sm">
+          {/* Sub Navigation Bar - BECOMES STICKY */}
+          <div className="glass-ios border-b border-white/20 shadow-sm w-full">
           <div className="max-w-3xl mx-auto px-4 py-1">
             <div className="flex items-center justify-between">
               {/* Book/Chapter/Version selectors */}
@@ -1162,7 +1229,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   }}
                   className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
                 >
-                  <span className="text-sm font-normal">{selectedBook}</span>
+                  <span className="text-sm font-normal">{displayBookName}</span>
                   <ChevronDown className="size-3" />
                 </button>
 
@@ -1186,7 +1253,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   }}
                   className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
                 >
-                  <span className="text-sm font-normal">{selectedVersion}</span>
+                  <span className="text-sm font-normal">{displayVersionName}</span>
                   <ChevronDown className="size-3" />
                 </button>
               </div>
@@ -1214,6 +1281,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               </div>
             </div>
           </div>
+        </div>
         </div>
 
         {/* Selector panels */}
@@ -1278,20 +1346,21 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                         {(bookSortType === 'alphabetical'
                           ? [...bibleBooksState['Old Testament']].sort()
                           : bibleBooksState['Old Testament']
-                        ).map((book: string) => (
+                        ).map((book: { id: string, name: string }) => (
                           <button
-                            key={book}
+                            key={typeof book === 'string' ? book : book.id}
                             onClick={() => {
-                              setSelectedBook(book);
+                              setSelectedBookId(book.id);
+                              setDisplayBookName(book.name);
                               setShowBookSelector(false);
                               setSelectedChapter(1);
                             }}
-                            className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
+                            className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBookId === book.id
                               ? 'text-[var(--color-accent-rose)] font-medium'
                               : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
                               }`}
                           >
-                            {book}
+                            {book.name}
                           </button>
                         ))}
                       </div>
@@ -1304,20 +1373,21 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                         {(bookSortType === 'alphabetical'
                           ? [...bibleBooksState['New Testament']].sort()
                           : bibleBooksState['New Testament']
-                        ).map((book: string) => (
+                        ).map((book: { id: string, name: string }) => (
                           <button
-                            key={book}
+                            key={typeof book === 'string' ? book : book.id}
                             onClick={() => {
-                              setSelectedBook(book);
+                              setSelectedBookId(book.id);
+                              setDisplayBookName(book.name);
                               setShowBookSelector(false);
                               setSelectedChapter(1);
                             }}
-                            className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
+                            className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBookId === book.id
                               ? 'text-[var(--color-accent-rose)] font-medium'
                               : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
                               }`}
                           >
-                            {book}
+                            {book.name}
                           </button>
                         ))}
                       </div>
@@ -1450,10 +1520,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                           <button
                             key={version.name}
                             onClick={() => {
-                              setSelectedVersion(version.name);
+                              setSelectedVersionId(version.id);
+                                setDisplayVersionName(version.fullName);
                               setShowVersionSelector(false);
                             }}
-                            className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
+                            className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersionId === version.id
                               ? 'bg-[#fbebee] text-[#d23952]'
                               : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
                               }`}
@@ -1474,10 +1545,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                             <button
                               key={version.name}
                               onClick={() => {
-                                setSelectedVersion(version.name);
+                                setSelectedVersionId(version.id);
+                                setDisplayVersionName(version.fullName);
                                 setShowVersionSelector(false);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
+                              className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersionId === version.id
                                 ? 'bg-[#fbebee] text-[#d23952]'
                                 : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
                                 }`}
@@ -1971,9 +2043,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     chapter={nextChapterInfo.chapter}
                     font={selectedFont}
                     fontSize={fontSize}
-                    version={selectedVersion}
-                    scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? selectedVerse : undefined}
-                    readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? currentReadingVerse : null}
+                    version={selectedVersionId || undefined}
+                    scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? selectedVerse : undefined}
+                    readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? currentReadingVerse : null}
                     theme={currentTheme}
                   />
                 </div>
@@ -1993,9 +2065,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     chapter={prevChapterInfo.chapter}
                     font={selectedFont}
                     fontSize={fontSize}
-                    version={selectedVersion}
-                    scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? selectedVerse : undefined}
-                    readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? currentReadingVerse : null}
+                    version={selectedVersionId || undefined}
+                    scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? selectedVerse : undefined}
+                    readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? currentReadingVerse : null}
                     theme={currentTheme}
                   />
                 </div>
@@ -2010,11 +2082,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 }}
               >
                 <ChapterContent
-                  book={selectedBook}
+                  book={selectedBookId || ''}
                   chapter={selectedChapter}
                   font={selectedFont}
                   fontSize={fontSize}
-                  version={selectedVersion}
+                  version={selectedVersionId || undefined}
                   scrollToVerse={selectedVerse}
                   readingVerse={currentReadingVerse}
                   theme={currentTheme}
@@ -2033,11 +2105,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 transition={transitionConfig[pageTransition]}
               >
                 <ChapterContent
-                  book={selectedBook}
+                  book={selectedBookId || ''}
                   chapter={selectedChapter}
                   font={selectedFont}
                   fontSize={fontSize}
-                  version={selectedVersion}
+                  version={selectedVersionId || undefined}
                   scrollToVerse={selectedVerse}
                   readingVerse={currentReadingVerse}
                   theme={currentTheme}
@@ -2303,7 +2375,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       {/* <BibleSearch
         isOpen={showSearch}
         onClose={() => setShowSearch(false)}
-        selectedVersion={selectedVersion}
+        selectedVersionId={selectedVersionId}
         onNavigateToVerse={handleNavigateToVerse}
       /> */}
     </div>

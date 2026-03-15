@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { DailyContentService } from '@/services/dailyContentService';
 
+import { connectDB } from '@/lib/db';
+
 /**
  * @swagger
  * /api/daily/verse:
@@ -17,6 +19,7 @@ import { DailyContentService } from '@/services/dailyContentService';
  */
 export async function GET() {
     try {
+        await connectDB();
         const verse = await DailyContentService.getDailyContent('verse');
         if (!verse) {
             return NextResponse.json({ error: 'Daily verse not found' }, { status: 404 });

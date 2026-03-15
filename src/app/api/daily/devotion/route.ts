@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { DailyContentService } from '@/services/dailyContentService';
 
+import { connectDB } from '@/lib/db';
+
 /**
  * @swagger
  * /api/daily/devotion:
@@ -17,6 +19,7 @@ import { DailyContentService } from '@/services/dailyContentService';
  */
 export async function GET() {
     try {
+        await connectDB();
         const devotion = await DailyContentService.getDailyContent('devotion');
         if (!devotion) {
             return NextResponse.json({ error: 'Daily devotion not found' }, { status: 404 });

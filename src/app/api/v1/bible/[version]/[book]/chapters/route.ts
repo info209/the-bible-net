@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BibleService } from '@/services/bibleService';
 import { connectDB } from '@/lib/db';
+import { Book } from '@/models/Bible';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,31 +30,21 @@ export async function GET(
 ) {
     try {
         await connectDB();
-        const versionAbbr = params.version.toUpperCase();
-        const bookAbbr = params.book;
+        const versionId = params.version;
+        const bookId = params.book;
 
         const { searchParams } = new URL(req.url);
         const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : undefined;
         const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
 
-        // Find Version first
-        const version = await BibleService.getVersionByAbbreviation(versionAbbr);
-        if (!version) {
-            return NextResponse.json({ success: false, error: 'Version not found' }, { status: 404 });
-        }
-
-        // Find Book
-        const booksData = await BibleService.getBooksByVersion(version._id);
-        const book = booksData.find((b: any) =>
-            b.abbreviation.toLowerCase() === bookAbbr.toLowerCase() ||
-            b.name.toLowerCase() === bookAbbr.toLowerCase()
-        );
+        // Verify Book exists
+        const book = await Book.findById(bookId).catch(() => null);
 
         if (!book) {
             return NextResponse.json({ success: false, error: 'Book not found' }, { status: 404 });
         }
 
-        const data = await BibleService.getChaptersByBook(book._id, page, limit);
+        const data = await BibleService.getChaptersByBook(book._id.toString(), page, limit);
 
         return NextResponse.json({
             success: true,

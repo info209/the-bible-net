@@ -2,6 +2,7 @@ import { NextAuthConfig } from 'next-auth';
 import { UserRole } from '@/types/user';
 
 export const adminAuthConfig: NextAuthConfig = {
+    secret: process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET,
     session: {
         strategy: 'jwt',
         maxAge: 8 * 60 * 60, // 8 hours
@@ -9,7 +10,7 @@ export const adminAuthConfig: NextAuthConfig = {
     basePath: '/api/auth/admin',
     cookies: {
         sessionToken: {
-            name: `${process.env.NODE_ENV === 'production' ? '__Secure-' : ''}admin_session_token`,
+            name: 'admin_session',
             options: {
                 httpOnly: true,
                 sameSite: 'lax',

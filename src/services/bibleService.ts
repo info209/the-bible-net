@@ -168,25 +168,19 @@ export class BibleService {
      * @param chapterNum - Chapter number
      * @param search - Optional search query to filter verses within the chapter
      */
-    static async getChapterContent(versionAbbr: string, bookName: string, chapterNum: number, search?: string) {
-        const cacheKey = `bible:content:${versionAbbr}:${bookName}:${chapterNum}${search ? `:search:${search}` : ''}`;
+    static async getChapterContent(versionId: string, bookId: string, chapterNum: number, search?: string) {
+        const cacheKey = `bible:content:${versionId}:${bookId}:${chapterNum}${search ? `:search:${search}` : ''}`;
         const cached = await this.getFromCache(cacheKey);
         if (cached) return cached;
 
         // Find version
-        const version = await BibleVersion.findOne({ abbreviation: versionAbbr.toUpperCase() }).lean();
+        const version = await BibleVersion.findById(versionId).lean();
         if (!version) {
             throw new Error('Version not found');
         }
 
-        // Find book (by name or abbreviation)
-        const book = await Book.findOne({
-            version: version._id,
-            $or: [
-                { name: new RegExp(`^${bookName}$`, 'i') },
-                { abbreviation: new RegExp(`^${bookName}$`, 'i') },
-            ],
-        }).lean();
+        // Find book
+        const book = await Book.findById(bookId).lean();
         if (!book) {
             throw new Error('Book not found');
         }

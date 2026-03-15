@@ -1,13 +1,13 @@
 "use client";
 
-import { Heart, MessageCircle, Share2, Maximize2, Play, Pause, X } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Maximize2, Play, Pause, X, User } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function HomePage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -175,13 +175,33 @@ export default function HomePage() {
       {/* Greeting */}
       <div className="flex items-center space-x-3 animate-fade-in">
         <div className="size-10 rounded-full bg-gradient-to-br from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] flex items-center justify-center text-white font-bold text-lg uppercase">
-          {session?.user?.firstName?.[0] || 'G'}
+          {session?.user?.firstName?.[0] || session?.user?.name?.[0] || 'G'}
         </div>
         <div>
           <p className="text-gray-600 text-sm">Shalom,</p>
-          <h2 className="text-xl font-bold text-gray-800">{session?.user?.firstName || 'Guest'}</h2>
+          <h2 className="text-xl font-bold text-gray-800">{session?.user?.firstName || session?.user?.name || 'Guest'}</h2>
         </div>
       </div>
+
+      {/* Profile Setup Banner */}
+      {status === 'authenticated' && (session?.user as any).onboardingCompleted === false && (
+        <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-100 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm animate-fade-in gap-4 sm:gap-2">
+          <div className="flex items-center space-x-3">
+            <div className="bg-white p-2 rounded-full shadow-sm border border-teal-100 flex-shrink-0">
+              <User className="size-5 text-[var(--color-primary-teal)]" />
+            </div>
+            <p className="text-sm text-gray-800 font-medium leading-tight">
+              Complete your profile to personalize your Bible reading experience.
+            </p>
+          </div>
+          <button
+            onClick={() => router.push('/auth/profile-setup')}
+            className="flex-shrink-0 px-4 py-2 bg-[var(--color-primary-teal)] hover:bg-[#328e91] text-white text-sm font-semibold rounded-lg shadow-sm transition-colors whitespace-nowrap w-full sm:w-auto text-center"
+          >
+            Complete Profile
+          </button>
+        </div>
+      )}
 
       {/* Daily Verse Card */}
       <div className="relative overflow-hidden">

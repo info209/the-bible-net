@@ -30,7 +30,7 @@ export default function LoginPage() {
             if (result?.error) {
                 setError(result.error || 'Invalid email or password');
             } else {
-                router.push('/');
+                router.push('/home');
             }
         } catch (err: any) {
             setError('An unexpected error occurred. Please try again.');

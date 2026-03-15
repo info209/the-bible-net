@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { DailyContentService } from '@/services/dailyContentService';
 import { ContentType } from '@/models/Content';
+import { connectDB } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,7 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(req: NextRequest) {
     try {
+        await connectDB();
         const { searchParams } = new URL(req.url);
         const type = searchParams.get('type') as ContentType;
 

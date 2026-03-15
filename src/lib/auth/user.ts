@@ -45,8 +45,9 @@ export const {
                     if (!user) return null;
 
                     // STRICT ROLE CHECK: Regular Users ONLY
-                    if (user.role !== UserRole.USER) {
-                        throw new Error('Access denied. User account required.');
+                    const userRole = typeof user.role === 'string' ? user.role : String(user.role);
+                    if (userRole !== 'USER' && userRole !== UserRole.USER) {
+                        throw new Error(`Access denied. User account required. Found role: ${userRole}`);
                     }
 
                     return {
@@ -84,7 +85,8 @@ export const {
                     });
 
                     // SECURITY REQUIREMENT: NO SOCIAL LOGIN FOR ADMIN THROUGH USER PORTAL
-                    if (dbUser.role !== UserRole.USER) {
+                    const oauthUserRole = typeof dbUser.role === 'string' ? dbUser.role : String(dbUser.role);
+                    if (oauthUserRole !== 'USER' && oauthUserRole !== UserRole.USER) {
                         return '/auth/login?error=Admins must use admin portal login';
                     }
 

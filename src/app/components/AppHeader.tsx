@@ -9,9 +9,10 @@ import Link from 'next/link';
 
 interface AppHeaderProps {
   onMenuOpen?: () => void;
+  className?: string;
 }
 
-export default function AppHeader({ onMenuOpen }: AppHeaderProps) {
+export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
   const { data: session } = useSession();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
@@ -60,7 +61,7 @@ export default function AppHeader({ onMenuOpen }: AppHeaderProps) {
     setIsProfileOpen(false);
     // Explicitly sign out
     await signOut({ 
-      callbackUrl: '/auth/login',
+      callbackUrl: '/home',
       redirect: true 
     });
   };
@@ -71,7 +72,7 @@ export default function AppHeader({ onMenuOpen }: AppHeaderProps) {
   };
 
   return (
-    <div className="sticky top-0 z-[50] bg-[#41ADB0] border-b border-black/5 shadow-md px-4 py-4">
+    <div className={`sticky top-0 z-[50] bg-[#41ADB0] border-b border-black/5 shadow-md px-4 py-4 ${className || ''}`}>
       <div className="max-w-3xl mx-auto flex items-center justify-between">
 
         {/* Logo / App Name */}

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BibleService } from '@/services/bibleService';
 import { connectDB } from '@/lib/db';
+import { BibleVersion } from '@/models/Bible';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,14 +26,16 @@ export async function GET(
 ) {
     try {
         await connectDB();
-        const versionAbbr = params.version.toUpperCase();
+        const versionId = params.version;
 
         const { searchParams } = new URL(req.url);
         const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : undefined;
         const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
 
-        // Find version first to get ID
-        const version = await BibleService.getVersionByAbbreviation(versionAbbr);
+        // Verify version exists
+        const version = await BibleService.getVersionByAbbreviation(versionId).catch(() => null) 
+            || await BibleVersion.findById(versionId).catch(() => null);
+
         if (!version) {
             return NextResponse.json({ success: false, error: 'Version not found' }, { status: 404 });
         }
