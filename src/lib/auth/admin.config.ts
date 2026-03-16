@@ -26,6 +26,8 @@ export const adminAuthConfig: NextAuthConfig = {
                 token.id = user.id as string;
                 token.role = user.role as UserRole;
                 token.sessionType = 'ADMIN';
+                token.firstName = (user as any).firstName;
+                token.lastName = (user as any).lastName;
             }
             return token;
         },
@@ -34,6 +36,11 @@ export const adminAuthConfig: NextAuthConfig = {
                 session.user.id = token.id as string;
                 session.user.role = token.role as UserRole;
                 session.user.sessionType = 'ADMIN';
+                (session.user as any).firstName = token.firstName as string;
+                (session.user as any).lastName = token.lastName as string;
+                session.user.name = token.firstName && token.lastName 
+                    ? `${token.firstName} ${token.lastName}` 
+                    : (token.firstName as string || session.user.name);
             }
             return session;
         },

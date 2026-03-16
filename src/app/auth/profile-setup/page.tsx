@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Globe, Languages, Book, ArrowRight, UserCircle2 } from 'lucide-react';
@@ -8,38 +8,86 @@ import { useSession } from 'next-auth/react';
 
 function ProfileSetupContent() {
     const router = useRouter();
-    const searchParams = useSearchParams();
-    const userId = searchParams.get('userId');
-    const { data: session, update } = useSession();
+    const { data: session, update: updateSession } = useSession();
 
     const [formData, setFormData] = useState({
+        firstName: session?.user?.firstName || '',
+        lastName: session?.user?.lastName || '',
+        email: session?.user?.email || '',
         country: 'New Zealand',
         preferredLanguage: 'English',
         preferredBibleVersion: 'NKJV',
     });
     const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (session?.user) {
+            setFormData(prev => ({
+                ...prev,
+                firstName: prev.firstName || (session.user as any).firstName || '',
+                lastName: prev.lastName || (session.user as any).lastName || '',
+                email: prev.email || session.user.email || '',
+                country: prev.country === 'New Zealand' ? ((session.user as any).country || 'New Zealand') : prev.country,
+                preferredLanguage: prev.preferredLanguage === 'English' ? ((session.user as any).preferredLanguage || 'English') : prev.preferredLanguage,
+                preferredBibleVersion: prev.preferredBibleVersion === 'NKJV' ? ((session.user as any).preferredBibleVersion || 'NKJV') : prev.preferredBibleVersion,
+            }));
+        }
+    }, [session]);
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         setLoading(true);
+        setError('');
 
         try {
-            const res = await fetch('/api/auth/profile-setup', {
-                method: 'POST',
+            // Validate basic fields
+            if (formData.firstName.length < 2) {
+                setError('First name must be at least 2 characters');
+                setLoading(false);
+                return;
+            }
+            if (!formData.lastName) {
+                setError('Last name is required');
+                setLoading(false);
+                return;
+            }
+
+            const res = await fetch('/api/user/profile', {
+                method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userId, ...formData }),
+                body: JSON.stringify({
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    country: formData.country,
+                    preferredLanguage: formData.preferredLanguage,
+                    preferredBibleVersion: formData.preferredBibleVersion,
+                    onboardingCompleted: true,
+                }),
             });
 
+            const data = await res.json();
+
             if (res.ok) {
-                if (session) {
-                    await update({ user: { ...session.user, onboardingCompleted: true } });
-                }
+                // Refresh session to reflect changes
+                await updateSession({ 
+                    user: { 
+                        ...session?.user,
+                        firstName: formData.firstName,
+                        lastName: formData.lastName,
+                        country: formData.country,
+                        preferredLanguage: formData.preferredLanguage,
+                        preferredBibleVersion: formData.preferredBibleVersion,
+                        onboardingCompleted: true 
+                    } 
+                });
                 router.push('/auth/success?type=profile');
             } else {
-                alert('Failed to save profile. You can skip for now.');
+                setError(data.error || 'Failed to save profile');
             }
         } catch (err) {
             console.error(err);
+            setError('An unexpected error occurred');
         } finally {
             setLoading(false);
         }
@@ -62,7 +110,48 @@ function ProfileSetupContent() {
                     </p>
                 </div>
 
+                {error && (
+                    <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl text-sm font-medium">
+                        {error}
+                    </div>
+                )}
+
                 <div className="space-y-6">
+                    {/* Basic Info */}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <label className="text-sm font-semibold text-slate-700">First Name</label>
+                            <input
+                                type="text"
+                                value={formData.firstName}
+                                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                                className="w-full bg-white/50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-[#41ADB0] focus:ring-4 focus:ring-[#41ADB0]/10 transition-all"
+                                placeholder="John"
+                            />
+                        </div>
+                        <div className="space-y-1">
+                            <label className="text-sm font-semibold text-slate-700">Last Name</label>
+                            <input
+                                type="text"
+                                value={formData.lastName}
+                                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                className="w-full bg-white/50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-[#41ADB0] focus:ring-4 focus:ring-[#41ADB0]/10 transition-all"
+                                placeholder="Doe"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1">
+                        <label className="text-sm font-semibold text-slate-700">Email Address</label>
+                        <input
+                            type="email"
+                            value={formData.email}
+                            readOnly
+                            className="w-full bg-slate-100 border border-slate-200 rounded-2xl py-3 px-4 outline-none text-slate-500 cursor-not-allowed"
+                            title="Email cannot be changed"
+                        />
+                    </div>
+
                     <div className="space-y-1">
                         <label className="text-sm font-semibold text-slate-700">Country</label>
                         <div className="relative group">
@@ -132,7 +221,7 @@ function ProfileSetupContent() {
                     </button>
                     
                     <button 
-                        onClick={() => router.push('/auth/success?type=account')}
+                        onClick={() => router.push('/home')}
                         className="w-full text-slate-400 font-bold py-2 hover:text-slate-600 transition-colors"
                     >
                         Skip for now

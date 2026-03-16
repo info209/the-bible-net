@@ -179,23 +179,55 @@ export class BibleService {
             throw new Error('Version not found');
         }
 
-        // Find book
+        // Find initial book
         const book = await Book.findById(bookId).lean();
         if (!book) {
             throw new Error('Book not found');
         }
 
-        // Find chapter
+        // Cross-version check: If the book's version doesn't match the requested versionId,
+        // find the matching book in the target version.
+        let targetBook = book;
+        if (book.version.toString() !== versionId) {
+            const equivalentBook = await Book.findOne({
+                version: versionId,
+                $or: [
+                    { abbreviation: book.abbreviation },
+                    { order: book.order },
+                    { name: book.name }
+                ]
+            }).lean();
+            
+            if (equivalentBook) {
+                targetBook = equivalentBook;
+            } else {
+                console.warn(`Equivalent book for ${book.name} not found in version ${version.abbreviation}`);
+                 // Fallback to searching by order if abbreviation/name didn't work (already in $or but being explicit)
+                 const fallbackBookByOrder = await Book.findOne({
+                    version: versionId,
+                    order: book.order
+                }).lean();
+                if (fallbackBookByOrder) {
+                    targetBook = fallbackBookByOrder;
+                }
+            }
+        }
+
+        // Find chapter using the target book
         const chapter = await Chapter.findOne({
-            book: book._id,
+            book: targetBook._id,
             number: chapterNum,
         }).lean();
+        
         if (!chapter) {
-            throw new Error('Chapter not found');
+            throw new Error(`Chapter ${chapterNum} not found for book ${targetBook.name} in version ${version.abbreviation}`);
         }
 
         // Get verses
-        const verseQuery: any = { chapter: chapter._id };
+        const verseQuery: any = { 
+            chapter: chapter._id,
+            version: versionId // Be explicit
+        };
         if (search) {
             verseQuery.text = { $regex: search, $options: 'i' };
         }
@@ -273,12 +305,11 @@ export class BibleService {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            await Promise.all([
-                Verse.deleteMany({ version: versionId }).session(session),
-                Chapter.deleteMany({ version: versionId }).session(session),
-                Book.deleteMany({ version: versionId }).session(session),
-                BibleVersion.findByIdAndDelete(versionId).session(session)
-            ]);
+            await Verse.deleteMany({ version: versionId }).session(session);
+            await Chapter.deleteMany({ version: versionId }).session(session);
+            await Book.deleteMany({ version: versionId }).session(session);
+            await BibleVersion.findByIdAndDelete(versionId).session(session);
+
             await session.commitTransaction();
             return true;
         } catch (error) {
