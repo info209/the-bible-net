@@ -28,12 +28,16 @@ export const authConfig: NextAuthConfig = {
             if (user) {
                 token.id = user.id as string;
                 token.role = user.role || UserRole.USER;
-                token.onboardingCompleted = user.onboardingCompleted ?? false;
-                token.emailVerified = !!user.emailVerified;
+                token.onboardingCompleted = (user as any).onboardingCompleted ?? false;
+                token.emailVerified = !!(user as any).emailVerified;
+                token.firstName = (user as any).firstName;
+                token.lastName = (user as any).lastName;
             }
             if (trigger === 'update' && session?.user) {
                 token.onboardingCompleted = session.user.onboardingCompleted;
                 token.role = session.user.role;
+                token.firstName = session.user.firstName;
+                token.lastName = session.user.lastName;
             }
             return token;
         },
@@ -43,6 +47,12 @@ export const authConfig: NextAuthConfig = {
                 session.user.role = token.role as UserRole;
                 session.user.onboardingCompleted = token.onboardingCompleted as boolean;
                 session.user.emailVerified = token.emailVerified as any;
+                (session.user as any).firstName = token.firstName;
+                (session.user as any).lastName = token.lastName;
+                // For components using session.user.name
+                session.user.name = token.firstName && token.lastName 
+                    ? `${token.firstName} ${token.lastName}`.trim() 
+                    : (token.firstName as string || session.user.name);
             }
             return session;
         },

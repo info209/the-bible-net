@@ -70,6 +70,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                     user.role = dbUser.role as UserRole;
                     user.onboardingCompleted = dbUser.onboardingCompleted as boolean;
                     user.emailVerified = dbUser.emailVerified as any;
+                    (user as any).firstName = dbUser.firstName;
+                    (user as any).lastName = dbUser.lastName;
 
                     return true;
                 } catch (error) {

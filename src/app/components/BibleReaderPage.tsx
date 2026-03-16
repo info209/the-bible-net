@@ -4,9 +4,10 @@ import { usePathname } from 'next/navigation';
 import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity } from 'lucide-react';
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill as EqualizerIcon, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, Variants } from 'framer-motion';
 import AppHeader from './AppHeader';
 import ChapterContent, { mockBibleContent } from './ChapterContent';
+import ComparisonContent from './ComparisonContent';
 // import AudioControlPanel from './AudioControlPanel';
 // import BibleSearch from './BibleSearch';
 import { teluguBible, hindiBible } from './BibleData';
@@ -97,6 +98,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [transitionDirection, setTransitionDirection] = useState<'next' | 'prev'>('next');
   const [showSearch, setShowSearch] = useState(false);
   const [bookSortType, setBookSortType] = useState<'traditional' | 'alphabetical'>('traditional');
+  const [comparisonMode, setComparisonMode] = useState(false);
+  const [secondVersionId, setSecondVersionId] = useState<string | null>(null);
+  const [displaySecondVersionName, setDisplaySecondVersionName] = useState('NKJV');
 
   // Version state
   const [bibleVersions, setBibleVersions] = useState<any[]>(initialVersions);
@@ -161,8 +165,17 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         const result = await response.json();
         if (result.success) {
           const books = result.data;
-          const ot = books.filter((b: any) => b.testament === 'OT').map((b: any) => ({ id: b._id, name: b.name }));
-          const nt = books.filter((b: any) => b.testament === 'NT').map((b: any) => ({ id: b._id, name: b.name }));
+          // Enhanced filtering to handle missing testament field
+          const ot = books.filter((b: any) => {
+            if (b.testament) return b.testament === 'OT';
+            return b.order <= 39; // Traditional OT count
+          }).map((b: any) => ({ id: b._id, name: b.name }));
+          
+          const nt = books.filter((b: any) => {
+            if (b.testament) return b.testament === 'NT';
+            return b.order > 39; // Traditional NT start
+          }).map((b: any) => ({ id: b._id, name: b.name }));
+
           setBibleBooksState({
             'Old Testament': ot,
             'New Testament': nt
@@ -242,7 +255,13 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       
       
 
-      console.log("Bible request:", selectedBookId, selectedChapter, selectedVersionId);
+      console.log("Bible request:", { 
+          book: selectedBookId, 
+          chapter: selectedChapter, 
+          version: selectedVersionId, 
+          comparisonMode, 
+          secondVersion: secondVersionId 
+      });
       
       setIsLoadingContent(true);
       try {
@@ -494,7 +513,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   };
 
   // Get transition animation variants
-  const getTransitionVariants = () => {
+  const getTransitionVariants = (): Variants => {
     const direction = transitionDirection === 'next' ? 1 : -1;
 
     switch (pageTransition) {
@@ -508,18 +527,41 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       case 'curl':
         return {
           initial: {
-            rotateY: 90 * direction,
+            rotateY: direction > 0 ? 60 : -60,
+            skewY: direction > 0 ? -5 : 5,
+            x: direction > 0 ? '100%' : '-100%',
+            z: -200,
             opacity: 0,
-            transformOrigin: direction > 0 ? 'left' : 'right'
+            scale: 0.9,
+            transformOrigin: direction > 0 ? 'right center' : 'left center',
           },
           animate: {
             rotateY: 0,
-            opacity: 1
+            skewY: 0,
+            x: 0,
+            z: 0,
+            opacity: 1,
+            scale: 1,
+            transition: {
+              type: "spring" as const,
+              stiffness: 70,
+              damping: 18,
+              mass: 1.1
+            }
           },
           exit: {
-            rotateY: -90 * direction,
+            rotateY: direction > 0 ? -140 : 140,
+            skewY: direction > 0 ? 10 : -10,
+            x: direction > 0 ? '-100%' : '100%',
+            z: 0,
             opacity: 0,
-            transformOrigin: direction > 0 ? 'right' : 'left'
+            scale: 0.95,
+            filter: "brightness(0.6)",
+            transformOrigin: direction > 0 ? 'left center' : 'right center',
+            transition: {
+              duration: 0.9,
+              ease: [0.645, 0.045, 0.355, 1] as const
+            }
           }
         };
 
@@ -1344,7 +1386,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">Old Testament</h4>
                       <div className="space-y-2">
                         {(bookSortType === 'alphabetical'
-                          ? [...bibleBooksState['Old Testament']].sort()
+                          ? [...bibleBooksState['Old Testament']].sort((a, b) => a.name.localeCompare(b.name))
                           : bibleBooksState['Old Testament']
                         ).map((book: { id: string, name: string }) => (
                           <button
@@ -1371,7 +1413,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">New Testament</h4>
                       <div className="space-y-2">
                         {(bookSortType === 'alphabetical'
-                          ? [...bibleBooksState['New Testament']].sort()
+                          ? [...bibleBooksState['New Testament']].sort((a, b) => a.name.localeCompare(b.name))
                           : bibleBooksState['New Testament']
                         ).map((book: { id: string, name: string }) => (
                           <button
@@ -1520,11 +1562,16 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                           <button
                             key={version.name}
                             onClick={() => {
-                              setSelectedVersionId(version.id);
+                              if (comparisonMode) {
+                                setSecondVersionId(version.id);
+                                setDisplaySecondVersionName(version.fullName);
+                              } else {
+                                setSelectedVersionId(version.id);
                                 setDisplayVersionName(version.fullName);
+                              }
                               setShowVersionSelector(false);
                             }}
-                            className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersionId === version.id
+                            className={`w-full text-left px-4 py-2.5 rounded transition-colors ${(comparisonMode ? secondVersionId : selectedVersionId) === version.id
                               ? 'bg-[#fbebee] text-[#d23952]'
                               : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
                               }`}
@@ -1545,11 +1592,16 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                             <button
                               key={version.name}
                               onClick={() => {
-                                setSelectedVersionId(version.id);
-                                setDisplayVersionName(version.fullName);
+                                if (comparisonMode) {
+                                  setSecondVersionId(version.id);
+                                  setDisplaySecondVersionName(version.fullName);
+                                } else {
+                                  setSelectedVersionId(version.id);
+                                  setDisplayVersionName(version.fullName);
+                                }
                                 setShowVersionSelector(false);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersionId === version.id
+                              className={`w-full text-left px-4 py-2.5 rounded transition-colors ${(comparisonMode ? secondVersionId : selectedVersionId) === version.id
                                 ? 'bg-[#fbebee] text-[#d23952]'
                                 : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
                                 }`}
@@ -1828,10 +1880,38 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     setShowMoreMenu(false);
                     setShowSettingsMenu(true);
                   }}
-                  className="w-full px-4 py-3 text-left text-base text-[#31393a] hover:bg-gray-100/50 transition-colors"
+                  className="w-full px-4 py-3 text-left text-base text-[#31393a] hover:bg-gray-100/50 transition-colors flex items-center justify-between"
                 >
-                  Fonts & Settings
+                  <span>Fonts & Settings</span>
+                  <ChevronRight className="size-4 text-[#31393a]/40" />
                 </button>
+
+                {/* Comparison Mode Toggle */}
+                <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 transition-colors">
+                  <span className="text-base text-[#31393a]">Comparison Mode</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setComparisonMode(!comparisonMode);
+                      if (!comparisonMode && !secondVersionId) {
+                        // Set a default second version if not set
+                        const defaultV2 = bibleVersions.find(v => v.id !== selectedVersionId) || bibleVersions[0];
+                        if (defaultV2) {
+                            setSecondVersionId(defaultV2.id);
+                            setDisplaySecondVersionName(defaultV2.name);
+                        }
+                      }
+                      setShowMoreMenu(false);
+                    }}
+                    className={`relative w-11 h-6 rounded-full transition-colors ${comparisonMode ? 'bg-[#006a6f]' : 'bg-gray-300'
+                      }`}
+                  >
+                    <div
+                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${comparisonMode ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                    />
+                  </button>
+                </div>
 
                 {/* Hide Footnotes Toggle */}
                 <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 transition-colors">
@@ -2021,12 +2101,31 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         {/* Main Reading Content */}
         <div
           className="transition-colors duration-300 relative overflow-hidden"
-          style={{ backgroundColor: currentTheme.bg }}
+          style={{ 
+            backgroundColor: currentTheme.bg,
+            perspective: pageTransition === 'curl' ? '2000px' : 'none',
+            transformStyle: 'preserve-3d'
+          }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
         >
-          {pageTransition === 'slide' && isDragging ? (
+          {comparisonMode ? (
+            <ComparisonContent
+              book={selectedBookId || ''}
+              chapter={selectedChapter}
+              version1={selectedVersionId || ''}
+              version2={secondVersionId || ''}
+              theme={currentTheme}
+              font={selectedFont}
+              fontSize={fontSize}
+              onClose={() => setComparisonMode(false)}
+              onVersion2Change={() => setShowVersionSelector(true)}
+              displayVersionName1={displayVersionName}
+              displayVersionName2={displaySecondVersionName}
+            />
+          ) : pageTransition === 'slide' && isDragging ? (
+            /* Interactive slide mode ... */
             /* Interactive slide mode - show both pages */
             <>
               {/* Next page (shows when dragging left) */}
@@ -2095,7 +2194,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             </>
           ) : (
             /* Normal transition modes */
-            <AnimatePresence mode="wait" initial={false}>
+            <AnimatePresence mode={pageTransition === 'curl' ? 'popLayout' : 'wait'} initial={false}>
               <motion.div
                 key={chapterKey}
                 initial="initial"

@@ -8,6 +8,9 @@ declare module 'next-auth' {
         emailVerified?: boolean;
         firstName?: string;
         lastName?: string;
+        country?: string;
+        preferredLanguage?: string;
+        preferredBibleVersion?: string;
         sessionType?: 'ADMIN' | 'USER';
     }
     interface Session {
@@ -22,5 +25,10 @@ declare module 'next-auth/jwt' {
         onboardingCompleted: boolean;
         emailVerified: boolean;
         sessionType: 'ADMIN' | 'USER';
+        firstName?: string;
+        lastName?: string;
+        country?: string;
+        preferredLanguage?: string;
+        preferredBibleVersion?: string;
     }
 }

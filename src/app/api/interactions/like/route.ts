@@ -67,17 +67,34 @@ export async function POST(req: NextRequest) {
         console.log("Role:", session?.user?.role || "GUEST");
         console.log("Guest ID:", guestIdentifier || "N/A");
 
-        // Check if already liked
+        // Check if already liked to toggle
         const hasLiked = await LikeRepository.hasLiked(contentId, userId, guestIdentifier);
+        
+        let likeCount: number;
+        let action: 'liked' | 'unliked';
+
         if (hasLiked) {
-            return NextResponse.json({ error: 'You have already liked this content' }, { status: 400 });
+            // Toggle off
+            likeCount = await LikeRepository.removeLike(contentId, userId, guestIdentifier);
+            action = 'unliked';
+        } else {
+            // Toggle on
+            likeCount = await LikeRepository.addLike(contentId, type, userId, guestIdentifier);
+            action = 'liked';
         }
 
-        const likeCount = await LikeRepository.addLike(contentId, type, userId, guestIdentifier);
-
-        return NextResponse.json({ success: true, likeCount });
+        return NextResponse.json({ 
+            success: true, 
+            likeCount,
+            action,
+            liked: action === 'liked'
+        });
     } catch (error: any) {
         console.error('Error in like API:', error);
-        return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+        return NextResponse.json({ 
+            success: false, 
+            error: 'Internal server error',
+            message: process.env.NODE_ENV === 'development' ? error.message : undefined
+        }, { status: 500 });
     }
 }
