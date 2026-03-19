@@ -1,5 +1,7 @@
 "use client";
 import { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
+import BibleSkeleton from './BibleSkeleton';
 
 interface ChapterContentProps {
   book: string;
@@ -565,16 +567,16 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
   }
 
   if (isLoading || !book || !version || book === 'undefined' || !apiContent) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary-teal)]"></div>
-        <p className="text-sm font-medium text-gray-500 animate-pulse">Loading Bible content...</p>
-      </div>
-    );
+    return <BibleSkeleton theme={theme} />;
   }
 
   return (
-    <div className="px-4 sm:px-6 py-4 sm:py-6 pb-[180px]">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5 }}
+      className="px-4 sm:px-6 py-4 sm:py-6 pb-[calc(180px+env(safe-area-inset-bottom))] md:pb-[200px]"
+    >
       <div className="max-w-2xl mx-auto">
         {/* Chapter title */}
         <div className="mb-8">
@@ -611,6 +613,6 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
           ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

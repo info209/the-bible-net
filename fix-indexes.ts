@@ -45,6 +45,13 @@ async function fixIndexes() {
             { unique: true, partialFilterExpression: { guestIdentifier: { $exists: true } } }
         );
 
+        console.log('Rebuilding indexes for reading_progress...');
+        await db.collection('reading_progress').createIndex(
+            { userId: 1, bookId: 1, chapter: 1 },
+            { unique: true }
+        );
+        await db.collection('reading_progress').createIndex({ userId: 1 });
+
         console.log('Indexes fixed properly!');
         process.exit(0);
     } catch (e) {

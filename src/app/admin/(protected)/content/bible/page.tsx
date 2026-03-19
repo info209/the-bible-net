@@ -79,21 +79,77 @@ export default function BibleVersionsManagement() {
                 return;
             }
 
-            const res = await fetch('/api/v1/versions/import', {
+            // Step 1: Init Import
+            showToast('Initializing import...', 'success');
+            const initRes = await fetch('/api/v1/versions/import', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data),
+                body: JSON.stringify({ metadata: data.metadata, action: 'init' }),
             });
 
-            const result = await res.json();
-            if (res.ok) {
-                showToast('Import started successfully!', 'success');
+            if (!initRes.ok) {
+                const err = await initRes.json();
+                throw new Error(err.error || 'Failed to initialize import');
+            }
+
+            const { versionId } = await initRes.json();
+
+            // Step 2: Group verses by book and upload one by one
+            const versesByBook = new Map<number, any[]>();
+            for (const v of data.verses) {
+                if (!versesByBook.has(v.book)) {
+                    versesByBook.set(v.book, []);
+                }
+                versesByBook.get(v.book)!.push(v);
+            }
+
+            const bookNums = Array.from(versesByBook.keys()).sort((a, b) => a - b);
+            const totalBooks = bookNums.length;
+
+            for (let i = 0; i < totalBooks; i++) {
+                const bookNum = bookNums[i];
+                const verses = versesByBook.get(bookNum)!;
+                const progress = Math.round(((i + 1) / totalBooks) * 100);
+
+                // Update UI state if you want real-time progress in the button
+                // (Using toast for now to keep it simple)
+                if (i % 5 === 0 || i === totalBooks - 1) {
+                   console.log(`Uploading book ${bookNum} (${i + 1}/${totalBooks})...`);
+                }
+
+                const bookRes = await fetch('/api/v1/versions/import', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'book',
+                        versionId,
+                        bookNum,
+                        verses,
+                        progress: progress < 100 ? progress : 99 // Keep as importing until finalize
+                    }),
+                });
+
+                if (!bookRes.ok) {
+                    throw new Error(`Failed to upload book ${bookNum}`);
+                }
+            }
+
+            // Step 3: Finalize
+            const finalizeRes = await fetch('/api/v1/versions/import', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ versionId, action: 'finalize', progress: 100 }),
+            });
+
+            if (finalizeRes.ok) {
+                showToast('Import completed successfully!', 'success');
                 fetchVersions();
             } else {
-                showToast(result.error || 'Upload failed', 'error');
+                throw new Error('Failed to finalize import');
             }
-        } catch (err) {
-            showToast('Error uploading file', 'error');
+        } catch (err: any) {
+            console.error('Upload error:', err);
+            showToast(err.message || 'Error uploading file', 'error');
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';

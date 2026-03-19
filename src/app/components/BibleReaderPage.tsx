@@ -5,11 +5,15 @@ import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, Music, MoreVer
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill as EqualizerIcon, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
+import BibleSkeleton, { BookListSkeleton, VersionListSkeleton, ComparisonSkeleton } from './BibleSkeleton';
 import AppHeader from './AppHeader';
+import AudioPlayer from './AudioPlayer';
+import { useMediaStore } from '@/lib/mediaStore';
 import ChapterContent, { mockBibleContent } from './ChapterContent';
 import ComparisonContent from './ComparisonContent';
 // import AudioControlPanel from './AudioControlPanel';
 // import BibleSearch from './BibleSearch';
+import { useReadingProgress } from '@/lib/useReadingProgress';
 import { teluguBible, hindiBible } from './BibleData';
 
 const bibleBooks = {
@@ -61,15 +65,18 @@ interface BibleReaderPageProps {
 }
 
 export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
+  const { currentVerse, setCurrentChapter: setStoreChapter } = useMediaStore();
+  const { updateProgress, latestProgress } = useReadingProgress();
+  
   // determine whether we are on bible page; if not, render only nav bar
   const pathname = usePathname();
   const isBiblePage = pathname?.startsWith('/bible') || false;
 
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
-  const [displayBookName, setDisplayBookName] = useState('Genesis');
+  const [displayBookName, setDisplayBookName] = useState<string>('Genesis');
   const [selectedChapter, setSelectedChapter] = useState(1);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
-  const [displayVersionName, setDisplayVersionName] = useState('KJV');
+  const [displayVersionName, setDisplayVersionName] = useState<string | null>(null);
   const [showBookSelector, setShowBookSelector] = useState(false);
   const [showChapterSelector, setShowChapterSelector] = useState(false);
   const [showVersionSelector, setShowVersionSelector] = useState(false);
@@ -101,7 +108,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [comparisonMode, setComparisonMode] = useState(false);
   const [secondVersionId, setSecondVersionId] = useState<string | null>(null);
   const [displaySecondVersionName, setDisplaySecondVersionName] = useState('NKJV');
-
+  
   // Version state
   const [bibleVersions, setBibleVersions] = useState<any[]>(initialVersions);
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
@@ -114,6 +121,56 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   // Current chapter verses for narration
   const [currentChapterVerses, setCurrentChapterVerses] = useState<any[]>([]);
   const [isLoadingContent, setIsLoadingContent] = useState(false);
+
+  // Parse URL to set initial state or handle navigation
+  useEffect(() => {
+    if (!pathname || !pathname.startsWith('/bible')) return;
+    
+    // Pattern: /bible/{version}/{book}/{chapter} or just /bible
+    const segments = pathname.split('/').filter(Boolean); // e.g., ["bible", "kjv", "genesis", "1"]
+    
+    if (segments.length >= 4) {
+      const [_, urlVersion, urlBook, urlChapter] = segments;
+      
+      // Update version
+      if (urlVersion && displayVersionName !== urlVersion && urlVersion !== 'undefined') {
+          const matchingVer = bibleVersions.find(v => v.name === urlVersion || v.id === urlVersion);
+          if (matchingVer) {
+              setSelectedVersionId(matchingVer.id);
+              setDisplayVersionName(matchingVer.fullName || matchingVer.name);
+          }
+      }
+      
+      // Update book/chapter
+      if (urlBook && urlBook !== 'undefined') {
+          // Normalize book name to compare
+          const normalizedBook = urlBook.replace(/-/g, ' ');
+          const allBooks = [...bibleBooksState['Old Testament'], ...bibleBooksState['New Testament']];
+          const matchingBook = allBooks.find(b => b.name.toLowerCase() === normalizedBook.toLowerCase() || b.id === urlBook);
+          
+          if (matchingBook && selectedBookId !== matchingBook.id) {
+              setSelectedBookId(matchingBook.id);
+              setDisplayBookName(matchingBook.name);
+          }
+      }
+      
+      if (urlChapter && parseInt(urlChapter) !== selectedChapter) {
+          setSelectedChapter(parseInt(urlChapter) || 1);
+      }
+    } else if (segments.length === 1 && latestProgress && !selectedBookId) {
+        // Just /bible opened - load latest progress if we haven't set a book yet
+        setSelectedVersionId(latestProgress.versionId);
+        setDisplayVersionName(latestProgress.versionName || null);
+        setSelectedBookId(latestProgress.bookId);
+        setDisplayBookName(latestProgress.bookName || 'Genesis');
+        setSelectedChapter(latestProgress.chapter);
+    }
+  }, [pathname, bibleVersions]); // Removed state dependencies to prevent resetting user selection back to URL state
+
+  // Helper to check if any selection/settings popup is open
+  const isAnyPopupOpen = showBookSelector || showChapterSelector || 
+    showVersionSelector || showMusicSelector || showMoreMenu || 
+    showSettingsMenu || showTimerMenu || showSearch || showVerseSelector;
 
   // Fetch Bible Versions on mount
   useEffect(() => {
@@ -245,6 +302,33 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     fetchChapters();
   }, [selectedBookId, selectedVersionId]);
 
+  // Sync names when IDs are available but the labels reflect the ID (MongoID fallback)
+  useEffect(() => {
+    if (selectedVersionId && bibleVersions.length > 0) {
+        // If displayVersionName is null or looks like an ID, try to find the proper name
+        const isId = (s: string | null) => !s || s.length === 24 && /^[0-9a-fA-F]+$/.test(s);
+        if (isId(displayVersionName)) {
+            const matchingVer = bibleVersions.find(v => v.id === selectedVersionId);
+            if (matchingVer) {
+                setDisplayVersionName(matchingVer.fullName || matchingVer.name);
+            }
+        }
+    }
+  }, [selectedVersionId, bibleVersions, displayVersionName]);
+
+  useEffect(() => {
+      const allBooks = [...bibleBooksState['Old Testament'], ...bibleBooksState['New Testament']];
+      if (selectedBookId && allBooks.length > 0) {
+          const isId = (s: string | null) => !s || s.length === 24 && /^[0-9a-fA-F]+$/.test(s);
+          if (isId(displayBookName)) {
+              const matchingBook = allBooks.find(b => b.id === selectedBookId);
+              if (matchingBook) {
+                  setDisplayBookName(matchingBook.name);
+              }
+          }
+      }
+  }, [selectedBookId, bibleBooksState, displayBookName]);
+
   // Fetch verses for narration
   useEffect(() => {
     // Optimization: Don't hit Bible APIs if not on Bible page
@@ -269,6 +353,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         const result = await response.json();
         if (result.success) {
           setCurrentChapterVerses(result.data.verses);
+          // Sync with media store
+          setStoreChapter(selectedBookId, selectedChapter, selectedVersionId);
         }
       } catch (err) {
         console.error('Failed to fetch verses:', err);
@@ -278,6 +364,27 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     };
     fetchVerses();
   }, [selectedBookId, selectedChapter, selectedVersionId, bibleVersions]);
+
+  // Debugging logs for state synchronization
+  useEffect(() => {
+    console.log("VersionId:", selectedVersionId);
+    console.log("BookId:", selectedBookId);
+    console.log("Chapter:", selectedChapter);
+  }, [selectedVersionId, selectedBookId, selectedChapter]);
+
+  // Track Reading Progress on Chapter Open
+  useEffect(() => {
+    if (selectedBookId && selectedVersionId) {
+      updateProgress({
+        bookId: selectedBookId,
+        bookName: displayBookName,
+        chapter: selectedChapter,
+        versionId: selectedVersionId,
+        versionName: displayVersionName || selectedVersionId,
+        completed: false
+      });
+    }
+  }, [selectedBookId, selectedChapter, selectedVersionId, updateProgress, displayBookName, displayVersionName]);
 
   // Touch/swipe state for interactive slide
   const [isDragging, setIsDragging] = useState(false);
@@ -296,17 +403,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Audio narration state
-  const [narrationPlaying, setNarrationPlaying] = useState(false);
-  const [currentReadingVerse, setCurrentReadingVerse] = useState<number | null>(null);
-  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
-  const narrationVerseIndexRef = useRef(0);
-  const narrationPlayingRef = useRef(false);
   const isAutoAdvancingRef = useRef(false);
-
-  // Timer state for time-based narration
-  const narrationTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const narrationStartTimeRef = useRef<number | null>(null);
 
   // Music tracks
   const musicTracks = [
@@ -631,6 +728,19 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       const clientHeight = scrollContainerRef.current.clientHeight;
       const scrolledToBottom = scrollHeight - currentScrollY - clientHeight < 100;
 
+      // Track reading progress
+      const scrollProgress = (currentScrollY + clientHeight) / scrollHeight;
+      if (scrollProgress >= 0.75 && selectedBookId && selectedVersionId) {
+        updateProgress({
+          bookId: selectedBookId,
+          bookName: displayBookName,
+          chapter: selectedChapter,
+          versionId: selectedVersionId,
+          versionName: displayVersionName || undefined,
+          completed: true
+        });
+      }
+
       setIsAtBottom(scrolledToBottom);
 
       // If at bottom, show both nav and audio controls
@@ -680,9 +790,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   // Dispatch reading mode event to client layout
   useEffect(() => {
     window.dispatchEvent(
-      new CustomEvent('bible-reading-mode', { detail: { isReadingMode: !showBottomNav } })
+      new CustomEvent('bible-reading-mode', { detail: { isReadingMode: !showBottomNav || isAnyPopupOpen } })
     );
-  }, [showBottomNav]);
+  }, [showBottomNav, isAnyPopupOpen]);
 
   // Bible narration functions
   const getBibleContent = () => {
@@ -703,542 +813,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     return [];
   };
 
-  const startNarration = (fromVerse: number = 1) => {
-    console.log('startNarration called with fromVerse:', fromVerse);
-    if (!('speechSynthesis' in window)) {
-      alert('Text-to-speech is not supported in your browser.');
-      return;
-    }
 
-    // Stop any ongoing narration
-    window.speechSynthesis.cancel();
-
-    // Clear any existing timer
-    if (narrationTimerRef.current) {
-      clearTimeout(narrationTimerRef.current);
-      narrationTimerRef.current = null;
-    }
-
-    // Start timer if time-based option is selected
-    narrationStartTimeRef.current = Date.now();
-    if (selectedTimer === '10-mins') {
-      narrationTimerRef.current = setTimeout(() => {
-        stopNarration();
-      }, 10 * 60 * 1000); // 10 minutes
-    } else if (selectedTimer === '15-mins') {
-      narrationTimerRef.current = setTimeout(() => {
-        stopNarration();
-      }, 15 * 60 * 1000); // 15 minutes
-    } else if (selectedTimer === '30-mins') {
-      narrationTimerRef.current = setTimeout(() => {
-        stopNarration();
-      }, 30 * 60 * 1000); // 30 minutes
-    } else if (selectedTimer === '1-hr') {
-      narrationTimerRef.current = setTimeout(() => {
-        stopNarration();
-      }, 60 * 60 * 1000); // 1 hour
-    } else if (selectedTimer === '2-hrs') {
-      narrationTimerRef.current = setTimeout(() => {
-        stopNarration();
-      }, 2 * 60 * 60 * 1000); // 2 hours
-    }
-
-    const verses = getBibleContent();
-    console.log('Got verses:', verses.length, 'verses');
-    if (verses.length === 0) return;
-
-    narrationVerseIndexRef.current = fromVerse - 1;
-    setNarrationPlaying(true);
-    narrationPlayingRef.current = true;
-    console.log('Starting to read verse index:', fromVerse - 1);
-    readNextVerse(verses, fromVerse - 1);
-  };
-
-  const readNextVerse = (verses: any[], index: number) => {
-    console.log('readNextVerse called with index:', index, 'of', verses.length, 'verses');
-
-    // At the beginning of each chapter, announce the book name and chapter number
-    if (index === 0 && verses.length > 0) {
-      const chapterAnnouncement = `${displayBookName} Chapter ${selectedChapter}`;
-      console.log('Announcing chapter:', chapterAnnouncement);
-
-      const announcementUtterance = new SpeechSynthesisUtterance(chapterAnnouncement);
-      announcementUtterance.rate = playbackSpeed;
-      announcementUtterance.pitch = 1;
-      announcementUtterance.volume = 1;
-
-      // After announcement finishes, continue with first verse (skip announcement on next call)
-      announcementUtterance.onend = () => {
-        console.log('Chapter announcement finished, continuing with first verse');
-        // Start reading from verse 1 by incrementing index in the recursive call
-        continueReadingFromFirstVerse(verses);
-      };
-
-      // Handle errors during announcement
-      announcementUtterance.onerror = (event: any) => {
-        // Check if this is a real error or just a cancellation
-        if (event.error === 'canceled' || event.error === 'interrupted') {
-          console.log('Chapter announcement canceled/interrupted (expected)');
-          return;
-        }
-
-        // Log actual errors with error type
-        console.error('Chapter announcement error type:', event.error || 'unknown');
-        console.error('Chapter announcement error details:', event);
-
-        // Continue anyway - don't let announcement errors block verse reading
-        continueReadingFromFirstVerse(verses);
-      };
-
-      const continueReadingFromFirstVerse = (verses: any[]) => {
-        // Now read the actual first verse
-        const verse = verses[0];
-        const verseNumber = verse.number;
-        const verseText = verse.text;
-
-        setSelectedVerse(verseNumber);
-
-        // Scroll to the verse being read
-        setTimeout(() => {
-          const verseElement = document.getElementById(`verse-${selectedBookId}-${selectedChapter}-${verseNumber}`);
-          if (verseElement && scrollContainerRef.current) {
-            const elementTop = verseElement.getBoundingClientRect().top;
-            const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
-            const currentScroll = scrollContainerRef.current.scrollTop;
-            const targetScroll = currentScroll + elementTop - containerTop - 100;
-
-            scrollContainerRef.current.scrollTo({
-              top: targetScroll,
-              behavior: 'smooth'
-            });
-          }
-        }, 100);
-
-        // Create speech utterance for the verse
-        const verseUtterance = new SpeechSynthesisUtterance(verseText);
-        verseUtterance.rate = playbackSpeed;
-        verseUtterance.pitch = 1;
-        verseUtterance.volume = 1;
-
-        // Highlight verse IMMEDIATELY before starting speech
-        setCurrentReadingVerse(verseNumber);
-        console.log('Setting currentReadingVerse to:', verseNumber);
-
-        verseUtterance.onstart = () => {
-          console.log('Speech started for verse:', verseNumber);
-        };
-
-        verseUtterance.onend = () => {
-          console.log('Finished verse:', verseNumber);
-          // Continue with next verse
-          readNextVerse(verses, 1);
-        };
-
-        verseUtterance.onerror = (event: any) => {
-          console.log('[Error Handler] Verse:', verseNumber, 'Error Type:', event.error);
-
-          if (event.error === 'canceled' || event.error === 'interrupted') {
-            console.log('[Error Handler] Ignoring expected cancellation/interruption');
-            return;
-          }
-
-          // For real errors, log and stop narration
-          console.error('[Error Handler] Real error detected, stopping narration');
-          console.error('[Error Handler] Full event:', event);
-          setNarrationPlaying(false);
-          narrationPlayingRef.current = false;
-          setCurrentReadingVerse(null);
-          setAudioPlaying(false);
-        };
-
-        utteranceRef.current = verseUtterance;
-        window.speechSynthesis.speak(verseUtterance);
-      };
-
-      window.speechSynthesis.speak(announcementUtterance);
-      return; // Exit early, will continue after announcement
-    }
-
-    if (index >= verses.length) {
-      // Finished reading all verses in current chapter
-      console.log('Finished chapter. Timer setting:', selectedTimer);
-
-      // Check timer setting to determine behavior
-      if (selectedTimer === 'end-chapter') {
-        // Stop at end of this chapter
-        console.log('End-chapter timer: stopping at end of chapter');
-        setNarrationPlaying(false);
-        narrationPlayingRef.current = false;
-        setCurrentReadingVerse(null);
-        setAudioPlaying(false);
-        return;
-      }
-
-      // For 'stop' (default) or time-based timers (10-mins, 15-mins, 30-mins, 1-hr, 2-hrs), continue to next chapter
-      // Time-based timers will be stopped by the setTimeout in startNarration
-      const totalChapters = bookChapters[displayBookName] || 50;
-      const currentBookIndex = allBooks.findIndex((b) => b.id === selectedBookId);
-
-      let nextBookObj = allBooks[currentBookIndex] || { id: selectedBookId, name: displayBookName };
-      let nextChapter = selectedChapter;
-
-      if (selectedChapter < totalChapters) {
-        // Move to next chapter in same book
-        nextChapter = selectedChapter + 1;
-      } else if (currentBookIndex < allBooks.length - 1) {
-        // Move to first chapter of next book
-        nextBookObj = allBooks[currentBookIndex + 1];
-        nextChapter = 1;
-      } else {
-        // Reached the end of the Bible
-        console.log('Reached the end of the Bible');
-        setNarrationPlaying(false);
-        narrationPlayingRef.current = false;
-        setCurrentReadingVerse(null);
-        setAudioPlaying(false);
-        return;
-      }
-
-      console.log('Auto-continuing to next chapter:', nextBookObj.name, nextChapter);
-
-      // Set progress to 100% before moving to next chapter
-      setAudioCurrentTime(audioDuration);
-
-      console.log('[Auto-Advance] Starting auto-advance to next chapter');
-      console.log('[Auto-Advance] Current states - audioPlaying:', audioPlaying, 'narrationPlaying:', narrationPlayingRef.current);
-      console.log('[Auto-Advance] Current chapter:', selectedBookId, selectedChapter, '-> Next chapter:', nextBookObj.name, nextChapter);
-
-      // Set flag to indicate this is an auto-advance, not manual navigation
-      isAutoAdvancingRef.current = true;
-
-      // Fetch verses for the next chapter using the nextBookObj/nextChapter variables
-      // (not getBibleContent() which uses state that hasn't updated yet)
-      let bibleData = mockBibleContent;
-      if (selectedVersionId === 'TEL' || selectedVersionId === 'TELBSI') {
-        bibleData = teluguBible;
-      } else if (selectedVersionId === 'HIN' || selectedVersionId === 'HINBSI') {
-        bibleData = hindiBible;
-      }
-      const nextChapterVerses = bibleData[nextBookObj.name]?.[nextChapter]?.verses || [];
-
-      console.log('Auto-advance: Fetched', nextChapterVerses.length, 'verses for', nextBookObj.name, nextChapter);
-
-      if (nextChapterVerses.length === 0) {
-        console.log('No verses found for next chapter, stopping');
-        setNarrationPlaying(false);
-        narrationPlayingRef.current = false;
-        setCurrentReadingVerse(null);
-        setAudioPlaying(false);
-        isAutoAdvancingRef.current = false;
-        return;
-      }
-
-      console.log('[Auto-Advance] Updating state to next chapter:', nextBookObj.name, nextChapter);
-
-      // Update the book and chapter state
-      setSelectedBookId(nextBookObj.id);
-      setDisplayBookName(nextBookObj.name);
-      setSelectedChapter(nextChapter);
-      setSelectedVerse(1); // Reset to verse 1 for the new chapter
-
-      // Small delay to allow state to update and new chapter to load
-      setTimeout(() => {
-        console.log('[Auto-Advance] Timeout fired - starting narration of new chapter');
-        console.log('[Auto-Advance] State should now be:', nextBookObj.name, nextChapter);
-        console.log('[Auto-Advance] States before readNextVerse - audioPlaying:', audioPlaying, 'narrationPlaying:', narrationPlayingRef.current);
-
-        // Make sure narration is still supposed to be playing
-        if (!narrationPlayingRef.current) {
-          console.log('[Auto-Advance] Narration was stopped during chapter transition, aborting');
-          isAutoAdvancingRef.current = false;
-          return;
-        }
-
-        narrationVerseIndexRef.current = 0;
-        console.log('[Auto-Advance] Calling readNextVerse with', nextChapterVerses.length, 'verses');
-        readNextVerse(nextChapterVerses, 0);
-
-        // Make sure narration is still supposed to be playing
-        if (!narrationPlayingRef.current) {
-          console.log('[Auto-Advance] Narration was stopped during chapter transition, aborting');
-          isAutoAdvancingRef.current = false;
-          return;
-        }
-
-        narrationVerseIndexRef.current = 0;
-        console.log('[Auto-Advance] Calling readNextVerse with', nextChapterVerses.length, 'verses');
-        readNextVerse(nextChapterVerses, 0);
-
-        // Reset auto-advancing flag after narration starts successfully
-        setTimeout(() => {
-          console.log('[Auto-Advance] Resetting isAutoAdvancingRef flag');
-          console.log('[Auto-Advance] Final states - audioPlaying:', audioPlaying, 'narrationPlaying:', narrationPlayingRef.current);
-          isAutoAdvancingRef.current = false;
-        }, 1000); // Increased to 1000ms to ensure chapter announcement completes
-      }, 1000); // 1 second delay between chapters
-
-      return;
-    }
-
-    const verse = verses[index];
-    const verseNumber = verse.number;
-    const verseText = verse.text;
-
-    setSelectedVerse(verseNumber);
-
-    // Scroll to the verse being read
-    setTimeout(() => {
-      const verseElement = document.getElementById(`verse-${selectedBookId}-${selectedChapter}-${verseNumber}`);
-      if (verseElement && scrollContainerRef.current) {
-        const elementTop = verseElement.getBoundingClientRect().top;
-        const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
-        const currentScroll = scrollContainerRef.current.scrollTop;
-        const targetScroll = currentScroll + elementTop - containerTop - 100;
-
-        scrollContainerRef.current.scrollTo({
-          top: targetScroll,
-          behavior: 'smooth'
-        });
-      }
-    }, 100);
-
-    // Create speech utterance
-    const utterance = new SpeechSynthesisUtterance(verseText);
-    utterance.rate = playbackSpeed;
-    utterance.pitch = 1;
-    utterance.volume = 1;
-
-    // Highlight verse IMMEDIATELY before starting speech
-    setCurrentReadingVerse(verseNumber);
-    console.log('Setting currentReadingVerse to:', verseNumber);
-
-    // Keep verse highlighted when speech starts
-    utterance.onstart = () => {
-      // Ensure highlight is set even if there was a delay
-      setCurrentReadingVerse(verseNumber);
-      console.log('Speech started for verse:', verseNumber);
-
-      // Update progress based on verse completion
-      const totalVerses = verses.length;
-      const verseProgress = (index / totalVerses) * audioDuration;
-      setAudioCurrentTime(verseProgress);
-      console.log('Progress updated: verse', index + 1, 'of', totalVerses, '- time:', verseProgress, 'of', audioDuration);
-    };
-
-    // When verse finishes, read the next one (keep highlight until next verse starts)
-    utterance.onend = () => {
-      console.log('Speech ended for verse:', verseNumber, 'narrationPlayingRef:', narrationPlayingRef.current);
-      if (narrationPlayingRef.current) {
-        narrationVerseIndexRef.current = index + 1;
-        // Immediately read next verse (its highlight will replace this one)
-        readNextVerse(verses, index + 1);
-      }
-      // Don't clear currentReadingVerse when paused - keep the highlight for resume
-    };
-
-    utterance.onerror = (event: any) => {
-      // Check if this is a cancellation error (which is expected when pausing)
-      const errorType = event.error || '';
-
-      console.log('[Error Handler] Verse:', verseNumber, 'Error Type:', errorType);
-
-      if (errorType === 'canceled' || errorType === 'interrupted') {
-        console.log('[Error Handler] Ignoring expected cancellation/interruption');
-        return; // Ignore cancellation errors - this is normal when pausing
-      }
-
-      // For real errors, log and stop narration
-      console.error('[Error Handler] Real error detected, stopping narration');
-      console.error('[Error Handler] Full event:', event);
-      setNarrationPlaying(false);
-      narrationPlayingRef.current = false;
-      setCurrentReadingVerse(null);
-      setAudioPlaying(false);
-    };
-
-    utteranceRef.current = utterance;
-    console.log('Speaking verse:', verseNumber, 'Text:', verseText);
-    window.speechSynthesis.speak(utterance);
-  };
-
-  const pauseNarration = () => {
-    console.log('pauseNarration called. speaking:', window.speechSynthesis.speaking, 'paused:', window.speechSynthesis.paused);
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) {
-      // Set flag first to prevent onend from continuing
-      setNarrationPlaying(false);
-      narrationPlayingRef.current = false;
-      // Then cancel (this may trigger onerror with 'canceled', which we now ignore)
-      window.speechSynthesis.cancel();
-
-      // Clear the timer but keep the start time for potential resume
-      if (narrationTimerRef.current) {
-        clearTimeout(narrationTimerRef.current);
-        narrationTimerRef.current = null;
-      }
-
-      // Keep currentReadingVerse so we can resume from here
-      console.log('Cancelled speech synthesis, keeping currentReadingVerse:', currentReadingVerse);
-    }
-  };
-
-  const resumeNarration = () => {
-    console.log('resumeNarration called. currentReadingVerse:', currentReadingVerse, 'selectedVerse:', selectedVerse);
-
-    // If there was a timer active, calculate remaining time and restart it
-    if (narrationStartTimeRef.current && (selectedTimer === '10-mins' || selectedTimer === '15-mins' || selectedTimer === '30-mins' || selectedTimer === '1-hr' || selectedTimer === '2-hrs')) {
-      const elapsed = Date.now() - narrationStartTimeRef.current;
-      let totalDuration = 0;
-
-      if (selectedTimer === '10-mins') totalDuration = 10 * 60 * 1000;
-      else if (selectedTimer === '15-mins') totalDuration = 15 * 60 * 1000;
-      else if (selectedTimer === '30-mins') totalDuration = 30 * 60 * 1000;
-      else if (selectedTimer === '1-hr') totalDuration = 60 * 60 * 1000;
-      else if (selectedTimer === '2-hrs') totalDuration = 2 * 60 * 60 * 1000;
-
-      const remaining = totalDuration - elapsed;
-
-      if (remaining > 0) {
-        // Restart timer with remaining time
-        narrationTimerRef.current = setTimeout(() => {
-          stopNarration();
-        }, remaining);
-      } else {
-        // Timer already expired, don't resume
-        console.log('Timer already expired, not resuming');
-        return;
-      }
-    }
-
-    // Resume from where we left off (currentReadingVerse) or start fresh
-    const resumeFrom = currentReadingVerse || selectedVerse || 1;
-    console.log('Resuming from verse:', resumeFrom);
-
-    // Don't call startNarration as it would reset the timer
-    // Instead, manually start the narration
-    const verses = getBibleContent();
-    if (verses.length === 0) return;
-
-    narrationVerseIndexRef.current = resumeFrom - 1;
-    setNarrationPlaying(true);
-    narrationPlayingRef.current = true;
-    readNextVerse(verses, resumeFrom - 1);
-  };
-
-  const stopNarration = () => {
-    window.speechSynthesis.cancel();
-
-    // Clear any active timer
-    if (narrationTimerRef.current) {
-      clearTimeout(narrationTimerRef.current);
-      narrationTimerRef.current = null;
-    }
-    narrationStartTimeRef.current = null;
-
-    setNarrationPlaying(false);
-    narrationPlayingRef.current = false;
-    setCurrentReadingVerse(null);
-    setAudioPlaying(false);
-  };
-
-  // Handle play/pause for narration
-  const handleNarrationPlayPause = () => {
-    console.log('handleNarrationPlayPause clicked. audioPlaying:', audioPlaying, 'selectedVerse:', selectedVerse, 'currentReadingVerse:', currentReadingVerse);
-    if (audioPlaying) {
-      console.log('Pausing narration');
-      pauseNarration();
-      setAudioPlaying(false);
-    } else {
-      console.log('Resuming/starting narration');
-      resumeNarration();
-      setAudioPlaying(true);
-    }
-  };
-
-  // Stop narration when chapter changes (but not during auto-advance)
-  useEffect(() => {
-    // Don't stop narration if this is an auto-advance to the next chapter
-    if (!isAutoAdvancingRef.current) {
-      console.log('[Stop Narration Effect] Stopping narration due to chapter change');
-      stopNarration();
-    } else {
-      console.log('[Stop Narration Effect] Skipping stop - auto-advance in progress');
-    }
-  }, [selectedBookId, selectedChapter]);
-
-  // Update playback speed when it changes
-  useEffect(() => {
-    if (utteranceRef.current && window.speechSynthesis.speaking) {
-      // Cancel and restart with new speed
-      const currentVerseIndex = narrationVerseIndexRef.current;
-      stopNarration();
-      if (audioPlaying) {
-        setTimeout(() => {
-          startNarration(selectedVerse ?? 1);
-        }, 100);
-      }
-    }
-  }, [playbackSpeed]);
-
-  // Update audio progress while playing (only for non-narration audio)
-  useEffect(() => {
-    let progressInterval: NodeJS.Timeout | null = null;
-
-    // Only use time-based progress when NOT using narration
-    // Narration updates progress in the utterance.onstart callback based on verse completion
-    if (audioPlaying && !narrationPlayingRef.current) {
-      // Update progress every 100ms for smooth animation
-      progressInterval = setInterval(() => {
-        setAudioCurrentTime(prev => {
-          const newTime = prev + (0.1 * playbackSpeed); // 100ms * playback speed
-          // Loop back to start if we exceed duration
-          if (newTime >= audioDuration) {
-            return 0;
-          }
-          return newTime;
-        });
-      }, 100);
-    } else if (!audioPlaying && !audioControlExpanded) {
-      // Reset to beginning when stopped (not paused)
-      setAudioCurrentTime(0);
-    }
-
-    return () => {
-      if (progressInterval) {
-        clearInterval(progressInterval);
-      }
-    };
-  }, [audioPlaying, playbackSpeed, audioDuration, audioControlExpanded]);
-
-  // Reset progress tracker when chapter changes
-  useEffect(() => {
-    console.log('[Chapter Change Effect] Book:', displayBookName, 'Chapter:', selectedChapter);
-    console.log('[Chapter Change Effect] audioPlaying:', audioPlaying, 'narrationPlayingRef:', narrationPlayingRef.current, 'isAutoAdvancing:', isAutoAdvancingRef.current);
-
-    // Calculate duration based on chapter content
-    const verses = getBibleContent();
-    const estimatedSecondsPerVerse = 10; // Average time to read a verse
-    const newDuration = verses.length * estimatedSecondsPerVerse;
-
-    setAudioDuration(newDuration);
-    setAudioCurrentTime(0);
-
-    // Only restart narration if this is manual navigation (not auto-advance)
-    // Auto-advance handles its own narration continuation
-    if (audioPlaying && narrationPlayingRef.current && !isAutoAdvancingRef.current) {
-      console.log('[Chapter Change Effect] Manual navigation detected - restarting narration');
-      // Stop current narration
-      window.speechSynthesis.cancel();
-
-      // Restart from verse 1
-      setTimeout(() => {
-        narrationVerseIndexRef.current = 0;
-        setCurrentReadingVerse(null);
-        startNarration(1);
-      }, 300);
-    } else if (isAutoAdvancingRef.current) {
-      console.log('[Chapter Change Effect] Auto-advance detected - skipping restart, narration will continue');
-    }
-  }, [selectedBookId, selectedChapter]);
 
 
   return (
@@ -1248,18 +823,20 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         ref={scrollContainerRef}
         className="flex-1 overflow-y-auto"
       >
-        {/* Header Section Grouped for Reading Mode */}
-        <div 
-          className={`sticky top-0 left-0 right-0 z-50 flex flex-col transition-all duration-300 ease-in-out ${
-            !showBottomNav ? '-translate-y-full opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
-          }`}
-        >
-          {/* Main Header/Navbar - SCROLLS AWAY */}
-          <AppHeader onMenuOpen={() => setMenuOpen(true)} className="!static" />
+        {/* Header Section Grouped for Reading Mode - STICKY CONTAINER */}
+        <div className="sticky top-0 left-0 right-0 z-50 flex flex-col">
+          {/* Main Header/Navbar - SCROLLS AWAY (Hides) */}
+          <div 
+            className={`transition-all duration-300 ease-in-out overflow-hidden ${
+              !showBottomNav ? 'h-0 opacity-0 pointer-events-none' : 'h-16 opacity-100'
+            }`}
+          >
+            <AppHeader onMenuOpen={() => setMenuOpen(true)} className="!static" />
+          </div>
 
-          {/* Sub Navigation Bar - BECOMES STICKY */}
+          {/* Sub Navigation Bar - REMAINS STICKY (Static relative to its sticky parent) */}
           <div className="glass-ios border-b border-white/20 shadow-sm w-full">
-          <div className="max-w-3xl mx-auto px-4 py-1">
+            <div className="max-w-3xl mx-auto px-4 py-1">
             <div className="flex items-center justify-between">
               {/* Book/Chapter/Version selectors */}
               <div className="flex items-center space-x-4">
@@ -1271,7 +848,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   }}
                   className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
                 >
-                  <span className="text-sm font-normal">{displayBookName}</span>
+                  <span className="text-sm font-normal">
+                    {displayBookName?.length === 24 && /^[0-9a-fA-F]+$/.test(displayBookName) ? (isLoadingBooks ? 'Loading...' : displayBookName) : (displayBookName || 'Genesis')}
+                  </span>
                   <ChevronDown className="size-3" />
                 </button>
 
@@ -1295,7 +874,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   }}
                   className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
                 >
-                  <span className="text-sm font-normal">{displayVersionName}</span>
+                  <span className="text-sm font-normal">
+                    {(displayVersionName?.length === 24 && /^[0-9a-fA-F]+$/.test(displayVersionName)) || !displayVersionName
+                        ? (isLoadingVersions ? 'Loading...' : 'Select Version')
+                        : displayVersionName}
+                  </span>
                   <ChevronDown className="size-3" />
                 </button>
               </div>
@@ -1375,15 +958,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               {/* Content */}
               <div className="flex-1 overflow-y-auto px-4 pb-4">
                 {isLoadingBooks ? (
-                  <div className="flex flex-col items-center justify-center py-20 gap-3">
-                    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary-teal)]"></div>
-                    <p className="text-sm font-medium text-gray-500 animate-pulse">Loading books...</p>
-                  </div>
+                  <BookListSkeleton />
                 ) : (
                   <div className="grid grid-cols-2 gap-8">
                     {/* Old Testament */}
                     <div>
-                      <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">Old Testament</h4>
+                      <h4 style={{background:"#f6f6f6"}} className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 text-sm font-semibold z-10">Old Testament</h4>
                       <div className="space-y-2">
                         {(bookSortType === 'alphabetical'
                           ? [...bibleBooksState['Old Testament']].sort((a, b) => a.name.localeCompare(b.name))
@@ -1410,7 +990,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
                     {/* New Testament */}
                     <div>
-                      <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">New Testament</h4>
+                      <h4 style={{background:"#f6f6f6"}} className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3. text-sm font-semibold z-10">New Testament</h4>
                       <div className="space-y-2">
                         {(bookSortType === 'alphabetical'
                           ? [...bibleBooksState['New Testament']].sort((a, b) => a.name.localeCompare(b.name))
@@ -1548,10 +1128,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 <h4 className="font-bold text-[#d23952] mb-4 text-sm">Bible Versions</h4>
                 
                 {isLoadingVersions ? (
-                  <div className="flex flex-col items-center justify-center py-12 gap-3">
-                    <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[var(--color-primary-teal)]"></div>
-                    <p className="text-sm font-medium text-gray-500 animate-pulse">Loading versions...</p>
-                  </div>
+                  <VersionListSkeleton />
                 ) : (
                   <div className="space-y-3">
                     {/* List versions by language */}
@@ -1871,8 +1448,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
         {/* More Menu (Three Dots) - Simple menu with options */}
         {showMoreMenu && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowMoreMenu(false)}>
-            <div className="absolute top-20 right-4 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[280px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[40] bg-black/20" onClick={() => setShowMoreMenu(false)}>
+            <div className="absolute bottom-[100px] right-6 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[280px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
               <div className="py-2">
                 {/* Fonts & Settings Option */}
                 <button
@@ -1937,8 +1514,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
         {/* Settings Menu */}
         {showSettingsMenu && (
-          <div className="fixed inset-0 z-[100] bg-white/5 shadow-2xl backdrop-blur-sm" onClick={() => setShowSettingsMenu(false)}>
-            <div className="absolute top-24 left-1/2 -translate-x-1/2 apple-nav-floating w-[90%] max-w-[380px] max-h-[80vh] overflow-hidden flex flex-col transition-all duration-500 animate-in fade-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[40] bg-black/5 shadow-2xl backdrop-blur-sm" onClick={() => setShowSettingsMenu(false)}>
+            <div className="absolute bottom-[100px] left-1/2 -translate-x-1/2 apple-nav-floating w-[90%] max-w-[380px] max-h-[70vh] overflow-hidden flex flex-col transition-all duration-500 animate-in slide-in-from-bottom-8 fade-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-200">
                 <div className="w-12" /> {/* Spacer instead of Back button */}
@@ -2121,7 +1698,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               fontSize={fontSize}
               onClose={() => setComparisonMode(false)}
               onVersion2Change={() => setShowVersionSelector(true)}
-              displayVersionName1={displayVersionName}
+              displayVersionName1={displayVersionName || 'KJV'}
               displayVersionName2={displaySecondVersionName}
             />
           ) : pageTransition === 'slide' && isDragging ? (
@@ -2144,7 +1721,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     fontSize={fontSize}
                     version={selectedVersionId || undefined}
                     scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? selectedVerse : undefined}
-                    readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? currentReadingVerse : null}
+                    readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? currentVerse : null}
                     theme={currentTheme}
                   />
                 </div>
@@ -2166,7 +1743,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     fontSize={fontSize}
                     version={selectedVersionId || undefined}
                     scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? selectedVerse : undefined}
-                    readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? currentReadingVerse : null}
+                    readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? currentVerse : null}
                     theme={currentTheme}
                   />
                 </div>
@@ -2187,7 +1764,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   fontSize={fontSize}
                   version={selectedVersionId || undefined}
                   scrollToVerse={selectedVerse}
-                  readingVerse={currentReadingVerse}
+                  readingVerse={currentVerse}
                   theme={currentTheme}
                 />
               </div>
@@ -2210,7 +1787,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   fontSize={fontSize}
                   version={selectedVersionId || undefined}
                   scrollToVerse={selectedVerse}
-                  readingVerse={currentReadingVerse}
+                  readingVerse={currentVerse}
                   theme={currentTheme}
                 />
               </motion.div>
@@ -2219,224 +1796,21 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         </div>
       </div>
 
-      {/* Audio Controls - MOVES UP/DOWN WITH SCROLL */}
-      <div
-        className={`fixed left-0 right-0 z-30 pointer-events-none transition-all duration-700 ease-in-out ${showAudioControls ? 'bottom-[90px]' : 'bottom-4'
-          }`}
-      >
-        <div className="max-w-3xl mx-auto px-6 sm:px-8">
-          <div className="flex items-center justify-between pointer-events-auto">
-            {/* Previous Button - Left side - Only show if not at first chapter */}
-            {!isFirstChapterOfBible && (
-              <button
-                onClick={handlePrevious}
-                className="ml-[7px] bg-white/50 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 p-2.5 rounded-full shadow-[0px_4px_8px_3px_rgba(0,0,0,0.15),0px_1px_3px_0px_rgba(0,0,0,0.3)] hover:bg-white/70 transition-all"
-              >
-                <ChevronLeft className="size-4 text-[#006065]" />
-              </button>
-            )}
+      {!comparisonMode && selectedBookId && selectedVersionId && (
+        <AudioPlayer 
+          bookName={displayBookName}
+          chapterNumber={selectedChapter}
+          versionId={selectedVersionId}
+          onNextChapter={handleNext}
+          onPrevChapter={handlePrevious}
+          versesCount={currentChapterVerses.length}
+          verses={currentChapterVerses}
+          language={bibleVersions.find(v => v.id === selectedVersionId)?.language === 'Telugu' ? 'te-IN' : 
+                    bibleVersions.find(v => v.id === selectedVersionId)?.language === 'Hindi' ? 'hi-IN' : 'en-US'}
+        />
+      )}
 
-            {/* Spacer for alignment when left button is hidden */}
-            {isFirstChapterOfBible && <div className="w-[44px]" />}
-
-            {/* Play/Pause Button - Center - Expandable */}
-            <AnimatePresence mode="wait">
-              {audioControlExpanded ? (
-                <motion.div
-                  key="expanded"
-                  initial={{
-                    width: 56,
-                    opacity: 0,
-                    scale: 0.95
-                  }}
-                  animate={{
-                    width: 'auto',
-                    opacity: 1,
-                    scale: 1
-                  }}
-                  exit={{
-                    width: 56,
-                    opacity: 0,
-                    scale: 0.95
-                  }}
-                  transition={{
-                    width: {
-                      duration: 0.4,
-                      ease: [0.32, 0.72, 0, 1] as const // iOS-style easing
-                    },
-                    opacity: {
-                      duration: 0.3,
-                      ease: 'easeInOut'
-                    },
-                    scale: {
-                      duration: 0.3,
-                      ease: [0.32, 0.72, 0, 1] as const
-                    }
-                  }}
-                  className="bg-white/70 backdrop-blur-xl backdrop-saturate-[180%] border border-white/40 rounded-full shadow-[0px_4px_8px_3px_rgba(0,0,0,0.15),0px_1px_3px_0px_rgba(0,0,0,0.3)] px-1.5 py-0.5 flex items-center gap-2"
-                >
-                  {/* Equalizer Icon - Left */}
-                  <motion.button
-                    initial={{ opacity: 0, x: -8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -8 }}
-                    transition={{
-                      duration: 0.25,
-                      delay: 0.1,
-                      ease: [0.32, 0.72, 0, 1] as const
-                    }}
-                    onClick={() => setShowAudioControlPanel(true)}
-                    className="p-0.5 rounded-full hover:bg-white/40 transition-colors flex-shrink-0"
-                  >
-                    <RiEqualizer3Fill className="size-4 text-[#006a6f]" />
-                  </motion.button>
-
-                  {/* Play/Pause Button with Progress Circle - Center */}
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    transition={{
-                      duration: 0.25,
-                      delay: 0.15,
-                      ease: [0.32, 0.72, 0, 1] as const
-                    }}
-                    onClick={handleNarrationPlayPause}
-                    className="relative flex-shrink-0 w-[40px] h-[40px]"
-                  >
-                    {/* Progress Circle */}
-                    <svg className="absolute inset-0 w-full h-full" style={{ transform: 'rotate(-90deg)' }}>
-                      <circle
-                        cx="20"
-                        cy="20"
-                        r="18"
-                        fill="none"
-                        stroke="#e5e7eb"
-                        strokeWidth="2"
-                        opacity="0.3"
-                      />
-                      <circle
-                        cx="20"
-                        cy="20"
-                        r="18"
-                        fill="none"
-                        stroke="#006a6f"
-                        strokeWidth="2"
-                        strokeLinecap="round"
-                        strokeDasharray={`${2 * Math.PI * 18}`}
-                        strokeDashoffset={`${2 * Math.PI * 18 * (1 - audioCurrentTime / audioDuration)}`}
-                        style={{ transition: 'stroke-dashoffset 0.3s ease' }}
-                      />
-                    </svg>
-                    <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-[#a8d5d7] rounded-full w-[32px] h-[32px] flex items-center justify-center">
-                      <AnimatePresence mode="wait">
-                        {audioPlaying ? (
-                          <motion.div
-                            key="pause"
-                            initial={{ opacity: 0, rotate: -90 }}
-                            animate={{ opacity: 1, rotate: 0 }}
-                            exit={{ opacity: 0, rotate: 90 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <Pause className="size-4 text-[#006a6f] fill-[#006a6f]" strokeWidth={0} />
-                          </motion.div>
-                        ) : (
-                          <motion.div
-                            key="play"
-                            initial={{ opacity: 0, rotate: -90 }}
-                            animate={{ opacity: 1, rotate: 0 }}
-                            exit={{ opacity: 0, rotate: 90 }}
-                            transition={{ duration: 0.2 }}
-                          >
-                            <Play className="size-4 text-[#006a6f] fill-[#006a6f] translate-x-[0.5px]" strokeWidth={0} />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </motion.button>
-
-                  {/* Close Button - Right */}
-                  <motion.button
-                    initial={{ opacity: 0, x: 8 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 8 }}
-                    transition={{
-                      duration: 0.25,
-                      delay: 0.2,
-                      ease: [0.32, 0.72, 0, 1] as const
-                    }}
-                    onClick={() => {
-                      console.log('[Close Button] Closing audio control and resetting narration to verse 1');
-                      setAudioControlExpanded(false);
-                      setAudioPlaying(false);
-                      stopNarration();
-                      // Reset narration position to verse 1 so next play starts from beginning
-                      narrationVerseIndexRef.current = 0;
-                      setCurrentReadingVerse(null);
-                      setSelectedVerse(1); // Reset selected verse to 1 so resume starts from beginning
-                      setAudioCurrentTime(0);
-                    }}
-                    className="p-0.5 rounded-full hover:bg-white/40 transition-colors flex-shrink-0"
-                  >
-                    <X className="size-4 text-gray-600" strokeWidth={2.5} />
-                  </motion.button>
-                </motion.div>
-              ) : (
-                <motion.button
-                  key="collapsed"
-                  initial={{
-                    scale: 0.8,
-                    opacity: 0,
-                    y: 8
-                  }}
-                  animate={{
-                    scale: 1,
-                    opacity: 1,
-                    y: 0
-                  }}
-                  exit={{
-                    scale: 0.8,
-                    opacity: 0,
-                    y: 8
-                  }}
-                  transition={{
-                    duration: 0.35,
-                    ease: [0.32, 0.72, 0, 1] as const
-                  }}
-                  whileHover={{
-                    scale: 1.05,
-                    transition: { duration: 0.2 }
-                  }}
-                  whileTap={{
-                    scale: 0.95,
-                    transition: { duration: 0.1 }
-                  }}
-                  onClick={() => {
-                    setAudioControlExpanded(true);
-                    handleNarrationPlayPause();
-                  }}
-                  className="relative bg-white/70 backdrop-blur-xl backdrop-saturate-[180%] border border-white/40 p-4 rounded-full shadow-[0px_4px_8px_3px_rgba(0,0,0,0.15),0px_1px_3px_0px_rgba(0,0,0,0.3)] hover:bg-white/80 transition-all"
-                >
-                  <Play className="size-6 text-[#006a6f] fill-current relative z-10" />
-                </motion.button>
-              )}
-            </AnimatePresence>
-
-            {/* Spacer for alignment when right button is hidden */}
-            {isLastChapterOfBible && <div className="w-[52px]" />}
-
-            {/* Next Button - Right side - Only show if not at last chapter */}
-            {!isLastChapterOfBible && (
-              <button
-                onClick={handleNext}
-                className="mr-[7px] bg-white/50 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 p-2.5 rounded-full shadow-[0px_4px_8px_3px_rgba(0,0,0,0.15),0px_1px_3px_0px_rgba(0,0,0,0.3)] hover:bg-white/70 transition-all"
-              >
-                <ChevronRight className="size-4 text-[#006065]" />
-              </button>
-            )}
-          </div>
-        </div>
-      </div>
+      {/* Old Audio Controls Removed in favor of Production-Grade Player */}
 
       {/* Side Menu Overlay */}
       {menuOpen && (

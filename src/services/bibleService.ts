@@ -322,13 +322,29 @@ export class BibleService {
     }
 
     /**
-     * Import a Bible Version from JSON data
+     * Import a Bible Version from JSON data (legacy full-upload method)
+     * Note: This might fail on serverless platforms for large Bibles
      */
     static async importVersion(data: any): Promise<string> {
         await connectDB();
         const { metadata, verses } = data;
 
-        // 1. Create/Update BibleVersion
+        const versionId = await this.initImport(metadata);
+
+        // Start background import process
+        this.runImportProcess(versionId, verses).catch(err => {
+            console.error('Background import failed:', err);
+            BibleVersion.findByIdAndUpdate(versionId, { status: 'failed' }).catch(console.error);
+        });
+
+        return versionId;
+    }
+
+    /**
+     * Step 1: Initialize Import - Create/Update BibleVersion
+     */
+    static async initImport(metadata: any): Promise<string> {
+        await connectDB();
         const versionDoc = await BibleVersion.findOneAndUpdate(
             { abbreviation: metadata.shortname.toUpperCase() },
             {
@@ -342,15 +358,95 @@ export class BibleService {
             { upsert: true, returnDocument: 'after' }
         );
 
-        const versionId = versionDoc._id;
+        return versionDoc._id.toString();
+    }
 
-        // Start background import process
-        this.runImportProcess(versionId.toString(), verses).catch(err => {
-            console.error('Background import failed:', err);
-            BibleVersion.findByIdAndUpdate(versionId, { status: 'failed' }).catch(console.error);
-        });
+    /**
+     * Step 2: Import verses for a specific book
+     */
+    static async importBookVerses(versionId: string, bookNum: number, verses: any[], progress?: number): Promise<void> {
+        await connectDB();
+        if (!verses || verses.length === 0) return;
 
-        return versionId.toString();
+        const bookDetails = getBookDetails(bookNum);
+        const bookName = verses[0].book_name || bookDetails?.name || `Book ${bookNum}`;
+        const bookAbbr = bookDetails?.abbreviation || bookName.substring(0, 3).toUpperCase();
+        const testament = bookDetails?.testament || (bookNum <= 39 ? 'OT' : 'NT');
+
+        const bookDoc = await Book.findOneAndUpdate(
+            { version: versionId, order: bookNum },
+            {
+                name: bookName,
+                abbreviation: bookAbbr,
+                testament: testament,
+                version: versionId,
+                order: bookNum
+            },
+            { upsert: true, returnDocument: 'after' }
+        );
+
+        const bookId = bookDoc._id;
+
+        // Group by chapter
+        const versesByChapter = new Map<number, any[]>();
+        for (const v of verses) {
+            if (!versesByChapter.has(v.chapter)) {
+                versesByChapter.set(v.chapter, []);
+            }
+            versesByChapter.get(v.chapter)!.push(v);
+        }
+
+        const chapterNumbers = Array.from(versesByChapter.keys()).sort((a, b) => a - b);
+
+        for (const chapNum of chapterNumbers) {
+            const chapVerses = versesByChapter.get(chapNum)!;
+
+            const chapterDoc = await Chapter.findOneAndUpdate(
+                { book: bookId, number: chapNum },
+                {
+                    number: chapNum,
+                    book: bookId,
+                    version: versionId
+                },
+                { upsert: true, returnDocument: 'after' }
+            );
+
+            const chapterId = chapterDoc._id;
+
+            // Clear existing verses for this chapter if any
+            await Verse.deleteMany({ chapter: chapterId });
+
+            const verseDocs = chapVerses.map(v => ({
+                number: v.verse,
+                text: v.text,
+                chapter: chapterId,
+                book: bookId,
+                version: versionId
+            }));
+
+            const batchSize = 1000;
+            for (let j = 0; j < verseDocs.length; j += batchSize) {
+                const chunk = verseDocs.slice(j, j + batchSize);
+                await Verse.insertMany(chunk);
+            }
+        }
+
+        // Update progress if provided
+        if (progress !== undefined) {
+            await BibleVersion.findByIdAndUpdate(versionId, { importProgress: progress });
+        }
+    }
+
+    /**
+     * Step 3: Finalize Import - Update status and progress
+     */
+    static async finalizeImport(versionId: string, progress: number = 100): Promise<void> {
+        await connectDB();
+        const update: any = { importProgress: progress };
+        if (progress >= 100) {
+            update.status = 'active';
+        }
+        await BibleVersion.findByIdAndUpdate(versionId, update);
     }
 
     private static async runImportProcess(versionId: string, verses: any[]): Promise<void> {

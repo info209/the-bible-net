@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from 'react';
 import { ChevronDown, X } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { ComparisonSkeleton } from './BibleSkeleton';
 
 interface ComparisonContentProps {
   book: string;
@@ -75,12 +77,7 @@ export default function ComparisonContent({
   }, [book, chapter, version1, version2]);
 
   if (isLoading) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4 w-full" style={{ backgroundColor: theme.bg }}>
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary-teal)]"></div>
-        <p className="text-sm font-medium text-gray-500 animate-pulse">Aligning versions...</p>
-      </div>
-    );
+    return <ComparisonSkeleton theme={theme} />;
   }
 
   if (error) {
@@ -96,7 +93,12 @@ export default function ComparisonContent({
   }
 
   return (
-    <div className="w-full h-full flex flex-col" style={{ backgroundColor: theme.bg }}>
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="w-full h-full flex flex-col" 
+      style={{ backgroundColor: theme.bg }}
+    >
       {/* Comparison Header - Sticky for side-by-side versions */}
       <div className="sticky top-0 z-20 border-b border-gray-200 bg-white/95 backdrop-blur-md">
         <div className="max-w-3xl mx-auto px-4 flex divide-x divide-gray-200">
@@ -173,6 +175,6 @@ export default function ComparisonContent({
           ))}
         </div>
       </div>
-    </div>
+    </motion.div>
   );
 }

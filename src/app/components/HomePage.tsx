@@ -1,14 +1,18 @@
 "use client";
 
-import { Heart, MessageCircle, Share2, Maximize2, Play, Pause, X, User } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Maximize2, Play, Pause, X, User, BookOpen } from 'lucide-react';
+import HomeSkeleton from './HomeSkeleton';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useReadingProgress } from '@/lib/useReadingProgress';
+import { getRelativeTime } from '@/utils/time';
 
 export default function HomePage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { latestProgress, allProgress, isLoading: progressLoading } = useReadingProgress();
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
 
@@ -159,19 +163,21 @@ export default function HomePage() {
     router.push(`/devotion/${devotionId}`);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-[var(--color-primary-teal)]"></div>
-      </div>
-    );
+  if (loading || progressLoading) {
+    return <HomeSkeleton />;
   }
 
   const dailyVerses = verse ? [verse] : [];
 
 
   return (
-    <div className="space-y-6 pb-6 bg-transparent min-h-full">
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+      className="space-y-6 pb-6 bg-transparent min-h-full px-4"
+    >
+
       {/* Greeting */}
       <div className="flex items-center space-x-3 animate-fade-in">
         <div className="size-10 rounded-full bg-gradient-to-br from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] flex items-center justify-center text-white font-bold text-lg uppercase shadow-sm">
@@ -376,37 +382,89 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Reading Plans */}
+      {/* Reading Plan */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-bold text-gray-800">My Reading Plans</h3>
-          <button className="text-[var(--color-primary-teal)] text-sm font-medium hover:underline">View All</button>
+          <h3 className="text-xl font-bold text-gray-800">My Reading Plan</h3>
+          <button 
+            onClick={() => router.push('/bible')}
+            className="text-[var(--color-primary-teal)] text-sm font-medium hover:underline"
+          >
+            {latestProgress ? 'View All' : 'Start Reading →'}
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {['One Year Bible', 'Psalms & Proverbs', 'Life of Jesus'].map((plan, i) => (
-            <div key={i} className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow border border-gray-100">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <h4 className="font-bold text-gray-800 mb-1">{plan}</h4>
-                  <p className="text-sm text-gray-500">Day {23 + i} of 365</p>
+        {latestProgress ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             {/* Latest Progress Card */}
+             <div className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow border border-gray-100 flex flex-col justify-between">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h4 className="font-bold text-gray-800 mb-1">Continue Reading</h4>
+                    <p className="text-sm text-gray-700 font-medium">
+                      {latestProgress.bookName || latestProgress.bookId} {latestProgress.chapter} ({latestProgress.versionName || latestProgress.versionId})
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Last read: {getRelativeTime(latestProgress.lastReadAt)}
+                    </p>
+                  </div>
+                  <div className="size-12 rounded-full bg-gradient-to-br from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] flex items-center justify-center text-white font-bold text-sm">
+                    {latestProgress.completed ? '100%' : '---'}
+                  </div>
                 </div>
-                <div className="size-12 rounded-full bg-gradient-to-br from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] flex items-center justify-center text-white font-bold text-sm">
-                  {Math.round((23 + i) / 365 * 100)}%
+                {latestProgress.progressPercent !== undefined && (
+                   <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+                    <div
+                      className="bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] h-2 rounded-full transition-all"
+                      style={{ width: `${latestProgress.completed ? 100 : latestProgress.progressPercent}%` }}
+                    />
+                  </div>
+                )}
+                <button 
+                  onClick={() => router.push(`/bible/${latestProgress.versionId}/${latestProgress.bookId}/${latestProgress.chapter}`)}
+                  className="w-full py-2 bg-[#e6f0f1] text-[var(--color-primary-teal)] rounded-lg text-sm font-medium hover:bg-[#d0e5e7] transition-colors mt-2"
+                >
+                  Continue
+                </button>
+             </div>
+             
+             {/* If there are more progress items, show second latest? Or just one? 
+                 The prompt says Case 2 show "Continue Reading" (singular)
+                 But the UI grid looks better with 2. I'll show one and one empty/placeholder or just one.
+                 Actually, I'll filter for the second latest. */}
+             {allProgress.length > 1 && (
+                <div className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow border border-gray-100 flex flex-col justify-between hidden sm:flex">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <h4 className="font-bold text-gray-800 mb-1">Previous Chapter</h4>
+                    <p className="text-sm text-gray-700 font-medium">
+                      {allProgress[1].bookName || allProgress[1].bookId} {allProgress[1].chapter} ({allProgress[1].versionName || allProgress[1].versionId})
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                <div
-                  className="bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] h-2 rounded-full transition-all"
-                  style={{ width: `${Math.round((23 + i) / 365 * 100)}%` }}
-                />
-              </div>
-              <button className="w-full py-2 bg-[#e6f0f1] text-[var(--color-primary-teal)] rounded-lg text-sm font-medium hover:bg-[#d0e5e7] transition-colors">
-                Continue Reading
-              </button>
-            </div>
-          ))}
-        </div>
+                <button 
+                  onClick={() => router.push(`/bible/${allProgress[1].versionId}/${allProgress[1].bookId}/${allProgress[1].chapter}`)}
+                  className="w-full py-2 bg-gray-50 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors mt-2"
+                >
+                  Read Again
+                </button>
+             </div>
+             )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-xl p-8 shadow-md border border-gray-100 text-center space-y-4">
+             <div className="bg-teal-50 size-16 rounded-full flex items-center justify-center mx-auto">
+                <BookOpen className="size-8 text-[var(--color-primary-teal)]" />
+             </div>
+             <p className="text-gray-600">You haven't started any reading plan yet.</p>
+             <button 
+                onClick={() => router.push('/bible')}
+                className="px-8 py-2 bg-[var(--color-primary-teal)] text-white rounded-lg font-medium shadow-md hover:shadow-lg hover:bg-[#328e91] transition-all"
+             >
+                Start Reading →
+             </button>
+          </div>
+        )}
       </div>
 
       {/* Prayer Wall Preview */}
@@ -523,6 +581,6 @@ export default function HomePage() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
