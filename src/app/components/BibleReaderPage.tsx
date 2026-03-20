@@ -1,13 +1,14 @@
 "use client";
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
-import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity } from 'lucide-react';
-import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill as EqualizerIcon, RiEqualizer3Fill } from 'react-icons/ri';
+import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, MoreVertical, X, ChevronLeft, ChevronRight, Check, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, SlidersHorizontal, Square } from 'lucide-react';
+import { RiSortDesc, RiSortAlphabetAsc } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
 import BibleSkeleton, { BookListSkeleton, VersionListSkeleton, ComparisonSkeleton } from './BibleSkeleton';
 import AppHeader from './AppHeader';
-import AudioPlayer from './AudioPlayer';
+import PageTurnTransition from './PageTurnTransition';
+
 import { useMediaStore } from '@/lib/mediaStore';
 import ChapterContent, { mockBibleContent } from './ChapterContent';
 import ComparisonContent from './ComparisonContent';
@@ -65,7 +66,7 @@ interface BibleReaderPageProps {
 }
 
 export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
-  const { currentVerse, setCurrentChapter: setStoreChapter } = useMediaStore();
+  const { currentVerse, setCurrentVerse, setCurrentChapter: setStoreChapter } = useMediaStore();
   const { updateProgress, latestProgress } = useReadingProgress();
   
   // determine whether we are on bible page; if not, render only nav bar
@@ -80,29 +81,35 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [showBookSelector, setShowBookSelector] = useState(false);
   const [showChapterSelector, setShowChapterSelector] = useState(false);
   const [showVersionSelector, setShowVersionSelector] = useState(false);
-  const [audioPlaying, setAudioPlaying] = useState(false);
-  const [audioControlExpanded, setAudioControlExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [showMusicSelector, setShowMusicSelector] = useState(false);
-  const [selectedMusic, setSelectedMusic] = useState<string | null>('none');
-  const [musicLoopMode, setMusicLoopMode] = useState<'shuffle' | 'repeat-all' | 'repeat-one'>('shuffle');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [hideFootnotes, setHideFootnotes] = useState(false);
-  const [showAudioControlPanel, setShowAudioControlPanel] = useState(false);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
   const [showVerseSelector, setShowVerseSelector] = useState(false);
-  const [audioCurrentTime, setAudioCurrentTime] = useState(45); // in seconds
-  const [audioDuration, setAudioDuration] = useState(216); // 3:36 in seconds
-  const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
-  const [showTimerMenu, setShowTimerMenu] = useState(false);
-  const [selectedTimer, setSelectedTimer] = useState<'stop' | 'end-chapter' | '10-mins' | '15-mins' | '30-mins' | '1-hr' | '2-hrs'>('stop');
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'sepia' | 'cream' | 'dark'>('light');
+  const [ttsPlaying, setTtsPlaying] = useState(false);
+  const [ttsPaused, setTtsPaused] = useState(false);
+
+  // Stable refs — avoid stale closures in utterance event handlers
+  const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const ttsPlayingRef = useRef(false);
+  const ttsPausedRef = useRef(false);
+  const ttsIndexRef = useRef(0);
+  const isCleaningUpRef = useRef(false);
+  const [ttsCurrentVerseIndex, setTtsCurrentVerseIndex] = useState(0);
+  // TTS settings
+  const [ttsRate, setTtsRate] = useState(1.0);
+  const [ttsVolume, setTtsVolume] = useState(1.0);
+  const [ttsVoice, setTtsVoice] = useState<SpeechSynthesisVoice | null>(null);
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [showTTSSettings, setShowTTSSettings] = useState(false);
   const [selectedFont, setSelectedFont] = useState('Times New Roman');
   const [fontSize, setFontSize] = useState(18);
   const [pageTransition, setPageTransition] = useState<'slide' | 'curl' | 'fade' | 'scroll'>('slide');
   const [chapterKey, setChapterKey] = useState(0);
   const [transitionDirection, setTransitionDirection] = useState<'next' | 'prev'>('next');
+  const isTransitioningRef = useRef(false);
   const [showSearch, setShowSearch] = useState(false);
   const [bookSortType, setBookSortType] = useState<'traditional' | 'alphabetical'>('traditional');
   const [comparisonMode, setComparisonMode] = useState(false);
@@ -168,9 +175,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   }, [pathname, bibleVersions]); // Removed state dependencies to prevent resetting user selection back to URL state
 
   // Helper to check if any selection/settings popup is open
-  const isAnyPopupOpen = showBookSelector || showChapterSelector || 
-    showVersionSelector || showMusicSelector || showMoreMenu || 
-    showSettingsMenu || showTimerMenu || showSearch || showVerseSelector;
+  const isAnyPopupOpen = showBookSelector || showChapterSelector ||
+    showVersionSelector || showMoreMenu ||
+    showSettingsMenu || showSearch || showVerseSelector;
 
   // Fetch Bible Versions on mount
   useEffect(() => {
@@ -400,27 +407,16 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [showAudioControls, setShowAudioControls] = useState(true);
   const [isAtBottom, setIsAtBottom] = useState(false);
   const lastScrollY = useRef(0);
+  const scrollDirectionRef = useRef<'down' | 'up'>('up');
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+  const lastStateToggleTime = useRef(0);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  const isAutoAdvancingRef = useRef(false);
 
-  // Music tracks
-  const musicTracks = [
-    { id: 'none', name: 'None', thumbnail: null },
-    { id: 'music1', name: 'Music 1', thumbnail: 'https://images.unsplash.com/photo-1686109616991-1acaf4fa7199?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHJpc3RpYW4lMjBjcm9zcyUyMGdvbGRlbnxlbnwxfHx8fDE3NzAwMzE3ODV8MA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music2', name: 'Music 2', thumbnail: 'https://images.unsplash.com/photo-1507126882445-434b04530d1a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3aGl0ZSUyMGRvdmUlMjBmbHlpbmd8ZW58MXx8fHwxNzcwMDMxNzg2fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music3', name: 'Music 3', thumbnail: 'https://images.unsplash.com/photo-1605238721408-3876d8fd3942?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiaWJsZSUyMG9wZW4lMjBsaWdodHxlbnwxfHx8fDE3Njk5MjA2OTV8MA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music4', name: 'Music 4', thumbnail: 'https://images.unsplash.com/photo-1575516662637-99214ea59f23?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcmF5aW5nJTIwaGFuZHMlMjBzcGlyaXR1YWx8ZW58MXx8fHwxNzcwMDMxNzg3fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music5', name: 'Music 5', thumbnail: 'https://images.unsplash.com/photo-1550541231-56ddb7f844ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHVyY2glMjBzdGFpbmVkJTIwZ2xhc3N8ZW58MXx8fHwxNzcwMDMxNzg3fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music6', name: 'Music 6', thumbnail: 'https://images.unsplash.com/photo-1705608604329-49335be66661?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHJpc3RpYW4lMjB3b3JzaGlwJTIwY2FuZGxlfGVufDF8fHx8MTc3MDAzMTc4OHww&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music7', name: 'Music 7', thumbnail: 'https://images.unsplash.com/photo-1686109616991-1acaf4fa7199?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHJpc3RpYW4lMjBjcm9zcyUyMGdvbGRlbnxlbnwxfHx8fDE3NzAwMzE3ODV8MA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music8', name: 'Music 8', thumbnail: 'https://images.unsplash.com/photo-1507126882445-434b04530d1a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3aGl0ZSUyMGRvdmUlMjBmbHlpbmd8ZW58MXx8fHwxNzcwMDMxNzg2fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music9', name: 'Music 9', thumbnail: 'https://images.unsplash.com/photo-1605238721408-3876d8fd3942?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiaWJsZSUyMG9wZW4lMjBsaWdodHxlbnwxfHx8fDE3Njk5MjA2OTV8MA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music10', name: 'Music 10', thumbnail: 'https://images.unsplash.com/photo-1575516662637-99214ea59f23?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcmF5aW5nJTIwaGFuZHMlMjBzcGlyaXR1YWx8ZW58MXx8fHwxNzcwMDMxNzg3fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music11', name: 'Music 11', thumbnail: 'https://images.unsplash.com/photo-1550541231-56ddb7f844ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHVyY2glMjBzdGFpbmVkJTIwZ2xhc3N8ZW58MXx8fHwxNzcwMDMxNzg3fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music12', name: 'Music 12', thumbnail: 'https://images.unsplash.com/photo-1705608604329-49335be66661?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHJpc3RpYW4lMjB3b3JzaGlwJTIwY2FuZGxlfGVufDF8fHx8MTc3MDAzMTc4OHww&ixlib=rb-4.1.0&q=80&w=1080' },
-  ];
+
+
+
+
 
   // Helper functions for navigation
   const allBooks = [...bibleBooksState['Old Testament'], ...bibleBooksState['New Testament']];
@@ -479,23 +475,23 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   };
 
   const handlePrevious = () => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+    const lockDuration = pageTransition === 'curl' ? 900 : pageTransition === 'slide' ? 550 : pageTransition === 'fade' ? 450 : 650;
+    setTimeout(() => { isTransitioningRef.current = false; }, lockDuration);
+
     setTransitionDirection('prev');
     setChapterKey(prev => prev + 1);
 
     // Scroll to top immediately
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     setTimeout(() => {
       if (selectedChapter > 1) {
-        // Go to previous chapter in same book
         setSelectedChapter(selectedChapter - 1);
       } else if (currentBookIndex > 0) {
-        // Go to last chapter of previous book
         const prevBook = allBooks[currentBookIndex - 1];
         setSelectedBookId(prevBook.id);
         setDisplayBookName(prevBook.name);
@@ -505,23 +501,23 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   };
 
   const handleNext = () => {
+    if (isTransitioningRef.current) return;
+    isTransitioningRef.current = true;
+    const lockDuration = pageTransition === 'curl' ? 900 : pageTransition === 'slide' ? 550 : pageTransition === 'fade' ? 450 : 650;
+    setTimeout(() => { isTransitioningRef.current = false; }, lockDuration);
+
     setTransitionDirection('next');
     setChapterKey(prev => prev + 1);
 
     // Scroll to top immediately
     if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
+      scrollContainerRef.current.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     setTimeout(() => {
       if (selectedChapter < totalChapters) {
-        // Go to next chapter in same book
         setSelectedChapter(selectedChapter + 1);
       } else if (currentBookIndex < allBooks.length - 1) {
-        // Go to first chapter of next book
         const nextBook = allBooks[currentBookIndex + 1];
         setSelectedBookId(nextBook.id);
         setDisplayBookName(nextBook.name);
@@ -529,6 +525,166 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       }
     }, 50);
   };
+
+  // ─── TTS ENGINE (Stable ref-based, no stale closures) ───────────────────────
+
+  // Load voices once (browsers fire onvoiceschanged asynchronously)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const loadVoices = () => {
+      const voices = window.speechSynthesis.getVoices();
+      setAvailableVoices(voices);
+    };
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    return () => {
+      if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null;
+    };
+  }, []);
+
+  // Keep refs in sync with state so event handlers never have stale values
+  useEffect(() => { ttsPlayingRef.current = ttsPlaying; }, [ttsPlaying]);
+  useEffect(() => { ttsPausedRef.current = ttsPaused; }, [ttsPaused]);
+  useEffect(() => { ttsIndexRef.current = ttsCurrentVerseIndex; }, [ttsCurrentVerseIndex]);
+
+  // Internal speak function — reads from refs, never from state
+  const speakAtIndex = useCallback((index: number) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    if (isCleaningUpRef.current) return;
+    if (!ttsPlayingRef.current || ttsPausedRef.current) return;
+    if (!currentChapterVerses || index >= currentChapterVerses.length) {
+      // End of chapter — stop cleanly
+      ttsPlayingRef.current = false;
+      setTtsPlaying(false);
+      setTtsPaused(false);
+      return;
+    }
+
+    window.speechSynthesis.cancel(); // cancel any lingering utterance
+
+    const verse = currentChapterVerses[index];
+    const utterance = new SpeechSynthesisUtterance(verse.text);
+
+    // Language
+    const lang = bibleVersions.find(v => v.id === selectedVersionId)?.language;
+    utterance.lang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
+
+    // Settings from state at call time (not stale refs)
+    utterance.rate = ttsRate;
+    utterance.volume = ttsVolume;
+    if (ttsVoice) utterance.voice = ttsVoice;
+
+    utterance.onstart = () => {
+      if (isCleaningUpRef.current) return;
+      ttsIndexRef.current = index;
+      setTtsCurrentVerseIndex(index);
+      setCurrentVerse(verse.number);
+    };
+
+    utterance.onend = () => {
+      if (isCleaningUpRef.current) return;
+      if (ttsPlayingRef.current && !ttsPausedRef.current) {
+        speakAtIndex(index + 1);
+      }
+    };
+
+    utterance.onerror = (event) => {
+      // 'interrupted' fires when we call cancel() intentionally — safe to ignore
+      if (event.error === 'interrupted' || isCleaningUpRef.current) return;
+      console.error('SpeechSynthesis error:', event.error);
+      ttsPlayingRef.current = false;
+      setTtsPlaying(false);
+      setTtsPaused(false);
+    };
+
+    utteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  }, [currentChapterVerses, bibleVersions, selectedVersionId, ttsRate, ttsVolume, ttsVoice]);
+
+  // Public TTS controls
+  const stopTTS = useCallback(() => {
+    isCleaningUpRef.current = false;
+    ttsPlayingRef.current = false;
+    ttsPausedRef.current = false;
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    utteranceRef.current = null;
+    ttsIndexRef.current = 0;
+    setTtsCurrentVerseIndex(0);
+    setTtsPlaying(false);
+    setTtsPaused(false);
+    setCurrentVerse(null);
+  }, []);
+
+  const startTTS = useCallback((fromIndex?: number) => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const idx = fromIndex ?? ttsIndexRef.current;
+    ttsPlayingRef.current = true;
+    ttsPausedRef.current = false;
+    isCleaningUpRef.current = false;
+    setTtsPlaying(true);
+    setTtsPaused(false);
+    speakAtIndex(idx);
+  }, [speakAtIndex]);
+
+  const pauseTTS = useCallback(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    window.speechSynthesis.pause();
+    ttsPausedRef.current = true;
+    setTtsPaused(true);
+  }, []);
+
+  const resumeTTS = useCallback(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    // Clear paused refs FIRST — speakAtIndex checks ttsPausedRef.current at entry
+    // and returns early if still true, so we must clear before calling it
+    ttsPausedRef.current = false;
+    setTtsPaused(false);
+    if (window.speechSynthesis.paused) {
+      window.speechSynthesis.resume();
+    } else {
+      // Browser didn't maintain the paused utterance — re-speak from saved index
+      speakAtIndex(ttsIndexRef.current);
+    }
+  }, [speakAtIndex]);
+
+  const toggleTTS = useCallback(() => {
+    if (!ttsPlaying && !ttsPaused) {
+      startTTS();
+    } else if (ttsPlaying && !ttsPaused) {
+      pauseTTS();
+    } else if (ttsPaused) {
+      resumeTTS();
+    }
+  }, [ttsPlaying, ttsPaused, startTTS, pauseTTS, resumeTTS]);
+
+  // Reset TTS when chapter / book / version changes
+  useEffect(() => {
+    isCleaningUpRef.current = false;
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    utteranceRef.current = null;
+    ttsPlayingRef.current = false;
+    ttsPausedRef.current = false;
+    ttsIndexRef.current = 0;
+    setTtsCurrentVerseIndex(0);
+    setTtsPlaying(false);
+    setTtsPaused(false);
+    setCurrentVerse(null);
+  }, [selectedBookId, selectedChapter, selectedVersionId]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isCleaningUpRef.current = true;
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
+
 
   // Interactive drag handlers for slide transition
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -616,74 +772,70 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     switch (pageTransition) {
       case 'slide':
         return {
-          initial: { x: `${100 * direction}%`, opacity: 1 },
-          animate: { x: 0, opacity: 1 },
-          exit: { x: `${-100 * direction}%`, opacity: 1 }
-        };
-
-      case 'curl':
-        return {
           initial: {
-            rotateY: direction > 0 ? 60 : -60,
-            skewY: direction > 0 ? -5 : 5,
-            x: direction > 0 ? '100%' : '-100%',
-            z: -200,
-            opacity: 0,
-            scale: 0.9,
-            transformOrigin: direction > 0 ? 'right center' : 'left center',
+            x: `${100 * direction}%`,
+            opacity: 1,
           },
           animate: {
-            rotateY: 0,
-            skewY: 0,
             x: 0,
-            z: 0,
             opacity: 1,
-            scale: 1,
-            transition: {
-              type: "spring" as const,
-              stiffness: 70,
-              damping: 18,
-              mass: 1.1
-            }
+            transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }
           },
           exit: {
-            rotateY: direction > 0 ? -140 : 140,
-            skewY: direction > 0 ? 10 : -10,
-            x: direction > 0 ? '-100%' : '100%',
-            z: 0,
-            opacity: 0,
-            scale: 0.95,
-            filter: "brightness(0.6)",
-            transformOrigin: direction > 0 ? 'left center' : 'right center',
-            transition: {
-              duration: 0.9,
-              ease: [0.645, 0.045, 0.355, 1] as const
-            }
+            x: `${-100 * direction}%`,
+            opacity: 1,
+            transition: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] }
           }
         };
 
-      case 'fade':
+      // curl is handled by <PageTurnTransition> directly — this fallback is not used
+      case 'curl':
         return {
           initial: { opacity: 0 },
           animate: { opacity: 1 },
           exit: { opacity: 0 }
         };
 
-      case 'scroll':
-      default:
+      case 'fade':
         return {
-          initial: { y: direction > 0 ? 50 : -50, opacity: 0 },
-          animate: { y: 0, opacity: 1 },
-          exit: { y: direction > 0 ? -50 : 50, opacity: 0 }
+          initial: { opacity: 0, scale: 0.985 },
+          animate: {
+            opacity: 1,
+            scale: 1,
+            transition: { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }
+          },
+          exit: {
+            opacity: 0,
+            scale: 0.985,
+            transition: { duration: 0.25, ease: [0.55, 0, 1, 0.45] }
+          }
         };
+
+      case 'scroll':
+      default: {
+        const px = direction > 0 ? 70 : -70;
+        return {
+          initial: { y: px, opacity: 0 },
+          animate: {
+            y: 0,
+            opacity: 1,
+            transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
+          },
+          exit: {
+            y: -px,
+            opacity: 0,
+            transition: { duration: 0.3, ease: [0.55, 0, 1, 0.45] }
+          }
+        };
+      }
     }
   };
 
   const transitionConfig = {
-    slide: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
-    curl: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
-    fade: { duration: 0.2, ease: 'easeInOut' },
-    scroll: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
+    slide: { duration: 0.45, ease: [0.25, 0.46, 0.45, 0.94] },
+    curl:  { duration: 0.8,  ease: [0.4, 0, 0.2, 1] },
+    fade:  { duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] },
+    scroll: { duration: 0.5, ease: [0.22, 1, 0.36, 1] }
   } as const;
 
   // Theme configurations
@@ -718,17 +870,25 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     setSelectedVerse(null);
   }, [selectedBookId, selectedChapter]);
 
-  // Scroll detection logic
+  // Scroll detection logic - optimized to fix flickering
   useEffect(() => {
-    const handleScroll = () => {
-      if (!scrollContainerRef.current) return;
+    let lastKnownScrollY = 0;
+    let ticking = false;
+    const threshold = 10; // Only toggle after 10px of movement
+    const headerHeight = 100; // Point where header definitely hides
+
+    const updateScroll = () => {
+      if (!scrollContainerRef.current) {
+        ticking = false;
+        return;
+      }
 
       const currentScrollY = scrollContainerRef.current.scrollTop;
       const scrollHeight = scrollContainerRef.current.scrollHeight;
       const clientHeight = scrollContainerRef.current.clientHeight;
-      const scrolledToBottom = scrollHeight - currentScrollY - clientHeight < 100;
+      const scrolledToBottom = scrollHeight - currentScrollY - clientHeight < 50;
 
-      // Track reading progress
+      // Tracking progress
       const scrollProgress = (currentScrollY + clientHeight) / scrollHeight;
       if (scrollProgress >= 0.75 && selectedBookId && selectedVersionId) {
         updateProgress({
@@ -743,49 +903,62 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       setIsAtBottom(scrolledToBottom);
 
-      // If at bottom, show both nav and audio controls
+      // Flicker Prevention with Hysteresis and Debounce
+      const now = Date.now();
+      const diff = currentScrollY - lastKnownScrollY;
+      const absDiff = Math.abs(diff);
+      
       if (scrolledToBottom) {
         setShowBottomNav(true);
         setShowAudioControls(true);
-        return;
-      }
-
-      const isScrollingDown = currentScrollY > lastScrollY.current;
-      const isScrollingUp = currentScrollY < lastScrollY.current;
-
-      if (currentScrollY > 100) {
-        if (isScrollingDown) {
-          setShowBottomNav(false);
-          setShowAudioControls(false);
-        } else if (isScrollingUp) {
-          setShowBottomNav(true);
-          setShowAudioControls(true);
-        }
-      } else {
+      } else if (currentScrollY <= 50) {
         setShowBottomNav(true);
         setShowAudioControls(true);
+      } else if (absDiff >= (diff > 0 ? 60 : 20)) { // Hysteresis: hide threshold 60, show threshold 20
+        if (now - lastStateToggleTime.current > 500) { // Lock frequent toggling
+          const isScrollingDown = currentScrollY > lastKnownScrollY;
+          if (currentScrollY > 150) {
+            if (isScrollingDown) {
+              setShowBottomNav(false);
+              setShowAudioControls(false);
+            } else {
+              setShowBottomNav(true);
+              setShowAudioControls(true);
+            }
+            lastStateToggleTime.current = now;
+          }
+        }
+        lastKnownScrollY = currentScrollY;
       }
 
-      lastScrollY.current = currentScrollY;
-
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-
-      if (currentScrollY > 100 && !scrolledToBottom) {
+      // 3. Keep showing if inactivity at bottom, but hide if inactivity in middle
+      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+      if (currentScrollY > 200 && !scrolledToBottom && showBottomNav) {
         scrollTimeout.current = setTimeout(() => {
           setShowBottomNav(false);
           setShowAudioControls(false);
-        }, 3000);
+        }, 8000); // Wait longer before auto-hiding
+      }
+
+      ticking = false;
+    };
+
+    const handleScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(updateScroll);
+        ticking = true;
       }
     };
 
     const scrollContainer = scrollContainerRef.current;
     if (scrollContainer) {
       scrollContainer.addEventListener('scroll', handleScroll);
-      return () => scrollContainer.removeEventListener('scroll', handleScroll);
+      return () => {
+        scrollContainer.removeEventListener('scroll', handleScroll);
+        if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+      };
     }
-  }, []);
+  }, [selectedBookId, selectedChapter, selectedVersionId, displayBookName, displayVersionName]);
 
   // Dispatch reading mode event to client layout
   useEffect(() => {
@@ -821,13 +994,13 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       {/* Scrollable Content Area */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto"
+        className="flex-1 overflow-y-auto pb-32"
       >
         {/* Header Section Grouped for Reading Mode - STICKY CONTAINER */}
         <div className="sticky top-0 left-0 right-0 z-50 flex flex-col">
           {/* Main Header/Navbar - SCROLLS AWAY (Hides) */}
           <div 
-            className={`transition-all duration-300 ease-in-out overflow-hidden ${
+            className={`transition-all duration-300 ease-in-out overflow-hidden z-[50] ${
               !showBottomNav ? 'h-0 opacity-0 pointer-events-none' : 'h-16 opacity-100'
             }`}
           >
@@ -883,14 +1056,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 </button>
               </div>
 
-              {/* Right side tools - Audio, Music and Settings */}
+              {/* Right side tools - Settings */}
               <div className="flex items-center -space-x-1 ml-auto mr-3">
-                <button
-                  onClick={() => setShowMusicSelector(true)}
-                  className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
-                >
-                  <Music className="size-5 text-[var(--color-gray-900)]" />
-                </button>
                 <button
                   onClick={() => setShowSearch(true)}
                   className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
@@ -1195,256 +1362,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           </div>
         )}
 
-        {showMusicSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowMusicSelector(false)}>
-            <div className="absolute top-20 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg sm:w-full sm:max-w-[400px] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-              {/* Header with loop/shuffle controls */}
-              <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                {/* Empty left side for alignment */}
-                <div className="w-10"></div>
 
-                {/* Right side - Shuffle/Loop, Play, and Close buttons */}
-                <div className="flex items-center space-x-2">
-                  {/* Loop/Shuffle/Repeat Toggle */}
-                  <button
-                    onClick={() => {
-                      const modes: Array<'shuffle' | 'repeat-all' | 'repeat-one'> = ['shuffle', 'repeat-all', 'repeat-one'];
-                      const currentIndex = modes.indexOf(musicLoopMode);
-                      setMusicLoopMode(modes[(currentIndex + 1) % modes.length]);
-                    }}
-                    className="flex items-center space-x-1.5 px-3 py-2 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    {musicLoopMode === 'shuffle' ? (
-                      <>
-                        <Shuffle className="size-5 text-[#31393a]" />
-                        <span className="text-sm text-[#31393a]">Shuffle</span>
-                      </>
-                    ) : musicLoopMode === 'repeat-all' ? (
-                      <>
-                        <Repeat className="size-5 text-[#31393a]" />
-                        <span className="text-sm text-[#31393a]">Repeat All</span>
-                      </>
-                    ) : (
-                      <>
-                        <Repeat1 className="size-5 text-[#31393a]" />
-                        <span className="text-sm text-[#31393a]">Repeat One</span>
-                      </>
-                    )}
-                  </button>
 
-                  {/* Play button */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (selectedMusic && selectedMusic !== 'none') {
-                        setAudioPlaying(!audioPlaying);
-                      }
-                    }}
-                    disabled={!selectedMusic || selectedMusic === 'none'}
-                    className={`p-2 rounded-full transition-colors ${selectedMusic && selectedMusic !== 'none'
-                      ? 'hover:bg-gray-100 cursor-pointer'
-                      : 'opacity-40 cursor-not-allowed'
-                      }`}
-                  >
-                    {audioPlaying ? (
-                      <Pause className="size-5 text-[#31393a] fill-current" />
-                    ) : (
-                      <Play className="size-5 text-[#31393a] fill-current" />
-                    )}
-                  </button>
 
-                  {/* Close button */}
-                  <button onClick={() => setShowMusicSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                    <X className="size-6 text-[#31393a]/60" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Content - Music list (max 5 tracks visible) */}
-              <div className="overflow-y-auto px-4 pb-4 max-h-[360px]">
-                <div className="space-y-3">
-                  {musicTracks.map((track) => (
-                    <button
-                      key={track.id}
-                      onClick={() => setSelectedMusic(track.id)}
-                      className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${selectedMusic === track.id
-                        ? 'bg-[#fbebee]'
-                        : 'bg-transparent hover:bg-gray-50'
-                        }`}
-                    >
-                      {/* Left side - Thumbnail and name */}
-                      <div className="flex items-center space-x-3">
-                        {/* Thumbnail with play icon overlay for selected track */}
-                        <div className="size-12 rounded-full overflow-hidden bg-black flex-shrink-0 relative">
-                          {track.thumbnail ? (
-                            <img src={track.thumbnail} alt={track.name} className="size-full object-cover" />
-                          ) : (
-                            <div className="size-full bg-black" />
-                          )}
-
-                          {/* Play icon overlay for selected music */}
-                          {selectedMusic === track.id && track.id !== 'none' && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                              <Play className="size-5 text-white fill-current" />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Track name */}
-                        <span className={`text-base ${selectedMusic === track.id
-                          ? 'text-[#d23952] font-medium'
-                          : 'text-[#31393a]'
-                          }`}>
-                          {track.name}
-                        </span>
-                      </div>
-
-                      {/* Right side - Equalizer indicator */}
-                      {selectedMusic === track.id && track.id !== 'none' ? (
-                        <EqualizerIcon className="text-[#d23952] h-5" />
-                      ) : (
-                        <div className="w-5" />
-                      )}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Audio Control Panel */}
-        {/* <AudioControlPanel
-          isOpen={showAudioControlPanel}
-          onClose={() => setShowAudioControlPanel(false)}
-          selectedVerse={selectedVerse}
-          audioCurrentTime={audioCurrentTime}
-          audioDuration={audioDuration}
-          audioPlaying={audioPlaying}
-          playbackSpeed={playbackSpeed}
-          onVerseChange={setSelectedVerse}
-          onTimeChange={setAudioCurrentTime}
-          onPlayPauseToggle={handleNarrationPlayPause}
-          onSpeedChange={setPlaybackSpeed}
-          onTimerClick={() => setShowTimerMenu(true)}
-        /> */}
-
-        {/* Timer Menu */}
-        {showTimerMenu && (
-          <div className="fixed inset-0 z-[110] bg-black/20" onClick={() => setShowTimerMenu(false)}>
-            <div
-              className="absolute bottom-0 left-0 right-0 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border-t border-white/30 rounded-t-[32px] shadow-[0px_8px_12px_6px_rgba(0,0,0,0.15),0px_4px_4px_0px_rgba(0,0,0,0.3)] max-w-[600px] mx-auto max-h-[70vh] overflow-hidden flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <button
-                  onClick={() => setShowTimerMenu(false)}
-                  className="flex items-center gap-1 text-[#31393a]"
-                >
-                  <ChevronLeft className="size-5" />
-                  <span className="text-base">Back</span>
-                </button>
-                <h3 className="text-lg font-semibold text-[#31393a]">Timer</h3>
-                <button
-                  onClick={() => setShowTimerMenu(false)}
-                  className="text-base text-[#006a6f] font-medium"
-                >
-                  Done
-                </button>
-              </div>
-
-              {/* Timer Options */}
-              <div className="flex-1 overflow-y-auto px-6 py-4">
-                <div className="space-y-0">
-                  {/* Stop the timer */}
-                  <button
-                    onClick={() => setSelectedTimer('stop')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">Timer Off</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'stop'
-                      ? 'bg-[#d23952] border-[#d23952]'
-                      : 'border-gray-300'
-                      }`} />
-                  </button>
-
-                  {/* End of this chapter */}
-                  <button
-                    onClick={() => setSelectedTimer('end-chapter')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">End of this chapter</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'end-chapter'
-                      ? 'bg-[#d23952] border-[#d23952]'
-                      : 'border-gray-300'
-                      }`} />
-                  </button>
-
-                  {/* 10 mins */}
-                  <button
-                    onClick={() => setSelectedTimer('10-mins')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">10 mins</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '10-mins'
-                      ? 'bg-[#d23952] border-[#d23952]'
-                      : 'border-gray-300'
-                      }`} />
-                  </button>
-
-                  {/* 15 mins */}
-                  <button
-                    onClick={() => setSelectedTimer('15-mins')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">15 mins</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '15-mins'
-                      ? 'bg-[#d23952] border-[#d23952]'
-                      : 'border-gray-300'
-                      }`} />
-                  </button>
-
-                  {/* 30 mins */}
-                  <button
-                    onClick={() => setSelectedTimer('30-mins')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">30 mins</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '30-mins'
-                      ? 'bg-[#d23952] border-[#d23952]'
-                      : 'border-gray-300'
-                      }`} />
-                  </button>
-
-                  {/* 1 hr */}
-                  <button
-                    onClick={() => setSelectedTimer('1-hr')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">1 hr</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '1-hr'
-                      ? 'bg-[#d23952] border-[#d23952]'
-                      : 'border-gray-300'
-                      }`} />
-                  </button>
-
-                  {/* 2 hrs */}
-                  <button
-                    onClick={() => setSelectedTimer('2-hrs')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">2 hrs</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '2-hrs'
-                      ? 'bg-[#d23952] border-[#d23952]'
-                      : 'border-gray-300'
-                      }`} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* More Menu (Three Dots) - Simple menu with options */}
         {showMoreMenu && (
@@ -1678,11 +1598,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         {/* Main Reading Content */}
         <div
           className="transition-colors duration-300 relative overflow-hidden"
-          style={{ 
-            backgroundColor: currentTheme.bg,
-            perspective: pageTransition === 'curl' ? '2000px' : 'none',
-            transformStyle: 'preserve-3d'
-          }}
+          style={{ backgroundColor: currentTheme.bg }}
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
@@ -1702,8 +1618,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               displayVersionName2={displaySecondVersionName}
             />
           ) : pageTransition === 'slide' && isDragging ? (
-            /* Interactive slide mode ... */
-            /* Interactive slide mode - show both pages */
+            /* Interactive drag mode — show both pages during swipe */
             <>
               {/* Next page (shows when dragging left) */}
               {dragOffset < 0 && (
@@ -1711,7 +1626,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   className="absolute inset-0"
                   style={{
                     transform: `translateX(${100 + (dragOffset / window.innerWidth) * 100}%)`,
-                    backgroundColor: currentTheme.bg
+                    backgroundColor: currentTheme.bg,
+                    willChange: 'transform',
                   }}
                 >
                   <ChapterContent
@@ -1733,7 +1649,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   className="absolute inset-0"
                   style={{
                     transform: `translateX(${-100 + (dragOffset / window.innerWidth) * 100}%)`,
-                    backgroundColor: currentTheme.bg
+                    backgroundColor: currentTheme.bg,
+                    willChange: 'transform',
                   }}
                 >
                   <ChapterContent
@@ -1754,7 +1671,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 className="relative"
                 style={{
                   transform: `translateX(${(dragOffset / window.innerWidth) * 100}%)`,
-                  transition: 'none'
+                  transition: 'none',
+                  willChange: 'transform',
                 }}
               >
                 <ChapterContent
@@ -1769,16 +1687,37 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 />
               </div>
             </>
+          ) : pageTransition === 'curl' ? (
+            /* Curl — delegated to PageTurnTransition for true 3D page flip */
+            <PageTurnTransition
+              pageKey={chapterKey}
+              direction={transitionDirection === 'next' ? 1 : -1}
+              backgroundColor={currentTheme.bg}
+            >
+              <ChapterContent
+                book={selectedBookId || ''}
+                chapter={selectedChapter}
+                font={selectedFont}
+                fontSize={fontSize}
+                version={selectedVersionId || undefined}
+                scrollToVerse={selectedVerse}
+                readingVerse={currentVerse}
+                theme={currentTheme}
+              />
+            </PageTurnTransition>
           ) : (
-            /* Normal transition modes */
-            <AnimatePresence mode={pageTransition === 'curl' ? 'popLayout' : 'wait'} initial={false}>
+            /* Slide, Fade, Scroll — framer-motion AnimatePresence */
+            <AnimatePresence
+              mode={pageTransition === 'slide' ? 'sync' : 'wait'}
+              initial={false}
+            >
               <motion.div
                 key={chapterKey}
                 initial="initial"
                 animate="animate"
                 exit="exit"
                 variants={getTransitionVariants()}
-                transition={transitionConfig[pageTransition]}
+                style={{ willChange: 'transform, opacity' }}
               >
                 <ChapterContent
                   book={selectedBookId || ''}
@@ -1796,21 +1735,251 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         </div>
       </div>
 
-      {!comparisonMode && selectedBookId && selectedVersionId && (
-        <AudioPlayer 
-          bookName={displayBookName}
-          chapterNumber={selectedChapter}
-          versionId={selectedVersionId}
-          onNextChapter={handleNext}
-          onPrevChapter={handlePrevious}
-          versesCount={currentChapterVerses.length}
-          verses={currentChapterVerses}
-          language={bibleVersions.find(v => v.id === selectedVersionId)?.language === 'Telugu' ? 'te-IN' : 
-                    bibleVersions.find(v => v.id === selectedVersionId)?.language === 'Hindi' ? 'hi-IN' : 'en-US'}
-        />
-      )}
 
-      {/* Old Audio Controls Removed in favor of Production-Grade Player */}
+      {/* ── TTS SETTINGS POPUP ─────────────────────────────── */}
+      <AnimatePresence>
+        {showTTSSettings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1100]"
+            onClick={() => setShowTTSSettings(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 10, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
+              className="absolute bottom-[120px] left-1/2 -translate-x-1/2 w-[90%] max-w-[340px] bg-white/95 backdrop-blur-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.18)] rounded-2xl overflow-hidden"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-gray-100">
+                <span className="text-sm font-semibold text-[#31393a]">Narration Settings</span>
+                <button
+                  onClick={() => setShowTTSSettings(false)}
+                  className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="size-4 text-[#31393a]/60" />
+                </button>
+              </div>
+
+              <div className="px-5 py-4 space-y-5 max-h-[50vh] overflow-y-auto">
+                {/* Speed */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-[#31393a]/70 uppercase tracking-wide">Speed</label>
+                    <span className="text-sm font-bold text-[var(--color-primary-teal)]">{ttsRate.toFixed(1)}×</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="2"
+                    step="0.25"
+                    value={ttsRate}
+                    onChange={(e) => setTtsRate(Number(e.target.value))}
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer
+                      [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-5
+                      [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--color-primary-teal)]
+                      [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-[#cde8e8]
+                      [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full
+                      [&::-moz-range-thumb]:bg-[var(--color-primary-teal)] [&::-moz-range-thumb]:border-4
+                      [&::-moz-range-thumb]:border-[#cde8e8]"
+                    style={{
+                      background: `linear-gradient(to right, var(--color-primary-teal) 0%, var(--color-primary-teal) ${((ttsRate - 0.5) / 1.5) * 100}%, #e5e7e7 ${((ttsRate - 0.5) / 1.5) * 100}%, #e5e7e7 100%)`
+                    }}
+                  />
+                  <div className="flex justify-between text-[10px] text-[#31393a]/40 font-medium">
+                    <span>0.5×</span><span>1×</span><span>1.5×</span><span>2×</span>
+                  </div>
+                </div>
+
+                {/* Volume */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-[#31393a]/70 uppercase tracking-wide">Volume</label>
+                    <span className="text-sm font-bold text-[var(--color-primary-teal)]">{Math.round(ttsVolume * 100)}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={ttsVolume}
+                    onChange={(e) => setTtsVolume(Number(e.target.value))}
+                    className="w-full h-2 rounded-full appearance-none cursor-pointer
+                      [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-5
+                      [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--color-primary-teal)]
+                      [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-[#cde8e8]
+                      [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full
+                      [&::-moz-range-thumb]:bg-[var(--color-primary-teal)] [&::-moz-range-thumb]:border-4
+                      [&::-moz-range-thumb]:border-[#cde8e8]"
+                    style={{
+                      background: `linear-gradient(to right, var(--color-primary-teal) 0%, var(--color-primary-teal) ${ttsVolume * 100}%, #e5e7e7 ${ttsVolume * 100}%, #e5e7e7 100%)`
+                    }}
+                  />
+                </div>
+
+                {/* Voice */}
+                {availableVoices.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-[#31393a]/70 uppercase tracking-wide">Voice</label>
+                    <div className="relative">
+                      <select
+                        value={ttsVoice?.name || ''}
+                        onChange={(e) => {
+                          const voice = availableVoices.find(v => v.name === e.target.value) || null;
+                          setTtsVoice(voice);
+                        }}
+                        className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-[#31393a] appearance-none focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/40 cursor-pointer"
+                      >
+                        <option value="">Default Voice</option>
+                        {availableVoices.map(v => (
+                          <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 text-[#31393a]/40 pointer-events-none" />
+                    </div>
+                  </div>
+                )}
+
+                {/* Current verse indicator */}
+                {(ttsPlaying || ttsPaused) && currentChapterVerses.length > 0 && (
+                  <div className="bg-[var(--color-accent-rose-lighter)] rounded-xl px-4 py-2.5 flex items-center justify-between">
+                    <span className="text-xs text-[var(--color-accent-rose)] font-medium">
+                      Verse {ttsCurrentVerseIndex + 1} of {currentChapterVerses.length}
+                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <div className={`size-1.5 rounded-full ${ttsPlaying && !ttsPaused ? 'bg-[var(--color-accent-rose)] animate-pulse' : 'bg-[var(--color-accent-rose)]/50'}`} />
+                      <span className="text-xs text-[var(--color-accent-rose)]/70">
+                        {ttsPaused ? 'Paused' : 'Playing'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── NARRATION CONTROLS (Always Visible) ─────────────────────────────── */}
+      <div
+        className="fixed left-0 right-0 z-[1000] pointer-events-none"
+        style={{ bottom: showBottomNav ? '88px' : '10px' }}
+      >
+        <div className="max-w-3xl mx-auto px-6 relative h-16 flex items-center justify-center">
+
+          {/* Previous Chapter Button */}
+          {(!isFirstChapterOfBible) && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              onClick={(e) => { e.preventDefault(); handlePrevious(); }}
+              className="absolute left-6 pointer-events-auto size-14 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] flex items-center justify-center text-[#31393a] hover:scale-105 active:scale-95 transition-all"
+              title="Previous Chapter"
+            >
+              <ChevronLeft className="size-7" />
+            </motion.button>
+          )}
+
+          {/* Center: TTS Controls cluster */}
+          <div className="pointer-events-auto relative flex flex-col items-center gap-0">
+
+            {/* Settings (SlidersHorizontal) icon — above play button when playing/paused */}
+            <AnimatePresence>
+              {(ttsPlaying || ttsPaused || true) && (
+                <motion.button
+                  key="tts-settings"
+                  type="button"
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 6 }}
+                  onClick={(e) => { e.preventDefault(); setShowTTSSettings(v => !v); }}
+                  className={`mb-1.5 p-2 rounded-full transition-all shadow-sm ${showTTSSettings ? 'bg-[var(--color-primary-teal)] text-white' : 'bg-white/90 text-[#31393a]/70 hover:text-[var(--color-primary-teal)]'}`}
+                  title="Narration Settings"
+                >
+                  <SlidersHorizontal className="size-4" />
+                </motion.button>
+              )}
+            </AnimatePresence>
+
+            {/* Play / Pause / Resume main button */}
+            <div className="relative flex items-center gap-3">
+              {/* Stop button (only while active) */}
+              <AnimatePresence>
+                {(ttsPlaying || ttsPaused) && (
+                  <motion.button
+                    key="stop-btn"
+                    type="button"
+                    initial={{ opacity: 0, scale: 0.7 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.7 }}
+                    onClick={(e) => { e.preventDefault(); stopTTS(); }}
+                    className="size-10 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.12)] flex items-center justify-center text-rose-500 hover:scale-110 active:scale-95 transition-all"
+                    title="Stop Narration"
+                  >
+                    <Square className="size-4 fill-current" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
+              {/* Main play/pause circle button */}
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); toggleTTS(); }}
+                className="relative size-16 group pointer-events-auto"
+                title={ttsPlaying && !ttsPaused ? 'Pause' : ttsPaused ? 'Resume' : 'Play Narration'}
+              >
+                <svg className="absolute inset-0 size-full -rotate-90 pointer-events-none">
+                  <circle cx="32" cy="32" r="30" fill="white" />
+                  <motion.circle
+                    cx="32" cy="32" r="30"
+                    fill="transparent"
+                    stroke="var(--color-primary-teal)"
+                    strokeWidth="3"
+                    strokeDasharray={2 * Math.PI * 30}
+                    animate={{
+                      strokeDashoffset: 2 * Math.PI * 30 * (1 - ((ttsPlaying || ttsPaused) ? (ttsCurrentVerseIndex + 1) / (currentChapterVerses.length || 1) : 0))
+                    }}
+                    transition={{ type: 'spring', stiffness: 50, damping: 20 }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="size-12 flex items-center justify-center transition-transform group-hover:scale-110">
+                    {ttsPlaying && !ttsPaused ? (
+                      <Pause className="size-6 text-[var(--color-primary-teal)] fill-current" />
+                    ) : ttsPaused ? (
+                      <Play className="size-6 text-[var(--color-primary-teal)] fill-current translate-x-0.5" />
+                    ) : (
+                      <Play className="size-6 text-[var(--color-primary-teal)] fill-current translate-x-0.5" />
+                    )}
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Next Chapter Button */}
+          {(!isLastChapterOfBible) && (
+            <motion.button
+              type="button"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              onClick={(e) => { e.preventDefault(); handleNext(); }}
+              className="absolute right-6 pointer-events-auto size-14 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.1)] flex items-center justify-center text-[#31393a] hover:scale-105 active:scale-95 transition-all"
+              title="Next Chapter"
+            >
+              <ChevronRight className="size-7" />
+            </motion.button>
+          )}
+        </div>
+      </div>
+
+
+
 
       {/* Side Menu Overlay */}
       {menuOpen && (
