@@ -6,6 +6,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
+import ProfilePanel from './ProfilePanel';
 
 interface AppHeaderProps {
   onMenuOpen?: () => void;
@@ -15,6 +16,7 @@ interface AppHeaderProps {
 export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
   const { data: session } = useSession();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false);
   const [isLangOpen, setIsLangOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const langRef = useRef<HTMLDivElement>(null);
@@ -144,7 +146,13 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
           {/* User Profile Navigation */}
           <div className="relative" ref={dropdownRef}>
             <button
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
+              onClick={() => {
+                if (session?.user) {
+                  setIsProfilePanelOpen(true);
+                } else {
+                  setIsProfileOpen(!isProfileOpen);
+                }
+              }}
               className="flex items-center gap-2 px-3 py-2 rounded-full border border-white/30
             hover:bg-white/10 hover:scale-105 active:scale-95
             transition-all duration-200"
@@ -258,6 +266,16 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
           </div>
         </div>
       </div>
+
+      {/* Profile Dashboard Panel (authenticated users only) */}
+      {session && (
+        <ProfilePanel
+          isOpen={isProfilePanelOpen}
+          onClose={() => setIsProfilePanelOpen(false)}
+          session={session}
+          onMenuOpen={onMenuOpen}
+        />
+      )}
     </div>
   );
 }

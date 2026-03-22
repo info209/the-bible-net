@@ -1,7 +1,9 @@
 "use client";
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
-import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, MoreVertical, X, ChevronLeft, ChevronRight, Check, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, SlidersHorizontal, Square } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, MoreVertical, X, ChevronLeft, ChevronRight, Check, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, SlidersHorizontal, Square, Bookmark, BookmarkCheck } from 'lucide-react';
+import { useSession } from 'next-auth/react';
+import { useSavedItems } from '@/lib/useSavedItems';
 import { RiSortDesc, RiSortAlphabetAsc } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
@@ -68,7 +70,10 @@ interface BibleReaderPageProps {
 export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const { currentVerse, setCurrentVerse, setCurrentChapter: setStoreChapter } = useMediaStore();
   const { updateProgress, latestProgress } = useReadingProgress();
-  
+  const { data: session } = useSession();
+  const router = useRouter();
+  const { isSaved, getSavedItem, toggleSave } = useSavedItems();
+
   // determine whether we are on bible page; if not, render only nav bar
   const pathname = usePathname();
   const isBiblePage = pathname?.startsWith('/bible') || false;
@@ -103,7 +108,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [ttsVolume, setTtsVolume] = useState(1.0);
   const [ttsVoice, setTtsVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
-  const [showTTSSettings, setShowTTSSettings] = useState(false);
+  const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
+  const [repeatMode, setRepeatMode] = useState<'none' | 'chapter' | 'verse'>('none');
+  const [sleepTimer, setSleepTimer] = useState<number | null>(null);
+  const isLongPressRef = useRef(false);
+  const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const [selectedFont, setSelectedFont] = useState('Times New Roman');
   const [fontSize, setFontSize] = useState(18);
   const [pageTransition, setPageTransition] = useState<'slide' | 'curl' | 'fade' | 'scroll'>('slide');
@@ -178,6 +187,22 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const isAnyPopupOpen = showBookSelector || showChapterSelector ||
     showVersionSelector || showMoreMenu ||
     showSettingsMenu || showSearch || showVerseSelector;
+
+  // ESC key closes any open popup
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (showBookSelector) setShowBookSelector(false);
+      else if (showChapterSelector) setShowChapterSelector(false);
+      else if (showVerseSelector) setShowVerseSelector(false);
+      else if (showVersionSelector) setShowVersionSelector(false);
+      else if (showSettingsMenu) setShowSettingsMenu(false);
+      else if (showMoreMenu) setShowMoreMenu(false);
+      else if (showSearch) setShowSearch(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showBookSelector, showChapterSelector, showVerseSelector, showVersionSelector, showSettingsMenu, showMoreMenu, showSearch]);
 
   // Fetch Bible Versions on mount
   useEffect(() => {
@@ -546,6 +571,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   useEffect(() => { ttsPlayingRef.current = ttsPlaying; }, [ttsPlaying]);
   useEffect(() => { ttsPausedRef.current = ttsPaused; }, [ttsPaused]);
   useEffect(() => { ttsIndexRef.current = ttsCurrentVerseIndex; }, [ttsCurrentVerseIndex]);
+  const repeatModeRef = useRef(repeatMode);
+  useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
 
   // Internal speak function — reads from refs, never from state
   const speakAtIndex = useCallback((index: number) => {
@@ -553,6 +580,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     if (isCleaningUpRef.current) return;
     if (!ttsPlayingRef.current || ttsPausedRef.current) return;
     if (!currentChapterVerses || index >= currentChapterVerses.length) {
+      if (repeatModeRef.current === 'chapter' && currentChapterVerses && currentChapterVerses.length > 0) {
+        // Use timeout to avoid deep recursion if many verses are short or skip, though usually not an issue.
+        setTimeout(() => speakAtIndex(0), 10);
+        return;
+      }
       // End of chapter — stop cleanly
       ttsPlayingRef.current = false;
       setTtsPlaying(false);
@@ -584,7 +616,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     utterance.onend = () => {
       if (isCleaningUpRef.current) return;
       if (ttsPlayingRef.current && !ttsPausedRef.current) {
-        speakAtIndex(index + 1);
+        if (repeatModeRef.current === 'verse') {
+          speakAtIndex(index);
+        } else {
+          speakAtIndex(index + 1);
+        }
       }
     };
 
@@ -658,6 +694,58 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       resumeTTS();
     }
   }, [ttsPlaying, ttsPaused, startTTS, pauseTTS, resumeTTS]);
+
+  // Long press handling
+  const handlePlaybackPressStart = useCallback(() => {
+    isLongPressRef.current = false;
+    pressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      setIsControlPanelOpen(true);
+    }, 1500); // 1.5 seconds long press
+  }, []);
+
+  const handlePlaybackPressEnd = useCallback(() => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+    // If it wasn't a long press, it was a tap
+    if (!isLongPressRef.current) {
+      toggleTTS();
+    }
+    isLongPressRef.current = false;
+  }, [toggleTTS]);
+
+  const handlePlaybackPressCancel = useCallback(() => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
+    isLongPressRef.current = false;
+  }, []);
+
+  // TTS Control additions
+  const handlePrevVerse = useCallback(() => {
+    if (ttsCurrentVerseIndex > 0) {
+      stopTTS();
+      setTimeout(() => startTTS(ttsCurrentVerseIndex - 1), 50);
+    }
+  }, [ttsCurrentVerseIndex, stopTTS, startTTS]);
+
+  const handleNextVerse = useCallback(() => {
+    if (currentChapterVerses && ttsCurrentVerseIndex < currentChapterVerses.length - 1) {
+      stopTTS();
+      setTimeout(() => startTTS(ttsCurrentVerseIndex + 1), 50);
+    }
+  }, [ttsCurrentVerseIndex, currentChapterVerses, stopTTS, startTTS]);
+
+  const toggleRepeatMode = useCallback(() => {
+    setRepeatMode(prev => {
+      if (prev === 'none') return 'chapter';
+      if (prev === 'chapter') return 'verse';
+      return 'none';
+    });
+  }, []);
 
   // Reset TTS when chapter / book / version changes
   useEffect(() => {
@@ -1078,8 +1166,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
         {/* Selector panels */}
         {showBookSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowBookSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[9999] bg-black/20" onClick={() => setShowBookSelector(false)}>
+            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
               {/* Header */}
               <div className="flex items-center justify-between p-4">
                 <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Books</h3>
@@ -1127,10 +1215,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 {isLoadingBooks ? (
                   <BookListSkeleton />
                 ) : (
-                  <div className="grid grid-cols-2 gap-8">
+                  <div className="grid grid-cols-2 gap-4">
                     {/* Old Testament */}
                     <div>
-                      <h4 style={{background:"#f6f6f6"}} className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 text-sm font-semibold z-10">Old Testament</h4>
+                      <h4 style={{background:"#ffffff"}} className="sticky top-0 text-[var(--color-text-primary)] mb-4 text-xl font-bold z-10 pt-1">Old Testament</h4>
                       <div className="space-y-2">
                         {(bookSortType === 'alphabetical'
                           ? [...bibleBooksState['Old Testament']].sort((a, b) => a.name.localeCompare(b.name))
@@ -1157,7 +1245,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
                     {/* New Testament */}
                     <div>
-                      <h4 style={{background:"#f6f6f6"}} className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3. text-sm font-semibold z-10">New Testament</h4>
+                      <h4 style={{background:"#ffffff"}} className="sticky top-0 text-[var(--color-text-primary)] mb-4 text-xl font-bold z-10 pt-1">New Testament</h4>
                       <div className="space-y-2">
                         {(bookSortType === 'alphabetical'
                           ? [...bibleBooksState['New Testament']].sort((a, b) => a.name.localeCompare(b.name))
@@ -1189,8 +1277,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         )}
 
         {showChapterSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowChapterSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[9999] bg-black/20" onClick={() => setShowChapterSelector(false)}>
+            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
               {/* Header with Done button */}
               <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
                 <div className="w-16"></div> {/* Spacer for centering */}
@@ -1229,8 +1317,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         )}
 
         {showVerseSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowVerseSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[9999] bg-black/20" onClick={() => setShowVerseSelector(false)}>
+            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
               {/* Header with Back and Done buttons */}
               <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
                 <button
@@ -1281,8 +1369,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         )}
 
         {showVersionSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowVersionSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[9999] bg-black/20" onClick={() => setShowVersionSelector(false)}>
+            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
               {/* Close button */}
               <div className="flex justify-end p-4">
                 <button onClick={() => setShowVersionSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -1367,10 +1455,57 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
 
         {/* More Menu (Three Dots) - Simple menu with options */}
-        {showMoreMenu && (
-          <div className="fixed inset-0 z-[40] bg-black/20" onClick={() => setShowMoreMenu(false)}>
-            <div className="absolute bottom-[100px] right-6 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[280px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        {showMoreMenu && (() => {
+          // Build the refId for the current chapter
+          const chapterRefId = selectedBookId && selectedVersionId
+            ? `${selectedBookId}_${selectedChapter}_${selectedVersionId}`
+            : null;
+          const chapterSaved = chapterRefId ? isSaved('bible', chapterRefId) : false;
+          const savedDoc = chapterRefId ? getSavedItem('bible', chapterRefId) : undefined;
+
+          const handleSaveChapter = async () => {
+            if (!session?.user) {
+              setShowMoreMenu(false);
+              router.push('/auth/signin');
+              return;
+            }
+            if (!chapterRefId || !selectedBookId || !selectedVersionId) return;
+            setShowMoreMenu(false);
+            await toggleSave({
+              type: 'bible',
+              refId: chapterRefId,
+              metadata: {
+                bookId: selectedBookId,
+                bookName: displayBookName,
+                chapter: selectedChapter,
+                versionId: selectedVersionId,
+                versionName: displayVersionName ?? undefined,
+              },
+            });
+          };
+
+          return (
+          <div className="fixed inset-0 z-[9999] bg-transparent" onClick={() => setShowMoreMenu(false)}>
+            <div className="absolute top-[112px] right-4 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-[280px] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
               <div className="py-2">
+                {/* Save Chapter */}
+                <button
+                  id="save-chapter-btn"
+                  onClick={handleSaveChapter}
+                  className="w-full px-4 py-3 text-left text-base hover:bg-gray-100/50 transition-colors flex items-center gap-3"
+                >
+                  {chapterSaved ? (
+                    <BookmarkCheck className="size-5 text-[#41ADB0] flex-shrink-0" />
+                  ) : (
+                    <Bookmark className="size-5 text-[#31393a]/60 flex-shrink-0" />
+                  )}
+                  <span className={chapterSaved ? 'text-[#41ADB0] font-medium' : 'text-[#31393a]'}>
+                    {chapterSaved ? 'Chapter Saved' : 'Save Chapter'}
+                  </span>
+                </button>
+
+                <div className="h-px bg-gray-100 mx-4" />
+
                 {/* Fonts & Settings Option */}
                 <button
                   onClick={() => {
@@ -1430,12 +1565,13 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               </div>
             </div>
           </div>
-        )}
+          );
+        })()}
 
         {/* Settings Menu */}
         {showSettingsMenu && (
-          <div className="fixed inset-0 z-[40] bg-black/5 shadow-2xl backdrop-blur-sm" onClick={() => setShowSettingsMenu(false)}>
-            <div className="absolute bottom-[100px] left-1/2 -translate-x-1/2 apple-nav-floating w-[90%] max-w-[380px] max-h-[70vh] overflow-hidden flex flex-col transition-all duration-500 animate-in slide-in-from-bottom-8 fade-in zoom-in-95 duration-300" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[9999] bg-black/20" onClick={() => setShowSettingsMenu(false)}>
+            <div className="absolute top-[112px] right-4 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-[90%] max-w-[380px] max-h-[70vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-200">
                 <div className="w-12" /> {/* Spacer instead of Back button */}
@@ -1737,127 +1873,122 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
 
       {/* ── TTS SETTINGS POPUP ─────────────────────────────── */}
+      {/* ── AUDIO CONTROL PANEL (BOTTOM SHEET) ──────────────── */}
       <AnimatePresence>
-        {showTTSSettings && (
+        {isControlPanelOpen && (
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1100]"
-            onClick={() => setShowTTSSettings(false)}
+            className="fixed inset-0 z-[1100] bg-black/40 backdrop-blur-sm"
+            onClick={() => setIsControlPanelOpen(false)}
           >
             <motion.div
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 28 }}
-              className="absolute bottom-[120px] left-1/2 -translate-x-1/2 w-[90%] max-w-[340px] bg-white/95 backdrop-blur-2xl border border-white/40 shadow-[0_8px_32px_rgba(0,0,0,0.18)] rounded-2xl overflow-hidden"
+              initial={{ opacity: 0, y: "100%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: "100%" }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="absolute bottom-0 left-0 right-0 w-full max-w-2xl mx-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.12)] border-t border-white/40 pb-safe z-[1110]"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Header */}
-              <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-gray-100">
-                <span className="text-sm font-semibold text-[#31393a]">Narration Settings</span>
-                <button
-                  onClick={() => setShowTTSSettings(false)}
-                  className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <X className="size-4 text-[#31393a]/60" />
-                </button>
+              {/* Drag Handle & Header */}
+              <div className="flex flex-col items-center pt-3 pb-4">
+                <div className="w-12 h-1.5 bg-gray-300 rounded-full mb-4" />
+                <h3 className="text-lg font-bold text-[#31393a]">
+                  {displayBookName} {selectedChapter} {currentVerse ? `:${currentVerse}` : ''}
+                </h3>
+                <p className="text-sm font-medium text-[var(--color-primary-teal)] mt-1">
+                  {displayVersionName}
+                </p>
               </div>
 
-              <div className="px-5 py-4 space-y-5 max-h-[50vh] overflow-y-auto">
-                {/* Speed */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-[#31393a]/70 uppercase tracking-wide">Speed</label>
-                    <span className="text-sm font-bold text-[var(--color-primary-teal)]">{ttsRate.toFixed(1)}×</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.5"
-                    max="2"
-                    step="0.25"
-                    value={ttsRate}
-                    onChange={(e) => setTtsRate(Number(e.target.value))}
-                    className="w-full h-2 rounded-full appearance-none cursor-pointer
-                      [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-5
-                      [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--color-primary-teal)]
-                      [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-[#cde8e8]
-                      [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full
-                      [&::-moz-range-thumb]:bg-[var(--color-primary-teal)] [&::-moz-range-thumb]:border-4
-                      [&::-moz-range-thumb]:border-[#cde8e8]"
-                    style={{
-                      background: `linear-gradient(to right, var(--color-primary-teal) 0%, var(--color-primary-teal) ${((ttsRate - 0.5) / 1.5) * 100}%, #e5e7e7 ${((ttsRate - 0.5) / 1.5) * 100}%, #e5e7e7 100%)`
-                    }}
-                  />
-                  <div className="flex justify-between text-[10px] text-[#31393a]/40 font-medium">
-                    <span>0.5×</span><span>1×</span><span>1.5×</span><span>2×</span>
-                  </div>
+              <div className="px-6 py-2 space-y-8">
+                {/* Main Playback Controls */}
+                <div className="flex items-center justify-center gap-8">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handlePrevVerse(); }}
+                    className="p-3 text-[#31393a] hover:text-[var(--color-primary-teal)] transition-colors active:scale-95 rounded-full hover:bg-black/5"
+                  >
+                    <SkipBack className="size-8 fill-current" />
+                  </button>
+
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleTTS(); }}
+                    className="size-20 rounded-full bg-[var(--color-primary-teal)] flex items-center justify-center text-white shadow-[0_8px_24px_rgba(0,106,111,0.3)] hover:scale-105 active:scale-95 transition-all"
+                  >
+                    {ttsPlaying && !ttsPaused ? (
+                      <Pause className="size-10 fill-current" />
+                    ) : (
+                      <Play className="size-10 fill-current translate-x-1" />
+                    )}
+                  </button>
+
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleNextVerse(); }}
+                    className="p-3 text-[#31393a] hover:text-[var(--color-primary-teal)] transition-colors active:scale-95 rounded-full hover:bg-black/5"
+                  >
+                    <SkipForward className="size-8 fill-current" />
+                  </button>
                 </div>
 
-                {/* Volume */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-[#31393a]/70 uppercase tracking-wide">Volume</label>
-                    <span className="text-sm font-bold text-[var(--color-primary-teal)]">{Math.round(ttsVolume * 100)}%</span>
+                {/* Auxiliary Controls Grid */}
+                <div className="grid grid-cols-5 bg-gray-50 rounded-2xl p-2 max-w-sm mx-auto">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); toggleRepeatMode(); }}
+                    className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl transition-colors ${repeatMode !== 'none' ? 'text-[var(--color-primary-teal)] bg-[var(--color-primary-teal)]/10' : 'text-[#31393a]/60 hover:bg-gray-200/50'}`}
+                  >
+                    <RotateCw className="size-5" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">{repeatMode === 'verse' ? 'Verse' : repeatMode === 'chapter' ? 'Chap' : 'None'}</span>
+                  </button>
+
+                  <div className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-[#31393a]/60 relative group cursor-pointer hover:bg-gray-200/50">
+                    <Volume2 className="size-5" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">{Math.round(ttsVolume * 100)}%</span>
                   </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="1"
-                    step="0.05"
-                    value={ttsVolume}
-                    onChange={(e) => setTtsVolume(Number(e.target.value))}
-                    className="w-full h-2 rounded-full appearance-none cursor-pointer
-                      [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-5
-                      [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--color-primary-teal)]
-                      [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-[#cde8e8]
-                      [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full
-                      [&::-moz-range-thumb]:bg-[var(--color-primary-teal)] [&::-moz-range-thumb]:border-4
-                      [&::-moz-range-thumb]:border-[#cde8e8]"
-                    style={{
-                      background: `linear-gradient(to right, var(--color-primary-teal) 0%, var(--color-primary-teal) ${ttsVolume * 100}%, #e5e7e7 ${ttsVolume * 100}%, #e5e7e7 100%)`
-                    }}
-                  />
+
+                  <div className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-[#31393a]/60 relative group cursor-pointer hover:bg-gray-200/50">
+                    <Gauge className="size-5" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">{ttsRate}x</span>
+                  </div>
+
+                  <button className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-[#31393a]/60 hover:bg-gray-200/50">
+                    <Timer className="size-5" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Sleep</span>
+                  </button>
+
+                  <button className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-[#31393a]/60 hover:bg-gray-200/50">
+                    <Download className="size-5" />
+                    <span className="text-[10px] uppercase font-bold tracking-wider">Down</span>
+                  </button>
+                </div>
+                
+                {/* Sliders Below (Volume and Speed sliders) */}
+                <div className="px-4 py-2 space-y-4 max-w-sm mx-auto">
+                   <div className="flex items-center gap-3">
+                      <Volume2 className="size-4 text-[#31393a]/40" />
+                      <input
+                        type="range"
+                        min="0" max="1" step="0.05"
+                        value={ttsVolume}
+                        onChange={(e) => setTtsVolume(Number(e.target.value))}
+                        className="flex-1 h-2 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#31393a]"
+                        style={{ background: `linear-gradient(to right, #31393a ${ttsVolume*100}%, #e5e7e7 ${ttsVolume*100}%)` }}
+                      />
+                   </div>
+                   <div className="flex items-center gap-3">
+                      <Gauge className="size-4 text-[#31393a]/40" />
+                      <input
+                        type="range"
+                        min="0.5" max="2" step="0.25"
+                        value={ttsRate}
+                        onChange={(e) => setTtsRate(Number(e.target.value))}
+                        className="flex-1 h-2 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#31393a]"
+                        style={{ background: `linear-gradient(to right, #31393a ${((ttsRate-0.5)/1.5)*100}%, #e5e7e7 ${((ttsRate-0.5)/1.5)*100}%)` }}
+                      />
+                   </div>
                 </div>
 
-                {/* Voice */}
-                {availableVoices.length > 0 && (
-                  <div className="space-y-2">
-                    <label className="text-xs font-semibold text-[#31393a]/70 uppercase tracking-wide">Voice</label>
-                    <div className="relative">
-                      <select
-                        value={ttsVoice?.name || ''}
-                        onChange={(e) => {
-                          const voice = availableVoices.find(v => v.name === e.target.value) || null;
-                          setTtsVoice(voice);
-                        }}
-                        className="w-full px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm text-[#31393a] appearance-none focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/40 cursor-pointer"
-                      >
-                        <option value="">Default Voice</option>
-                        {availableVoices.map(v => (
-                          <option key={v.name} value={v.name}>{v.name} ({v.lang})</option>
-                        ))}
-                      </select>
-                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 size-3.5 text-[#31393a]/40 pointer-events-none" />
-                    </div>
-                  </div>
-                )}
-
-                {/* Current verse indicator */}
-                {(ttsPlaying || ttsPaused) && currentChapterVerses.length > 0 && (
-                  <div className="bg-[var(--color-accent-rose-lighter)] rounded-xl px-4 py-2.5 flex items-center justify-between">
-                    <span className="text-xs text-[var(--color-accent-rose)] font-medium">
-                      Verse {ttsCurrentVerseIndex + 1} of {currentChapterVerses.length}
-                    </span>
-                    <div className="flex items-center gap-1.5">
-                      <div className={`size-1.5 rounded-full ${ttsPlaying && !ttsPaused ? 'bg-[var(--color-accent-rose)] animate-pulse' : 'bg-[var(--color-accent-rose)]/50'}`} />
-                      <span className="text-xs text-[var(--color-accent-rose)]/70">
-                        {ttsPaused ? 'Paused' : 'Playing'}
-                      </span>
-                    </div>
-                  </div>
-                )}
+                <div className="h-6" /> {/* Bottom safe padding */}
               </div>
             </motion.div>
           </motion.div>
@@ -1885,56 +2016,29 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             </motion.button>
           )}
 
-          {/* Center: TTS Controls cluster */}
+          {/* Center: Single Play Button */}
           <div className="pointer-events-auto relative flex flex-col items-center gap-0">
-
-            {/* Settings (SlidersHorizontal) icon — above play button when playing/paused */}
-            <AnimatePresence>
-              {(ttsPlaying || ttsPaused || true) && (
-                <motion.button
-                  key="tts-settings"
-                  type="button"
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 6 }}
-                  onClick={(e) => { e.preventDefault(); setShowTTSSettings(v => !v); }}
-                  className={`mb-1.5 p-2 rounded-full transition-all shadow-sm ${showTTSSettings ? 'bg-[var(--color-primary-teal)] text-white' : 'bg-white/90 text-[#31393a]/70 hover:text-[var(--color-primary-teal)]'}`}
-                  title="Narration Settings"
-                >
-                  <SlidersHorizontal className="size-4" />
-                </motion.button>
-              )}
-            </AnimatePresence>
-
-            {/* Play / Pause / Resume main button */}
             <div className="relative flex items-center gap-3">
-              {/* Stop button (only while active) */}
-              <AnimatePresence>
-                {(ttsPlaying || ttsPaused) && (
-                  <motion.button
-                    key="stop-btn"
-                    type="button"
-                    initial={{ opacity: 0, scale: 0.7 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.7 }}
-                    onClick={(e) => { e.preventDefault(); stopTTS(); }}
-                    className="size-10 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.12)] flex items-center justify-center text-rose-500 hover:scale-110 active:scale-95 transition-all"
-                    title="Stop Narration"
-                  >
-                    <Square className="size-4 fill-current" />
-                  </motion.button>
-                )}
-              </AnimatePresence>
-
               {/* Main play/pause circle button */}
               <button
                 type="button"
-                onClick={(e) => { e.preventDefault(); toggleTTS(); }}
-                className="relative size-16 group pointer-events-auto"
-                title={ttsPlaying && !ttsPaused ? 'Pause' : ttsPaused ? 'Resume' : 'Play Narration'}
+                onMouseDown={handlePlaybackPressStart}
+                onMouseUp={handlePlaybackPressEnd}
+                onMouseLeave={handlePlaybackPressCancel}
+                onTouchStart={handlePlaybackPressStart}
+                onTouchEnd={handlePlaybackPressEnd}
+                onTouchCancel={handlePlaybackPressCancel}
+                onContextMenu={(e) => e.preventDefault()}
+                className="relative size-16 group pointer-events-auto select-none touch-manipulation"
+                title="Tap to Play/Pause, Hold for Controls"
+                style={{
+                  transform: isControlPanelOpen ? 'scale(0)' : 'scale(1)',
+                  opacity: isControlPanelOpen ? 0 : 1,
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
+                }}
               >
                 <svg className="absolute inset-0 size-full -rotate-90 pointer-events-none">
-                  <circle cx="32" cy="32" r="30" fill="white" />
+                  <circle cx="32" cy="32" r="30" fill="white" className="shadow-[0_4px_12px_rgba(0,0,0,0.1)]" />
                   <motion.circle
                     cx="32" cy="32" r="30"
                     fill="transparent"
@@ -1947,14 +2051,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     transition={{ type: 'spring', stiffness: 50, damping: 20 }}
                   />
                 </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="size-12 flex items-center justify-center transition-transform group-hover:scale-110">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div className="size-12 flex items-center justify-center transition-transform group-hover:scale-110 pointer-events-none">
                     {ttsPlaying && !ttsPaused ? (
-                      <Pause className="size-6 text-[var(--color-primary-teal)] fill-current" />
-                    ) : ttsPaused ? (
-                      <Play className="size-6 text-[var(--color-primary-teal)] fill-current translate-x-0.5" />
+                      <Pause className="size-6 text-[var(--color-primary-teal)] fill-current pointer-events-none" />
                     ) : (
-                      <Play className="size-6 text-[var(--color-primary-teal)] fill-current translate-x-0.5" />
+                      <Play className="size-6 text-[var(--color-primary-teal)] fill-current translate-x-0.5 pointer-events-none" />
                     )}
                   </div>
                 </div>
@@ -1977,9 +2079,6 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           )}
         </div>
       </div>
-
-
-
 
       {/* Side Menu Overlay */}
       {menuOpen && (
