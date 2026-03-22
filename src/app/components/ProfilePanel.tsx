@@ -77,7 +77,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
 
   const handleLogout = async () => {
     onClose();
-    await signOut({ callbackUrl: '/home', redirect: true });
+    await signOut({ callbackUrl: `${window.location.origin}/home`, redirect: true });
   };
 
   const handleNav = useCallback((route: string) => {

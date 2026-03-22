@@ -14,6 +14,7 @@ import PageTurnTransition from './PageTurnTransition';
 import { useMediaStore } from '@/lib/mediaStore';
 import ChapterContent, { mockBibleContent } from './ChapterContent';
 import ComparisonContent from './ComparisonContent';
+import VerseActionMenu from './VerseActionMenu';
 // import AudioControlPanel from './AudioControlPanel';
 // import BibleSearch from './BibleSearch';
 import { useReadingProgress } from '@/lib/useReadingProgress';
@@ -109,6 +110,57 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [ttsVoice, setTtsVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [isControlPanelOpen, setIsControlPanelOpen] = useState(false);
+  
+  // Selection State
+  const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
+  
+  const handleVerseLongPress = useCallback((verseNum: number) => {
+    setSelectedVerses(prev => {
+      if (prev.includes(verseNum)) return prev;
+      return [...prev, verseNum];
+    });
+  }, []);
+
+  const handleVerseTap = useCallback((verseNum: number) => {
+    setSelectedVerses(prev => {
+      if (prev.length === 0) return prev; // If not in selection mode, ignore
+      if (prev.includes(verseNum)) {
+        return prev.filter(v => v !== verseNum);
+      } else {
+        return [...prev, verseNum];
+      }
+    });
+  }, []);
+
+  // Handlers for menu actions
+  const onVerseMenuClose = () => setSelectedVerses([]);
+  const onVerseMenuHighlight = (color: string) => { console.log('Highlight', color); setSelectedVerses([]); };
+  const onVerseMenuSave = (labels: string[]) => { console.log('Save', labels); setSelectedVerses([]); };
+  const onVerseMenuNote = (note: string) => { console.log('Note:\n', note); setSelectedVerses([]); };
+  const onVerseMenuCompare = () => { 
+    setComparisonMode(true); 
+    if (!secondVersionId) {
+        const defaultV2 = bibleVersions.find(v => v.id !== selectedVersionId) || bibleVersions[0];
+        if (defaultV2) {
+            setSecondVersionId(defaultV2.id);
+            setDisplaySecondVersionName(defaultV2.name);
+        }
+    }
+    setTtsPlaying(false);
+    setTtsPaused(false);
+    setSelectedVerses([]);
+  };
+
+  const onVerseMenuShare = () => {
+    const shareText = `Check out these verses from ${displayBookName} ${selectedChapter}`;
+    if (navigator.share) {
+        navigator.share({ title: 'Bible Verses', text: shareText }).catch(console.error);
+    } else {
+        alert(shareText);
+    }
+    setSelectedVerses([]);
+  };
+
   const [repeatMode, setRepeatMode] = useState<'none' | 'chapter' | 'verse'>('none');
   const [sleepTimer, setSleepTimer] = useState<number | null>(null);
   const isLongPressRef = useRef(false);
@@ -1871,6 +1923,24 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         </div>
       </div>
 
+
+      {/* ── VERSE ACTION MENU ─────────────────────────────── */}
+      <AnimatePresence>
+        {selectedVerses.length > 0 && (
+          <VerseActionMenu 
+            isOpen={selectedVerses.length > 0}
+            bookName={displayBookName}
+            chapter={selectedChapter}
+            selectedVerses={selectedVerses}
+            onClose={onVerseMenuClose}
+            onHighlight={onVerseMenuHighlight}
+            onSave={onVerseMenuSave}
+            onNote={onVerseMenuNote}
+            onCompare={onVerseMenuCompare}
+            onShare={onVerseMenuShare}
+          />
+        )}
+      </AnimatePresence>
 
       {/* ── TTS SETTINGS POPUP ─────────────────────────────── */}
       {/* ── AUDIO CONTROL PANEL (BOTTOM SHEET) ──────────────── */}

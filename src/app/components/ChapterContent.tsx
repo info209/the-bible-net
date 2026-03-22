@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, PointerEvent } from 'react';
 import { motion } from 'framer-motion';
 import BibleSkeleton from './BibleSkeleton';
 
@@ -11,6 +11,9 @@ interface ChapterContentProps {
   version?: string; // Add version parameter
   scrollToVerse?: number | null; // Add scroll to verse parameter
   readingVerse?: number | null; // Verse currently being read aloud
+  selectedVerses?: number[];
+  onVerseLongPress?: (verseNumber: number) => void;
+  onVerseTap?: (verseNumber: number) => void;
   theme: {
     bg: string;
     text: string;
@@ -458,10 +461,62 @@ const defaultContent = {
   ]
 };
 
-export default function ChapterContent({ book, chapter, font, fontSize, version = 'NKJV', scrollToVerse, readingVerse, theme }: ChapterContentProps) {
+export default function ChapterContent({ book, chapter, font, fontSize, version = 'NKJV', scrollToVerse, readingVerse, theme, selectedVerses = [], onVerseLongPress, onVerseTap }: ChapterContentProps) {
   const [apiContent, setApiContent] = useState<{ title: string; verses: { number: number; text: string }[] } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const touchStartPosRef = useRef<{x: number, y: number} | null>(null);
+
+  const handlePressStart = (e: React.MouseEvent | React.TouchEvent, verseNum: number) => {
+    if ('button' in e && e.button !== 0) return; // Only process left click or touch
+    
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    touchStartPosRef.current = { x: clientX, y: clientY };
+    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
+      if (onVerseLongPress) onVerseLongPress(verseNum);
+    }, 500); // 500ms long press threshold
+  };
+
+  const handlePressEnd = (e: React.MouseEvent | React.TouchEvent, verseNum: number) => {
+    // If timer was cleared, it means long press already fired OR it was cancelled
+    const wasLongPress = !longPressTimerRef.current;
+    
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    
+    if (!touchStartPosRef.current) return;
+    if (wasLongPress) {
+       touchStartPosRef.current = null;
+       return; // Don't trigger tap if it was a successful long press
+    }
+    
+    // Calculate movement distance to distinguish tap from drag
+    const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : (e as React.MouseEvent).clientY;
+    
+    const moveDist = Math.sqrt(Math.pow(clientX - touchStartPosRef.current.x, 2) + Math.pow(clientY - touchStartPosRef.current.y, 2));
+    if (moveDist < 15) {
+      if (onVerseTap) onVerseTap(verseNum);
+    }
+    touchStartPosRef.current = null;
+  };
+
+  const handlePressCancel = () => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartPosRef.current = null;
+  };
 
   // Fetch Bible content from API
   useEffect(() => {
@@ -594,12 +649,18 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
             <p
               key={verse.number}
               id={`verse-${book}-${chapter}-${verse.number}`}
-              className="transition-all duration-500 rounded px-2 py-1"
+              className={`transition-all duration-300 rounded px-2 py-1 select-none cursor-pointer ${selectedVerses.includes(verse.number) ? 'bg-blue-50 border-l-4 border-blue-400' : ''}`}
+              onMouseDown={(e) => handlePressStart(e, verse.number)}
+              onMouseUp={(e) => handlePressEnd(e, verse.number)}
+              onMouseLeave={handlePressCancel}
+              onTouchStart={(e) => handlePressStart(e, verse.number)}
+              onTouchEnd={(e) => handlePressEnd(e, verse.number)}
+              onTouchCancel={handlePressCancel}
               style={{
                 fontFamily: font,
                 fontSize: `${fontSize}px`,
                 color: theme?.text,
-                backgroundColor: readingVerse === verse.number ? '#fbebee' : 'transparent'
+                backgroundColor: selectedVerses.includes(verse.number) ? 'rgba(59, 130, 246, 0.1)' : readingVerse === verse.number ? '#fbebee' : 'transparent'
               }}
             >
               <sup

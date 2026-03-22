@@ -63,7 +63,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
     setIsProfileOpen(false);
     // Explicitly sign out
     await signOut({ 
-      callbackUrl: '/home',
+      callbackUrl: `${window.location.origin}/home`,
       redirect: true 
     });
   };
