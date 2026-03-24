@@ -468,35 +468,46 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartPosRef = useRef<{x: number, y: number} | null>(null);
+  const isLongPressRef = useRef(false);
 
   const handlePressStart = (e: React.MouseEvent | React.TouchEvent, verseNum: number) => {
     if ('button' in e && e.button !== 0) return; // Only process left click or touch
+    
+    // Check if touch event
+    const isTouch = 'touches' in e;
+    if (isTouch) {
+       // Stop propagation to prevent bubbling if nested
+       // e.stopPropagation();
+    }
     
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
     
     touchStartPosRef.current = { x: clientX, y: clientY };
     if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    isLongPressRef.current = false;
     
+    // Start timer for long press
     longPressTimerRef.current = setTimeout(() => {
-      longPressTimerRef.current = null;
       if (onVerseLongPress) onVerseLongPress(verseNum);
-    }, 500); // 500ms long press threshold
+      isLongPressRef.current = true;
+      longPressTimerRef.current = null;
+    }, 500); // 500ms for long press
   };
 
   const handlePressEnd = (e: React.MouseEvent | React.TouchEvent, verseNum: number) => {
-    // If timer was cleared, it means long press already fired OR it was cancelled
-    const wasLongPress = !longPressTimerRef.current;
     
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-    
+
     if (!touchStartPosRef.current) return;
-    if (wasLongPress) {
+    
+    if (isLongPressRef.current) {
        touchStartPosRef.current = null;
-       return; // Don't trigger tap if it was a successful long press
+       isLongPressRef.current = false;
+       return; 
     }
     
     // Calculate movement distance to distinguish tap from drag
@@ -508,6 +519,7 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
       if (onVerseTap) onVerseTap(verseNum);
     }
     touchStartPosRef.current = null;
+    isLongPressRef.current = false;
   };
 
   const handlePressCancel = () => {

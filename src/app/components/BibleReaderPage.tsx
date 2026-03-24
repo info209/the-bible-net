@@ -114,6 +114,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   // Selection State
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   
+
   const handleVerseLongPress = useCallback((verseNum: number) => {
     setSelectedVerses(prev => {
       if (prev.includes(verseNum)) return prev;
@@ -134,9 +135,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Handlers for menu actions
   const onVerseMenuClose = () => setSelectedVerses([]);
-  const onVerseMenuHighlight = (color: string) => { console.log('Highlight', color); setSelectedVerses([]); };
-  const onVerseMenuSave = (labels: string[]) => { console.log('Save', labels); setSelectedVerses([]); };
-  const onVerseMenuNote = (note: string) => { console.log('Note:\n', note); setSelectedVerses([]); };
+  const onVerseMenuHighlight = (color: string) => { setSelectedVerses([]); };
+  const onVerseMenuSave = (labels: string[]) => { setSelectedVerses([]); };
+  const onVerseMenuNote = (note: string) => { setSelectedVerses([]); };
   const onVerseMenuCompare = () => { 
     setComparisonMode(true); 
     if (!secondVersionId) {
@@ -423,13 +424,6 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       
       
 
-      console.log("Bible request:", { 
-          book: selectedBookId, 
-          chapter: selectedChapter, 
-          version: selectedVersionId, 
-          comparisonMode, 
-          secondVersion: secondVersionId 
-      });
       
       setIsLoadingContent(true);
       try {
@@ -451,9 +445,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Debugging logs for state synchronization
   useEffect(() => {
-    console.log("VersionId:", selectedVersionId);
-    console.log("BookId:", selectedBookId);
-    console.log("Chapter:", selectedChapter);
+    
+    
+    
   }, [selectedVersionId, selectedBookId, selectedChapter]);
 
   // Track Reading Progress on Chapter Open
@@ -632,15 +626,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     if (isCleaningUpRef.current) return;
     if (!ttsPlayingRef.current || ttsPausedRef.current) return;
     if (!currentChapterVerses || index >= currentChapterVerses.length) {
-      if (repeatModeRef.current === 'chapter' && currentChapterVerses && currentChapterVerses.length > 0) {
-        // Use timeout to avoid deep recursion if many verses are short or skip, though usually not an issue.
-        setTimeout(() => speakAtIndex(0), 10);
-        return;
-      }
       // End of chapter — stop cleanly
       ttsPlayingRef.current = false;
       setTtsPlaying(false);
       setTtsPaused(false);
+
+      if (repeatModeRef.current === 'chapter' && currentChapterVerses && currentChapterVerses.length > 0) {
+        setTimeout(() => speakAtIndex(0), 10);
+      }
       return;
     }
 
@@ -670,7 +663,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       if (ttsPlayingRef.current && !ttsPausedRef.current) {
         if (repeatModeRef.current === 'verse') {
           speakAtIndex(index);
-        } else {
+        } else if (repeatModeRef.current === 'none' || repeatModeRef.current === 'chapter') {
           speakAtIndex(index + 1);
         }
       }
@@ -687,7 +680,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
     utteranceRef.current = utterance;
     window.speechSynthesis.speak(utterance);
-  }, [currentChapterVerses, bibleVersions, selectedVersionId, ttsRate, ttsVolume, ttsVoice]);
+  }, [currentChapterVerses, bibleVersions, selectedVersionId]);
+
+  // Sync volume/rate changes with active utterance instantly
+  useEffect(() => {
+    if (utteranceRef.current) {
+      utteranceRef.current.rate = ttsRate;
+      utteranceRef.current.volume = ttsVolume;
+    }
+  }, [ttsRate, ttsVolume]);
 
   // Public TTS controls
   const stopTTS = useCallback(() => {
@@ -776,6 +777,18 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     isLongPressRef.current = false;
   }, []);
 
+  const handleProgressBarClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!currentChapterVerses.length) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const progress = Math.max(0, Math.min(1, x / rect.width));
+    const newVerseIndex = Math.floor(progress * currentChapterVerses.length);
+    
+    // Stop and restart from new index
+    stopTTS();
+    setTimeout(() => startTTS(newVerseIndex), 10);
+  }, [currentChapterVerses.length, stopTTS, startTTS]);
+
   // TTS Control additions
   const handlePrevVerse = useCallback(() => {
     if (ttsCurrentVerseIndex > 0) {
@@ -793,8 +806,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   const toggleRepeatMode = useCallback(() => {
     setRepeatMode(prev => {
-      if (prev === 'none') return 'chapter';
-      if (prev === 'chapter') return 'verse';
+      if (prev === 'none') return 'verse';
+      if (prev === 'verse') return 'chapter';
       return 'none';
     });
   }, []);
@@ -1826,7 +1839,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     version={selectedVersionId || undefined}
                     scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? selectedVerse : undefined}
                     readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? currentVerse : null}
-                    theme={currentTheme}
+                  selectedVerses={selectedVerses}
+                  onVerseLongPress={handleVerseLongPress}
+                  onVerseTap={handleVerseTap}
+                  theme={currentTheme}
                   />
                 </div>
               )}
@@ -1849,7 +1865,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     version={selectedVersionId || undefined}
                     scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? selectedVerse : undefined}
                     readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? currentVerse : null}
-                    theme={currentTheme}
+                  selectedVerses={selectedVerses}
+                  onVerseLongPress={handleVerseLongPress}
+                  onVerseTap={handleVerseTap}
+                  theme={currentTheme}
                   />
                 </div>
               )}
@@ -1871,6 +1890,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   version={selectedVersionId || undefined}
                   scrollToVerse={selectedVerse}
                   readingVerse={currentVerse}
+                  selectedVerses={selectedVerses}
+                  onVerseLongPress={handleVerseLongPress}
+                  onVerseTap={handleVerseTap}
                   theme={currentTheme}
                 />
               </div>
@@ -1890,7 +1912,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 version={selectedVersionId || undefined}
                 scrollToVerse={selectedVerse}
                 readingVerse={currentVerse}
-                theme={currentTheme}
+                  selectedVerses={selectedVerses}
+                  onVerseLongPress={handleVerseLongPress}
+                  onVerseTap={handleVerseTap}
+                  theme={currentTheme}
               />
             </PageTurnTransition>
           ) : (
@@ -1915,6 +1940,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   version={selectedVersionId || undefined}
                   scrollToVerse={selectedVerse}
                   readingVerse={currentVerse}
+                  selectedVerses={selectedVerses}
+                  onVerseLongPress={handleVerseLongPress}
+                  onVerseTap={handleVerseTap}
                   theme={currentTheme}
                 />
               </motion.div>
@@ -2001,6 +2029,26 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   </button>
                 </div>
 
+                {/* Horizontal Progress Bar (Red) - Inside Control Panel */}
+                <div className="px-6 py-2">
+                  <div 
+                    className="w-full h-1.5 bg-gray-200/50 rounded-full overflow-hidden cursor-pointer group relative"
+                    onClick={handleProgressBarClick}
+                  >
+                    <motion.div 
+                      className="absolute top-0 left-0 h-full bg-red-500 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${((ttsCurrentVerseIndex + 1) / (currentChapterVerses.length || 1)) * 100}%` }}
+                      transition={{ type: 'spring', stiffness: 100, damping: 20 }}
+                    />
+                    {/* Hover indicator thumb */}
+                    <motion.div 
+                      className="absolute top-1/2 -translate-y-1/2 size-3.5 bg-red-600 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity border-2 border-white" 
+                      style={{ left: `${((ttsCurrentVerseIndex + 1) / (currentChapterVerses.length || 1)) * 100}%`, transformOrigin: 'center', translateX: '-50%', translateY: '-50%' }}
+                    />
+                  </div>
+                </div>
+
                 {/* Auxiliary Controls Grid */}
                 <div className="grid grid-cols-5 bg-gray-50 rounded-2xl p-2 max-w-sm mx-auto">
                   <button
@@ -2067,7 +2115,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       {/* ── NARRATION CONTROLS (Always Visible) ─────────────────────────────── */}
       <div
-        className="fixed left-0 right-0 z-[1000] pointer-events-none"
+        className="fixed left-0 right-0 z-[1200] pointer-events-none"
         style={{ bottom: showBottomNav ? '88px' : '10px' }}
       >
         <div className="max-w-3xl mx-auto px-6 relative h-16 flex items-center justify-center">
