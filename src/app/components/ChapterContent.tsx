@@ -12,8 +12,10 @@ interface ChapterContentProps {
   scrollToVerse?: number | null; // Add scroll to verse parameter
   readingVerse?: number | null; // Verse currently being read aloud
   selectedVerses?: number[];
-  onVerseLongPress?: (verseNumber: number) => void;
-  onVerseTap?: (verseNumber: number) => void;
+  onVerseLongPress?: (verseNumber: number, e?: React.MouseEvent | React.TouchEvent) => void;
+  onVerseTap?: (verseNumber: number, e?: React.MouseEvent | React.TouchEvent) => void;
+  highlights?: any[];
+  notes?: any[];
   theme: {
     bg: string;
     text: string;
@@ -461,7 +463,12 @@ const defaultContent = {
   ]
 };
 
-export default function ChapterContent({ book, chapter, font, fontSize, version = 'NKJV', scrollToVerse, readingVerse, theme, selectedVerses = [], onVerseLongPress, onVerseTap }: ChapterContentProps) {
+export default function ChapterContent({ 
+  book, chapter, font, fontSize, version = 'NKJV', 
+  scrollToVerse, readingVerse, theme, selectedVerses = [], 
+  onVerseLongPress, onVerseTap,
+  highlights = [], notes = []
+}: ChapterContentProps) {
   const [apiContent, setApiContent] = useState<{ title: string; verses: { number: number; text: string }[] } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -473,12 +480,8 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
   const handlePressStart = (e: React.MouseEvent | React.TouchEvent, verseNum: number) => {
     if ('button' in e && e.button !== 0) return; // Only process left click or touch
     
-    // Check if touch event
-    const isTouch = 'touches' in e;
-    if (isTouch) {
-       // Stop propagation to prevent bubbling if nested
-       // e.stopPropagation();
-    }
+    // Stop propagation to prevent bubbling if nested
+    e.stopPropagation();
     
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -489,7 +492,7 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
     
     // Start timer for long press
     longPressTimerRef.current = setTimeout(() => {
-      if (onVerseLongPress) onVerseLongPress(verseNum);
+      if (onVerseLongPress) onVerseLongPress(verseNum, e);
       isLongPressRef.current = true;
       longPressTimerRef.current = null;
     }, 500); // 500ms for long press
@@ -516,7 +519,7 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
     
     const moveDist = Math.sqrt(Math.pow(clientX - touchStartPosRef.current.x, 2) + Math.pow(clientY - touchStartPosRef.current.y, 2));
     if (moveDist < 15) {
-      if (onVerseTap) onVerseTap(verseNum);
+      if (onVerseTap) onVerseTap(verseNum, e);
     }
     touchStartPosRef.current = null;
     isLongPressRef.current = false;
@@ -672,7 +675,11 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
                 fontFamily: font,
                 fontSize: `${fontSize}px`,
                 color: theme?.text,
-                backgroundColor: selectedVerses.includes(verse.number) ? 'rgba(59, 130, 246, 0.1)' : readingVerse === verse.number ? '#fbebee' : 'transparent'
+                backgroundColor: selectedVerses.includes(verse.number) 
+                  ? 'rgba(59, 130, 246, 0.1)' 
+                  : readingVerse === verse.number 
+                    ? '#fbebee' 
+                    : highlights.find(h => h.metadata?.verse === verse.number)?.metadata?.color || 'transparent'
               }}
             >
               <sup
@@ -682,6 +689,9 @@ export default function ChapterContent({ book, chapter, font, fontSize, version 
                 {verse?.number}
               </sup>
               {verse?.text}
+              {notes.some(n => n.metadata?.verses?.includes(verse.number)) && (
+                <span className="ml-1 inline-block text-[10px] text-red-500 font-bold">●</span>
+              )}
             </p>
           ))}
         </div>

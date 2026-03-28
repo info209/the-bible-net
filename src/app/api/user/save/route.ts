@@ -5,7 +5,7 @@ import { connectDB } from '@/lib/db';
 import { z } from 'zod';
 
 const saveSchema = z.object({
-  type: z.enum(['bible', 'journal', 'reading_plan']),
+  type: z.enum(['bible', 'journal', 'reading_plan', 'highlight', 'note']),
   refId: z.string().min(1, 'refId is required'),
   metadata: z.record(z.string(), z.unknown()).optional().default({}),
 });

@@ -1,6 +1,6 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
-export type SavedItemType = 'bible' | 'journal' | 'reading_plan';
+export type SavedItemType = 'bible' | 'journal' | 'reading_plan' | 'highlight' | 'note';
 
 export interface ISavedItemMetadata {
   bookId?: string;

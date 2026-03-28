@@ -73,7 +73,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const { updateProgress, latestProgress } = useReadingProgress();
   const { data: session } = useSession();
   const router = useRouter();
-  const { isSaved, getSavedItem, toggleSave } = useSavedItems();
+  const { isSaved, getSavedItem, toggleSave, saveItem } = useSavedItems();
 
   // determine whether we are on bible page; if not, render only nav bar
   const pathname = usePathname();
@@ -115,14 +115,16 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
   
 
-  const handleVerseLongPress = useCallback((verseNum: number) => {
+  const handleVerseLongPress = useCallback((verseNum: number, e?: React.MouseEvent | React.TouchEvent) => {
+    if (e) e.stopPropagation();
     setSelectedVerses(prev => {
       if (prev.includes(verseNum)) return prev;
       return [...prev, verseNum];
     });
   }, []);
 
-  const handleVerseTap = useCallback((verseNum: number) => {
+  const handleVerseTap = useCallback((verseNum: number, e?: React.MouseEvent | React.TouchEvent) => {
+    if (e) e.stopPropagation();
     setSelectedVerses(prev => {
       if (prev.length === 0) return prev; // If not in selection mode, ignore
       if (prev.includes(verseNum)) {
@@ -135,9 +137,66 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Handlers for menu actions
   const onVerseMenuClose = () => setSelectedVerses([]);
-  const onVerseMenuHighlight = (color: string) => { setSelectedVerses([]); };
-  const onVerseMenuSave = (labels: string[]) => { setSelectedVerses([]); };
-  const onVerseMenuNote = (note: string) => { setSelectedVerses([]); };
+  const onVerseMenuHighlight = async (color: string) => { 
+    if (!session?.user || selectedVerses.length === 0) return;
+    
+    // For each selected verse, save a highlight
+    for (const verseNum of selectedVerses) {
+      const refId = `${selectedBookId}_${selectedChapter}_${verseNum}_${selectedVersionId}`;
+      await saveItem({
+        type: 'highlight',
+        refId,
+        metadata: {
+          bookId: selectedBookId,
+          chapter: selectedChapter,
+          verse: verseNum,
+          versionId: selectedVersionId,
+          color
+        }
+      });
+    }
+    setSelectedVerses([]); 
+  };
+
+  const onVerseMenuSave = async (labels: string[]) => { 
+    if (!session?.user || selectedVerses.length === 0) return;
+
+    for (const verseNum of selectedVerses) {
+      const refId = `${selectedBookId}_${selectedChapter}_${verseNum}_${selectedVersionId}`;
+      await saveItem({
+        type: 'bible',
+        refId,
+        metadata: {
+          bookId: selectedBookId,
+          chapter: selectedChapter,
+          verse: verseNum,
+          versionId: selectedVersionId,
+          labels
+        }
+      });
+    }
+    setSelectedVerses([]); 
+  };
+
+  const onVerseMenuNote = async (note: string) => { 
+    if (!session?.user || selectedVerses.length === 0) return;
+
+    // A note can cover multiple verses? Usually notes are per verse or per selection.
+    // For now, let's save it to the first verse in selection or a compound refId.
+    const refId = `${selectedBookId}_${selectedChapter}_${selectedVerses.join('-')}_${selectedVersionId}`;
+    await saveItem({
+      type: 'note',
+      refId,
+      metadata: {
+        bookId: selectedBookId,
+        chapter: selectedChapter,
+        verses: selectedVerses,
+        versionId: selectedVersionId,
+        content: note
+      }
+    });
+    setSelectedVerses([]); 
+  };
   const onVerseMenuCompare = () => { 
     setComparisonMode(true); 
     if (!secondVersionId) {
@@ -621,6 +680,41 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
 
   // Internal speak function — reads from refs, never from state
+  // Handle real-time volume/rate updates
+  useEffect(() => {
+    if (ttsPlaying && !ttsPaused && window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      speakAtIndex(ttsCurrentVerseIndex);
+    }
+  }, [ttsVolume, ttsRate]);
+
+  // States for highlights and notes
+  const [userHighlights, setUserHighlights] = useState<any[]>([]);
+  const [userNotes, setUserNotes] = useState<any[]>([]);
+
+  // Fetch highlights and notes for current chapter
+  useEffect(() => {
+    if (!session?.user || !selectedBookId || !selectedChapter) return;
+    
+    const fetchData = async () => {
+      try {
+        // Fetch highlights
+        const hRes = await fetch(`/api/user/saved-items?type=highlight&bookId=${selectedBookId}&chapter=${selectedChapter}`);
+        const hData = await hRes.json();
+        if (hData.success) setUserHighlights(hData.data);
+
+        // Fetch notes
+        const nRes = await fetch(`/api/user/saved-items?type=note&bookId=${selectedBookId}&chapter=${selectedChapter}`);
+        const nData = await nRes.json();
+        if (nData.success) setUserNotes(nData.data);
+      } catch (err) {
+        console.error("Failed to fetch highlights/notes:", err);
+      }
+    };
+    
+    fetchData();
+  }, [session?.user, selectedBookId, selectedChapter]);
+
   const speakAtIndex = useCallback((index: number) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     if (isCleaningUpRef.current) return;
@@ -1119,6 +1213,16 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       new CustomEvent('bible-reading-mode', { detail: { isReadingMode: !showBottomNav || isAnyPopupOpen } })
     );
   }, [showBottomNav, isAnyPopupOpen]);
+  
+  // Safari-specific fix: Trigger minimal scroll when entering Reading Mode to encourage address bar hide
+  useEffect(() => {
+    if (!showBottomNav && scrollContainerRef.current) {
+        // Only trigger if we are at the very top (safari address bar trick)
+        if (scrollContainerRef.current.scrollTop === 0) {
+            scrollContainerRef.current.scrollTop = 1;
+        }
+    }
+  }, [showBottomNav]);
 
   // Bible narration functions
   const getBibleContent = () => {
@@ -1143,7 +1247,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
 
   return (
-    <div className="fixed inset-0 bg-[var(--app-bg)] flex flex-col z-[100]">
+    <div className="fixed inset-0 h-[100dvh] bg-[var(--app-bg)] flex flex-col z-[100] overflow-hidden">
       {/* Scrollable Content Area */}
       <div
         ref={scrollContainerRef}
@@ -1839,10 +1943,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     version={selectedVersionId || undefined}
                     scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? selectedVerse : undefined}
                     readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? currentVerse : null}
-                  selectedVerses={selectedVerses}
-                  onVerseLongPress={handleVerseLongPress}
-                  onVerseTap={handleVerseTap}
-                  theme={currentTheme}
+                    selectedVerses={selectedVerses}
+                    highlights={userHighlights}
+                    notes={userNotes}
+                    highlights={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? userHighlights : []}
+                    notes={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? userNotes : []}
+                    onVerseLongPress={handleVerseLongPress}
+                    onVerseTap={handleVerseTap}
+                    theme={currentTheme}
                   />
                 </div>
               )}
@@ -1865,10 +1973,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     version={selectedVersionId || undefined}
                     scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? selectedVerse : undefined}
                     readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? currentVerse : null}
-                  selectedVerses={selectedVerses}
-                  onVerseLongPress={handleVerseLongPress}
-                  onVerseTap={handleVerseTap}
-                  theme={currentTheme}
+                    selectedVerses={selectedVerses}
+                    highlights={userHighlights}
+                    notes={userNotes}
+                    highlights={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? userHighlights : []}
+                    notes={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? userNotes : []}
+                    onVerseLongPress={handleVerseLongPress}
+                    onVerseTap={handleVerseTap}
+                    theme={currentTheme}
                   />
                 </div>
               )}
@@ -1891,6 +2003,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   scrollToVerse={selectedVerse}
                   readingVerse={currentVerse}
                   selectedVerses={selectedVerses}
+                  highlights={userHighlights}
+                  notes={userNotes}
                   onVerseLongPress={handleVerseLongPress}
                   onVerseTap={handleVerseTap}
                   theme={currentTheme}
@@ -1912,10 +2026,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 version={selectedVersionId || undefined}
                 scrollToVerse={selectedVerse}
                 readingVerse={currentVerse}
-                  selectedVerses={selectedVerses}
-                  onVerseLongPress={handleVerseLongPress}
-                  onVerseTap={handleVerseTap}
-                  theme={currentTheme}
+                selectedVerses={selectedVerses}
+                highlights={userHighlights}
+                notes={userNotes}
+                onVerseLongPress={handleVerseLongPress}
+                onVerseTap={handleVerseTap}
+                theme={currentTheme}
               />
             </PageTurnTransition>
           ) : (
@@ -1941,6 +2057,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   scrollToVerse={selectedVerse}
                   readingVerse={currentVerse}
                   selectedVerses={selectedVerses}
+                  highlights={userHighlights}
+                  notes={userNotes}
                   onVerseLongPress={handleVerseLongPress}
                   onVerseTap={handleVerseTap}
                   theme={currentTheme}
@@ -1960,6 +2078,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             bookName={displayBookName}
             chapter={selectedChapter}
             selectedVerses={selectedVerses}
+            highlights={userHighlights}
+            notes={userNotes}
             onClose={onVerseMenuClose}
             onHighlight={onVerseMenuHighlight}
             onSave={onVerseMenuSave}
@@ -1978,7 +2098,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1100] bg-black/40 backdrop-blur-sm"
+            className="fixed inset-0 z-[1100] bg-black/10"
             onClick={() => setIsControlPanelOpen(false)}
           >
             <motion.div
@@ -1986,125 +2106,144 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: "100%" }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute bottom-0 left-0 right-0 w-full max-w-2xl mx-auto bg-white/95 backdrop-blur-2xl rounded-t-[32px] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.12)] border-t border-white/40 pb-safe z-[1110]"
+              className="absolute bottom-0 left-0 right-0 w-full max-w-2xl mx-auto bg-white rounded-t-[24px] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.08)] border-t border-gray-100 pb-safe z-[1110] max-h-[25vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Drag Handle & Header */}
-              <div className="flex flex-col items-center pt-3 pb-4">
-                <div className="w-12 h-1.5 bg-gray-300 rounded-full mb-4" />
-                <h3 className="text-lg font-bold text-[#31393a]">
-                  {displayBookName} {selectedChapter} {currentVerse ? `:${currentVerse}` : ''}
-                </h3>
-                <p className="text-sm font-medium text-[var(--color-primary-teal)] mt-1">
-                  {displayVersionName}
-                </p>
+              {/* Header and Verse Info */}
+              <div className="flex items-center justify-between px-6 pt-4 pb-2 shrink-0">
+                <div className="flex flex-col">
+                  <h3 className="text-sm font-bold text-[#31393a] flex items-center gap-2">
+                    {displayBookName} {selectedChapter}
+                    <span className="text-[var(--color-primary-teal)] font-medium">
+                      {displayVersionName}
+                    </span>
+                  </h3>
+                  {currentVerse && (
+                    <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider">
+                      Verse {currentVerse}
+                    </span>
+                  )}
+                </div>
+                <button 
+                  onClick={() => setIsControlPanelOpen(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  <X className="size-5 text-gray-400" />
+                </button>
               </div>
 
               <div className="px-6 py-2 space-y-8">
-                {/* Main Playback Controls */}
-                <div className="flex items-center justify-center gap-8">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handlePrevVerse(); }}
-                    className="p-3 text-[#31393a] hover:text-[var(--color-primary-teal)] transition-colors active:scale-95 rounded-full hover:bg-black/5"
-                  >
-                    <SkipBack className="size-8 fill-current" />
-                  </button>
-
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleTTS(); }}
-                    className="size-20 rounded-full bg-[var(--color-primary-teal)] flex items-center justify-center text-white shadow-[0_8px_24px_rgba(0,106,111,0.3)] hover:scale-105 active:scale-95 transition-all"
-                  >
-                    {ttsPlaying && !ttsPaused ? (
-                      <Pause className="size-10 fill-current" />
-                    ) : (
-                      <Play className="size-10 fill-current translate-x-1" />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleNextVerse(); }}
-                    className="p-3 text-[#31393a] hover:text-[var(--color-primary-teal)] transition-colors active:scale-95 rounded-full hover:bg-black/5"
-                  >
-                    <SkipForward className="size-8 fill-current" />
-                  </button>
-                </div>
-
-                {/* Horizontal Progress Bar (Red) - Inside Control Panel */}
-                <div className="px-6 py-2">
-                  <div 
-                    className="w-full h-1.5 bg-gray-200/50 rounded-full overflow-hidden cursor-pointer group relative"
-                    onClick={handleProgressBarClick}
-                  >
-                    <motion.div 
-                      className="absolute top-0 left-0 h-full bg-red-500 rounded-full"
-                      initial={{ width: 0 }}
-                      animate={{ width: `${((ttsCurrentVerseIndex + 1) / (currentChapterVerses.length || 1)) * 100}%` }}
-                      transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-                    />
-                    {/* Hover indicator thumb */}
-                    <motion.div 
-                      className="absolute top-1/2 -translate-y-1/2 size-3.5 bg-red-600 rounded-full shadow-lg opacity-0 group-hover:opacity-100 transition-opacity border-2 border-white" 
-                      style={{ left: `${((ttsCurrentVerseIndex + 1) / (currentChapterVerses.length || 1)) * 100}%`, transformOrigin: 'center', translateX: '-50%', translateY: '-50%' }}
-                    />
-                  </div>
-                </div>
-
-                {/* Auxiliary Controls Grid */}
-                <div className="grid grid-cols-5 bg-gray-50 rounded-2xl p-2 max-w-sm mx-auto">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); toggleRepeatMode(); }}
-                    className={`flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl transition-colors ${repeatMode !== 'none' ? 'text-[var(--color-primary-teal)] bg-[var(--color-primary-teal)]/10' : 'text-[#31393a]/60 hover:bg-gray-200/50'}`}
-                  >
-                    <RotateCw className="size-5" />
-                    <span className="text-[10px] uppercase font-bold tracking-wider">{repeatMode === 'verse' ? 'Verse' : repeatMode === 'chapter' ? 'Chap' : 'None'}</span>
-                  </button>
-
-                  <div className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-[#31393a]/60 relative group cursor-pointer hover:bg-gray-200/50">
-                    <Volume2 className="size-5" />
-                    <span className="text-[10px] uppercase font-bold tracking-wider">{Math.round(ttsVolume * 100)}%</span>
-                  </div>
-
-                  <div className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-[#31393a]/60 relative group cursor-pointer hover:bg-gray-200/50">
-                    <Gauge className="size-5" />
-                    <span className="text-[10px] uppercase font-bold tracking-wider">{ttsRate}x</span>
-                  </div>
-
-                  <button className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-[#31393a]/60 hover:bg-gray-200/50">
-                    <Timer className="size-5" />
-                    <span className="text-[10px] uppercase font-bold tracking-wider">Sleep</span>
-                  </button>
-
-                  <button className="flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl text-[#31393a]/60 hover:bg-gray-200/50">
-                    <Download className="size-5" />
-                    <span className="text-[10px] uppercase font-bold tracking-wider">Down</span>
-                  </button>
-                </div>
-                
-                {/* Sliders Below (Volume and Speed sliders) */}
-                <div className="px-4 py-2 space-y-4 max-w-sm mx-auto">
-                   <div className="flex items-center gap-3">
-                      <Volume2 className="size-4 text-[#31393a]/40" />
-                      <input
-                        type="range"
-                        min="0" max="1" step="0.05"
-                        value={ttsVolume}
-                        onChange={(e) => setTtsVolume(Number(e.target.value))}
-                        className="flex-1 h-2 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#31393a]"
-                        style={{ background: `linear-gradient(to right, #31393a ${ttsVolume*100}%, #e5e7e7 ${ttsVolume*100}%)` }}
+                <div className="flex flex-col gap-4">
+                  {/* Progress Bar with Verse Labels */}
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-end px-1">
+                      <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Progress</span>
+                      <span className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Verse {currentVerse || 1}</span>
+                    </div>
+                    <div 
+                      className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden cursor-pointer group relative"
+                      onClick={handleProgressBarClick}
+                    >
+                      <motion.div 
+                        className="absolute top-0 left-0 h-full bg-red-500"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${((ttsCurrentVerseIndex + 1) / (currentChapterVerses.length || 1)) * 100}%` }}
+                        transition={{ type: 'spring', stiffness: 100, damping: 20 }}
                       />
-                   </div>
-                   <div className="flex items-center gap-3">
-                      <Gauge className="size-4 text-[#31393a]/40" />
-                      <input
-                        type="range"
-                        min="0.5" max="2" step="0.25"
-                        value={ttsRate}
-                        onChange={(e) => setTtsRate(Number(e.target.value))}
-                        className="flex-1 h-2 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-4 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#31393a]"
-                        style={{ background: `linear-gradient(to right, #31393a ${((ttsRate-0.5)/1.5)*100}%, #e5e7e7 ${((ttsRate-0.5)/1.5)*100}%)` }}
-                      />
-                   </div>
+                    </div>
+                  </div>
+
+                  {/* Combined Controls Layout */}
+                  <div className="flex flex-col gap-4">
+                    {/* Primary Controls Row */}
+                    <div className="flex items-center justify-between">
+                      {/* Chapter Nav Left */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handlePrevious(); }}
+                        className="flex flex-col items-center gap-1 group"
+                        title="Previous Chapter"
+                      >
+                        <div className="p-2 rounded-xl bg-gray-50 group-hover:bg-gray-100 transition-colors">
+                          <SkipBack className="size-5 text-gray-600" />
+                        </div>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight text-center">Prev Chap</span>
+                      </button>
+
+                      {/* Verse Navigation and Play */}
+                      <div className="flex items-center gap-5">
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handlePrevVerse(); }}
+                          className="p-2 text-gray-700 hover:text-[var(--color-primary-teal)] transition-colors active:scale-95"
+                          title="Previous Verse"
+                        >
+                          <SkipBack className="size-6 fill-current" />
+                        </button>
+
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleTTS(); }}
+                          className="size-14 rounded-2xl bg-[var(--color-primary-teal)] flex items-center justify-center text-white shadow-lg shadow-[var(--color-primary-teal)]/20 hover:scale-105 active:scale-95 transition-all"
+                        >
+                          {ttsPlaying && !ttsPaused ? (
+                            <Pause className="size-7 fill-current" />
+                          ) : (
+                            <Play className="size-7 fill-current translate-x-0.5" />
+                          )}
+                        </button>
+
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleNextVerse(); }}
+                          className="p-2 text-gray-700 hover:text-[var(--color-primary-teal)] transition-colors active:scale-95"
+                          title="Next Verse"
+                        >
+                          <SkipForward className="size-6 fill-current" />
+                        </button>
+                      </div>
+
+                      {/* Chapter Nav Right */}
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleNext(); }}
+                        className="flex flex-col items-center gap-1 group"
+                        title="Next Chapter"
+                      >
+                        <div className="p-2 rounded-xl bg-gray-50 group-hover:bg-gray-100 transition-colors">
+                          <SkipForward className="size-5 text-gray-600" />
+                        </div>
+                        <span className="text-[9px] font-bold text-gray-400 uppercase tracking-tight text-center">Next Chap</span>
+                      </button>
+                    </div>
+
+                    {/* Secondary Controls Row (Volume slider + Speed toggle) */}
+                    <div className="flex items-center gap-4 bg-gray-50/50 rounded-xl p-2">
+                      <div className="flex-1 flex items-center gap-3 px-2">
+                        <Volume2 className="size-4 text-gray-400" />
+                        <input
+                          type="range"
+                          min="0" max="1" step="0.05"
+                          value={ttsVolume}
+                          onChange={(e) => setTtsVolume(Number(e.target.value))}
+                          className="flex-1 h-1 bg-gray-200 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-3.5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[var(--color-primary-teal)] [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-white [&::-webkit-slider-thumb]:shadow-md"
+                          style={{ background: `linear-gradient(to right, var(--color-primary-teal) ${ttsVolume*100}%, #e5e7e7 ${ttsVolume*100}%)` }}
+                        />
+                      </div>
+                      <div className="w-px h-6 bg-gray-200" />
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const speeds = [0.25, 0.5, 1, 1.25, 1.5, 2];
+                          const currentIndex = speeds.indexOf(ttsRate);
+                          const nextIndex = (currentIndex + 1) % speeds.length;
+                          setTtsRate(speeds[nextIndex]);
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 shadow-sm text-[11px] font-bold text-[var(--color-primary-teal)] flex items-center gap-1.5 active:scale-95 transition-all"
+                      >
+                        <Zap className="size-3.5" />
+                        {ttsRate}x
+                      </button>
+                    </div>
+                  </div>
                 </div>
+
+                <div className="h-4" /> {/* Bottom safe padding */}
 
                 <div className="h-6" /> {/* Bottom safe padding */}
               </div>

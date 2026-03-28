@@ -4,7 +4,7 @@ import { SavedItemRepository } from '@/repositories/savedItemRepository';
 import { connectDB } from '@/lib/db';
 import { SavedItemType } from '@/models/SavedItem';
 
-const VALID_TYPES: SavedItemType[] = ['bible', 'journal', 'reading_plan'];
+const VALID_TYPES: SavedItemType[] = ['bible', 'journal', 'reading_plan', 'highlight', 'note'];
 
 export async function GET(req: NextRequest) {
   try {

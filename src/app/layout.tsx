@@ -1,11 +1,18 @@
 import "./globals.css"
 import ClientLayout from "./ClientLayout";
-import { Metadata } from "next";
+import { Metadata, Viewport } from "next";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
   title: "The Bible Net",
   description: "Read and explore the Bible",
+  manifest: "/manifest.json",
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({
