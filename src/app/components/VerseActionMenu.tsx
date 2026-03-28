@@ -8,9 +8,9 @@ interface VerseActionMenuProps {
   chapter: number;
   selectedVerses: number[];
   onClose: () => void;
-  onHighlight: (color: string) => void;
-  onSave: (labels: string[]) => void;
-  onNote: (note: string) => void;
+  onHighlight: (color: string) => void | Promise<void>;
+  onSave: (labels: string[]) => void | Promise<void>;
+  onNote: (note: string) => void | Promise<void>;
   onCompare: () => void;
   onShare: () => void;
 }

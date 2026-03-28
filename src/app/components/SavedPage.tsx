@@ -12,6 +12,8 @@ import {
   Trash2,
   BookMarked,
   ArrowLeft,
+  Highlighter,
+  FileText,
 } from 'lucide-react';
 import { useSavedItems, SavedItemClient } from '@/lib/useSavedItems';
 import type { SavedItemType } from '@/models/SavedItem';
@@ -23,6 +25,8 @@ const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
   { id: 'bible', label: 'Bible', icon: BookOpen },
   { id: 'journal', label: 'Journals', icon: BookText },
   { id: 'reading_plan', label: 'Reading Plans', icon: CalendarDays },
+  { id: 'highlight', label: 'Highlights', icon: Highlighter },
+  { id: 'note', label: 'Notes', icon: FileText },
 ];
 
 function BibleCard({
@@ -127,6 +131,8 @@ function EmptyState({ tab }: { tab: Tab }) {
     bible: { icon: BookOpen, heading: 'No Bible chapters saved', sub: 'Open the Bible reader, tap ⋮ and choose "Save Chapter".' },
     journal: { icon: BookText, heading: 'No journals saved', sub: 'Bookmark a journal entry to see it here.' },
     reading_plan: { icon: CalendarDays, heading: 'No reading plans saved', sub: 'Save a reading plan to access it quickly.' },
+    highlight: { icon: Highlighter, heading: 'No highlights saved', sub: 'Long press a verse to highlight it.' },
+    note: { icon: FileText, heading: 'No notes saved', sub: 'Long press a verse to add a note.' },
   };
   const { icon: Icon, heading, sub } = messages[tab];
   return (
@@ -250,7 +256,11 @@ export default function SavedPage() {
                       />
                     );
                   }
-                  const icon = item.type === 'journal' ? BookText : CalendarDays;
+                  let icon = CalendarDays;
+                  if (item.type === 'journal') icon = BookText;
+                  if (item.type === 'highlight') icon = Highlighter;
+                  if (item.type === 'note') icon = FileText;
+                  
                   return (
                     <GenericCard
                       key={item._id}

@@ -32,7 +32,7 @@ const SavedItemSchema = new Schema<ISavedItem>(
     },
     type: {
       type: String,
-      enum: ['bible', 'journal', 'reading_plan'],
+      enum: ['bible', 'journal', 'reading_plan', 'highlight', 'note'],
       required: true,
     },
     refId: {

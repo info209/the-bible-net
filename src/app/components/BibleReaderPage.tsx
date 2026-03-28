@@ -147,10 +147,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         type: 'highlight',
         refId,
         metadata: {
-          bookId: selectedBookId,
+          bookId: selectedBookId || undefined,
           chapter: selectedChapter,
           verse: verseNum,
-          versionId: selectedVersionId,
+          versionId: selectedVersionId || undefined,
           color
         }
       });
@@ -167,10 +167,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         type: 'bible',
         refId,
         metadata: {
-          bookId: selectedBookId,
+          bookId: selectedBookId || undefined,
           chapter: selectedChapter,
           verse: verseNum,
-          versionId: selectedVersionId,
+          versionId: selectedVersionId || undefined,
           labels
         }
       });
@@ -188,10 +188,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       type: 'note',
       refId,
       metadata: {
-        bookId: selectedBookId,
+        bookId: selectedBookId || undefined,
         chapter: selectedChapter,
         verses: selectedVerses,
-        versionId: selectedVersionId,
+        versionId: selectedVersionId || undefined,
         content: note
       }
     });
@@ -1944,8 +1944,6 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? selectedVerse : undefined}
                     readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? currentVerse : null}
                     selectedVerses={selectedVerses}
-                    highlights={userHighlights}
-                    notes={userNotes}
                     highlights={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? userHighlights : []}
                     notes={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBookId ? userNotes : []}
                     onVerseLongPress={handleVerseLongPress}
@@ -1974,8 +1972,6 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? selectedVerse : undefined}
                     readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? currentVerse : null}
                     selectedVerses={selectedVerses}
-                    highlights={userHighlights}
-                    notes={userNotes}
                     highlights={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? userHighlights : []}
                     notes={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBookId ? userNotes : []}
                     onVerseLongPress={handleVerseLongPress}
@@ -2078,8 +2074,6 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             bookName={displayBookName}
             chapter={selectedChapter}
             selectedVerses={selectedVerses}
-            highlights={userHighlights}
-            notes={userNotes}
             onClose={onVerseMenuClose}
             onHighlight={onVerseMenuHighlight}
             onSave={onVerseMenuSave}
