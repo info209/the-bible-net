@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, MoreVertical, X, ChevronLeft, ChevronRight, Check, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, SlidersHorizontal, Square, Bookmark, BookmarkCheck } from 'lucide-react';
+import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, MoreVertical, X, ChevronLeft, ChevronRight, Check, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, SlidersHorizontal, Square, Bookmark, BookmarkCheck, Repeat, Repeat1 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useSavedItems } from '@/lib/useSavedItems';
 import { RiSortDesc, RiSortAlphabetAsc } from 'react-icons/ri';
@@ -225,6 +225,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [sleepTimer, setSleepTimer] = useState<number | null>(null);
   const isLongPressRef = useRef(false);
   const pressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isTouchRef = useRef(false); // Track touch events to prevent mouse double-fire
+  const handleNextRef = useRef<() => void>(() => {}); // Stable ref for TTS auto-advance
   const [selectedFont, setSelectedFont] = useState('Times New Roman');
   const [fontSize, setFontSize] = useState(18);
   const [pageTransition, setPageTransition] = useState<'slide' | 'curl' | 'fade' | 'scroll'>('slide');
@@ -726,7 +728,13 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       setTtsPaused(false);
 
       if (repeatModeRef.current === 'chapter' && currentChapterVerses && currentChapterVerses.length > 0) {
+        // Loop the chapter
+        ttsPlayingRef.current = true;
+        setTtsPlaying(true);
         setTimeout(() => speakAtIndex(0), 10);
+      } else if (repeatModeRef.current === 'none') {
+        // Auto-advance to next chapter
+        setTimeout(() => handleNextRef.current(), 300);
       }
       return;
     }
@@ -842,21 +850,45 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     }
   }, [ttsPlaying, ttsPaused, startTTS, pauseTTS, resumeTTS]);
 
-  // Long press handling
-  const handlePlaybackPressStart = useCallback(() => {
+  // Long press handling — separate touch vs mouse to prevent double-fire on mobile
+  const handlePlaybackTouchStart = useCallback(() => {
+    isTouchRef.current = true; // Mark as touch interaction
     isLongPressRef.current = false;
     pressTimerRef.current = setTimeout(() => {
       isLongPressRef.current = true;
       setIsControlPanelOpen(true);
-    }, 1500); // 1.5 seconds long press
+    }, 1500);
   }, []);
 
-  const handlePlaybackPressEnd = useCallback(() => {
+  const handlePlaybackTouchEnd = useCallback(() => {
     if (pressTimerRef.current) {
       clearTimeout(pressTimerRef.current);
       pressTimerRef.current = null;
     }
-    // If it wasn't a long press, it was a tap
+    if (!isLongPressRef.current) {
+      toggleTTS();
+    }
+    isLongPressRef.current = false;
+  }, [toggleTTS]);
+
+  const handlePlaybackMouseDown = useCallback(() => {
+    if (isTouchRef.current) return; // Skip if touch already handled
+    isLongPressRef.current = false;
+    pressTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
+      setIsControlPanelOpen(true);
+    }, 1500);
+  }, []);
+
+  const handlePlaybackMouseUp = useCallback(() => {
+    if (isTouchRef.current) {
+      isTouchRef.current = false; // Reset for next interaction
+      return;
+    }
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
     if (!isLongPressRef.current) {
       toggleTTS();
     }
@@ -869,6 +901,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       pressTimerRef.current = null;
     }
     isLongPressRef.current = false;
+    isTouchRef.current = false;
   }, []);
 
   const handleProgressBarClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -932,6 +965,19 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     };
   }, []);
 
+  // Keep handleNextRef in sync so TTS auto-advance can call it
+  useEffect(() => { handleNextRef.current = handleNext; });
+
+  // Auto-scroll to current verse during TTS playback
+  useEffect(() => {
+    if (!ttsPlaying || ttsPaused || !currentVerse) return;
+    const el = document.getElementById(
+      `verse-${selectedBookId}-${selectedChapter}-${currentVerse}`
+    );
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [currentVerse, ttsPlaying, ttsPaused, selectedBookId, selectedChapter]);
 
   // Interactive drag handlers for slide transition
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -1207,12 +1253,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     }
   }, [selectedBookId, selectedChapter, selectedVersionId, displayBookName, displayVersionName]);
 
-  // Dispatch reading mode event to client layout
+  // Dispatch reading mode event to client layout (also hide footer when control panel/bottom sheet is open)
   useEffect(() => {
     window.dispatchEvent(
-      new CustomEvent('bible-reading-mode', { detail: { isReadingMode: !showBottomNav || isAnyPopupOpen } })
+      new CustomEvent('bible-reading-mode', { detail: { isReadingMode: !showBottomNav || isAnyPopupOpen || isControlPanelOpen } })
     );
-  }, [showBottomNav, isAnyPopupOpen]);
+  }, [showBottomNav, isAnyPopupOpen, isControlPanelOpen]);
   
   // Safari-specific fix: Trigger minimal scroll when entering Reading Mode to encourage address bar hide
   useEffect(() => {
@@ -2206,10 +2252,34 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       </button>
                     </div>
 
-                    {/* Secondary Controls Row (Volume slider + Speed toggle) */}
-                    <div className="flex items-center gap-4 bg-gray-50/50 rounded-xl p-2">
-                      <div className="flex-1 flex items-center gap-3 px-2">
-                        <Volume2 className="size-4 text-gray-400" />
+                    {/* Secondary Controls Row (Repeat + Volume slider + Speed toggle + Download) */}
+                    <div className="flex items-center gap-3 bg-gray-50/50 rounded-xl p-2">
+                      {/* Repeat Mode */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleRepeatMode();
+                        }}
+                        className={`px-2.5 py-1.5 rounded-lg border shadow-sm text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-all ${
+                          repeatMode !== 'none'
+                            ? 'bg-[var(--color-primary-teal)] text-white border-[var(--color-primary-teal)]'
+                            : 'bg-white text-gray-500 border-gray-200'
+                        }`}
+                        title={`Repeat: ${repeatMode}`}
+                      >
+                        {repeatMode === 'verse' ? (
+                          <Repeat1 className="size-3.5" />
+                        ) : (
+                          <Repeat className="size-3.5" />
+                        )}
+                        {repeatMode === 'none' ? 'Off' : repeatMode === 'verse' ? '1' : 'Ch'}
+                      </button>
+
+                      <div className="w-px h-6 bg-gray-200" />
+
+                      {/* Volume */}
+                      <div className="flex-1 flex items-center gap-2 px-1">
+                        <Volume2 className="size-4 text-gray-400 flex-shrink-0" />
                         <input
                           type="range"
                           min="0" max="1" step="0.05"
@@ -2219,7 +2289,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                           style={{ background: `linear-gradient(to right, var(--color-primary-teal) ${ttsVolume*100}%, #e5e7e7 ${ttsVolume*100}%)` }}
                         />
                       </div>
+
                       <div className="w-px h-6 bg-gray-200" />
+
+                      {/* Speed */}
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -2228,10 +2301,25 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                           const nextIndex = (currentIndex + 1) % speeds.length;
                           setTtsRate(speeds[nextIndex]);
                         }}
-                        className="px-3 py-1.5 rounded-lg bg-white border border-gray-200 shadow-sm text-[11px] font-bold text-[var(--color-primary-teal)] flex items-center gap-1.5 active:scale-95 transition-all"
+                        className="px-2.5 py-1.5 rounded-lg bg-white border border-gray-200 shadow-sm text-[11px] font-bold text-[var(--color-primary-teal)] flex items-center gap-1 active:scale-95 transition-all"
                       >
                         <Zap className="size-3.5" />
                         {ttsRate}x
+                      </button>
+
+                      <div className="w-px h-6 bg-gray-200" />
+
+                      {/* Download placeholder */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          // Download functionality placeholder
+                          alert('Download feature coming soon!');
+                        }}
+                        className="p-1.5 rounded-lg bg-white border border-gray-200 shadow-sm text-gray-500 hover:text-[var(--color-primary-teal)] active:scale-95 transition-all"
+                        title="Download"
+                      >
+                        <Download className="size-3.5" />
                       </button>
                     </div>
                   </div>
@@ -2246,7 +2334,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         )}
       </AnimatePresence>
 
-      {/* ── NARRATION CONTROLS (Always Visible) ─────────────────────────────── */}
+      {/* ── NARRATION CONTROLS (Hidden when bottom sheet is open) ─────────────── */}
+      {!isControlPanelOpen && (
       <div
         className="fixed left-0 right-0 z-[1200] pointer-events-none"
         style={{ bottom: showBottomNav ? '88px' : '10px' }}
@@ -2273,20 +2362,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               {/* Main play/pause circle button */}
               <button
                 type="button"
-                onMouseDown={handlePlaybackPressStart}
-                onMouseUp={handlePlaybackPressEnd}
+                onMouseDown={handlePlaybackMouseDown}
+                onMouseUp={handlePlaybackMouseUp}
                 onMouseLeave={handlePlaybackPressCancel}
-                onTouchStart={handlePlaybackPressStart}
-                onTouchEnd={handlePlaybackPressEnd}
+                onTouchStart={handlePlaybackTouchStart}
+                onTouchEnd={handlePlaybackTouchEnd}
                 onTouchCancel={handlePlaybackPressCancel}
                 onContextMenu={(e) => e.preventDefault()}
                 className="relative size-16 group pointer-events-auto select-none touch-manipulation"
                 title="Tap to Play/Pause, Hold for Controls"
-                style={{
-                  transform: isControlPanelOpen ? 'scale(0)' : 'scale(1)',
-                  opacity: isControlPanelOpen ? 0 : 1,
-                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)'
-                }}
               >
                 <svg className="absolute inset-0 size-full -rotate-90 pointer-events-none">
                   <circle cx="32" cy="32" r="30" fill="white" className="shadow-[0_4px_12px_rgba(0,0,0,0.1)]" />
@@ -2330,6 +2414,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           )}
         </div>
       </div>
+      )}
 
       {/* Side Menu Overlay */}
       {menuOpen && (
