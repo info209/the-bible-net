@@ -19,6 +19,29 @@ import VerseActionMenu from './VerseActionMenu';
 // import BibleSearch from './BibleSearch';
 import { useReadingProgress } from '@/lib/useReadingProgress';
 import { teluguBible, hindiBible } from './BibleData';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetDescription,
+} from '@/components/ui/sheet';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 
 const bibleBooks = {
   'Old Testament': [
@@ -1380,9 +1403,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         </div>
 
         {/* Selector panels */}
-        {showBookSelector && (
-          <div className="fixed inset-0 z-[9999] bg-black/20" onClick={() => setShowBookSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
+        <Dialog open={showBookSelector} onOpenChange={setShowBookSelector}>
+          <DialogContent className="max-w-[360px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
               {/* Header */}
               <div className="flex items-center justify-between p-4">
                 <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Books</h3>
@@ -1418,15 +1440,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       </button>
                     </div>
                   </div>
-
-                  <button onClick={() => setShowBookSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                    <X className="size-6 text-[var(--color-text-primary)]/60" />
-                  </button>
                 </div>
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <ScrollArea className="flex-1 max-h-[calc(80vh-80px)] px-4 pb-4">
                 {isLoadingBooks ? (
                   <BookListSkeleton />
                 ) : (
@@ -1486,14 +1504,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     </div>
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        )}
+              </ScrollArea>
+          </DialogContent>
+        </Dialog>
 
-        {showChapterSelector && (
-          <div className="fixed inset-0 z-[9999] bg-black/20" onClick={() => setShowChapterSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
+        <Dialog open={showChapterSelector} onOpenChange={setShowChapterSelector}>
+          <DialogContent className="max-w-[360px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
               {/* Header with Done button */}
               <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
                 <div className="w-16"></div> {/* Spacer for centering */}
@@ -1507,7 +1523,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-4">
+              <ScrollArea className="flex-1 max-h-[calc(80vh-80px)] px-4 py-4">
                 <div className="grid grid-cols-5 gap-2">
                   {Array.from({ length: totalChapters }, (_, i) => i + 1).map(chapter => (
                     <button
@@ -1526,14 +1542,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
+              </ScrollArea>
+          </DialogContent>
+        </Dialog>
 
-        {showVerseSelector && (
-          <div className="fixed inset-0 z-[9999] bg-black/20" onClick={() => setShowVerseSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
+        <Dialog open={showVerseSelector} onOpenChange={setShowVerseSelector}>
+          <DialogContent className="max-w-[360px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
               {/* Header with Back and Done buttons */}
               <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
                 <button
@@ -1559,7 +1573,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-4">
+              <ScrollArea className="flex-1 max-h-[calc(80vh-80px)] px-4 py-4">
                 <div className="grid grid-cols-5 gap-2">
                   {Array.from({ length: 31 }, (_, i) => i + 1).map(verse => (
                     <button
@@ -1578,25 +1592,19 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     </button>
                   ))}
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
+              </ScrollArea>
+          </DialogContent>
+        </Dialog>
 
-        {showVersionSelector && (
-          <div className="fixed inset-0 z-[9999] bg-black/20" onClick={() => setShowVersionSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
-              {/* Close button */}
-              <div className="flex justify-end p-4">
-                <button onClick={() => setShowVersionSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                  <X className="size-6 text-[#31393a]/60" />
-                </button>
+        <Dialog open={showVersionSelector} onOpenChange={setShowVersionSelector}>
+          <DialogContent className="max-w-[360px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-100">
+                <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Bible Versions</h3>
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 pb-4">
-                <h4 className="font-bold text-[#d23952] mb-4 text-sm">Bible Versions</h4>
-                
+              <ScrollArea className="flex-1 max-h-[calc(80vh-80px)] px-4 pb-4">
                 {isLoadingVersions ? (
                   <VersionListSkeleton />
                 ) : (
@@ -1660,10 +1668,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       ))}
                   </div>
                 )}
-              </div>
-            </div>
-          </div>
-        )}
+              </ScrollArea>
+          </DialogContent>
+        </Dialog>
 
 
 
@@ -1700,8 +1707,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           };
 
           return (
-          <div className="fixed inset-0 z-[9999] bg-transparent" onClick={() => setShowMoreMenu(false)}>
-            <div className="absolute top-[112px] right-4 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-full max-w-[280px] overflow-hidden animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
+          <Dialog open={showMoreMenu} onOpenChange={setShowMoreMenu}>
+            <DialogContent className="max-w-[280px] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
               <div className="py-2">
                 {/* Save Chapter */}
                 <button
@@ -1719,7 +1726,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   </span>
                 </button>
 
-                <div className="h-px bg-gray-100 mx-4" />
+                <Separator className="mx-4" />
 
                 {/* Fonts & Settings Option */}
                 <button
@@ -1736,12 +1743,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 {/* Comparison Mode Toggle */}
                 <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 transition-colors">
                   <span className="text-base text-[#31393a]">Comparison Mode</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setComparisonMode(!comparisonMode);
-                      if (!comparisonMode && !secondVersionId) {
-                        // Set a default second version if not set
+                  <Switch
+                    checked={comparisonMode}
+                    onCheckedChange={(checked) => {
+                      setComparisonMode(checked);
+                      if (checked && !secondVersionId) {
                         const defaultV2 = bibleVersions.find(v => v.id !== selectedVersionId) || bibleVersions[0];
                         if (defaultV2) {
                             setSecondVersionId(defaultV2.id);
@@ -1750,43 +1756,31 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       }
                       setShowMoreMenu(false);
                     }}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${comparisonMode ? 'bg-[#006a6f]' : 'bg-gray-300'
-                      }`}
-                  >
-                    <div
-                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${comparisonMode ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                    />
-                  </button>
+                    className="data-[state=checked]:bg-[#006a6f]"
+                  />
                 </div>
 
                 {/* Hide Footnotes Toggle */}
                 <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 transition-colors">
                   <span className="text-base text-[#31393a]">Hide footnotes</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setHideFootnotes(!hideFootnotes);
-                    }}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${hideFootnotes ? 'bg-[#006a6f]' : 'bg-gray-300'
-                      }`}
-                  >
-                    <div
-                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${hideFootnotes ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                    />
-                  </button>
+                  <Switch
+                    checked={hideFootnotes}
+                    onCheckedChange={setHideFootnotes}
+                    className="data-[state=checked]:bg-[#006a6f]"
+                  />
                 </div>
               </div>
-            </div>
-          </div>
+            </DialogContent>
+          </Dialog>
           );
         })()}
 
-        {/* Settings Menu */}
-        {showSettingsMenu && (
-          <div className="fixed inset-0 z-[9999] bg-black/20" onClick={() => setShowSettingsMenu(false)}>
-            <div className="absolute top-[112px] right-4 bg-white border border-gray-200 shadow-[0_8px_24px_rgba(0,0,0,0.12)] rounded-xl w-[90%] max-w-[380px] max-h-[70vh] overflow-hidden flex flex-col animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200" onClick={(e) => e.stopPropagation()}>
+        <Sheet open={showSettingsMenu} onOpenChange={setShowSettingsMenu}>
+          <SheetContent side="right" className="w-full max-w-[380px] p-0 border-none [&>[data-slot=sheet-close]]:hidden">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Fonts & Settings</SheetTitle>
+              <SheetDescription>Customize your reading experience</SheetDescription>
+            </SheetHeader>
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-200">
                 <div className="w-12" /> {/* Spacer instead of Back button */}
@@ -1800,7 +1794,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+              <ScrollArea className="flex-1 h-[calc(100vh-80px)]">
+                <div className="px-4 py-6 space-y-6">
                 {/* Font Family Selection */}
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-[#0f172a]/80 uppercase tracking-wide">Font family</label>
@@ -1941,10 +1936,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     </button>
                   </div>
                 </div>
-              </div>
-            </div>
-          </div>
-        )}
+                </div>
+              </ScrollArea>
+          </SheetContent>
+        </Sheet>
 
         {/* Main Reading Content */}
         <div
