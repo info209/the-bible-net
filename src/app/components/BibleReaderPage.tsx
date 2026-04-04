@@ -2463,7 +2463,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     <div className="px-4 py-2.5 text-sm font-medium text-gray-400 border-b border-gray-50">
                       Found {searchTotal} results
                     </div>
-                    {searchResults.map((result, i) => {
+                    {searchResults.map((result: any, i: number) => {
                       const hl = searchQuery.trim();
                       const regex = new RegExp(`(${hl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
                       const parts = result.text.split(regex);
@@ -2493,7 +2493,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                                 {result.book?.name} {result.chapter?.number}:{result.number}
                               </p>
                               <p className="text-sm text-gray-600 leading-relaxed">
-                                {previewParts.map((part, j: number) =>
+                                {previewParts.map((part: string, j: number) =>
                                   regex.test(part)
                                     ? <mark key={j} className="bg-yellow-200 text-gray-900 rounded px-0.5">{part}</mark>
                                     : <span key={j}>{part}</span>

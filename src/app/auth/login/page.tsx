@@ -149,7 +149,7 @@ export default function LoginPage() {
                         </div>
                         <span className="text-slate-600 font-bold">Remember Me</span>
                     </label>
-                    <Link href="/auth/forgot-password" size="sm" className="text-[var(--color-accent-rose)] font-bold hover:underline underline-offset-4">
+                    <Link href="/auth/forgot-password" className="text-[var(--color-accent-rose)] font-bold hover:underline underline-offset-4">
                         Forgot Password?
                     </Link>
                 </div>
