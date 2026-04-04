@@ -6,6 +6,9 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
 import { useReadingProgress } from '@/lib/useReadingProgress';
 import { getRelativeTime } from '@/utils/time';
 
@@ -500,87 +503,76 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* Comment Modal */}
-      <AnimatePresence>
-        {showCommentModal && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+      {/* Comment Modal - Radix Dialog */}
+      <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+        <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-t-[32px] sm:rounded-2xl glass-ios border-none shadow-2xl [&>[data-slot=dialog-close]]:hidden flex flex-col max-h-[90vh]">
+          <DialogHeader className="p-4 border-b flex flex-row items-center justify-between bg-white/10 backdrop-blur-sm space-y-0">
+            <div className="flex flex-col">
+              <DialogTitle className="font-bold text-slate-900">Comments</DialogTitle>
+              <DialogDescription className="sr-only">View and add comments for this content</DialogDescription>
+            </div>
+            <button
               onClick={() => setShowCommentModal(false)}
-              className="absolute inset-0 bg-white/10 backdrop-blur-md shadow-2xl"
-            />
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              className="relative glass-ios w-full max-w-lg rounded-t-3xl sm:rounded-2xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
+              className="p-2 hover:bg-gray-200/50 rounded-full transition-colors"
             >
-              <div className="p-4 border-b flex items-center justify-between bg-white/10 backdrop-blur-sm">
-                <h3 className="font-bold text-slate-900">Comments</h3>
-                <button
-                  onClick={() => setShowCommentModal(false)}
-                  className="p-2 hover:bg-gray-200 rounded-full transition-colors"
-                >
-                  <X className="size-5 text-gray-500" />
-                </button>
-              </div>
+              <X className="size-5 text-gray-500" />
+            </button>
+          </DialogHeader>
 
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-[300px]">
-                {comments.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-10 text-gray-400">
-                    <MessageCircle className="size-12 mb-2 opacity-20" />
-                    <p>No comments yet. Be the first!</p>
-                  </div>
-                ) : (
-                  comments.map((comment, i) => (
-                    <div key={i} className="flex space-x-3">
-                      <div className="size-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-xs uppercase">
-                        {comment.userId?.firstName?.[0] || 'U'}
-                      </div>
-                      <div className="flex-1 bg-gray-100 rounded-2xl rounded-tl-none p-3">
-                        <div className="flex items-center justify-between mb-1">
-                          <p className="font-extrabold text-xs text-slate-900">
-                            {comment.userId?.firstName} {comment.userId?.lastName}
-                          </p>
-                          <span className="text-[10px] font-bold text-slate-500">
-                            {new Date(comment.createdAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <p className="text-sm font-medium text-slate-800">{comment.commentText}</p>
-                      </div>
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <div className="p-4 border-t bg-transparent">
-                <div className="flex items-end space-x-2">
-                  <textarea
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    placeholder="Write a comment..."
-                    className="flex-1 bg-gray-100 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)] resize-none"
-                    rows={2}
-                  />
-                  <button
-                    onClick={handleAddComment}
-                    disabled={submittingComment || !newComment.trim()}
-                    className="bg-[var(--color-primary-teal)] text-white p-3 rounded-xl disabled:opacity-50 hover:shadow-lg transition-all"
-                  >
-                    {submittingComment ? (
-                      <div className="size-5 border-2 border-white border-t-transparent animate-spin rounded-full" />
-                    ) : (
-                      <Play className="size-5 fill-current" />
-                    )}
-                  </button>
+          <ScrollArea className="flex-1 min-h-[300px]">
+            <div className="p-4 space-y-4">
+              {comments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-gray-400">
+                  <MessageCircle className="size-12 mb-2 opacity-20" />
+                  <p className="text-sm font-medium">No comments yet. Be the first!</p>
                 </div>
-              </div>
-            </motion.div>
+              ) : (
+                comments.map((comment, i) => (
+                  <div key={i} className="flex space-x-3 group">
+                    <div className="size-9 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-xs uppercase shrink-0 shadow-sm">
+                      {comment.userId?.firstName?.[0] || 'U'}
+                    </div>
+                    <div className="flex-1 bg-gray-100/80 rounded-2xl rounded-tl-none p-3 transition-colors group-hover:bg-gray-100">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-extrabold text-xs text-slate-900">
+                          {comment.userId?.firstName} {comment.userId?.lastName}
+                        </p>
+                        <span className="text-[10px] font-bold text-slate-500">
+                          {new Date(comment.createdAt).toLocaleDateString()}
+                        </span>
+                      </div>
+                      <p className="text-sm font-medium text-slate-800 leading-relaxed">{comment.commentText}</p>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </ScrollArea>
+
+          <div className="p-4 border-t bg-white/10 backdrop-blur-md">
+            <div className="flex items-end space-x-2">
+              <textarea
+                value={newComment}
+                onChange={(e) => setNewComment(e.target.value)}
+                placeholder="Write a comment..."
+                className="flex-1 bg-gray-100/80 rounded-2xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/40 resize-none transition-all placeholder:text-gray-400"
+                rows={2}
+              />
+              <button
+                onClick={handleAddComment}
+                disabled={submittingComment || !newComment.trim()}
+                className="bg-[var(--color-primary-teal)] text-white p-3 rounded-2xl disabled:opacity-50 hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
+              >
+                {submittingComment ? (
+                  <div className="size-5 border-2 border-white border-t-transparent animate-spin rounded-full" />
+                ) : (
+                  <Play className="size-5 fill-current ml-0.5" />
+                )}
+              </button>
+            </div>
           </div>
-        )}
-      </AnimatePresence>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

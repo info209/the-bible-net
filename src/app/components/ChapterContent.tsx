@@ -644,56 +644,76 @@ export default function ChapterContent({
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="px-4 sm:px-6 py-4 sm:py-6 pb-[calc(180px+env(safe-area-inset-bottom))] md:pb-[200px]"
+      transition={{ duration: 0.6 }}
+      className="px-4 sm:px-6 py-6 sm:py-10 pb-[calc(180px+env(safe-area-inset-bottom))] md:pb-[240px]"
     >
       <div className="max-w-2xl mx-auto">
         {/* Chapter title */}
-        <div className="mb-8">
+        <div className="mb-12 text-center sm:text-left">
           <h2
-            className="text-xl font-bold mb-8"
-            style={{ color: theme?.text }}
+            className="text-2xl sm:text-3xl font-bold tracking-tight"
+            style={{ 
+              color: theme?.text,
+              fontFamily: font 
+            }}
           >
             {content?.title}
           </h2>
+          <div className="h-1 w-12 bg-[#d23952] mt-4 rounded-full mx-auto sm:ml-0 opacity-80" />
         </div>
 
         {/* Bible text */}
-        <div className="space-y-1.5 text-justify leading-7">
-          {content?.verses?.map(verse => (
-            <p
-              key={verse.number}
-              id={`verse-${book}-${chapter}-${verse.number}`}
-              className={`transition-all duration-300 rounded px-2 py-1 select-none cursor-pointer ${selectedVerses.includes(verse.number) ? 'bg-blue-50 border-l-4 border-blue-400' : ''}`}
-              onMouseDown={(e) => handlePressStart(e, verse.number)}
-              onMouseUp={(e) => handlePressEnd(e, verse.number)}
-              onMouseLeave={handlePressCancel}
-              onTouchStart={(e) => handlePressStart(e, verse.number)}
-              onTouchEnd={(e) => handlePressEnd(e, verse.number)}
-              onTouchCancel={handlePressCancel}
-              style={{
-                fontFamily: font,
-                fontSize: `${fontSize}px`,
-                color: theme?.text,
-                backgroundColor: selectedVerses.includes(verse.number) 
-                  ? 'rgba(59, 130, 246, 0.1)' 
-                  : readingVerse === verse.number 
-                    ? '#fbebee' 
-                    : highlights.find(h => h.metadata?.verse === verse.number)?.metadata?.color || 'transparent'
-              }}
-            >
-              <sup
-                className="font-bold mr-1"
-                style={{ color: theme?.verseNumber }}
+        <div 
+          className="space-y-0.5"
+          style={{ 
+            fontFamily: font,
+            fontSize: `${fontSize}px`,
+            lineHeight: 1.75
+          }}
+        >
+          {content?.verses?.map(verse => {
+            const isSelected = selectedVerses.includes(verse.number);
+            const isReading = readingVerse === verse.number;
+            const highlight = highlights.find(h => h.metadata?.verse === verse.number);
+            const hasNote = notes.some(n => n.metadata?.verses?.includes(verse.number));
+
+            return (
+              <span
+                key={verse.number}
+                id={`verse-${book}-${chapter}-${verse.number}`}
+                className={`inline relative group transition-all duration-300 rounded-sm px-1 py-0.5 select-text cursor-pointer hover:bg-black/5 ${
+                  isSelected ? 'ring-2 ring-blue-400 bg-blue-100/30' : ''
+                }`}
+                onMouseDown={(e) => handlePressStart(e, verse.number)}
+                onMouseUp={(e) => handlePressEnd(e, verse.number)}
+                onMouseLeave={handlePressCancel}
+                onTouchStart={(e) => handlePressStart(e, verse.number)}
+                onTouchEnd={(e) => handlePressEnd(e, verse.number)}
+                onTouchCancel={handlePressCancel}
+                style={{
+                  color: theme?.text,
+                  backgroundColor: highlight?.metadata?.color || (isReading ? '#fbebee' : 'transparent'),
+                }}
               >
-                {verse?.number}
-              </sup>
-              {verse?.text}
-              {notes.some(n => n.metadata?.verses?.includes(verse.number)) && (
-                <span className="ml-1 inline-block text-[10px] text-red-500 font-bold">●</span>
-              )}
-            </p>
-          ))}
+                <sup
+                  className="font-bold mr-1.5 opacity-60 text-[0.65em] select-none"
+                  style={{ color: theme?.verseNumber }}
+                >
+                  {verse?.number}
+                </sup>
+                <span className={`${isReading ? 'font-medium' : ''}`}>
+                  {verse?.text}
+                </span>
+                {hasNote && (
+                  <span className="ml-0.5 inline-flex items-center justify-center translate-y-[-2px]">
+                    <span className="size-1.5 bg-red-500 rounded-full shadow-[0_0_4px_rgba(239,68,68,0.4)]" />
+                  </span>
+                )}
+                {/* Spacing between verses when rendered inline */}
+                <span className="mr-1" />
+              </span>
+            );
+          })}
         </div>
       </div>
     </motion.div>

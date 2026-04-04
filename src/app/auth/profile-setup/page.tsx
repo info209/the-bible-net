@@ -94,141 +94,146 @@ function ProfileSetupContent() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 font-sans">
-            <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-md apple-nav-floating p-8 space-y-8"
-            >
-                <div className="text-center space-y-3">
-                    <div className="mx-auto w-16 h-16 bg-[#41ADB0]/10 rounded-full flex items-center justify-center">
-                        <UserCircle2 className="w-8 h-8 text-[#41ADB0]" />
-                    </div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Complete your profile</h1>
-                    <p className="text-slate-500 font-medium px-4">
-                        Help us personalize your Bible reading experience
-                    </p>
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-md glass-ios border-none p-8 space-y-8 relative overflow-hidden shadow-2xl"
+        >
+            <div className="text-center space-y-3">
+                <div className="mx-auto w-16 h-16 bg-[var(--color-primary-teal)]/10 rounded-full flex items-center justify-center shadow-inner">
+                    <UserCircle2 className="w-10 h-10 text-[var(--color-primary-teal)]" />
                 </div>
+                <h1 className="text-3xl font-black text-slate-900 tracking-tighter font-sans leading-tight">Personalize</h1>
+                <p className="text-slate-500/80 font-medium px-4 leading-relaxed">
+                    Set up your preferences for a tailored Bible reading experience
+                </p>
+            </div>
 
-                {error && (
-                    <div className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl text-sm font-medium">
-                        {error}
-                    </div>
-                )}
+            {error && (
+                <motion.div 
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl text-sm font-bold shadow-sm"
+                >
+                    {error}
+                </motion.div>
+            )}
 
-                <div className="space-y-6">
-                    {/* Basic Info */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700">First Name</label>
-                            <input
-                                type="text"
-                                value={formData.firstName}
-                                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                                className="w-full bg-white/50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-[#41ADB0] focus:ring-4 focus:ring-[#41ADB0]/10 transition-all"
-                                placeholder="John"
-                            />
-                        </div>
-                        <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700">Last Name</label>
-                            <input
-                                type="text"
-                                value={formData.lastName}
-                                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                                className="w-full bg-white/50 border border-slate-200 rounded-2xl py-3 px-4 outline-none focus:border-[#41ADB0] focus:ring-4 focus:ring-[#41ADB0]/10 transition-all"
-                                placeholder="Doe"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">Email Address</label>
+            <div className="space-y-6">
+                {/* Basic Info */}
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-slate-700 ml-1">First Name</label>
                         <input
-                            type="email"
-                            value={formData.email}
-                            readOnly
-                            className="w-full bg-slate-100 border border-slate-200 rounded-2xl py-3 px-4 outline-none text-slate-500 cursor-not-allowed"
-                            title="Email cannot be changed"
+                            type="text"
+                            value={formData.firstName}
+                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                            className="w-full bg-gray-100/50 border-none rounded-2xl py-3.5 px-4 outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 transition-all font-medium placeholder:text-gray-400"
+                            placeholder="John"
                         />
                     </div>
-
-                    <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">Country</label>
-                        <div className="relative group">
-                            <Globe className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[#41ADB0] transition-colors" />
-                            <select
-                                value={formData.country}
-                                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                                className="w-full bg-white/50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 outline-none focus:border-[#41ADB0] focus:ring-4 focus:ring-[#41ADB0]/10 transition-all appearance-none"
-                            >
-                                <option>New Zealand</option>
-                                <option>United States</option>
-                                <option>United Kingdom</option>
-                                <option>India</option>
-                                <option>Australia</option>
-                                <option>Canada</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">Preferred Language</label>
-                        <div className="relative group">
-                            <Languages className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[#41ADB0] transition-colors" />
-                            <select
-                                value={formData.preferredLanguage}
-                                onChange={(e) => setFormData({ ...formData, preferredLanguage: e.target.value })}
-                                className="w-full bg-white/50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 outline-none focus:border-[#41ADB0] focus:ring-4 focus:ring-[#41ADB0]/10 transition-all appearance-none"
-                            >
-                                <option>English</option>
-                                <option>Spanish</option>
-                                <option>French</option>
-                                <option>Hindi</option>
-                                <option>Telugu</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-sm font-semibold text-slate-700">Preferred Bible Version</label>
-                        <div className="relative group">
-                            <Book className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[#41ADB0] transition-colors" />
-                            <select
-                                value={formData.preferredBibleVersion}
-                                onChange={(e) => setFormData({ ...formData, preferredBibleVersion: e.target.value })}
-                                className="w-full bg-white/50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 outline-none focus:border-[#41ADB0] focus:ring-4 focus:ring-[#41ADB0]/10 transition-all appearance-none"
-                            >
-                                <option>NKJV</option>
-                                <option>KJV</option>
-                                <option>NIV</option>
-                                <option>ESV</option>
-                            </select>
-                        </div>
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-slate-700 ml-1">Last Name</label>
+                        <input
+                            type="text"
+                            value={formData.lastName}
+                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                            className="w-full bg-gray-100/50 border-none rounded-2xl py-3.5 px-4 outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 transition-all font-medium placeholder:text-gray-400"
+                            placeholder="Doe"
+                        />
                     </div>
                 </div>
 
-                <div className="space-y-4 pt-4">
-                    <button
-                        onClick={handleSubmit}
-                        disabled={loading}
-                        className="w-full bg-[#41ADB0] hover:bg-[#369294] text-white font-bold py-4 rounded-2xl shadow-lg shadow-[#41ADB0]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                    >
-                        {loading ? 'Saving...' : (
-                            <>
-                                Complete Profile <ArrowRight className="w-5 h-5" />
-                            </>
-                        )}
-                    </button>
-                    
-                    <button 
-                        onClick={() => router.push('/home')}
-                        className="w-full text-slate-400 font-bold py-2 hover:text-slate-600 transition-colors"
-                    >
-                        Skip for now
-                    </button>
+                <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
+                    <input
+                        type="email"
+                        value={formData.email}
+                        readOnly
+                        className="w-full bg-slate-200/50 border-none rounded-2xl py-3.5 px-4 outline-none text-slate-500 cursor-not-allowed font-medium opacity-60"
+                        title="Email cannot be changed"
+                    />
                 </div>
-            </motion.div>
-        </div>
+
+                <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Country</label>
+                    <div className="relative group">
+                        <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-primary-teal)] transition-colors" />
+                        <select
+                            value={formData.country}
+                            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                            className="w-full bg-gray-100/50 border-none rounded-2xl py-3.5 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 transition-all appearance-none font-bold text-slate-700"
+                        >
+                            <option>New Zealand</option>
+                            <option>United States</option>
+                            <option>United Kingdom</option>
+                            <option>India</option>
+                            <option>Australia</option>
+                            <option>Canada</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Preferred Language</label>
+                    <div className="relative group">
+                        <Languages className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-primary-teal)] transition-colors" />
+                        <select
+                            value={formData.preferredLanguage}
+                            onChange={(e) => setFormData({ ...formData, preferredLanguage: e.target.value })}
+                            className="w-full bg-gray-100/50 border-none rounded-2xl py-3.5 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 transition-all appearance-none font-bold text-slate-700"
+                        >
+                            <option>English</option>
+                            <option>Spanish</option>
+                            <option>French</option>
+                            <option>Hindi</option>
+                            <option>Telugu</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div className="space-y-1.5">
+                    <label className="text-sm font-bold text-slate-700 ml-1">Preferred Bible Version</label>
+                    <div className="relative group">
+                        <Book className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-primary-teal)] transition-colors" />
+                        <select
+                            value={formData.preferredBibleVersion}
+                            onChange={(e) => setFormData({ ...formData, preferredBibleVersion: e.target.value })}
+                            className="w-full bg-gray-100/50 border-none rounded-2xl py-3.5 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 transition-all appearance-none font-bold text-slate-700"
+                        >
+                            <option>NKJV</option>
+                            <option>KJV</option>
+                            <option>NIV</option>
+                            <option>ESV</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div className="space-y-5 pt-4">
+                <button
+                    onClick={handleSubmit}
+                    disabled={loading}
+                    className="w-full bg-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-dark)] text-white font-black py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg lowercase tracking-tight"
+                >
+                    {loading ? (
+                        <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                        <>
+                            Get Started <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                        </>
+                    )}
+                </button>
+                
+                <button 
+                    onClick={() => router.push('/home')}
+                    className="w-full text-slate-400 font-extrabold py-2 hover:text-slate-600 transition-colors text-sm"
+                >
+                    Skip for now
+                </button>
+            </div>
+        </motion.div>
     );
 }
 

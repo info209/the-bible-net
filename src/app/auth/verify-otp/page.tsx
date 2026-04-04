@@ -91,77 +91,85 @@ function VerifyOTPContent() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 font-sans">
-            <motion.div 
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="w-full max-w-md apple-nav-floating p-8 space-y-8"
-            >
-                <div className="text-center space-y-3">
-                    <div className="mx-auto w-16 h-16 bg-[#41ADB0]/10 rounded-full flex items-center justify-center">
-                        <ShieldCheck className="w-8 h-8 text-[#41ADB0]" />
-                    </div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Verification</h1>
-                    <p className="text-slate-500 font-medium px-4">
-                        We have sent you an email at <span className="text-slate-900 font-semibold">{email || 'your email'}</span> with a verification code.
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-md glass-ios border-none p-8 space-y-8 relative overflow-hidden shadow-2xl"
+        >
+            <div className="text-center space-y-4">
+                <div className="mx-auto w-20 h-20 bg-[var(--color-primary-teal)]/10 rounded-full flex items-center justify-center shadow-inner">
+                    <ShieldCheck className="w-10 h-10 text-[var(--color-primary-teal)]" />
+                </div>
+                <div className="space-y-2">
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight font-sans">Verify Identity</h1>
+                    <p className="text-slate-500/80 font-medium px-4 leading-relaxed">
+                        We sent a 6-digit code to <span className="text-slate-900 font-bold block mt-1 underline decoration-[var(--color-primary-teal)]/30 underline-offset-4">{email || 'your email'}</span>
                     </p>
                 </div>
+            </div>
 
-                <form onSubmit={handleSubmit} className="space-y-8">
-                    {error && (
-                        <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-2 text-sm">
-                            <AlertCircle className="w-5 h-5" />
-                            <span>{error}</span>
-                        </div>
-                    )}
-
-                    <div className="flex justify-between gap-2">
-                        {otp.map((digit, i) => (
-                            <input
-                                key={i}
-                                ref={(el) => { inputRefs.current[i] = el; }}
-                                type="text"
-                                inputMode="numeric"
-                                value={digit}
-                                onChange={(e) => handleInput(i, e.target.value)}
-                                onKeyDown={(e) => handleKeyDown(i, e)}
-                                className="w-12 h-16 text-center text-3xl font-bold bg-white/50 border-2 border-slate-200 rounded-2xl outline-none focus:border-[#41ADB0] focus:ring-4 focus:ring-[#41ADB0]/10 transition-all text-slate-800"
-                            />
-                        ))}
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-[#41ADB0] hover:bg-[#369294] text-white font-bold py-4 rounded-2xl shadow-lg shadow-[#41ADB0]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+            <form onSubmit={handleSubmit} className="space-y-8">
+                {error && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl flex items-center gap-3 text-sm font-medium"
                     >
-                        {loading ? 'Verifying...' : (
-                            <>
-                                Verify & Continue <ArrowRight className="w-5 h-5" />
-                            </>
-                        )}
-                    </button>
-                </form>
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <span>{error}</span>
+                    </motion.div>
+                )}
 
-                <div className="text-center space-y-4">
-                    <button 
-                        onClick={handleResend}
-                        disabled={resending}
-                        className="text-slate-500 font-semibold text-sm hover:text-[#41ADB0] transition-colors flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
-                    >
-                        <RefreshCcw className={`w-4 h-4 ${resending ? 'animate-spin' : ''}`} />
-                        Resend Code
-                    </button>
-                    
-                    <button 
-                        onClick={() => router.back()}
-                        className="text-[#41ADB0] text-sm font-bold block mx-auto hover:underline"
-                    >
-                        Change Email Address
-                    </button>
+                <div className="flex justify-between gap-2.5">
+                    {otp.map((digit, i) => (
+                        <input
+                            key={i}
+                            ref={(el) => { inputRefs.current[i] = el; }}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => handleInput(i, e.target.value)}
+                            onKeyDown={(e) => handleKeyDown(i, e)}
+                            className="w-12 h-16 text-center text-3xl font-bold bg-gray-100/50 border-2 border-transparent rounded-2xl outline-none focus:border-[var(--color-primary-teal)] focus:ring-4 focus:ring-[var(--color-primary-teal)]/10 transition-all text-slate-800 shadow-sm"
+                        />
+                    ))}
                 </div>
-            </motion.div>
-        </div>
+
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-dark)] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 group text-lg"
+                >
+                    {loading ? (
+                        <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                        <>
+                            Verify & Continue <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                        </>
+                    )}
+                </button>
+            </form>
+
+            <div className="text-center space-y-6 pt-2">
+                <button 
+                    onClick={handleResend}
+                    disabled={resending}
+                    className="text-slate-500 font-bold text-sm hover:text-[var(--color-primary-teal)] transition-colors flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
+                >
+                    <RefreshCcw className={`w-4 h-4 ${resending ? 'animate-spin' : ''}`} />
+                    Resend Code
+                </button>
+                
+                <button 
+                    onClick={() => router.back()}
+                    className="text-[var(--color-primary-teal)] text-sm font-extrabold block mx-auto hover:underline underline-offset-4"
+                >
+                    Change Email Address
+                </button>
+            </div>
+        </motion.div>
     );
 }
 

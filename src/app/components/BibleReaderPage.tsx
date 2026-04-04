@@ -1,7 +1,7 @@
 "use client";
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, MoreVertical, X, ChevronLeft, ChevronRight, Check, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, SlidersHorizontal, Square, Bookmark, BookmarkCheck, Repeat, Repeat1 } from 'lucide-react';
+import { ChevronDown, Home, Book, BookOpen, Compass, Play, Pause, MoreVertical, X, ChevronLeft, ChevronRight, Check, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, SlidersHorizontal, Square, Bookmark, BookmarkCheck, Repeat, Repeat1, Columns2, Music2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useSavedItems } from '@/lib/useSavedItems';
 import { RiSortDesc, RiSortAlphabetAsc } from 'react-icons/ri';
@@ -257,6 +257,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [transitionDirection, setTransitionDirection] = useState<'next' | 'prev'>('next');
   const isTransitioningRef = useRef(false);
   const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchTotal, setSearchTotal] = useState(0);
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [bookSortType, setBookSortType] = useState<'traditional' | 'alphabetical'>('traditional');
   const [comparisonMode, setComparisonMode] = useState(false);
   const [secondVersionId, setSecondVersionId] = useState<string | null>(null);
@@ -340,6 +345,33 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showBookSelector, showChapterSelector, showVerseSelector, showVersionSelector, showSettingsMenu, showMoreMenu, showSearch]);
+
+  // Lock background scroll when any popup is open
+  useEffect(() => {
+    if (isAnyPopupOpen) {
+      if (scrollContainerRef.current) scrollContainerRef.current.style.overflow = 'hidden';
+    } else {
+      if (scrollContainerRef.current) scrollContainerRef.current.style.overflow = '';
+    }
+  }, [isAnyPopupOpen]);
+
+  // Debounced Bible search
+  useEffect(() => {
+    if (!showSearch) { setSearchResults([]); setSearchTotal(0); return; }
+    if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current);
+    if (!searchQuery || searchQuery.trim().length < 2) { setSearchResults([]); setSearchTotal(0); return; }
+    searchDebounceRef.current = setTimeout(async () => {
+      if (!selectedVersionId) return;
+      setSearchLoading(true);
+      try {
+        const res = await fetch(`/api/v1/bible/search?q=${encodeURIComponent(searchQuery.trim())}&versionId=${selectedVersionId}&limit=30`);
+        const data = await res.json();
+        if (data.success) { setSearchResults(data.data.results); setSearchTotal(data.data.total); }
+      } catch (e) { console.error('Search failed:', e); }
+      finally { setSearchLoading(false); }
+    }, 350);
+    return () => { if (searchDebounceRef.current) clearTimeout(searchDebounceRef.current); };
+  }, [searchQuery, showSearch, selectedVersionId]);
 
   // Fetch Bible Versions on mount
   useEffect(() => {
@@ -1382,19 +1414,41 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 </button>
               </div>
 
-              {/* Right side tools - Settings */}
-              <div className="flex items-center -space-x-1 ml-auto mr-3">
+              {/* Right side tools */}
+              <div className="flex items-center gap-0.5 ml-auto">
                 <button
-                  onClick={() => setShowSearch(true)}
-                  className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
+                  onClick={() => {
+                    setComparisonMode(!comparisonMode);
+                    if (!comparisonMode && !secondVersionId) {
+                      const dv = bibleVersions.find(v => v.id !== selectedVersionId) || bibleVersions[0];
+                      if (dv) { setSecondVersionId(dv.id); setDisplaySecondVersionName(dv.name); }
+                    }
+                  }}
+                  className={`p-2 rounded-full transition-colors ${comparisonMode ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-gray-900)] hover:bg-gray-100/50'}`}
+                  title="Compare Versions"
                 >
-                  <FiSearch className="size-5 text-[var(--color-gray-900)]" />
+                  <Columns2 className="size-[18px]" />
+                </button>
+                <button
+                  onClick={toggleTTS}
+                  className={`p-2 rounded-full transition-colors ${ttsPlaying ? 'text-[var(--color-primary-teal)]' : 'text-[var(--color-gray-900)] hover:bg-gray-100/50'}`}
+                  title="Play Audio"
+                >
+                  <Music2 className="size-[18px]" />
+                </button>
+                <button
+                  onClick={() => { setShowSearch(true); setSearchQuery(''); }}
+                  className="p-2 hover:bg-gray-100/50 rounded-full transition-colors text-[var(--color-gray-900)]"
+                  title="Search"
+                >
+                  <FiSearch className="size-[18px]" />
                 </button>
                 <button
                   onClick={() => setShowMoreMenu(true)}
-                  className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
+                  className="p-2 hover:bg-gray-100/50 rounded-full transition-colors text-[var(--color-gray-900)]"
+                  title="More options"
                 >
-                  <MoreVertical className="size-5 text-[var(--color-gray-900)]" />
+                  <MoreVertical className="size-[18px]" />
                 </button>
               </div>
             </div>
@@ -1406,40 +1460,35 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         <Dialog open={showBookSelector} onOpenChange={setShowBookSelector}>
           <DialogContent className="max-w-[360px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
               {/* Header */}
-              <div className="flex items-center justify-between p-4">
-                <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Books</h3>
-
-                <div className="flex items-center gap-3">
-                  {/* Sort Toggle */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-[var(--color-text-primary)] font-medium">
-                      {bookSortType === 'traditional' ? 'Traditional' : 'Alphabetical'}
-                    </span>
-                    <div className="flex bg-gray-200/80 rounded-full p-0.5">
-                      <button
-                        onClick={() => setBookSortType('traditional')}
-                        className={`p-1.5 rounded-full transition-all ${bookSortType === 'traditional'
-                          ? 'bg-white shadow-sm'
-                          : 'bg-transparent'
-                          }`}
-                        aria-label="Traditional sort"
-                      >
-                        <RiSortDesc className={`size-4 ${bookSortType === 'traditional' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
-                          }`} />
-                      </button>
-                      <button
-                        onClick={() => setBookSortType('alphabetical')}
-                        className={`p-1.5 rounded-full transition-all ${bookSortType === 'alphabetical'
-                          ? 'bg-white shadow-sm'
-                          : 'bg-transparent'
-                          }`}
-                        aria-label="Alphabetical sort"
-                      >
-                        <RiSortAlphabetAsc className={`size-4 ${bookSortType === 'alphabetical' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
-                          }`} />
-                      </button>
-                    </div>
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <h3 className="text-base font-semibold text-[var(--color-text-primary)]">Books</h3>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-[var(--color-text-primary)]/60 font-medium">
+                    {bookSortType === 'traditional' ? 'Traditional' : 'Alphabetical'}
+                  </span>
+                  <div className="flex bg-gray-100 rounded-full p-0.5">
+                    <button
+                      onClick={() => setBookSortType('traditional')}
+                      className={`p-1.5 rounded-full transition-all ${bookSortType === 'traditional' ? 'bg-white shadow-sm' : 'bg-transparent'}`}
+                      aria-label="Traditional sort"
+                    >
+                      <RiSortDesc className={`size-4 ${bookSortType === 'traditional' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/40'}`} />
+                    </button>
+                    <button
+                      onClick={() => setBookSortType('alphabetical')}
+                      className={`p-1.5 rounded-full transition-all ${bookSortType === 'alphabetical' ? 'bg-white shadow-sm' : 'bg-transparent'}`}
+                      aria-label="Alphabetical sort"
+                    >
+                      <RiSortAlphabetAsc className={`size-4 ${bookSortType === 'alphabetical' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/40'}`} />
+                    </button>
                   </div>
+                  <button
+                    onClick={() => setShowBookSelector(false)}
+                    className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                    aria-label="Close"
+                  >
+                    <X className="size-4 text-[var(--color-text-primary)]/60" />
+                  </button>
                 </div>
               </div>
 
@@ -1775,171 +1824,78 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           );
         })()}
 
-        <Sheet open={showSettingsMenu} onOpenChange={setShowSettingsMenu}>
-          <SheetContent side="right" className="w-full max-w-[380px] p-0 border-none [&>[data-slot=sheet-close]]:hidden">
-            <SheetHeader className="sr-only">
-              <SheetTitle>Fonts & Settings</SheetTitle>
-              <SheetDescription>Customize your reading experience</SheetDescription>
-            </SheetHeader>
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <div className="w-12" /> {/* Spacer instead of Back button */}
-                <h3 className="text-lg font-bold text-[#0f172a]">Fonts & Settings</h3>
-                <button
-                  onClick={() => setShowSettingsMenu(false)}
-                  className="text-sm font-bold text-[#006a6f] hover:text-[#005a5f] transition-colors"
-                >
-                  Done
-                </button>
+        <Dialog open={showSettingsMenu} onOpenChange={setShowSettingsMenu}>
+          <DialogContent className="max-w-[420px] max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl [&>[data-slot=dialog-close]]:hidden">
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div className="w-10" />
+                <h3 className="text-base font-semibold text-[#0f172a]">Fonts &amp; Settings</h3>
+                <button onClick={() => setShowSettingsMenu(false)} className="text-sm font-semibold text-[#006a6f] hover:text-[#005a5f] transition-colors">Done</button>
               </div>
-
-              {/* Content */}
-              <ScrollArea className="flex-1 h-[calc(100vh-80px)]">
-                <div className="px-4 py-6 space-y-6">
-                {/* Font Family Selection */}
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-[#0f172a]/80 uppercase tracking-wide">Font family</label>
-                  <div className="relative">
-                    <select
-                      value={selectedFont}
-                      onChange={(e) => setSelectedFont(e.target.value)}
-                      className="w-full px-4 py-3 bg-white/50 border border-gray-300 rounded-xl text-base font-medium text-[#0f172a] appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#006a6f] transition-all"
-                    >
-                      <option value="Times New Roman">Times New Roman</option>
-                      <option value="Georgia">Georgia</option>
-                      <option value="Arial">Arial</option>
-                      <option value="Verdana">Verdana</option>
-                      <option value="Helvetica">Helvetica</option>
-                      <option value="Merriweather">Merriweather</option>
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-[#31393a] pointer-events-none" />
-                  </div>
-                </div>
-
-                {/* Font Size Slider */}
-                <div className="space-y-3">
-                  <label className="text-sm font-bold text-[#0f172a]/80 uppercase tracking-wide">Font size</label>
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs font-bold text-[#0f172a]">A</span>
-                    <div className="flex-1 relative">
-                      <input
-                        type="range"
-                        min="12"
-                        max="24"
-                        value={fontSize}
-                        onChange={(e) => setFontSize(Number(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer
-                          [&::-webkit-slider-thumb]:appearance-none
-                          [&::-webkit-slider-thumb]:size-6
-                          [&::-webkit-slider-thumb]:rounded-full
-                          [&::-webkit-slider-thumb]:bg-[#d23952]
-                          [&::-webkit-slider-thumb]:border-4
-                          [&::-webkit-slider-thumb]:border-[#f1c2c9]
-                          [&::-webkit-slider-thumb]:cursor-pointer
-                          [&::-moz-range-thumb]:size-6
-                          [&::-moz-range-thumb]:rounded-full
-                          [&::-moz-range-thumb]:bg-[#d23952]
-                          [&::-moz-range-thumb]:border-4
-                          [&::-moz-range-thumb]:border-[#f1c2c9]
-                          [&::-moz-range-thumb]:cursor-pointer"
-                        style={{
-                          background: `linear-gradient(to right, #d23952 0%, #d23952 ${((fontSize - 12) / 12) * 100}%, #ededed ${((fontSize - 12) / 12) * 100}%, #ededed 100%)`
-                        }}
-                      />
+              <ScrollArea className="max-h-[calc(90vh-68px)]">
+                <div className="px-5 py-5 space-y-5">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-[#0f172a]/60 uppercase tracking-wider">Font family</label>
+                    <div className="relative">
+                      <select value={selectedFont} onChange={(e) => setSelectedFont(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-[#0f172a] appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#006a6f]/30 transition-all">
+                        <option value="Times New Roman">Times New Roman</option>
+                        <option value="Georgia">Georgia</option>
+                        <option value="Arial">Arial</option>
+                        <option value="Verdana">Verdana</option>
+                        <option value="Helvetica">Helvetica</option>
+                        <option value="Merriweather">Merriweather</option>
+                      </select>
+                      <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-[#31393a]/50 pointer-events-none" />
                     </div>
-                    <span className="text-sm text-[#31393a]">A+</span>
                   </div>
-                </div>
-
-                {/* Theme Selection */}
-                <div className="space-y-3">
-                  <label className="text-sm font-bold text-[#0f172a]/80 uppercase tracking-wide">Theme</label>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setSelectedTheme('light')}
-                      className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'light'
-                        ? 'border-[#31393a] scale-110'
-                        : 'border-gray-300'
-                        }`}
-                      style={{ backgroundColor: '#ffffff' }}
-                    />
-                    <button
-                      onClick={() => setSelectedTheme('sepia')}
-                      className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'sepia'
-                        ? 'border-[#31393a] scale-110'
-                        : 'border-gray-300'
-                        }`}
-                      style={{ backgroundColor: '#f5e6d3' }}
-                    />
-                    <button
-                      onClick={() => setSelectedTheme('cream')}
-                      className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'cream'
-                        ? 'border-[#31393a] scale-110'
-                        : 'border-gray-300'
-                        }`}
-                      style={{ backgroundColor: '#fef3e2' }}
-                    />
-                    <button
-                      onClick={() => setSelectedTheme('dark')}
-                      className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'dark'
-                        ? 'border-[#ffffff] scale-110'
-                        : 'border-gray-300'
-                        }`}
-                      style={{ backgroundColor: '#2e3737' }}
-                    />
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-[#0f172a]/60 uppercase tracking-wider">Font size</label>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs font-bold text-[#0f172a] w-6">A-</span>
+                      <input type="range" min="12" max="24" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))}
+                        className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#d23952] [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-[#f1c2c9] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#d23952] [&::-moz-range-thumb]:border-4 [&::-moz-range-thumb]:border-[#f1c2c9]"
+                        style={{ background: `linear-gradient(to right, #d23952 0%, #d23952 ${((fontSize - 12) / 12) * 100}%, #ededed ${((fontSize - 12) / 12) * 100}%, #ededed 100%)` }}
+                      />
+                      <span className="text-xs font-bold text-[#0f172a] w-6">A+</span>
+                    </div>
                   </div>
-                </div>
-
-                {/* Page Transitions */}
-                <div className="space-y-3">
-                  <label className="text-sm font-bold text-[#0f172a]/80 uppercase tracking-wide">Page transitions</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setPageTransition('slide')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'slide'
-                        ? 'border-[#31393a] bg-gray-50'
-                        : 'border-gray-200'
-                        }`}
-                    >
-                      <ArrowRightLeft className="size-6 text-[#31393a]" />
-                      <span className="text-xs text-[#31393a]">Slide</span>
-                    </button>
-                    <button
-                      onClick={() => setPageTransition('curl')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'curl'
-                        ? 'border-[#31393a] bg-gray-50'
-                        : 'border-gray-200'
-                        }`}
-                    >
-                      <FileText className="size-6 text-[#31393a]" />
-                      <span className="text-xs text-[#31393a]">Curl</span>
-                    </button>
-                    <button
-                      onClick={() => setPageTransition('fade')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'fade'
-                        ? 'border-[#31393a] bg-gray-50'
-                        : 'border-gray-200'
-                        }`}
-                    >
-                      <Zap className="size-6 text-[#31393a]" />
-                      <span className="text-xs text-[#31393a]">Fast Fade</span>
-                    </button>
-                    <button
-                      onClick={() => setPageTransition('scroll')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'scroll'
-                        ? 'border-[#31393a] bg-gray-50'
-                        : 'border-gray-200'
-                        }`}
-                    >
-                      <ScrollText className="size-6 text-[#31393a]" />
-                      <span className="text-xs text-[#31393a]">Scroll</span>
-                    </button>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-[#0f172a]/60 uppercase tracking-wider">Theme</label>
+                    <div className="flex items-center gap-3">
+                      {([
+                        { key: 'light', color: '#ffffff' },
+                        { key: 'sepia', color: '#f5e6d3' },
+                        { key: 'cream', color: '#fef3e2' },
+                        { key: 'dark', color: '#2e3737' },
+                      ] as const).map(({ key, color }) => (
+                        <button key={key} onClick={() => setSelectedTheme(key)}
+                          className={`size-10 rounded-full border-2 transition-all ${selectedTheme === key ? (key === 'dark' ? 'border-white scale-110' : 'border-[#31393a] scale-110') : 'border-gray-300'}`}
+                          style={{ backgroundColor: color }}
+                        />
+                      ))}
+                    </div>
                   </div>
-                </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-semibold text-[#0f172a]/60 uppercase tracking-wider">Page transitions</label>
+                    <div className="grid grid-cols-2 gap-2.5">
+                      {([
+                        { key: 'slide', label: 'Slide', Icon: ArrowRightLeft },
+                        { key: 'curl', label: 'Curl', Icon: FileText },
+                        { key: 'fade', label: 'Fast Fade', Icon: Zap },
+                        { key: 'scroll', label: 'Scroll', Icon: ScrollText },
+                      ] as const).map(({ key, label, Icon }) => (
+                        <button key={key} onClick={() => setPageTransition(key)}
+                          className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border-2 transition-all ${pageTransition === key ? 'border-[#31393a] bg-gray-50' : 'border-gray-200 bg-white'}`}
+                        >
+                          <Icon className="size-5 text-[#31393a]" />
+                          <span className="text-xs text-[#31393a]">{label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </ScrollArea>
-          </SheetContent>
-        </Sheet>
+          </DialogContent>
+        </Dialog>
 
         {/* Main Reading Content */}
         <div
@@ -2444,12 +2400,117 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       )}
 
       {/* Bible Search Modal */}
-      {/* <BibleSearch
-        isOpen={showSearch}
-        onClose={() => setShowSearch(false)}
-        selectedVersionId={selectedVersionId}
-        onNavigateToVerse={handleNavigateToVerse}
-      /> */}
+      {/* Search Modal */}
+      <AnimatePresence>
+        {showSearch && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 z-[200] flex items-start justify-center pt-[10vh] px-4"
+            style={{ backgroundColor: 'rgba(0,0,0,0.25)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' }}
+            onClick={(e) => { if (e.target === e.currentTarget) { setShowSearch(false); setSearchQuery(''); } }}
+          >
+            <motion.div
+              initial={{ opacity: 0, y: -16, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -8, scale: 0.97 }}
+              transition={{ type: 'spring', damping: 24, stiffness: 320 }}
+              className="w-full max-w-[520px] bg-white rounded-2xl shadow-2xl overflow-hidden"
+              style={{ maxHeight: '75vh' }}
+            >
+              {/* Search Input */}
+              <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100">
+                <FiSearch className="size-5 text-gray-400 flex-shrink-0" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search the Bible..."
+                  autoFocus
+                  className="flex-1 text-base text-[#0f172a] outline-none placeholder:text-gray-400 bg-transparent"
+                />
+                {searchQuery && (
+                  <button onClick={() => setSearchQuery('')} className="p-1 rounded-full hover:bg-gray-100 transition-colors">
+                    <X className="size-4 text-gray-400" />
+                  </button>
+                )}
+                <button onClick={() => { setShowSearch(false); setSearchQuery(''); }} className="p-1 rounded-full hover:bg-gray-100 transition-colors">
+                  <X className="size-4 text-gray-500" />
+                </button>
+              </div>
+
+              {/* Results */}
+              <div className="overflow-y-auto" style={{ maxHeight: 'calc(75vh - 56px)' }}>
+                {!searchQuery || searchQuery.trim().length < 2 ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-3">
+                    <FiSearch className="size-12 text-gray-200" strokeWidth={1.5} />
+                    <p className="text-base font-medium text-gray-400">Search the entire Bible</p>
+                    <p className="text-sm text-gray-300">Type to start searching</p>
+                  </div>
+                ) : searchLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="size-7 border-2 border-[#d23952] border-t-transparent rounded-full animate-spin" />
+                  </div>
+                ) : searchResults.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 gap-2">
+                    <p className="text-base font-medium text-gray-400">No results found</p>
+                    <p className="text-sm text-gray-300">Try a different search term</p>
+                  </div>
+                ) : (
+                  <div>
+                    <div className="px-4 py-2.5 text-sm font-medium text-gray-400 border-b border-gray-50">
+                      Found {searchTotal} results
+                    </div>
+                    {searchResults.map((result, i) => {
+                      const hl = searchQuery.trim();
+                      const regex = new RegExp(`(${hl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                      const parts = result.text.split(regex);
+                      const preview = result.text.length > 120 ? result.text.slice(0, 120) + '...' : result.text;
+                      const previewParts = preview.split(regex);
+                      return (
+                        <button
+                          key={i}
+                          onClick={() => {
+                            if (result.book?.id && result.chapter?.number) {
+                              setSelectedBookId(result.book.id);
+                              setSelectedChapter(result.chapter.number);
+                              setDisplayBookName(result.book.name);
+                              setSelectedVerse(result.number);
+                            }
+                            setShowSearch(false);
+                            setSearchQuery('');
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0"
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="mt-0.5 flex-shrink-0">
+                              <BookOpen className="size-4 text-[#d23952]" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-[#d23952] mb-0.5">
+                                {result.book?.name} {result.chapter?.number}:{result.number}
+                              </p>
+                              <p className="text-sm text-gray-600 leading-relaxed">
+                                {previewParts.map((part, j: number) =>
+                                  regex.test(part)
+                                    ? <mark key={j} className="bg-yellow-200 text-gray-900 rounded px-0.5">{part}</mark>
+                                    : <span key={j}>{part}</span>
+                                )}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

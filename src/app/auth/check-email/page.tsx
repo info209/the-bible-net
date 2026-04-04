@@ -16,41 +16,43 @@ export default function CheckEmail() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 font-sans">
-            <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-md apple-nav-floating p-8 space-y-8 text-center"
-            >
-                <div className="space-y-4">
-                    <div className="mx-auto w-20 h-20 bg-[#41ADB0]/10 rounded-full flex items-center justify-center">
-                        <MailOpen className="w-10 h-10 text-[#41ADB0]" />
-                    </div>
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Check Your Email</h1>
-                    <p className="text-slate-500 font-medium px-4">
-                        We have sent a password reset link to your email. Please check your inbox and follow the instructions.
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-md glass-ios border-none p-8 space-y-8 text-center relative overflow-hidden shadow-2xl"
+        >
+            <div className="space-y-5">
+                <div className="mx-auto w-24 h-24 bg-[var(--color-primary-teal)]/10 rounded-full flex items-center justify-center shadow-inner relative">
+                    <div className="absolute inset-0 rounded-full border-2 border-[var(--color-primary-teal)]/20 animate-ping" />
+                    <MailOpen className="w-12 h-12 text-[var(--color-primary-teal)] relative z-10" />
+                </div>
+                <div className="space-y-3">
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tighter font-sans">Check Inbox</h1>
+                    <p className="text-slate-500/90 font-medium px-4 leading-relaxed">
+                        A secure magic link has been dispatched to your email address. Follow it to reset your credentials.
                     </p>
                 </div>
+            </div>
 
-                <div className="space-y-4 pt-4">
-                    <button
-                        onClick={handleResend}
-                        disabled={resending}
-                        className="w-full bg-[#41ADB0] hover:bg-[#369294] text-white font-bold py-4 rounded-2xl shadow-lg shadow-[#41ADB0]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                    >
-                        <RefreshCw className={`w-5 h-5 ${resending ? 'animate-spin' : ''}`} />
-                        {resending ? 'Resending...' : 'Resend Email'}
-                    </button>
-                    
-                    <button 
-                        onClick={() => router.push('/auth/login')}
-                        className="text-slate-500 font-semibold text-sm hover:text-[#41ADB0] transition-colors flex items-center gap-1 mx-auto"
-                    >
-                        <ChevronLeft className="w-4 h-4" />
-                        Back to Login
-                    </button>
-                </div>
-            </motion.div>
-        </div>
+            <div className="space-y-6 pt-4">
+                <button
+                    onClick={handleResend}
+                    disabled={resending}
+                    className="w-full bg-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-dark)] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg"
+                >
+                    <RefreshCw className={`w-5 h-5 ${resending ? 'animate-spin' : ''}`} />
+                    {resending ? 'Resending Link...' : 'Resend Email'}
+                </button>
+                
+                <button 
+                    onClick={() => router.push('/auth/login')}
+                    className="text-slate-500 font-bold text-sm hover:text-[var(--color-primary-teal)] transition-colors flex items-center gap-2 mx-auto group"
+                >
+                    <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                    Back to Sign In
+                </button>
+            </div>
+        </motion.div>
     );
 }

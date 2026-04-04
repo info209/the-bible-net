@@ -61,83 +61,88 @@ function ResetPasswordContent() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 font-sans">
-            <motion.div 
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="w-full max-w-md apple-nav-floating p-8 space-y-8"
-            >
-                <div className="text-center space-y-2">
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">Reset Password</h1>
-                    <p className="text-slate-500 font-medium px-4">Create a new, strong password</p>
+        <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-md glass-ios border-none p-8 space-y-8 relative overflow-hidden shadow-2xl"
+        >
+            <div className="text-center space-y-3 pt-2">
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">New Password</h1>
+                <p className="text-slate-500/80 font-medium leading-relaxed px-6">Secure your account with a fresh, strong password</p>
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl flex items-center gap-3 text-sm font-medium"
+                    >
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <span>{error}</span>
+                    </motion.div>
+                )}
+
+                <div className="space-y-4">
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-slate-700 ml-1">New Password</label>
+                        <div className="relative group">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                required
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full bg-gray-100/50 border-none rounded-2xl py-4 pl-12 pr-12 outline-none focus:ring-2 focus:ring-[var(--color-accent-rose)]/20 transition-all font-mono placeholder:text-gray-400 font-bold tracking-widest"
+                                placeholder="••••••••"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-[var(--color-accent-rose)] transition-colors"
+                            >
+                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-slate-700 ml-1">Confirm Password</label>
+                        <div className="relative group">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                required
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
+                                className="w-full bg-gray-100/50 border-none rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-accent-rose)]/20 transition-all font-mono placeholder:text-gray-400 font-bold tracking-widest"
+                                placeholder="••••••••"
+                            />
+                        </div>
+                    </div>
                 </div>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {error && (
-                        <div className="bg-red-50 text-red-600 p-4 rounded-xl flex items-center gap-2 text-sm">
-                            <AlertCircle className="w-5 h-5" />
-                            <span>{error}</span>
+                <div className="grid grid-cols-2 gap-2 p-4 bg-slate-50/50 backdrop-blur-sm rounded-2xl border border-slate-200/40 shadow-inner">
+                    {validations.map((v, i) => (
+                        <div key={i} className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-wider transition-colors ${v.met ? 'text-[var(--color-primary-teal)]' : 'text-slate-400'}`}>
+                            {v.met ? <Check className="w-3.5 h-3.5 stroke-[4px]" /> : <X className="w-3.5 h-3.5 stroke-[4px]" />}
+                            {v.label}
                         </div>
-                    )}
+                    ))}
+                </div>
 
-                    <div className="space-y-4">
-                        <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700">New Password</label>
-                            <div className="relative group">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[#41ADB0] transition-colors" />
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-white/50 border border-slate-200 rounded-2xl py-3 pl-10 pr-12 outline-none focus:border-[#41ADB0] focus:ring-4 focus:ring-[#41ADB0]/10 transition-all font-mono"
-                                    placeholder="••••••••"
-                                />
-                                <button
-                                    type="button"
-                                    onClick={() => setShowPassword(!showPassword)}
-                                    className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-slate-600 transition-colors"
-                                >
-                                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                                </button>
-                            </div>
-                        </div>
-
-                        <div className="space-y-1">
-                            <label className="text-sm font-semibold text-slate-700">Confirm Password</label>
-                            <div className="relative group">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[#41ADB0] transition-colors" />
-                                <input
-                                    type={showPassword ? 'text' : 'password'}
-                                    required
-                                    value={confirmPassword}
-                                    onChange={(e) => setConfirmPassword(e.target.value)}
-                                    className="w-full bg-white/50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 outline-none focus:border-[#41ADB0] focus:ring-4 focus:ring-[#41ADB0]/10 transition-all font-mono"
-                                    placeholder="••••••••"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                        {validations.map((v, i) => (
-                            <div key={i} className={`flex items-center gap-2 text-[11px] font-bold uppercase tracking-wider transition-colors ${v.met ? 'text-[#41ADB0]' : 'text-slate-400'}`}>
-                                {v.met ? <Check className="w-3 h-3" /> : <X className="w-3 h-3" />}
-                                {v.label}
-                            </div>
-                        ))}
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading || validations.some(v => !v.met)}
-                        className="w-full bg-[#41ADB0] hover:bg-[#369294] text-white font-bold py-4 rounded-2xl shadow-lg shadow-[#41ADB0]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
-                    >
-                        {loading ? 'Updating...' : 'Reset Password'}
-                    </button>
-                </form>
-            </motion.div>
-        </div>
+                <button
+                    type="submit"
+                    disabled={loading || validations.some(v => !v.met)}
+                    className="w-full bg-[var(--color-accent-rose)] hover:bg-[#b02e43] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-accent-rose)]/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3 text-lg"
+                >
+                    {loading ? (
+                        <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : 'Confirm Reset'}
+                </button>
+            </form>
+        </motion.div>
     );
 }
 

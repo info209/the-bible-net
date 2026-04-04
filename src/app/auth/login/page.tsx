@@ -70,131 +70,132 @@ export default function LoginPage() {
     ];
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-[#f8fafc] p-4 font-sans">
-            <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="w-full max-w-md apple-nav-floating p-8 space-y-8 relative"
+        <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
+            className="w-full max-w-md glass-ios border-none p-8 space-y-8 relative overflow-hidden shadow-2xl"
+        >
+            {/* Back Button */}
+            <motion.button
+                whileHover={{ x: -2, scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => router.push('/home')}
+                className="absolute left-6 top-6 p-2 rounded-full bg-white/10 text-slate-500 hover:text-[var(--color-accent-rose)] hover:bg-white/20 transition-all outline-none backdrop-blur-sm"
+                title="Back to Home"
             >
-                {/* Back Button */}
-                <motion.button
-                    whileHover={{ x: -2, scale: 1.1 }}
-                    whileTap={{ scale: 0.9 }}
-                    onClick={() => router.push('/home')}
-                    className="absolute left-6 top-6 p-2 rounded-full bg-slate-50 text-slate-400 hover:text-[#41ADB0] hover:bg-[#41ADB0]/5 transition-all outline-none"
-                    title="Back to Home"
-                >
-                    <ChevronLeft className="w-5 h-5" />
-                </motion.button>
-                <div className="text-center space-y-2">
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900">Welcome</h1>
-                    <p className="text-slate-500 italic">Please login to continue</p>
-                </div>
+                <ChevronLeft className="w-5 h-5" />
+            </motion.button>
 
-                <form onSubmit={handleSubmit} className="space-y-6">
-                    {error && (
-                        <motion.div 
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-xl flex items-center gap-3 text-sm"
-                        >
-                            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                            <span>{error}</span>
-                        </motion.div>
-                    )}
+            <div className="text-center space-y-3 pt-4">
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-sans">Welcome Back</h1>
+                <p className="text-slate-500/80 font-medium">Please sign in to your account</p>
+            </div>
 
-                    <div className="space-y-4">
-                        <div className="relative">
-                            <label className="text-sm font-semibold text-slate-700 mb-1 block">Email</label>
-                            <div className="relative group">
-                                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[#41ADB0] transition-colors" />
-                                <input
-                                    type="email"
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-white/50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 outline-none focus:ring-2 focus:ring-[#41ADB0]/20 focus:border-[#41ADB0] transition-all"
-                                    placeholder="Enter your email"
-                                />
-                            </div>
-                        </div>
-
-                        <div className="relative">
-                            <label className="text-sm font-semibold text-slate-700 mb-1 block">Password</label>
-                            <div className="relative group">
-                                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[#41ADB0] transition-colors" />
-                                <input
-                                    type="password"
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-white/50 border border-slate-200 rounded-2xl py-3 pl-10 pr-4 outline-none focus:ring-2 focus:ring-[#41ADB0]/20 focus:border-[#41ADB0] transition-all"
-                                    placeholder="••••••••"
-                                />
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm">
-                        <label className="flex items-center gap-2 cursor-pointer group">
-                            <div className={`w-5 h-5 rounded-md border transition-all flex items-center justify-center ${rememberMe ? 'bg-[#41ADB0] border-[#41ADB0]' : 'border-slate-300 group-hover:border-[#41ADB0]'}`}>
-                                <input
-                                    type="checkbox"
-                                    className="hidden"
-                                    checked={rememberMe}
-                                    onChange={() => setRememberMe(!rememberMe)}
-                                />
-                                {rememberMe && <CheckCircle2 className="w-4 h-4 text-white" />}
-                            </div>
-                            <span className="text-slate-600 font-medium">Remember Me</span>
-                        </label>
-                        <Link href="/auth/forgot-password" className="text-[#41ADB0] font-semibold hover:underline">
-                            Forgot Password?
-                        </Link>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        className="w-full bg-[#41ADB0] hover:bg-[#369294] text-white font-bold py-4 rounded-2xl shadow-lg shadow-[#41ADB0]/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
+            <form onSubmit={handleSubmit} className="space-y-6">
+                {error && (
+                    <motion.div 
+                        initial={{ opacity: 0, scale: 0.95 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl flex items-center gap-3 text-sm font-medium"
                     >
-                        {loading ? 'Logging in...' : 'Login'}
+                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        <span>{error}</span>
+                    </motion.div>
+                )}
+
+                <div className="space-y-4">
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-slate-700 ml-1">Email</label>
+                        <div className="relative group">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
+                            <input
+                                type="email"
+                                required
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="w-full bg-gray-100/50 border-none rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-accent-rose)]/20 transition-all placeholder:text-gray-400 font-medium"
+                                placeholder="Enter your email"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-sm font-bold text-slate-700 ml-1">Password</label>
+                        <div className="relative group">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
+                            <input
+                                type="password"
+                                required
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="w-full bg-gray-100/50 border-none rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-accent-rose)]/20 transition-all placeholder:text-gray-400 font-medium"
+                                placeholder="••••••••"
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="flex items-center justify-between text-sm">
+                    <label className="flex items-center gap-2 cursor-pointer group px-1">
+                        <div className={`w-5 h-5 rounded-lg border-2 transition-all flex items-center justify-center ${rememberMe ? 'bg-[var(--color-accent-rose)] border-[var(--color-accent-rose)] shadow-sm' : 'border-slate-300 group-hover:border-[var(--color-accent-rose)]'}`}>
+                            <input
+                                type="checkbox"
+                                className="hidden"
+                                checked={rememberMe}
+                                onChange={() => setRememberMe(!rememberMe)}
+                            />
+                            {rememberMe && <CheckCircle2 className="w-3.5 h-3.5 text-white stroke-[3px]" />}
+                        </div>
+                        <span className="text-slate-600 font-bold">Remember Me</span>
+                    </label>
+                    <Link href="/auth/forgot-password" size="sm" className="text-[var(--color-accent-rose)] font-bold hover:underline underline-offset-4">
+                        Forgot Password?
+                    </Link>
+                </div>
+
+                <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full bg-[var(--color-accent-rose)] hover:bg-[#b02e43] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-accent-rose)]/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none text-lg flex items-center justify-center gap-2"
+                >
+                    {loading ? (
+                       <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : 'Sign In'}
+                </button>
+            </form>
+
+            <div className="relative py-4">
+                <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-200/60"></div>
+                </div>
+                <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold text-slate-400">
+                    <span className="bg-white/50 backdrop-blur-sm px-4 rounded-full">Or continue with</span>
+                </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-4">
+                {socialLogins.map((social) => (
+                    <button
+                        key={social.name}
+                        type="button"
+                        onClick={() => signIn(social.name.toLowerCase())}
+                        className="flex items-center justify-center p-3.5 border-none rounded-2xl bg-white/40 hover:bg-white/60 transition-all active:scale-[0.92] shadow-sm backdrop-blur-sm"
+                        title={`Login with ${social.name}`}
+                    >
+                        {social.icon}
                     </button>
-                </form>
+                ))}
+            </div>
 
-                <div className="relative py-4">
-                    <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-slate-200"></div>
-                    </div>
-                    <div className="relative flex justify-center text-xs uppercase">
-                        <span className="bg-[#fdfdfd] px-4 text-slate-400 font-medium tracking-widest">Or login with</span>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                    {socialLogins.map((social) => (
-                        <button
-                            key={social.name}
-                            type="button"
-                            onClick={() => signIn(social.name.toLowerCase())}
-                            className="flex items-center justify-center p-3 border border-slate-200 rounded-2xl bg-white/50 hover:bg-slate-50 transition-all active:scale-[0.95]"
-                            title={`Login with ${social.name}`}
-                        >
-                            {social.icon}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="text-center">
-                    <p className="text-slate-500 text-sm font-medium">
-                        Don't have an account?{' '}
-                        <Link href="/auth/register" className="text-[#41ADB0] font-bold hover:underline">
-                            Create one
-                        </Link>
-                    </p>
-                </div>
-            </motion.div>
-        </div>
+            <div className="text-center pt-2">
+                <p className="text-slate-500 text-sm font-medium">
+                    New to The Bible?{' '}
+                    <Link href="/auth/register" className="text-[var(--color-accent-rose)] font-extrabold hover:underline underline-offset-4">
+                        Create Account
+                    </Link>
+                </p>
+            </div>
+        </motion.div>
     );
 }
