@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, BookmarkPlus, Copy, Share2, Type, FileText, Check, List, BookOpen, PenTool, ChevronLeft, Plus } from 'lucide-react';
+import { X, BookmarkPlus, Copy, Share2, Type, FileText, Check, List, BookOpen, PenTool, ChevronLeft, Plus, RotateCcw } from 'lucide-react';
 
 interface VerseActionMenuProps {
   isOpen: boolean;
@@ -92,20 +92,15 @@ export default function VerseActionMenu({
   };
 
   return (
-    <>
-      <div 
-        className="fixed inset-0 z-[1100]" 
-        onClick={onClose} 
-      />
       <motion.div
-        initial={{ opacity: 0, y: "100%" }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: "100%" }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="fixed bottom-0 left-0 right-0 w-full max-w-2xl mx-auto bg-white backdrop-blur-3xl rounded-t-[32px] shadow-[0_-8px_32px_rgba(0,0,0,0.12)] border-t border-gray-100 pb-safe z-[1110] overflow-hidden"
+        initial={{ opacity: 0, y: 100, scale: 0.95 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 100, scale: 0.95 }}
+        transition={{ type: 'spring', damping: 28, stiffness: 220 }}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-lg bg-white rounded-[28px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-gray-200/50 pb-safe z-[1110] overflow-hidden"
       >
-        <div className="flex flex-col items-center pt-3 pb-6 px-6 relative h-[320px]">
-            <div className="w-12 h-1.5 bg-gray-200 rounded-full mb-5 shrink-0" />
+        <div className="flex flex-col items-center pt-3 pb-5 px-5 relative">
+            <div className="w-10 h-1 bg-gray-200/80 rounded-full mb-4 shrink-0" />
             
             <AnimatePresence mode="wait">
                 {view === 'main' && (
@@ -116,46 +111,48 @@ export default function VerseActionMenu({
                         exit={{ opacity: 0, x: -20 }}
                         className="w-full flex flex-col items-center"
                     >
-                        <p className="text-sm font-semibold text-gray-500 mb-6">Selected: <span className="text-[#31393a]">{formattedVerses()}</span></p>
+                        <p className="text-sm font-semibold text-gray-400 mb-6 uppercase tracking-[0.05em]">Selection <span className="text-slate-900 border-b-2 border-slate-900/10 ml-2">{formattedVerses()}</span></p>
 
-                        <div className="w-full grid grid-cols-2 sm:grid-cols-5 gap-3">
-                        
-                        {/* Highlight Controls */}
-                        <div className="col-span-2 sm:col-span-1 flex flex-col items-center justify-center p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm relative group">
-                            <div className="flex gap-1.5 mb-2">
-                                {HIGHLIGHT_COLORS.slice(0,3).map(color => (
-                                    <button key={color.id} onClick={() => onHighlight(color.id)} className="w-4 h-4 rounded-full border border-gray-200 shadow-sm transition-transform hover:scale-110 active:scale-90" style={{ backgroundColor: color.color }} />
-                                ))}
-                                <button className="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center transition-transform hover:scale-110 active:scale-90" onClick={() => onHighlight('none')} title="Clear highlight">
-                                <X className="size-3 text-gray-500" />
-                                </button>
+                        <div className="w-full flex items-center justify-between gap-2 px-1">
+                            {/* Highlight Controls */}
+                            <div className="flex-1 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 hover:bg-slate-100 transition-all shadow-sm group">
+                                <div className="flex gap-2 mb-2">
+                                    {HIGHLIGHT_COLORS.slice(0,4).map(color => (
+                                        <button key={color.id} onClick={() => onHighlight(color.id)} className="w-6 h-6 rounded-full border border-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] transition-transform hover:scale-110 active:scale-90" style={{ backgroundColor: color.color }} title={`Highlight ${color.id}`} />
+                                    ))}
+                                    <button className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center transition-transform hover:scale-110 active:scale-90" onClick={() => onHighlight('none')} title="Clear highlight">
+                                        <RotateCcw className="size-3 text-slate-500" />
+                                    </button>
+                                </div>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Highlight</span>
                             </div>
-                            <span className="text-xs font-bold text-gray-600 uppercase tracking-wider">Highlight</span>
-                        </div>
 
-                        {/* Save */}
-                        <button onClick={() => setView('save')} className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm text-gray-700 active:scale-95">
-                            <BookmarkPlus className="size-5" />
-                            <span className="text-xs font-bold uppercase tracking-wider">Save</span>
-                        </button>
+                            {/* Actions Group */}
+                            <div className="flex gap-2">
+                                {/* Save */}
+                                <button onClick={() => setView('save')} className="flex flex-col items-center justify-center gap-2 w-16 h-16 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 transition-all shadow-sm text-slate-700 active:scale-95 group">
+                                    <BookmarkPlus className="size-5 text-[var(--color-primary-teal)] group-hover:scale-110 transition-transform" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest">Save</span>
+                                </button>
 
-                        {/* Note */}
-                        <button onClick={() => setView('note')} className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm text-gray-700 active:scale-95">
-                            <FileText className="size-5" />
-                            <span className="text-xs font-bold uppercase tracking-wider">Note</span>
-                        </button>
+                                {/* Note */}
+                                <button onClick={() => setView('note')} className="flex flex-col items-center justify-center gap-2 w-16 h-16 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 transition-all shadow-sm text-slate-700 active:scale-95 group">
+                                    <FileText className="size-5 text-amber-500 group-hover:scale-110 transition-transform" />
+                                    <span className="text-[9px] font-bold uppercase tracking-widest">Note</span>
+                                </button>
 
-                        {/* Compare */}
-                        <button onClick={onCompare} className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm text-gray-700 active:scale-95">
-                            <BookOpen className="size-5" />
-                            <span className="text-xs font-bold uppercase tracking-wider">Compare</span>
-                        </button>
-
-                        {/* Share */}
-                        <button onClick={onShare} className="flex flex-col items-center justify-center gap-2 p-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-colors shadow-sm text-gray-700 active:scale-95">
-                            <Share2 className="size-5" />
-                            <span className="text-xs font-bold uppercase tracking-wider">Share</span>
-                        </button>
+                                {/* More Controls (Using ... logic) */}
+                                <div className="flex flex-col gap-1.5 h-16">
+                                    <button onClick={onCompare} className="flex-1 flex items-center gap-2 px-3 rounded-xl bg-white border border-slate-100 hover:bg-slate-50 transition-all text-xs font-bold text-slate-700 shadow-sm active:scale-95 border-l-4 border-l-[var(--color-primary-teal)]" title="Compare Versions">
+                                        <BookOpen className="size-4" />
+                                        <span>Compare</span>
+                                    </button>
+                                    <button onClick={onShare} className="flex-1 flex items-center gap-2 px-3 rounded-xl bg-white border border-slate-100 hover:bg-slate-50 transition-all text-xs font-bold text-slate-700 shadow-sm active:scale-95 border-l-4 border-l-slate-800" title="Share">
+                                        <Share2 className="size-4" />
+                                        <span>Share</span>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
                     </motion.div>
                 )}
@@ -275,7 +272,6 @@ export default function VerseActionMenu({
                 )}
             </AnimatePresence>
         </div>
-      </motion.div>
-    </>
+    </motion.div>
   );
 }

@@ -149,7 +149,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const handleVerseTap = useCallback((verseNum: number, e?: React.MouseEvent | React.TouchEvent) => {
     if (e) e.stopPropagation();
     setSelectedVerses(prev => {
-      if (prev.length === 0) return prev; // If not in selection mode, ignore
+      // Allow single tap to start selection/open popup
       if (prev.includes(verseNum)) {
         return prev.filter(v => v !== verseNum);
       } else {
@@ -325,10 +325,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     }
   }, [pathname, bibleVersions]); // Removed state dependencies to prevent resetting user selection back to URL state
 
-  // Helper to check if any selection/settings popup is open
   const isAnyPopupOpen = showBookSelector || showChapterSelector ||
-    showVersionSelector || showMoreMenu ||
-    showSettingsMenu || showSearch || showVerseSelector;
+    showVersionSelector || showMoreMenu || showSettingsMenu || 
+    showSearch || showVerseSelector || selectedVerses.length > 0;
 
   // ESC key closes any open popup
   useEffect(() => {
@@ -1308,10 +1307,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     }
   }, [selectedBookId, selectedChapter, selectedVersionId, displayBookName, displayVersionName]);
 
-  // Dispatch reading mode event to client layout (also hide footer when control panel/bottom sheet is open)
+  // Dispatch reading mode event to client layout (only immersive when scrolled down and NO popups are open)
   useEffect(() => {
+    const isImmersive = !showBottomNav && !isAnyPopupOpen && !isControlPanelOpen;
     window.dispatchEvent(
-      new CustomEvent('bible-reading-mode', { detail: { isReadingMode: !showBottomNav || isAnyPopupOpen || isControlPanelOpen } })
+      new CustomEvent('bible-reading-mode', { detail: { isReadingMode: isImmersive } })
     );
   }, [showBottomNav, isAnyPopupOpen, isControlPanelOpen]);
   
@@ -1629,6 +1629,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       key={verse}
                       onClick={() => {
                         setSelectedVerse(verse);
+                        setSelectedVerses([verse]); // Open action menu for this verse
                         setShowVerseSelector(false);
                         setShowChapterSelector(false);
                       }}
@@ -2478,6 +2479,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                               setSelectedChapter(result.chapter.number);
                               setDisplayBookName(result.book.name);
                               setSelectedVerse(result.number);
+                              setSelectedVerses([result.number]); // Open action menu
                             }
                             setShowSearch(false);
                             setSearchQuery('');
