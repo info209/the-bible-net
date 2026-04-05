@@ -288,6 +288,8 @@ export default function AudioControlPanel({
               onClick={onTimerClick}
               className="size-[28px] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
             >
+              <Timer className="size-[22px] text-[var(--color-text-tertiary)]" strokeWidth={2.2} />
+            </button>
           </div>
 
           {/* Volume Slider row */}
