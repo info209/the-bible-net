@@ -224,11 +224,11 @@ export default function ChapterContent({
     >
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">
-           <h2 className="text-2xl font-bold tracking-tight" style={{ color: theme.text, fontFamily: font }}>{content.title}</h2>
+           <h2 className="text-2xl font-bold tracking-tight" style={{ color: theme.text, fontFamily: font }}>{apiContent.title}</h2>
            <div className="h-1 w-12 bg-accent-rose mt-4 rounded-full opacity-80" />
         </div>
         <div className="space-y-3 leading-loose text-justify" style={{ fontFamily: font, fontSize: `${fontSize}px` }}>
-          {content.verses?.map(verse => {
+          {apiContent.verses?.map(verse => {
             const isSelected = selectedVerses.includes(verse.number);
             const isReading = readingVerse === verse.number;
             const highlight = highlights.find(h => h.metadata?.verse === verse.number);

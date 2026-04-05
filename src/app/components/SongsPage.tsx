@@ -15,7 +15,7 @@ import {
   Heart
 } from 'lucide-react';
 import { songsDatabase, Song, getGroupedSongs, getAlphabets, searchSongs } from './SongsData';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
 
 interface SongsPageProps {
   onBack: () => void;
@@ -513,7 +513,7 @@ export default function SongsPage({ onBack }: SongsPageProps) {
               <p className="text-sm text-gray-500 mb-4">
                 Found {displaySongs.length} song{displaySongs.length !== 1 ? 's' : ''}
               </p>
-              {displaySongs.map((song) => (
+              {displaySongs.map((song: Song) => (
                 <SongCard
                   key={song.id}
                   song={song}
@@ -539,7 +539,7 @@ export default function SongsPage({ onBack }: SongsPageProps) {
                   <h2 className="text-2xl font-bold text-gray-300 sticky top-[220px] bg-white py-2">
                     {letter}
                   </h2>
-                  {songs.map((song) => (
+                  {songs.map((song: Song) => (
                     <SongCard
                       key={song.id}
                       song={song}

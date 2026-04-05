@@ -2353,6 +2353,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       {/* Verse Action Menu (Selection) */}
       {selectedVerses.length > 0 && (
         <VerseActionMenu
+          isOpen={selectedVerses.length > 0}
+          bookName={displayBookName}
+          chapter={selectedChapter}
           selectedVerses={selectedVerses}
           onClose={onVerseMenuClose}
           onHighlight={onVerseMenuHighlight}
