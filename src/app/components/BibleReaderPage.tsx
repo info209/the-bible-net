@@ -1492,7 +1492,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             </div>
           </div>
         </div>
-        </div>
+
+
+
 
         {/* Selector panels - responsive widths */}
         <Dialog open={showBookSelector} onOpenChange={setShowBookSelector}>
