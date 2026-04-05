@@ -111,6 +111,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [showChapterSelector, setShowChapterSelector] = useState(false);
   const [showVersionSelector, setShowVersionSelector] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   const [hideFootnotes, setHideFootnotes] = useState(false);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
   const [showVerseSelector, setShowVerseSelector] = useState(false);
@@ -388,10 +389,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       else if (showVersionSelector) setShowVersionSelector(false);
       else if (showMoreMenu) setShowMoreMenu(false);
       else if (showSearch) setShowSearch(false);
+      else if (showSettingsModal) setShowSettingsModal(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showBookSelector, showChapterSelector, showVerseSelector, showVersionSelector, showMoreMenu, showSearch]);
+  }, [showBookSelector, showChapterSelector, showVerseSelector, showVersionSelector, showMoreMenu, showSearch, showSettingsModal]);
 
   // Lock background scroll when any popup is open
   useEffect(() => {
@@ -1533,13 +1535,33 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   >
                     <FiSearch className="size-5" />
                   </button>
-                  <button
-                    onClick={() => setShowMoreMenu(true)}
-                    className="p-2 hover:bg-gray-100/50 rounded-full transition-colors text-[var(--color-gray-900)]"
-                    title="More options"
-                  >
-                    <MoreVertical className="size-5" />
-                  </button>
+                  {/* Refactor to hold position for the popup */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowMoreMenu(true)}
+                      className="p-2 hover:bg-gray-100/50 rounded-full transition-colors text-[var(--color-gray-900)]"
+                      title="More options"
+                    >
+                      <MoreVertical className="size-5" />
+                    </button>
+                    {showMoreMenu && (
+                      <>
+                        <div className="fixed inset-0 z-[100]" onClick={() => setShowMoreMenu(false)}></div>
+                        <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-[101] overflow-hidden">
+                          <button
+                            onClick={() => { setShowMoreMenu(false); setShowSettingsModal(true); }}
+                            className="w-full text-left px-4 py-3 text-sm text-[var(--color-text-primary)] hover:bg-gray-50 flex items-center gap-2"
+                          >
+                            <span>Fonts and Settings</span>
+                          </button>
+                          <div className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer" onClick={() => setHideFootnotes(!hideFootnotes)}>
+                            <span className="text-sm text-[var(--color-text-primary)]">Hide footnotes</span>
+                            <Switch checked={hideFootnotes} onCheckedChange={setHideFootnotes} />
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -2129,10 +2151,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       {/* Settings Side Menu */}
       <AnimatePresence>
-        {showMoreMenu && (
+        {showSettingsModal && (
           <div
             className="fixed inset-0 bg-black/20 z-[100] backdrop-blur-sm"
-            onClick={() => setShowMoreMenu(false)}
+            onClick={() => setShowSettingsModal(false)}
           >
             <motion.div
               initial={{ x: '100%' }}
@@ -2145,7 +2167,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               <div className="flex items-center justify-between mb-8">
                 <h2 className="text-xl font-bold text-[#31393a]">Settings</h2>
                 <button
-                  onClick={() => setShowMoreMenu(false)}
+                  onClick={() => setShowSettingsModal(false)}
                   className="p-2 hover:bg-gray-100 rounded-full transition-colors"
                 >
                   <X className="size-6 text-[#31393a]/60" />

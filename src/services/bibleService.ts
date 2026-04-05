@@ -174,13 +174,46 @@ export class BibleService {
         if (cached) return cached;
 
         // Find version
-        const version = await BibleVersion.findById(versionId).lean();
+        let version = null;
+        if (mongoose.Types.ObjectId.isValid(versionId)) {
+            version = await BibleVersion.findById(versionId).lean();
+        }
+        if (!version) {
+            version = await BibleVersion.findOne({ abbreviation: versionId.toUpperCase() }).lean();
+        }
+
         if (!version) {
             throw new Error('Version not found');
         }
 
+        const resolvedVersionId = version._id;
+
         // Find initial book
-        const book = await Book.findById(bookId).lean();
+        let book = null;
+        if (mongoose.Types.ObjectId.isValid(bookId)) {
+            book = await Book.findById(bookId).lean();
+        }
+        if (!book) {
+            // First try finding in the requested version
+            book = await Book.findOne({
+                version: resolvedVersionId,
+                $or: [
+                    { name: { $regex: new RegExp(`^${bookId.replace(/-/g, ' ')}$`, 'i') } },
+                    { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } }
+                ]
+            }).lean();
+            
+            // If not found in the requested version, try finding in ANY version to support cross-version fallback
+            if (!book) {
+                book = await Book.findOne({
+                    $or: [
+                        { name: { $regex: new RegExp(`^${bookId.replace(/-/g, ' ')}$`, 'i') } },
+                        { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } }
+                    ]
+                }).lean();
+            }
+        }
+
         if (!book) {
             throw new Error('Book not found');
         }
@@ -188,9 +221,9 @@ export class BibleService {
         // Cross-version check: If the book's version doesn't match the requested versionId,
         // find the matching book in the target version.
         let targetBook = book;
-        if (book.version.toString() !== versionId) {
+        if (book.version.toString() !== resolvedVersionId.toString()) {
             const equivalentBook = await Book.findOne({
-                version: versionId,
+                version: resolvedVersionId,
                 $or: [
                     { abbreviation: book.abbreviation },
                     { order: book.order },
@@ -204,7 +237,7 @@ export class BibleService {
                 console.warn(`Equivalent book for ${book.name} not found in version ${version.abbreviation}`);
                  // Fallback to searching by order if abbreviation/name didn't work (already in $or but being explicit)
                  const fallbackBookByOrder = await Book.findOne({
-                    version: versionId,
+                    version: resolvedVersionId,
                     order: book.order
                 }).lean();
                 if (fallbackBookByOrder) {
@@ -226,7 +259,7 @@ export class BibleService {
         // Get verses
         const verseQuery: any = { 
             chapter: chapter._id,
-            version: versionId // Be explicit
+            version: resolvedVersionId // Be explicit
         };
         if (search) {
             verseQuery.text = { $regex: search, $options: 'i' };
