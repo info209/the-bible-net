@@ -222,13 +222,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   };
   const onVerseMenuCompare = () => { 
     setComparisonMode(true); 
-    if (!secondVersionId) {
-        const defaultV2 = bibleVersions.find(v => v.id !== selectedVersionId) || bibleVersions[0];
-        if (defaultV2) {
-            setSecondVersionId(defaultV2.id);
-            setDisplaySecondVersionName(defaultV2.name);
+    setComparisonVersionIds(prev => {
+        if (selectedVersionId && !prev.includes(selectedVersionId)) {
+            return [...prev, selectedVersionId];
         }
-    }
+        return prev;
+    });
     setTtsPlaying(false);
     setTtsPaused(false);
     setSelectedVerses([]);
@@ -264,8 +263,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
   const [bookSortType, setBookSortType] = useState<'traditional' | 'alphabetical'>('traditional');
   const [comparisonMode, setComparisonMode] = useState(false);
-  const [secondVersionId, setSecondVersionId] = useState<string | null>(null);
-  const [displaySecondVersionName, setDisplaySecondVersionName] = useState('NKJV');
+  const [comparisonVersionIds, setComparisonVersionIds] = useState<string[]>([]);
+  const [showCompareSelector, setShowCompareSelector] = useState(false);
+  const [tempComparisonIds, setTempComparisonIds] = useState<string[]>([]);
   
   // Version state
   const [bibleVersions, setBibleVersions] = useState<any[]>(initialVersions);
@@ -295,7 +295,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           const matchingVer = bibleVersions.find(v => v.name === urlVersion || v.id === urlVersion);
           if (matchingVer) {
               setSelectedVersionId(matchingVer.id);
-              setDisplayVersionName(matchingVer.fullName || matchingVer.name);
+              setDisplayVersionName(matchingVer.name);
           }
       }
       
@@ -394,7 +394,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           if (mappedVersions.length > 0 && !selectedVersionId) {
             const kjvVersion = mappedVersions.find((v: any) => v.name === 'KJV' || v.name === 'KJV-BSI') || mappedVersions[0];
             setSelectedVersionId(kjvVersion.id);
-            setDisplayVersionName(kjvVersion.fullName);
+            setDisplayVersionName(kjvVersion.name);
           }
         }
       } catch (err) {
@@ -510,7 +510,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         if (isId(displayVersionName)) {
             const matchingVer = bibleVersions.find(v => v.id === selectedVersionId);
             if (matchingVer) {
-                setDisplayVersionName(matchingVer.fullName || matchingVer.name);
+                setDisplayVersionName(matchingVer.name);
             }
         }
     }
@@ -1412,19 +1412,37 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   </span>
                   <ChevronDown className="size-3" />
                 </button>
+                {comparisonMode && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-300">|</span>
+                    <button 
+                      onClick={() => {
+                        setTempComparisonIds(comparisonVersionIds);
+                        setShowCompareSelector(true);
+                      }}
+                      className="text-sm font-medium text-[var(--color-accent-rose)] hover:opacity-80 transition-all flex items-center gap-1"
+                    >
+                      Comparing
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Right side tools */}
               <div className="flex items-center gap-0.5 ml-auto">
                 <button
                   onClick={() => {
-                    setComparisonMode(!comparisonMode);
-                    if (!comparisonMode && !secondVersionId) {
-                      const dv = bibleVersions.find(v => v.id !== selectedVersionId) || bibleVersions[0];
-                      if (dv) { setSecondVersionId(dv.id); setDisplaySecondVersionName(dv.name); }
+                    if (comparisonMode) {
+                      // If already in comparison mode, maybe just show selector again to manage or toggle it off?
+                      // The user said: "Mai jb bhi comparision mode ki button pe click krunga to popup open hona chahiye"
+                      setTempComparisonIds(comparisonVersionIds);
+                      setShowCompareSelector(true);
+                    } else {
+                      setTempComparisonIds(selectedVersionId ? [selectedVersionId] : []);
+                      setShowCompareSelector(true);
                     }
                   }}
-                  className={`p-2 rounded-full transition-colors ${comparisonMode ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-gray-900)] hover:bg-gray-100/50'}`}
+                  className={`p-2 rounded-full transition-colors ${comparisonMode ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)]' : 'text-[var(--color-gray-900)] hover:bg-gray-100/50'}`}
                   title="Compare Versions"
                 >
                   <Columns2 className="size-[18px]" />
@@ -1482,13 +1500,6 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                       <RiSortAlphabetAsc className={`size-4 ${bookSortType === 'alphabetical' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/40'}`} />
                     </button>
                   </div>
-                  <button
-                    onClick={() => setShowBookSelector(false)}
-                    className="p-1.5 rounded-full hover:bg-gray-100 transition-colors"
-                    aria-label="Close"
-                  >
-                    <X className="size-4 text-[var(--color-text-primary)]/60" />
-                  </button>
                 </div>
               </div>
 
@@ -1667,21 +1678,19 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                           <button
                             key={version.name}
                             onClick={() => {
-                              if (comparisonMode) {
-                                setSecondVersionId(version.id);
-                                setDisplaySecondVersionName(version.fullName);
-                              } else {
-                                setSelectedVersionId(version.id);
-                                setDisplayVersionName(version.fullName);
-                              }
+                              setSelectedVersionId(version.id);
+                              setDisplayVersionName(version.name);
                               setShowVersionSelector(false);
                             }}
-                            className={`w-full text-left px-4 py-2.5 rounded transition-colors ${(comparisonMode ? secondVersionId : selectedVersionId) === version.id
+                            className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersionId === version.id
                               ? 'bg-[#fbebee] text-[#d23952]'
                               : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
                               }`}
                           >
-                            <div className="text-base font-medium">{version.fullName} ({version.name})</div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-base font-semibold">{version.name}</span>
+                              <span className="text-sm text-[#31393a]/50">{version.fullName}</span>
+                            </div>
                           </button>
                         ))}
                       </div>
@@ -1697,21 +1706,19 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                             <button
                               key={version.name}
                               onClick={() => {
-                                if (comparisonMode) {
-                                  setSecondVersionId(version.id);
-                                  setDisplaySecondVersionName(version.fullName);
-                                } else {
-                                  setSelectedVersionId(version.id);
-                                  setDisplayVersionName(version.fullName);
-                                }
+                                setSelectedVersionId(version.id);
+                                setDisplayVersionName(version.name);
                                 setShowVersionSelector(false);
                               }}
-                              className={`w-full text-left px-4 py-2.5 rounded transition-colors ${(comparisonMode ? secondVersionId : selectedVersionId) === version.id
+                              className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersionId === version.id
                                 ? 'bg-[#fbebee] text-[#d23952]'
                                 : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
                                 }`}
                             >
-                              <div className="text-base font-medium">{version.fullName} ({version.name})</div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-base font-semibold">{version.name}</span>
+                                <span className="text-sm text-[#31393a]/50">{version.fullName}</span>
+                              </div>
                             </button>
                           ))}
                         </div>
@@ -1722,62 +1729,91 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           </DialogContent>
         </Dialog>
 
+        <Dialog open={showCompareSelector} onOpenChange={setShowCompareSelector}>
+          <DialogContent className="max-w-[400px] p-0 gap-0 overflow-hidden rounded-3xl [&>[data-slot=dialog-close]]:hidden">
+            {/* Header */}
+            <div className="flex items-center justify-between p-6 pb-2">
+              <h3 className="text-xl font-bold text-[#1e293b]">Compare Versions</h3>
+              <button 
+                onClick={() => setShowCompareSelector(false)} 
+                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                aria-label="Close"
+              >
+                <X className="size-5 text-gray-400" />
+              </button>
+            </div>
+
+            {/* Version List Grouped by Language */}
+            <ScrollArea className="max-h-[60vh] px-6 py-4">
+              {['English', 'Telugu', 'Hindi'].map(lang => (
+                <div key={lang} className="mb-6">
+                  <h4 className="text-sm text-gray-400 mb-3 font-medium">{lang}</h4>
+                  <div className="space-y-2">
+                    {bibleVersions.filter(v => v.language === lang).map(version => {
+                      const isSelected = tempComparisonIds.includes(version.id);
+                      return (
+                        <button
+                          key={version.id}
+                          onClick={() => {
+                            if (isSelected) {
+                              setTempComparisonIds(prev => prev.filter(id => id !== version.id));
+                            } else {
+                              setTempComparisonIds(prev => [...prev, version.id]);
+                            }
+                          }}
+                          className={`w-full text-left px-5 py-4 rounded-xl transition-all duration-300 transform active:scale-[0.98] ${
+                            isSelected 
+                              ? 'bg-[#fbebee] text-[#d23952]' 
+                              : 'bg-gray-50 text-[#1e293b] hover:bg-gray-100'
+                          }`}
+                        >
+                          <span className={`text-[15px] font-semibold ${isSelected ? 'text-[#d23952]' : 'text-[#31393a]'}`}>
+                            {version.fullName} ({version.name})
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </ScrollArea>
+
+            {/* Footer Actions */}
+            <div className="flex items-center justify-end p-6 pt-2 gap-3">
+              <button 
+                onClick={() => setShowCompareSelector(false)} 
+                className="px-6 py-2.5 text-sm font-semibold text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button 
+                disabled={tempComparisonIds.length < 2}
+                onClick={() => {
+                  setComparisonVersionIds(tempComparisonIds);
+                  setComparisonMode(true);
+                  setShowCompareSelector(false);
+                }}
+                className={`px-8 py-3 rounded-xl text-sm font-bold transition-all duration-300 ${
+                  tempComparisonIds.length >= 2 
+                    ? 'bg-[#d23952] text-white shadow-lg shadow-red-200 hover:bg-[#b02f45] active:scale-95' 
+                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                }`}
+              >
+                Compare
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
 
 
 
 
-        {/* More Menu (Three Dots) - Simple menu with options */}
+
         {showMoreMenu && (() => {
-          // Build the refId for the current chapter
-          const chapterRefId = selectedBookId && selectedVersionId
-            ? `${selectedBookId}_${selectedChapter}_${selectedVersionId}`
-            : null;
-          const chapterSaved = chapterRefId ? isSaved('bible', chapterRefId) : false;
-          const savedDoc = chapterRefId ? getSavedItem('bible', chapterRefId) : undefined;
-
-          const handleSaveChapter = async () => {
-            if (!session?.user) {
-              setShowMoreMenu(false);
-              router.push('/auth/signin');
-              return;
-            }
-            if (!chapterRefId || !selectedBookId || !selectedVersionId) return;
-            setShowMoreMenu(false);
-            await toggleSave({
-              type: 'bible',
-              refId: chapterRefId,
-              metadata: {
-                bookId: selectedBookId,
-                bookName: displayBookName,
-                chapter: selectedChapter,
-                versionId: selectedVersionId,
-                versionName: displayVersionName ?? undefined,
-              },
-            });
-          };
-
           return (
           <Dialog open={showMoreMenu} onOpenChange={setShowMoreMenu}>
             <DialogContent className="max-w-[280px] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
               <div className="py-2">
-                {/* Save Chapter */}
-                <button
-                  id="save-chapter-btn"
-                  onClick={handleSaveChapter}
-                  className="w-full px-4 py-3 text-left text-base hover:bg-gray-100/50 transition-colors flex items-center gap-3"
-                >
-                  {chapterSaved ? (
-                    <BookmarkCheck className="size-5 text-[#41ADB0] flex-shrink-0" />
-                  ) : (
-                    <Bookmark className="size-5 text-[#31393a]/60 flex-shrink-0" />
-                  )}
-                  <span className={chapterSaved ? 'text-[#41ADB0] font-medium' : 'text-[#31393a]'}>
-                    {chapterSaved ? 'Chapter Saved' : 'Save Chapter'}
-                  </span>
-                </button>
-
-                <Separator className="mx-4" />
-
                 {/* Fonts & Settings Option */}
                 <button
                   onClick={() => {
@@ -1790,25 +1826,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   <ChevronRight className="size-4 text-[#31393a]/40" />
                 </button>
 
-                {/* Comparison Mode Toggle */}
-                <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 transition-colors">
-                  <span className="text-base text-[#31393a]">Comparison Mode</span>
-                  <Switch
-                    checked={comparisonMode}
-                    onCheckedChange={(checked) => {
-                      setComparisonMode(checked);
-                      if (checked && !secondVersionId) {
-                        const defaultV2 = bibleVersions.find(v => v.id !== selectedVersionId) || bibleVersions[0];
-                        if (defaultV2) {
-                            setSecondVersionId(defaultV2.id);
-                            setDisplaySecondVersionName(defaultV2.name);
-                        }
-                      }
-                      setShowMoreMenu(false);
-                    }}
-                    className="data-[state=checked]:bg-[#006a6f]"
-                  />
-                </div>
+                <Separator className="mx-4" />
 
                 {/* Hide Footnotes Toggle */}
                 <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 transition-colors">
@@ -1910,15 +1928,19 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             <ComparisonContent
               book={selectedBookId || ''}
               chapter={selectedChapter}
-              version1={selectedVersionId || ''}
-              version2={secondVersionId || ''}
+              versionIds={comparisonVersionIds}
+              bibleVersions={bibleVersions}
               theme={currentTheme}
               font={selectedFont}
               fontSize={fontSize}
               onClose={() => setComparisonMode(false)}
-              onVersion2Change={() => setShowVersionSelector(true)}
-              displayVersionName1={displayVersionName || 'KJV'}
-              displayVersionName2={displaySecondVersionName}
+              onManageClick={() => {
+                setTempComparisonIds(comparisonVersionIds);
+                setShowCompareSelector(true);
+              }}
+              onVersionRemove={(vId) => {
+                setComparisonVersionIds(prev => prev.filter(id => id !== vId));
+              }}
             />
           ) : pageTransition === 'slide' && isDragging ? (
             /* Interactive drag mode — show both pages during swipe */

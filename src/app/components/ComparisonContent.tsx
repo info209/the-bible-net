@@ -1,14 +1,15 @@
 "use client";
 import { useEffect, useState } from 'react';
-import { ChevronDown, X } from 'lucide-react';
+import { ChevronDown, X, Plus, LogOut } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { ComparisonSkeleton } from './BibleSkeleton';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 interface ComparisonContentProps {
   book: string;
   chapter: number;
-  version1: string;
-  version2: string;
+  versionIds: string[];
+  bibleVersions: any[];
   theme: {
     bg: string;
     text: string;
@@ -17,45 +18,47 @@ interface ComparisonContentProps {
   font: string;
   fontSize: number;
   onClose: () => void;
-  onVersion2Change: () => void;
-  displayVersionName1: string;
-  displayVersionName2: string;
+  onManageClick: () => void;
+  onVersionRemove: (id: string) => void;
 }
 
 export default function ComparisonContent({
   book,
   chapter,
-  version1,
-  version2,
+  versionIds,
+  bibleVersions,
   theme,
   font,
   fontSize,
   onClose,
-  onVersion2Change,
-  displayVersionName1,
-  displayVersionName2
+  onManageClick,
+  onVersionRemove
 }: ComparisonContentProps) {
-  const [content, setContent] = useState<any>(null);
+  const [contents, setContents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
 
-    const fetchComparison = async () => {
-      if (!book || !chapter || !version1 || !version2) return;
+    const fetchAllVersions = async () => {
+      if (!book || !chapter || versionIds.length === 0) return;
       
       setIsLoading(true);
       setError(null);
       try {
-        const response = await fetch(`/api/v1/bible/compare/${version1}/${version2}/${book}/${chapter}`);
-        const result = await response.json();
-
+        const fetchPromises = versionIds.map(vId => 
+          fetch(`/api/v1/bible/${vId}/${book}/${chapter}`).then(res => res.json())
+        );
+        
+        const results = await Promise.all(fetchPromises);
+        
         if (isMounted) {
-          if (result.success) {
-            setContent(result.data);
+          const successResults = results.filter(r => r.success).map(r => r.data);
+          if (successResults.length > 0) {
+            setContents(successResults);
           } else {
-            setError(result.error || 'Failed to fetch comparison');
+            setError('Failed to fetch version contents');
           }
         }
       } catch (err) {
@@ -69,12 +72,12 @@ export default function ComparisonContent({
       }
     };
 
-    fetchComparison();
+    fetchAllVersions();
 
     return () => {
       isMounted = false;
     };
-  }, [book, chapter, version1, version2]);
+  }, [book, chapter, versionIds]);
 
   if (isLoading) {
     return <ComparisonSkeleton theme={theme} />;
@@ -92,6 +95,18 @@ export default function ComparisonContent({
     );
   }
 
+  // Get all unique verse numbers across all versions
+  const allVerseNumbers = Array.from(new Set(
+    contents.flatMap(c => c.verses.map((v: any) => v.number))
+  )).sort((a, b) => a - b);
+
+  const getAbbreviation = (id: string, name: string) => {
+     // If name is already abbreviation (usually short)
+     if (name.length <= 8) return name;
+     const v = bibleVersions.find(v => v.id === id);
+     return v?.name || name;
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -99,81 +114,139 @@ export default function ComparisonContent({
       className="w-full h-full flex flex-col" 
       style={{ backgroundColor: theme.bg }}
     >
-      {/* Comparison Header - Sticky for side-by-side versions */}
-      <div className="sticky top-0 z-20 border-b border-gray-200 bg-white/95 backdrop-blur-md">
-        <div className="max-w-3xl mx-auto px-4 flex divide-x divide-gray-200">
-          <div className="w-10 sm:w-12 flex-shrink-0" /> {/* Spacer for verse numbers column */}
-          <div className="flex-1 flex divide-x divide-gray-200">
-            <div className="flex-1 p-2 sm:p-3 flex items-center min-w-0">
-              <span className="font-semibold text-xs sm:text-sm text-[#d23952] truncate" title={displayVersionName1}>
-                {displayVersionName1}
-              </span>
+      {/* Comparison Grid Container */}
+      <div className="flex-1 w-full max-w-[98%] mx-auto overflow-y-auto custom-scrollbar pt-8 pb-32">
+        <div className="px-2">
+            {/* Header Labels (Fixed atop grid) */}
+            <div 
+              className="grid gap-1 mb-6 sticky top-0 z-10 py-2"
+              style={{ 
+                gridTemplateColumns: `repeat(${contents.length}, minmax(0, 1fr))`,
+                backgroundColor: theme.bg
+              }}
+            >
+              {contents.map(content => {
+                const abbreviation = getAbbreviation(content.versionId, content.version);
+                return (
+                  <div key={content.versionId} className="text-center">
+                    <h3 className="text-[#d23952] font-black text-xs sm:text-sm uppercase tracking-widest py-1">
+                      {abbreviation}
+                    </h3>
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex-1 p-2 sm:p-3 flex justify-between items-center min-w-0">
-              <button 
-                onClick={onVersion2Change}
-                className="font-semibold text-xs sm:text-sm text-[#006a6f] flex items-center gap-1 hover:text-[#005a5f] transition-colors truncate"
-              >
-                <span className="truncate" title={displayVersionName2}>{displayVersionName2}</span>
-                <ChevronDown className="size-3 flex-shrink-0" />
-              </button>
-              <button 
-                onClick={onClose}
-                className="text-gray-400 p-1 hover:bg-gray-100 rounded-full flex-shrink-0 transition-colors ml-1"
-              >
-                <X className="size-3 sm:size-4" />
-              </button>
+
+            {/* Verses Table-like Grid */}
+            <div className="space-y-1 sm:space-y-2">
+              {allVerseNumbers.map(num => (
+                <div 
+                  key={num} 
+                  className="grid gap-1 sm:gap-2"
+                  style={{ gridTemplateColumns: `repeat(${contents.length}, minmax(0, 1fr))` }}
+                >
+                  {contents.map(content => {
+                    const verse = content.verses.find((v: any) => v.number === num);
+                    return (
+                      <div 
+                        key={content.versionId} 
+                        className="px-3 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-[2rem] transition-all hover:bg-black/[0.03]"
+                        style={{ backgroundColor: theme.bg === '#ffffff' ? '#fcfcfc' : 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,0,0,0.02)' }}
+                      >
+                        <div className="flex items-start gap-2 sm:gap-3">
+                          <span className="text-[#d23952] font-semibold text-xs sm:text-sm mt-1 leading-none">{num}</span>
+                          <p 
+                            style={{ 
+                              fontFamily: font, 
+                              fontSize: `${fontSize}px`,
+                              color: theme.text 
+                            }}
+                            className="leading-relaxed leading-7 text-sm sm:text-base font-normal"
+                          >
+                            {verse?.text || '—'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
             </div>
-          </div>
         </div>
       </div>
 
-      {/* Comparison Rows */}
-      <div className="max-w-3xl mx-auto px-4 mb-20">
-        <div className="space-y-0">
-          {content?.verses.map((verse: any) => (
-            <div 
-              key={verse.number} 
-              className="flex divide-x divide-gray-100 border-b border-gray-50 hover:bg-black/5 transition-colors"
-              id={`verse-compare-${verse.number}`}
-            >
-              {/* Verse Number Column */}
-              <div className="w-10 sm:w-12 flex-shrink-0 flex justify-center py-4">
-                <span className="text-[10px] sm:text-xs font-bold" style={{ color: theme.verseNumber }}>
-                  {verse.number}
-                </span>
+      {/* Floating Panel as per Screenshot 4 UI style */}
+      <div className="fixed bottom-24 right-8 z-50">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button className="bg-white/95 backdrop-blur-md text-[#31393a] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 rounded-[2rem] pl-6 pr-4 py-3 flex items-center gap-4 hover:bg-white transition-all transform hover:scale-105 active:scale-95 duration-300 group">
+              <div className="flex flex-col items-start">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Comparing</span>
+                  <span className="text-sm font-black text-[#1e293b]">{contents.length} Versions</span>
               </div>
+              <div className="flex -space-x-2.5">
+                {versionIds.slice(0, 3).map((id, i) => (
+                  <div key={id} className="size-9 rounded-full bg-[#fbebee] border-4 border-white flex items-center justify-center text-[10px] font-black text-[#d23952] shadow-sm transform transition-all group-hover:translate-x-1" style={{ zIndex: 3-i }}>
+                    {getAbbreviation(id, '').substring(0, 3)}
+                  </div>
+                ))}
+                {versionIds.length > 3 && (
+                   <div className="size-9 rounded-full bg-gray-100 border-4 border-white flex items-center justify-center text-[10px] font-black text-gray-500 shadow-sm" style={{ zIndex: 0 }}>
+                      +{versionIds.length - 3}
+                   </div>
+                )}
+              </div>
+            </button>
+          </PopoverTrigger>
+          <PopoverContent className="w-72 p-0 rounded-3xl overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] border-none mt-4 mr-0 sm:mr-4" align="end">
+             <div className="p-6 bg-white">
+                <h4 className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-5">Current Library</h4>
+                <div className="space-y-4 mb-8">
+                  {versionIds.map(vId => {
+                    const v = bibleVersions.find(v => v.id === vId);
+                    return (
+                      <div key={vId} className="flex items-center justify-between group">
+                        <div className="flex flex-col">
+                            <span className="text-sm font-black text-[#1e293b] tracking-wide">{v?.name || vId}</span>
+                            <span className="text-[10px] text-gray-400 font-medium truncate max-w-[140px] uppercase tracking-wider">{v?.fullName || 'Full Version Name'}</span>
+                        </div>
+                        <button 
+                          onClick={() => {
+                            if (versionIds.length > 2) {
+                               onVersionRemove(vId);
+                            }
+                          }}
+                          className={`${versionIds.length > 2 ? 'text-gray-200 hover:text-red-500' : 'text-gray-100 cursor-not-allowed'} transition-colors p-2 rounded-full hover:bg-gray-50`}
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
 
-              {/* Left Version Column */}
-              <div className="flex-1 p-3 sm:p-4">
-                <p 
-                  style={{ 
-                    fontFamily: font, 
-                    fontSize: `${fontSize}px`,
-                    color: theme.text 
-                  }}
-                  className="leading-relaxed whitespace-pre-wrap"
-                >
-                  {verse.v1}
-                </p>
-              </div>
-
-              {/* Right Version Column */}
-              <div className="flex-1 p-3 sm:p-4">
-                <p 
-                  style={{ 
-                    fontFamily: font, 
-                    fontSize: `${fontSize}px`,
-                    color: theme.text 
-                  }}
-                  className="leading-relaxed whitespace-pre-wrap"
-                >
-                  {verse.v2}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
+                <div className="space-y-2">
+                   <button 
+                     onClick={() => {
+                        onManageClick();
+                     }}
+                     className="w-full flex items-center justify-between text-xs font-black text-[#006a6f] hover:bg-[#ebf8f8] transition-all py-4 px-4 rounded-2xl group border border-[#ebf8f8]"
+                   >
+                     <span>ADD VERSION</span>
+                     <Plus className="size-4 transform group-hover:rotate-90 transition-transform" />
+                   </button>
+                   
+                   <button 
+                     onClick={onClose}
+                     className="w-full flex items-center justify-between text-xs font-black text-[#d23952] hover:bg-[#fbebee] transition-all py-4 px-4 rounded-2xl group"
+                   >
+                     <span>EXIT COMPARE</span>
+                     <LogOut className="size-4 transform group-hover:translate-x-1 transition-transform" />
+                   </button>
+                </div>
+             </div>
+          </PopoverContent>
+        </Popover>
       </div>
     </motion.div>
   );
