@@ -1479,25 +1479,34 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           <DialogContent className="max-w-[360px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
-                <h3 className="text-base font-semibold text-[var(--color-text-primary)]">Books</h3>
+                <div className="flex items-center gap-1">
+                  <button 
+                    onClick={() => setShowBookSelector(false)} 
+                    className="size-8 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors text-[#0f172a]/60"
+                  >
+                    <X className="size-4" />
+                  </button>
+                  <DialogTitle className="text-sm font-bold text-[#0f172a] uppercase tracking-tight">Books</DialogTitle>
+                </div>
+                
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-[var(--color-text-primary)]/60 font-medium">
+                  <span className="text-[10px] text-[#0f172a]/40 font-bold uppercase tracking-widest hidden sm:inline">
                     {bookSortType === 'traditional' ? 'Traditional' : 'Alphabetical'}
                   </span>
-                  <div className="flex bg-gray-100 rounded-full p-0.5">
+                  <div className="flex bg-gray-50 border border-gray-100 rounded-full p-0.5">
                     <button
                       onClick={() => setBookSortType('traditional')}
-                      className={`p-1.5 rounded-full transition-all ${bookSortType === 'traditional' ? 'bg-white shadow-sm' : 'bg-transparent'}`}
+                      className={`p-1.5 rounded-full transition-all ${bookSortType === 'traditional' ? 'bg-white shadow-sm text-[var(--color-accent-rose)]' : 'text-[#0f172a]/30 hover:text-[#0f172a]/60'}`}
                       aria-label="Traditional sort"
                     >
-                      <RiSortDesc className={`size-4 ${bookSortType === 'traditional' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/40'}`} />
+                      <RiSortDesc className="size-4" />
                     </button>
                     <button
                       onClick={() => setBookSortType('alphabetical')}
-                      className={`p-1.5 rounded-full transition-all ${bookSortType === 'alphabetical' ? 'bg-white shadow-sm' : 'bg-transparent'}`}
+                      className={`p-1.5 rounded-full transition-all ${bookSortType === 'alphabetical' ? 'bg-white shadow-sm text-[var(--color-accent-rose)]' : 'text-[#0f172a]/30 hover:text-[#0f172a]/60'}`}
                       aria-label="Alphabetical sort"
                     >
-                      <RiSortAlphabetAsc className={`size-4 ${bookSortType === 'alphabetical' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/40'}`} />
+                      <RiSortAlphabetAsc className="size-4" />
                     </button>
                   </div>
                 </div>
@@ -1660,8 +1669,16 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         <Dialog open={showVersionSelector} onOpenChange={setShowVersionSelector}>
           <DialogContent className="max-w-[360px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
               {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-100">
-                <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Bible Versions</h3>
+              <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                <div className="w-10"></div>
+                <DialogTitle className="text-base font-semibold text-[#0f172a]">Versions</DialogTitle>
+                <button 
+                  onClick={() => setShowVersionSelector(false)} 
+                  className="size-9 flex items-center justify-center hover:bg-gray-100 rounded-full transition-colors text-[#0f172a]/60"
+                  aria-label="Close"
+                >
+                  <X className="size-5" />
+                </button>
               </div>
 
               {/* Content */}
@@ -1812,7 +1829,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         {showMoreMenu && (() => {
           return (
           <Dialog open={showMoreMenu} onOpenChange={setShowMoreMenu}>
-            <DialogContent className="max-w-[280px] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
+            <DialogContent className="fixed right-4 top-20 left-auto translate-x-0 sm:translate-x-0 sm:translate-y-0 max-w-[260px] p-0 gap-0 overflow-hidden rounded-2xl [&>[data-slot=dialog-close]]:hidden shadow-2xl border border-white/40 ring-1 ring-black/5 bg-white/95 backdrop-blur-xl">
               <div className="py-2">
                 {/* Fonts & Settings Option */}
                 <button

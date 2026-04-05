@@ -100,11 +100,16 @@ export default function ComparisonContent({
     contents.flatMap(c => c.verses.map((v: any) => v.number))
   )).sort((a, b) => a - b);
 
-  const getAbbreviation = (id: string, name: string) => {
-     // If name is already abbreviation (usually short)
-     if (name.length <= 8) return name;
+  const getAbbreviation = (id: string, versionData: any) => {
+     // If versionData is an object (from API), use abbreviation or name
+     const versionStr = typeof versionData === 'object' 
+        ? (versionData.abbreviation || versionData.name || 'Bible') 
+        : versionData;
+
+     if (versionStr && versionStr.length <= 10) return versionStr;
+     
      const v = bibleVersions.find(v => v.id === id);
-     return v?.name || name;
+     return v?.name || versionStr || 'Version';
   };
 
   return (
