@@ -110,9 +110,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [showBookSelector, setShowBookSelector] = useState(false);
   const [showChapterSelector, setShowChapterSelector] = useState(false);
   const [showVersionSelector, setShowVersionSelector] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [showMoreMenu, setShowMoreMenu] = useState(false);
-  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [hideFootnotes, setHideFootnotes] = useState(false);
   const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
   const [showVerseSelector, setShowVerseSelector] = useState(false);
@@ -377,7 +375,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   }, [pathname, bibleVersions]); // Removed state dependencies to prevent resetting user selection back to URL state
 
   const isAnyPopupOpen = showBookSelector || showChapterSelector ||
-    showVersionSelector || showMoreMenu || showSettingsMenu ||
+    showVersionSelector || showMoreMenu ||
     showSearch || showVerseSelector || selectedVerses.length > 0;
 
   // ESC key closes any open popup
@@ -388,13 +386,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       else if (showChapterSelector) setShowChapterSelector(false);
       else if (showVerseSelector) setShowVerseSelector(false);
       else if (showVersionSelector) setShowVersionSelector(false);
-      else if (showSettingsMenu) setShowSettingsMenu(false);
       else if (showMoreMenu) setShowMoreMenu(false);
       else if (showSearch) setShowSearch(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showBookSelector, showChapterSelector, showVerseSelector, showVersionSelector, showSettingsMenu, showMoreMenu, showSearch]);
+  }, [showBookSelector, showChapterSelector, showVerseSelector, showVersionSelector, showMoreMenu, showSearch]);
 
   // Lock background scroll when any popup is open
   useEffect(() => {
@@ -1436,7 +1433,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             className={`transition-all duration-300 ease-in-out overflow-hidden z-[50] ${!showBottomNav ? 'h-0 opacity-0 pointer-events-none' : 'h-16 opacity-100'
               }`}
           >
-            <AppHeader onMenuOpen={() => setMenuOpen(true)} className="!static" />
+            <AppHeader onMenuOpen={() => setShowMoreMenu(true)} className="!static" />
           </div>
 
           {/* Sub Navigation Bar - BECOMES STICKY */}
@@ -1814,123 +1811,13 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           </div>
         )}
 
-
-
-
-
-        {showMoreMenu && (() => {
-          return (
-            <Dialog open={showMoreMenu} onOpenChange={setShowMoreMenu}>
-              <DialogContent className="fixed right-4 top-[72px] left-auto translate-x-0 sm:translate-x-0 sm:translate-y-0 w-[240px] p-0 gap-0 overflow-hidden rounded-2xl [&>[data-slot=dialog-close]]:hidden shadow-2xl border border-white/40 ring-1 ring-black/5 bg-white/95 backdrop-blur-xl z-[200]">
-                <div className="py-2">
-                  {/* Fonts & Settings Option */}
-                  <button
-                    onClick={() => {
-                      setShowMoreMenu(false);
-                      setShowSettingsMenu(true);
-                    }}
-                    className="w-full px-4 py-3 text-left text-base text-[#31393a] hover:bg-gray-100/50 transition-colors flex items-center justify-between"
-                  >
-                    <span>Fonts & Settings</span>
-                    <ChevronRight className="size-4 text-[#31393a]/40" />
-                  </button>
-
-                  <Separator className="mx-4" />
-
-                  {/* Hide Footnotes Toggle */}
-                  <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 transition-colors">
-                    <span className="text-base text-[#31393a]">Hide footnotes</span>
-                    <Switch
-                      checked={hideFootnotes}
-                      onCheckedChange={setHideFootnotes}
-                      className="data-[state=checked]:bg-[#006a6f]"
-                    />
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
-          );
-        })()}
-
-        <Dialog open={showSettingsMenu} onOpenChange={setShowSettingsMenu}>
-          <DialogContent className="w-[92vw] sm:max-w-[420px] max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl [&>[data-slot=dialog-close]]:hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <div className="w-10" />
-              <h3 className="text-base font-semibold text-[#0f172a]">Fonts &amp; Settings</h3>
-              <button onClick={() => setShowSettingsMenu(false)} className="text-sm font-semibold text-[#006a6f] hover:text-[#005a5f] transition-colors">Done</button>
-            </div>
-            <ScrollArea className="max-h-[calc(90vh-68px)]">
-              <div className="px-5 py-5 space-y-5">
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[#0f172a]/60 uppercase tracking-wider">Font family</label>
-                  <div className="relative">
-                    <select value={selectedFont} onChange={(e) => setSelectedFont(e.target.value)} className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium text-[#0f172a] appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#006a6f]/30 transition-all">
-                      <option value="Times New Roman">Times New Roman</option>
-                      <option value="Georgia">Georgia</option>
-                      <option value="Arial">Arial</option>
-                      <option value="Verdana">Verdana</option>
-                      <option value="Helvetica">Helvetica</option>
-                      <option value="Merriweather">Merriweather</option>
-                    </select>
-                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 size-4 text-[#31393a]/50 pointer-events-none" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-[#0f172a]/60 uppercase tracking-wider">Font size</label>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-[#0f172a] w-6">A-</span>
-                    <input type="range" min="12" max="24" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))}
-                      className="flex-1 h-1.5 rounded-full appearance-none cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:size-5 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-[#d23952] [&::-webkit-slider-thumb]:border-4 [&::-webkit-slider-thumb]:border-[#f1c2c9] [&::-webkit-slider-thumb]:cursor-pointer [&::-moz-range-thumb]:size-5 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-[#d23952] [&::-moz-range-thumb]:border-4 [&::-moz-range-thumb]:border-[#f1c2c9]"
-                      style={{ background: `linear-gradient(to right, #d23952 0%, #d23952 ${((fontSize - 12) / 12) * 100}%, #ededed ${((fontSize - 12) / 12) * 100}%, #ededed 100%)` }}
-                    />
-                    <span className="text-xs font-bold text-[#0f172a] w-6">A+</span>
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-[#0f172a]/60 uppercase tracking-wider">Theme</label>
-                  <div className="flex items-center gap-3">
-                    {([
-                      { key: 'light', color: '#ffffff' },
-                      { key: 'sepia', color: '#f5e6d3' },
-                      { key: 'cream', color: '#fef3e2' },
-                      { key: 'dark', color: '#2e3737' },
-                    ] as const).map(({ key, color }) => (
-                      <button key={key} onClick={() => setSelectedTheme(key)}
-                        className={`size-10 rounded-full border-2 transition-all ${selectedTheme === key ? (key === 'dark' ? 'border-white scale-110' : 'border-[#31393a] scale-110') : 'border-gray-300'}`}
-                        style={{ backgroundColor: color }}
-                      />
-                    ))}
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold text-[#0f172a]/60 uppercase tracking-wider">Page transitions</label>
-                  <div className="grid grid-cols-2 gap-2.5">
-                    {([
-                      { key: 'slide', label: 'Slide', Icon: ArrowRightLeft },
-                      { key: 'curl', label: 'Curl', Icon: FileText },
-                      { key: 'fade', label: 'Fast Fade', Icon: Zap },
-                      { key: 'scroll', label: 'Scroll', Icon: ScrollText },
-                    ] as const).map(({ key, label, Icon }) => (
-                      <button key={key} onClick={() => setPageTransition(key)}
-                        className={`flex flex-col items-center gap-1.5 px-3 py-3 rounded-xl border-2 transition-all ${pageTransition === key ? 'border-[#31393a] bg-gray-50' : 'border-gray-200 bg-white'}`}
-                      >
-                        <Icon className="size-5 text-[#31393a]" />
-                        <span className="text-xs text-[#31393a]">{label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
-
         {/* Main Reading Content */}
         <div
-          className="transition-colors duration-300 relative overflow-hidden"
+          className="transition-colors duration-300 relative overflow-hidden flex-1"
           style={{ backgroundColor: currentTheme.bg }}
         >
-          {pageTransition === 'slide' && isDragging ? (
+          <AnimatePresence mode="wait">
+            {pageTransition === 'slide' && isDragging ? (
             /* Interactive slide mode - show both pages */
             <>
               {/* Next page (shows when dragging left) */}
@@ -2068,7 +1955,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               })()}
             </AnimatePresence>
           )}
-        </div>
+        </AnimatePresence>
+      </div>
       </div>
 
       {/* Audio Controls - MOVES UP/DOWN WITH SCROLL */}
@@ -2335,6 +2223,17 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                         <span className="text-[10px] font-bold uppercase tracking-widest">{mode.label}</span>
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                {/* Footnotes Toggle */}
+                <div className="space-y-4 pt-4 border-t border-gray-100">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-[#31393a]/40 uppercase tracking-widest">Hide footnotes</label>
+                    <Switch
+                      checked={hideFootnotes}
+                      onCheckedChange={setHideFootnotes}
+                    />
                   </div>
                 </div>
               </div>
