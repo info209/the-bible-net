@@ -687,28 +687,32 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const prevChapterInfo = getPrevChapter();
 
   // Navigate to specific verse from search
-  const handleNavigateToVerse = (book: { id: string, name: string }, chapter: number, verse: number) => {
-    setSelectedBookId(book.id);
-    setDisplayBookName(book.name);
-    setSelectedChapter(chapter);
-    setSelectedVerse(verse);
-    setShowSearch(false);
+  const handleSearchNavigation: (bookName: string, chapter: number, verse: number) => void = (bookName, chapter, verse) => {
+    // find book by name
+    const targetBook = allBooks.find(b => b.name === bookName);
+    if (targetBook) {
+      setSelectedBookId(targetBook.id);
+      setDisplayBookName(targetBook.name);
+      setSelectedChapter(chapter);
+      setSelectedVerse(verse);
+      setShowSearch(false);
 
-    // Scroll to the verse after a short delay to allow state to update
-    setTimeout(() => {
-      const verseElement = document.getElementById(`verse-${book.id}-${chapter}-${verse}`);
-      if (verseElement && scrollContainerRef.current) {
-        const elementTop = verseElement.getBoundingClientRect().top;
-        const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
-        const currentScroll = scrollContainerRef.current.scrollTop;
-        const targetScroll = currentScroll + elementTop - containerTop - 100;
+      // Scroll to the verse after a short delay to allow state to update
+      setTimeout(() => {
+        const verseElement = document.getElementById(`verse-${targetBook.id}-${chapter}-${verse}`);
+        if (verseElement && scrollContainerRef.current) {
+          const elementTop = verseElement.getBoundingClientRect().top;
+          const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
+          const currentScroll = scrollContainerRef.current.scrollTop;
+          const targetScroll = currentScroll + elementTop - containerTop - 100;
 
-        scrollContainerRef.current.scrollTo({
-          top: targetScroll,
-          behavior: 'smooth'
-        });
-      }
-    }, 300);
+          scrollContainerRef.current.scrollTo({
+            top: targetScroll,
+            behavior: 'smooth'
+          });
+        }
+      }, 300);
+    }
   };
 
   const handlePrevious = () => {
@@ -1983,7 +1987,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               >
                 {comparisonMode ? (
                   <ComparisonContent
-                    book={selectedBookId}
+                    book={selectedBookId || ''}
                     chapter={selectedChapter}
                     versionIds={comparisonVersionIds}
                     bibleVersions={bibleVersions}
@@ -2031,7 +2035,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   >
                     {comparisonMode ? (
                       <ComparisonContent
-                        book={selectedBookId}
+                        book={selectedBookId || ''}
                         chapter={selectedChapter}
                         versionIds={comparisonVersionIds}
                         bibleVersions={bibleVersions}
@@ -2342,8 +2346,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       <BibleSearch
         isOpen={showSearch}
         onClose={() => setShowSearch(false)}
-        selectedVersionId={selectedVersionId || ''}
-        onNavigateToVerse={handleNavigateToVerse}
+        selectedVersion={selectedVersionId || ''}
+        onNavigateToVerse={handleSearchNavigation}
       />
 
       {/* Verse Action Menu (Selection) */}

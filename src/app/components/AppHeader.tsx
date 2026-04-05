@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Globe, Menu, User, LogOut, Settings, UserCircle, LogIn, UserPlus, ChevronDown, BiBible } from 'lucide-react';
+import { BookOpen, Menu, User, Settings, LogIn, UserPlus, ChevronDown } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';

@@ -4,12 +4,12 @@ import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw, RotateCw, Repeat, Do
 interface AudioControlPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  selectedVerse: number;
+  selectedVerse: number | null;
   audioCurrentTime: number;
   audioDuration: number;
   audioPlaying: boolean;
   playbackSpeed: number;
-  onVerseChange: (verse: number) => void;
+  onVerseChange: (verse: number | null) => void;
   onTimeChange: (time: number) => void;
   onPlayPauseToggle: () => void;
   onSpeedChange: (speed: number) => void;
@@ -133,7 +133,7 @@ export default function AudioControlPanel({
             <div className="flex flex-col items-center">
               <div className="bg-[var(--color-accent-rose-lighter)] rounded-[var(--radius-xs)] px-[8px] py-[2px] flex flex-col items-center min-w-[48px]">
                 <p className="text-[9px] leading-[14px] text-[var(--color-accent-rose)]">Verse</p>
-                <p className="text-[14px] leading-[18px] text-[var(--color-accent-rose)] font-semibold">{selectedVerse}</p>
+                <p className="text-[14px] leading-[18px] text-[var(--color-accent-rose)] font-semibold">{selectedVerse || 1}</p>
               </div>
               {/* Triangle pointer */}
               <div className="relative w-[12px] h-[8px]">
@@ -178,7 +178,7 @@ export default function AudioControlPanel({
           <div className="flex items-center justify-center gap-[54px] mb-[32px]">
             {/* Skip Back Button */}
             <button 
-              onClick={() => onVerseChange(Math.max(1, selectedVerse - 1))}
+              onClick={() => onVerseChange(Math.max(1, (selectedVerse || 1) - 1))}
               className="relative bg-[var(--color-bg-secondary)] rounded-full shadow-[var(--shadow-sm)] size-[36px] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
             >
               <ChevronLeft className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
@@ -223,7 +223,7 @@ export default function AudioControlPanel({
 
             {/* Skip Forward Button */}
             <button 
-              onClick={() => onVerseChange(selectedVerse + 1)}
+              onClick={() => onVerseChange((selectedVerse || 1) + 1)}
               className="relative bg-[var(--color-bg-secondary)] rounded-full shadow-[var(--shadow-sm)] size-[36px] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
             >
               <ChevronRight className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />

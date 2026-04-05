@@ -80,7 +80,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [hideFootnotes, setHideFootnotes] = useState(false);
   const [showAudioControlPanel, setShowAudioControlPanel] = useState(false);
-  const [selectedVerse, setSelectedVerse] = useState<number>(1);
+  const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
   const [showVerseSelector, setShowVerseSelector] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(45); // in seconds
   const [audioDuration, setAudioDuration] = useState(216); // 3:36 in seconds
@@ -445,7 +445,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     curl: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
     fade: { duration: 0.2, ease: 'easeInOut' },
     scroll: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
-  };
+  } as const;
   
   // Theme configurations
   const themeConfig = {
@@ -1038,7 +1038,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       stopNarration();
       if (audioPlaying) {
         setTimeout(() => {
-          startNarration(selectedVerse);
+          startNarration(selectedVerse || 1);
         }, 100);
       }
     }
@@ -2140,7 +2140,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                   transition={{ 
                     width: { 
                       duration: 0.4, 
-                      ease: [0.32, 0.72, 0, 1] // iOS-style easing
+                      ease: [0.32, 0.72, 0, 1] as const // iOS-style easing
                     },
                     opacity: { 
                       duration: 0.3,
@@ -2148,7 +2148,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     },
                     scale: {
                       duration: 0.3,
-                      ease: [0.32, 0.72, 0, 1]
+                      ease: [0.32, 0.72, 0, 1] as const
                     }
                   }}
                   className="rounded-full px-1.5 py-0.5 flex items-center gap-2"
