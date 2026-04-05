@@ -495,7 +495,20 @@ export default function ChapterContent({
       if (onVerseLongPress) onVerseLongPress(verseNum, e);
       isLongPressRef.current = true;
       longPressTimerRef.current = null;
-    }, 500); // 500ms for long press
+    }, 600); // Increased to 600ms for more deliberate long press
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!touchStartPosRef.current) return;
+    
+    // If we've moved more than 10 units, it's a scroll, not a selection
+    const dist = Math.sqrt(Math.pow(e.clientX - touchStartPosRef.current.x, 2) + Math.pow(e.clientY - touchStartPosRef.current.y, 2));
+    if (dist > 10) {
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+    }
   };
 
   const handlePressEnd = (e: React.MouseEvent | React.TouchEvent, verseNum: number) => {
@@ -678,11 +691,11 @@ export default function ChapterContent({
             const hasNote = notes.some(n => n.metadata?.verses?.includes(verse.number));
 
             return (
-              <span
+              <div
                 key={verse.number}
                 id={`verse-${book}-${chapter}-${verse.number}`}
-                className={`inline relative group transition-all duration-300 rounded-sm px-1 py-0.5 select-text cursor-pointer hover:bg-black/5 ${
-                  isSelected ? 'ring-2 ring-blue-400 bg-blue-100/30' : ''
+                className={`block relative group transition-all duration-300 rounded-lg px-3 py-4 select-text cursor-pointer hover:bg-black/[0.02] border border-transparent hover:border-black/[0.05] mb-2 ${
+                  isSelected ? 'ring-2 ring-[#d23952]/30 bg-[#fbebee]/50' : ''
                 }`}
                 onMouseDown={(e) => handlePressStart(e, verse.number)}
                 onMouseUp={(e) => handlePressEnd(e, verse.number)}
@@ -690,28 +703,29 @@ export default function ChapterContent({
                 onTouchStart={(e) => handlePressStart(e, verse.number)}
                 onTouchEnd={(e) => handlePressEnd(e, verse.number)}
                 onTouchCancel={handlePressCancel}
+                onPointerMove={handlePointerMove}
                 style={{
                   color: theme?.text,
                   backgroundColor: highlight?.metadata?.color || (isReading ? '#fbebee' : 'transparent'),
                 }}
               >
-                <sup
-                  className="font-bold mr-1.5 opacity-60 text-[0.65em] select-none"
-                  style={{ color: theme?.verseNumber }}
-                >
-                  {verse?.number}
-                </sup>
-                <span className={`${isReading ? 'font-medium' : ''}`}>
-                  {verse?.text}
-                </span>
-                {hasNote && (
-                  <span className="ml-0.5 inline-flex items-center justify-center translate-y-[-2px]">
-                    <span className="size-1.5 bg-red-500 rounded-full shadow-[0_0_4px_rgba(239,68,68,0.4)]" />
+                <div className="flex items-start gap-4">
+                  <span
+                    className="font-black opacity-30 text-[0.7em] select-none mt-1 min-w-[1.5rem]"
+                    style={{ color: theme?.verseNumber }}
+                  >
+                    {verse?.number}
                   </span>
-                )}
-                {/* Spacing between verses when rendered inline */}
-                <span className="mr-1" />
-              </span>
+                  <p className={`flex-1 ${isReading ? 'font-medium' : 'font-normal'}`}>
+                    {verse?.text}
+                    {hasNote && (
+                      <span className="ml-2 inline-flex items-center justify-center">
+                        <span className="size-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
             );
           })}
         </div>

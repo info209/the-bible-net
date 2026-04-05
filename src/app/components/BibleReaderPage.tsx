@@ -683,7 +683,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         setDisplayBookName(prevBook.name);
         setSelectedChapter(bookChapters[prevBook.name] || 50);
       }
-    }, 50);
+    }, 350);
   };
 
   const handleNext = () => {
@@ -1039,6 +1039,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
+    touchEndX.current = e.touches[0].clientX; // Initialize endX to startX
     gestureDetected.current = 'none';
     // Don't set isDragging yet - wait to detect gesture direction
   };
@@ -1078,7 +1079,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const handleTouchEnd = () => {
     if (pageTransition !== 'slide') {
       // For non-slide transitions, use simple swipe detection
-      const swipeThreshold = 75;
+      const swipeThreshold = 50; // Lowered for better sensitivity
       const diff = touchStartX.current - touchEndX.current;
 
       if (Math.abs(diff) > swipeThreshold) {
@@ -1110,6 +1111,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     setIsDragging(false);
     setDragOffset(0);
     gestureDetected.current = 'none';
+    touchEndX.current = touchStartX.current; // Reset for next interaction
   };
 
   // Get transition animation variants
@@ -1307,9 +1309,26 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     }
   }, [selectedBookId, selectedChapter, selectedVersionId, displayBookName, displayVersionName]);
 
-  // Dispatch reading mode event to client layout (only immersive when scrolled down and NO popups are open)
+  // Fullscreen handled in reading mode effect to support all browsers
   useEffect(() => {
     const isImmersive = !showBottomNav && !isAnyPopupOpen && !isControlPanelOpen;
+    
+    // Toggle Fullscreen API for all browsers
+    if (isImmersive) {
+      if (typeof document !== 'undefined') {
+        const docEl = document.documentElement;
+        if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => {});
+        else if ((docEl as any).webkitRequestFullscreen) (docEl as any).webkitRequestFullscreen();
+        else if ((docEl as any).msRequestFullscreen) (docEl as any).msRequestFullscreen();
+      }
+    } else {
+      if (document.fullscreenElement) {
+        if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+        else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
+        else if ((document as any).msExitFullscreen) (document as any).msExitFullscreen();
+      }
+    }
+
     window.dispatchEvent(
       new CustomEvent('bible-reading-mode', { detail: { isReadingMode: isImmersive } })
     );
@@ -1318,7 +1337,6 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   // Safari-specific fix: Trigger minimal scroll when entering Reading Mode to encourage address bar hide
   useEffect(() => {
     if (!showBottomNav && scrollContainerRef.current) {
-        // Only trigger if we are at the very top (safari address bar trick)
         if (scrollContainerRef.current.scrollTop === 0) {
             scrollContainerRef.current.scrollTop = 1;
         }
@@ -1377,12 +1395,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     setShowChapterSelector(false);
                     setShowVersionSelector(false);
                   }}
-                  className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
+                  className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors min-w-0"
                 >
-                  <span className="text-sm font-normal">
+                  <span className="text-sm font-normal truncate max-w-[60px] xs:max-w-none">
                     {displayBookName?.length === 24 && /^[0-9a-fA-F]+$/.test(displayBookName) ? (isLoadingBooks ? 'Loading...' : displayBookName) : (displayBookName || 'Genesis')}
                   </span>
-                  <ChevronDown className="size-3" />
+                  <ChevronDown className="size-3 flex-shrink-0" />
                 </button>
 
                 <button
@@ -1403,14 +1421,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     setShowBookSelector(false);
                     setShowChapterSelector(false);
                   }}
-                  className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
+                  className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors min-w-0"
                 >
-                  <span className="text-sm font-normal">
+                  <span className="text-sm font-normal truncate max-w-[40px] xs:max-w-none">
                     {(displayVersionName?.length === 24 && /^[0-9a-fA-F]+$/.test(displayVersionName)) || !displayVersionName
-                        ? (isLoadingVersions ? 'Loading...' : 'Select Version')
+                        ? (isLoadingVersions ? '...' : 'Ver')
                         : displayVersionName}
                   </span>
-                  <ChevronDown className="size-3" />
+                  <ChevronDown className="size-3 flex-shrink-0" />
                 </button>
                 {comparisonMode && (
                   <div className="flex items-center space-x-2">
@@ -1428,8 +1446,10 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 )}
               </div>
 
-              {/* Right side tools */}
-              <div className="flex items-center gap-0.5 ml-auto">
+              </div>
+              
+              {/* Right side tools with better mobile spacing */}
+              <div className="flex items-center gap-0 ml-auto flex-shrink-0 pt-0.5">
                 <button
                   onClick={() => {
                     if (comparisonMode) {
@@ -1474,9 +1494,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         </div>
         </div>
 
-        {/* Selector panels */}
+        {/* Selector panels - responsive widths */}
         <Dialog open={showBookSelector} onOpenChange={setShowBookSelector}>
-          <DialogContent className="max-w-[360px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
+          <DialogContent className="w-[92vw] sm:max-w-[420px] md:max-w-[540px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-3xl [&>[data-slot=dialog-close]]:hidden border-none shadow-2xl">
               {/* Header */}
               <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
                 <div className="flex items-center gap-1">
@@ -1578,7 +1598,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         </Dialog>
 
         <Dialog open={showChapterSelector} onOpenChange={setShowChapterSelector}>
-          <DialogContent className="max-w-[360px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
+          <DialogContent className="w-[92vw] sm:max-w-[420px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-3xl [&>[data-slot=dialog-close]]:hidden border-none shadow-2xl">
               {/* Header with Done button */}
               <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
                 <div className="w-16"></div> {/* Spacer for centering */}
@@ -1667,7 +1687,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         </Dialog>
 
         <Dialog open={showVersionSelector} onOpenChange={setShowVersionSelector}>
-          <DialogContent className="max-w-[360px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-xl [&>[data-slot=dialog-close]]:hidden">
+          <DialogContent className="w-[92vw] sm:max-w-[420px] max-h-[80vh] p-0 gap-0 overflow-hidden rounded-3xl [&>[data-slot=dialog-close]]:hidden border-none shadow-2xl">
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <div className="w-10"></div>
@@ -1829,7 +1849,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         {showMoreMenu && (() => {
           return (
           <Dialog open={showMoreMenu} onOpenChange={setShowMoreMenu}>
-            <DialogContent className="fixed right-4 top-20 left-auto translate-x-0 sm:translate-x-0 sm:translate-y-0 max-w-[260px] p-0 gap-0 overflow-hidden rounded-2xl [&>[data-slot=dialog-close]]:hidden shadow-2xl border border-white/40 ring-1 ring-black/5 bg-white/95 backdrop-blur-xl">
+            <DialogContent className="fixed right-4 top-[72px] left-auto translate-x-0 sm:translate-x-0 sm:translate-y-0 w-[240px] p-0 gap-0 overflow-hidden rounded-2xl [&>[data-slot=dialog-close]]:hidden shadow-2xl border border-white/40 ring-1 ring-black/5 bg-white/95 backdrop-blur-xl z-[200]">
               <div className="py-2">
                 {/* Fonts & Settings Option */}
                 <button
@@ -1861,7 +1881,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         })()}
 
         <Dialog open={showSettingsMenu} onOpenChange={setShowSettingsMenu}>
-          <DialogContent className="max-w-[420px] max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl [&>[data-slot=dialog-close]]:hidden">
+          <DialogContent className="w-[92vw] sm:max-w-[420px] max-h-[90vh] p-0 gap-0 overflow-hidden rounded-2xl [&>[data-slot=dialog-close]]:hidden">
               <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
                 <div className="w-10" />
                 <h3 className="text-base font-semibold text-[#0f172a]">Fonts &amp; Settings</h3>
@@ -2137,9 +2157,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: "100%" }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute bottom-0 left-0 right-0 w-full max-w-2xl mx-auto bg-white rounded-t-[24px] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.08)] border-t border-gray-100 pb-safe z-[1110] max-h-[25vh] flex flex-col"
+              className="absolute bottom-0 left-0 right-0 w-full max-w-2xl mx-auto bg-white rounded-t-[24px] overflow-hidden shadow-[0_-8px_32px_rgba(0,0,0,0.08)] border-t border-gray-100 pb-safe z-[1110] max-h-[40vh] flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
+              {/* Bottom Sheet Pill */}
+              <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto my-4 mb-2" />
+
               {/* Header and Verse Info */}
               <div className="flex items-center justify-between px-6 pt-4 pb-2 shrink-0">
                 <div className="flex flex-col">
@@ -2155,12 +2178,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     </span>
                   )}
                 </div>
-                <button 
-                  onClick={() => setIsControlPanelOpen(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-                >
-                  <X className="size-5 text-gray-400" />
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setIsControlPanelOpen(false)}
+                    className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  >
+                    <X className="size-5 text-gray-400" />
+                  </button>
+                </div>
               </div>
 
               <div className="px-6 py-2 space-y-8">

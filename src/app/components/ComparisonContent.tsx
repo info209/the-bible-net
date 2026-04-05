@@ -150,25 +150,39 @@ export default function ComparisonContent({
                   className="grid gap-1 sm:gap-2"
                   style={{ gridTemplateColumns: `repeat(${contents.length}, minmax(0, 1fr))` }}
                 >
-                  {contents.map(content => {
+                  {contents.map((content, idx) => {
                     const verse = content.verses.find((v: any) => v.number === num);
+                    const bgColors = [
+                      'rgba(210, 57, 82, 0.03)', // Rose
+                      'rgba(0, 106, 111, 0.03)', // Teal
+                      'rgba(59, 130, 246, 0.03)', // Blue
+                      'rgba(245, 158, 11, 0.03)', // Amber
+                      'rgba(16, 185, 129, 0.03)', // Emerald
+                      'rgba(139, 92, 246, 0.03)', // Violet
+                    ];
+                    const bg = bgColors[idx % bgColors.length];
+                    
                     return (
                       <div 
                         key={content.versionId} 
-                        className="px-3 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-[2rem] transition-all hover:bg-black/[0.03]"
-                        style={{ backgroundColor: theme.bg === '#ffffff' ? '#fcfcfc' : 'rgba(255,255,255,0.03)', border: '1px solid rgba(0,0,0,0.02)' }}
+                        className="px-3 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-[2.5rem] transition-all hover:bg-black/[0.04] border border-transparent hover:border-black/[0.05]"
+                        style={{ 
+                          backgroundColor: theme.bg === '#ffffff' ? bg : 'rgba(255,255,255,0.03)',
+                        }}
                       >
                         <div className="flex items-start gap-2 sm:gap-3">
-                          <span className="text-[#d23952] font-semibold text-xs sm:text-sm mt-1 leading-none">{num}</span>
+                          <span className="text-[#d23952] font-black text-xs sm:text-[0.7em] mt-1 leading-none opacity-40">{num}</span>
                           <p 
                             style={{ 
                               fontFamily: font, 
                               fontSize: `${fontSize}px`,
                               color: theme.text 
                             }}
-                            className="leading-relaxed leading-7 text-sm sm:text-base font-normal"
+                            className="leading-relaxed leading-7 text-sm sm:text-base font-normal flex-1"
                           >
-                            {verse?.text || '—'}
+                            {verse?.text || (
+                               <span className="italic text-gray-300">Verse not available in this version</span>
+                            )}
                           </p>
                         </div>
                       </div>
