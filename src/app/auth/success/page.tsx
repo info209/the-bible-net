@@ -40,14 +40,14 @@ function SuccessPageContent() {
     const current = config[type as keyof typeof config] || config.account;
 
     return (
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="w-full max-w-md glass-ios border-none p-10 space-y-10 text-center relative overflow-hidden shadow-2xl"
         >
             <div className="space-y-6">
-                <motion.div 
+                <motion.div
                     initial={{ scale: 0.5, rotate: -15, opacity: 0 }}
                     animate={{ scale: 1, rotate: 0, opacity: 1 }}
                     transition={{ type: "spring", stiffness: 260, damping: 20, delay: 0.1 }}
@@ -56,7 +56,7 @@ function SuccessPageContent() {
                     <div className="absolute inset-0 rounded-[2rem] border-4 border-white/20 animate-pulse" />
                     {current.icon}
                 </motion.div>
-                
+
                 <div className="space-y-3">
                     <h1 className="text-3xl font-black text-slate-900 tracking-tighter font-sans leading-tight">{current.title}</h1>
                     <p className="text-slate-500/80 font-medium px-4 leading-relaxed">
@@ -73,9 +73,9 @@ function SuccessPageContent() {
                     {current.buttonText}
                     <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
                 </button>
-                
+
                 {current.showSkip && (
-                    <button 
+                    <button
                         onClick={() => router.push('/home')}
                         className="w-full text-slate-400 font-extrabold py-2 hover:text-slate-600 transition-colors flex items-center justify-center gap-2 text-sm tracking-wide"
                     >

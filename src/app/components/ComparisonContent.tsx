@@ -22,6 +22,15 @@ interface ComparisonContentProps {
   onVersionRemove: (id: string) => void;
 }
 
+const versionColors = [
+  'rgba(210, 57, 82, 0.03)', // Rose
+  'rgba(0, 106, 111, 0.03)', // Teal
+  'rgba(59, 130, 246, 0.03)', // Blue
+  'rgba(245, 158, 11, 0.03)', // Amber
+  'rgba(16, 185, 129, 0.03)', // Emerald
+  'rgba(139, 92, 246, 0.03)', // Violet
+];
+
 export default function ComparisonContent({
   book,
   chapter,
@@ -124,17 +133,17 @@ export default function ComparisonContent({
         <div className="px-2">
             {/* Header Labels (Fixed atop grid) */}
             <div 
-              className="grid gap-1 mb-6 sticky top-0 z-10 py-2"
+              className="grid gap-1 mb-6 sticky top-[60px] z-10 py-4 px-4 backdrop-blur-xl border-b border-black/[0.05]"
               style={{ 
                 gridTemplateColumns: `repeat(${contents.length}, minmax(0, 1fr))`,
-                backgroundColor: theme.bg
+                backgroundColor: `${theme.bg}CC`
               }}
             >
               {contents.map(content => {
                 const abbreviation = getAbbreviation(content.versionId, content.version);
                 return (
                   <div key={content.versionId} className="text-center">
-                    <h3 className="text-[#d23952] font-black text-xs sm:text-sm uppercase tracking-widest py-1">
+                    <h3 className="text-[var(--color-primary-teal)] font-bold text-xs sm:text-sm uppercase tracking-widest py-1">
                       {abbreviation}
                     </h3>
                   </div>
@@ -143,42 +152,37 @@ export default function ComparisonContent({
             </div>
 
             {/* Verses Table-like Grid */}
-            <div className="space-y-1 sm:space-y-2">
-              {allVerseNumbers.map(num => (
-                <div 
+            <div className="space-y-4">
+              {allVerseNumbers.map((num, vIndex) => (
+                <motion.div 
                   key={num} 
-                  className="grid gap-1 sm:gap-2"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: vIndex * 0.01 }}
+                  className="grid gap-4"
                   style={{ gridTemplateColumns: `repeat(${contents.length}, minmax(0, 1fr))` }}
                 >
                   {contents.map((content, idx) => {
                     const verse = content.verses.find((v: any) => v.number === num);
-                    const bgColors = [
-                      'rgba(210, 57, 82, 0.03)', // Rose
-                      'rgba(0, 106, 111, 0.03)', // Teal
-                      'rgba(59, 130, 246, 0.03)', // Blue
-                      'rgba(245, 158, 11, 0.03)', // Amber
-                      'rgba(16, 185, 129, 0.03)', // Emerald
-                      'rgba(139, 92, 246, 0.03)', // Violet
-                    ];
-                    const bg = bgColors[idx % bgColors.length];
+                    const bg = versionColors[idx % versionColors.length];
                     
                     return (
                       <div 
                         key={content.versionId} 
-                        className="px-3 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-[2.5rem] transition-all hover:bg-black/[0.04] border border-transparent hover:border-black/[0.05]"
+                        className="px-4 py-4 rounded-[2rem] transition-all hover:scale-[1.01] border border-transparent hover:border-black/[0.03] shadow-sm"
                         style={{ 
-                          backgroundColor: theme.bg === '#ffffff' ? bg : 'rgba(255,255,255,0.03)',
+                          backgroundColor: theme.bg === '#fefefe' ? bg : 'rgba(255,255,255,0.03)',
                         }}
                       >
-                        <div className="flex items-start gap-2 sm:gap-3">
-                          <span className="text-[#d23952] font-black text-xs sm:text-[0.7em] mt-1 leading-none opacity-40">{num}</span>
+                        <div className="flex items-start gap-3">
+                          <span className="font-bold text-[0.75rem] mt-1 leading-none opacity-40" style={{ color: theme.verseNumber }}>{num}</span>
                           <p 
                             style={{ 
                               fontFamily: font, 
                               fontSize: `${fontSize}px`,
                               color: theme.text 
                             }}
-                            className="leading-relaxed leading-7 text-sm sm:text-base font-normal flex-1"
+                            className="leading-relaxed text-base font-normal flex-1"
                           >
                             {verse?.text || (
                                <span className="italic text-gray-300">Verse not available in this version</span>
@@ -188,24 +192,24 @@ export default function ComparisonContent({
                       </div>
                     );
                   })}
-                </div>
+                </motion.div>
               ))}
             </div>
         </div>
       </div>
 
-      {/* Floating Panel as per Screenshot 4 UI style */}
-      <div className="fixed bottom-24 right-8 z-50">
+      {/* Floating Panel Footer */}
+      <div className="fixed bottom-28 left-1/2 -translate-x-1/2 z-50">
         <Popover>
           <PopoverTrigger asChild>
             <button className="bg-white/95 backdrop-blur-md text-[#31393a] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-gray-100 rounded-[2rem] pl-6 pr-4 py-3 flex items-center gap-4 hover:bg-white transition-all transform hover:scale-105 active:scale-95 duration-300 group">
-              <div className="flex flex-col items-start">
-                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-none mb-1">Comparing</span>
+              <div className="flex flex-col items-start leading-none gap-1">
+                  <span className="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Comparing</span>
                   <span className="text-sm font-black text-[#1e293b]">{contents.length} Versions</span>
               </div>
               <div className="flex -space-x-2.5">
                 {versionIds.slice(0, 3).map((id, i) => (
-                  <div key={id} className="size-9 rounded-full bg-[#fbebee] border-4 border-white flex items-center justify-center text-[10px] font-black text-[#d23952] shadow-sm transform transition-all group-hover:translate-x-1" style={{ zIndex: 3-i }}>
+                  <div key={id} className="size-9 rounded-full bg-[#fbebee] border-4 border-white flex items-center justify-center text-[10px] font-black text-[var(--color-primary-teal)] shadow-sm transform transition-all group-hover:translate-x-1" style={{ zIndex: 3-i }}>
                     {getAbbreviation(id, '').substring(0, 3)}
                   </div>
                 ))}
@@ -217,7 +221,7 @@ export default function ComparisonContent({
               </div>
             </button>
           </PopoverTrigger>
-          <PopoverContent className="w-72 p-0 rounded-3xl overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] border-none mt-4 mr-0 sm:mr-4" align="end">
+          <PopoverContent className="w-72 p-0 rounded-3xl overflow-hidden shadow-[0_32px_64px_-12px_rgba(0,0,0,0.2)] border-none mt-4" align="center">
              <div className="p-6 bg-white">
                 <h4 className="text-[10px] font-black text-gray-300 uppercase tracking-[0.2em] mb-5">Current Library</h4>
                 <div className="space-y-4 mb-8">
@@ -249,7 +253,7 @@ export default function ComparisonContent({
                      onClick={() => {
                         onManageClick();
                      }}
-                     className="w-full flex items-center justify-between text-xs font-black text-[#006a6f] hover:bg-[#ebf8f8] transition-all py-4 px-4 rounded-2xl group border border-[#ebf8f8]"
+                     className="w-full flex items-center justify-between text-xs font-black text-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-lighter)] transition-all py-4 px-4 rounded-2xl group border border-gray-50"
                    >
                      <span>ADD VERSION</span>
                      <Plus className="size-4 transform group-hover:rotate-90 transition-transform" />
@@ -257,7 +261,7 @@ export default function ComparisonContent({
                    
                    <button 
                      onClick={onClose}
-                     className="w-full flex items-center justify-between text-xs font-black text-[#d23952] hover:bg-[#fbebee] transition-all py-4 px-4 rounded-2xl group"
+                     className="w-full flex items-center justify-between text-xs font-black text-red-500 hover:bg-red-50 transition-all py-4 px-4 rounded-2xl group"
                    >
                      <span>EXIT COMPARE</span>
                      <LogOut className="size-4 transform group-hover:translate-x-1 transition-transform" />

@@ -10,7 +10,7 @@ function VerifyOTPContent() {
     const searchParams = useSearchParams();
     const userId = searchParams.get('userId');
     const email = searchParams.get('email');
-    
+
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [loading, setLoading] = useState(false);
     const [resending, setResending] = useState(false);
@@ -25,7 +25,7 @@ function VerifyOTPContent() {
 
     const handleInput = (index: number, value: string) => {
         if (!/^\d*$/.test(value)) return;
-        
+
         const newOtp = [...otp];
         newOtp[index] = value.slice(-1);
         setOtp(newOtp);
@@ -91,7 +91,7 @@ function VerifyOTPContent() {
     };
 
     return (
-        <motion.div 
+        <motion.div
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
@@ -111,7 +111,7 @@ function VerifyOTPContent() {
 
             <form onSubmit={handleSubmit} className="space-y-8">
                 {error && (
-                    <motion.div 
+                    <motion.div
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl flex items-center gap-3 text-sm font-medium"
@@ -153,7 +153,7 @@ function VerifyOTPContent() {
             </form>
 
             <div className="text-center space-y-6 pt-2">
-                <button 
+                <button
                     onClick={handleResend}
                     disabled={resending}
                     className="text-slate-500 font-bold text-sm hover:text-[var(--color-primary-teal)] transition-colors flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
@@ -161,8 +161,8 @@ function VerifyOTPContent() {
                     <RefreshCcw className={`w-4 h-4 ${resending ? 'animate-spin' : ''}`} />
                     Resend Code
                 </button>
-                
-                <button 
+
+                <button
                     onClick={() => router.back()}
                     className="text-[var(--color-primary-teal)] text-sm font-extrabold block mx-auto hover:underline underline-offset-4"
                 >

@@ -203,11 +203,10 @@ export default function SavedPage() {
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap flex-shrink-0 ${
-                  isActive
+                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap flex-shrink-0 ${isActive
                     ? 'border-[#41ADB0] text-[#41ADB0]'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
+                  }`}
               >
                 <Icon className="w-3.5 h-3.5" strokeWidth={isActive ? 2.2 : 1.8} />
                 {label}
@@ -260,7 +259,7 @@ export default function SavedPage() {
                   if (item.type === 'journal') icon = BookText;
                   if (item.type === 'highlight') icon = Highlighter;
                   if (item.type === 'note') icon = FileText;
-                  
+
                   return (
                     <GenericCard
                       key={item._id}

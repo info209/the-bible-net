@@ -21,7 +21,7 @@ export default function AuthLayout({
             <div className="relative z-10 w-full max-w-md">
                 {children}
             </div>
-            
+
             {/* Subtle Texture Overlay */}
             <div className="absolute inset-0 z-[1] opacity-[0.03] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]" />
         </div>
