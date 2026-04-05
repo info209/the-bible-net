@@ -1364,21 +1364,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   useEffect(() => {
     const isImmersive = !showBottomNav && !isAnyPopupOpen && !audioControlExpanded;
 
-    // Toggle Fullscreen API for all browsers
-    if (isImmersive) {
-      if (typeof document !== 'undefined') {
-        const docEl = document.documentElement;
-        if (docEl.requestFullscreen) docEl.requestFullscreen().catch(() => { });
-        else if ((docEl as any).webkitRequestFullscreen) (docEl as any).webkitRequestFullscreen();
-        else if ((docEl as any).msRequestFullscreen) (docEl as any).msRequestFullscreen();
-      }
-    } else {
-      if (document.fullscreenElement) {
-        if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
-        else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
-        else if ((document as any).msExitFullscreen) (document as any).msExitFullscreen();
-      }
-    }
+    // We do not use docEl.requestFullscreen() here because modern browsers 
+    // restrict fullscreen API to explicit user gestures (like a direct onClick event).
+    // The web application's CSS reading mode handles immersive hiding of the UI.
 
     window.dispatchEvent(
       new CustomEvent('bible-reading-mode', { detail: { isReadingMode: isImmersive } })
@@ -1608,7 +1596,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               </div>
 
               {/* Content */}
-              <ScrollArea className="flex-1 px-4 pb-4">
+              <ScrollArea className="h-[60vh] px-4 pb-4">
                 <div className="grid grid-cols-2 gap-8">
                   {/* Old Testament */}
                   <div>
@@ -2280,16 +2268,20 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       <AudioControlPanel
         isOpen={audioControlExpanded}
         onClose={() => setAudioControlExpanded(false)}
-        selectedVerse={selectedVerse || 1}
-        audioCurrentTime={audioCurrentTime}
-        audioDuration={audioDuration}
+        selectedVerse={selectedVerse || (ttsCurrentVerseIndex + 1) || 1}
+        audioCurrentTime={(ttsCurrentVerseIndex + 1) || 1}
+        audioDuration={currentChapterVerses.length || 1}
         audioPlaying={ttsPlaying && !ttsPaused}
         playbackSpeed={ttsRate}
         onVerseChange={(v) => { stopTTS(); startTTS(v - 1); }}
-        onTimeChange={setAudioCurrentTime}
+        onTimeChange={(val) => { stopTTS(); startTTS(val - 1); }}
         onPlayPauseToggle={toggleTTS}
         onSpeedChange={setTtsRate}
         onTimerClick={() => setShowTimerMenu(true)}
+        ttsVolume={ttsVolume}
+        onVolumeChange={setTtsVolume}
+        repeatMode={repeatMode}
+        onRepeatModeToggle={() => setRepeatMode(prev => prev === 'none' ? 'chapter' : prev === 'chapter' ? 'verse' : 'none')}
       />
     </div>
   );

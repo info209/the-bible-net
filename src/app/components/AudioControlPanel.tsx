@@ -14,6 +14,10 @@ interface AudioControlPanelProps {
   onPlayPauseToggle: () => void;
   onSpeedChange: (speed: number) => void;
   onTimerClick: () => void;
+  ttsVolume: number;
+  onVolumeChange: (vol: number) => void;
+  repeatMode: 'none' | 'chapter' | 'verse';
+  onRepeatModeToggle: () => void;
 }
 
 export default function AudioControlPanel({
@@ -28,7 +32,11 @@ export default function AudioControlPanel({
   onTimeChange,
   onPlayPauseToggle,
   onSpeedChange,
-  onTimerClick
+  onTimerClick,
+  ttsVolume,
+  onVolumeChange,
+  repeatMode,
+  onRepeatModeToggle
 }: AudioControlPanelProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
@@ -161,16 +169,16 @@ export default function AudioControlPanel({
               />
               <input
                 type="range"
-                min="0"
-                max={audioDuration}
+                min="1"
+                max={Math.max(audioDuration, 1)}
                 value={audioCurrentTime}
                 onChange={(e) => onTimeChange(Number(e.target.value))}
                 className="absolute inset-0 w-full opacity-0 cursor-pointer"
               />
             </div>
             <div className="flex justify-between text-[11px] text-black font-medium">
-              <span>{(audioCurrentTime / 60).toFixed(2)}</span>
-              <span>{(audioDuration / 60).toFixed(2)}</span>
+              <span>Verse {Math.floor(audioCurrentTime)}</span>
+              <span>Total {Math.floor(audioDuration)}</span>
             </div>
           </div>
 
@@ -193,7 +201,7 @@ export default function AudioControlPanel({
               >
                 <div className="relative">
                    <RotateCcw className="size-[24px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-                   <span className="absolute top-[7px] left-[7px] text-[7px] font-bold text-[var(--color-primary-teal)]">30</span>
+                   <span className="absolute top-[7px] left-[7px] text-[7px] font-bold text-[var(--color-primary-teal)]">V-</span>
                 </div>
               </button>
 
@@ -216,7 +224,7 @@ export default function AudioControlPanel({
               >
                 <div className="relative">
                   <RotateCw className="size-[24px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-                  <span className="absolute top-[7px] right-[7px] text-[7px] font-bold text-[var(--color-primary-teal)]">30</span>
+                  <span className="absolute top-[7px] right-[7px] text-[7px] font-bold text-[var(--color-primary-teal)]">V+</span>
                 </div>
               </button>
             </div>
@@ -231,15 +239,31 @@ export default function AudioControlPanel({
           </div>
 
           {/* Secondary Controls */}
-          <div className="flex items-center justify-center gap-[32px] glass-light rounded-[var(--radius-xl)] py-[12px] px-[24px] mx-auto w-fit shadow-glass">
+          <div className="flex items-center justify-center gap-[32px] glass-light rounded-[var(--radius-xl)] py-[12px] px-[24px] mx-auto w-fit shadow-glass mb-[24px]">
             {/* Repeat */}
-            <button className="size-[28px] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
-              <Repeat className="size-[24px] text-[var(--color-text-tertiary)]" strokeWidth={2.2} />
+            <button 
+              onClick={onRepeatModeToggle}
+              className={`flex flex-col items-center justify-center relative hover:scale-110 active:scale-95 transition-transform ${repeatMode !== 'none' ? 'text-[var(--color-primary-teal)]' : 'text-[var(--color-text-tertiary)]'}`}
+            >
+              <div className="size-[28px] flex items-center justify-center">
+                <Repeat className="size-[24px]" strokeWidth={2.2} />
+              </div>
+              <span className="text-[8px] font-bold whitespace-nowrap absolute -bottom-[10px] uppercase">
+                {repeatMode}
+              </span>
             </button>
 
-            {/* Download */}
-            <button className="size-[28px] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform">
-              <Download className="size-[24px] text-[var(--color-text-tertiary)]" strokeWidth={2.2} />
+            {/* Volume toggle icon (we'll show a small slider below instead of download) */}
+            <button 
+              onClick={() => onVolumeChange(ttsVolume === 0 ? 1 : 0)}
+              className="flex flex-col items-center justify-center relative hover:scale-110 active:scale-95 transition-transform"
+            >
+              <div className="size-[28px] flex items-center justify-center">
+                <Gauge className="size-[22px] text-[var(--color-text-tertiary)]" strokeWidth={2.2} />
+              </div>
+              <span className="text-[8px] font-bold text-[var(--color-text-tertiary)] whitespace-nowrap absolute -bottom-[10px]">
+                Vol {Math.round(ttsVolume * 100)}%
+              </span>
             </button>
 
             {/* Playback Speed */}
@@ -264,8 +288,21 @@ export default function AudioControlPanel({
               onClick={onTimerClick}
               className="size-[28px] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
             >
-              <Timer className="size-[24px] text-[var(--color-text-tertiary)]" strokeWidth={2.2} />
-            </button>
+          </div>
+
+          {/* Volume Slider row */}
+          <div className="px-10 flex items-center justify-center gap-4 mt-2">
+            <span className="text-xs font-bold text-gray-400">0%</span>
+            <input 
+              type="range" 
+              min="0" 
+              max="1" 
+              step="0.1"
+              value={ttsVolume} 
+              onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
+              className="w-full accent-[var(--color-primary-teal)]" 
+            />
+            <span className="text-xs font-bold text-gray-400">100%</span>
           </div>
         </div>
       </div>
