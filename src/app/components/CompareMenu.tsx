@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface CompareMenuProps {
   isOpen: boolean;
   onClose: () => void;
-  versions: Array<{ name: string; fullName: string; language: string }>;
+  versions: Array<{ id: string; name: string; fullName: string; language: string }>;
   selectedVersions: string[];
   onRemoveVersion: (versionName: string) => void;
   onAddVersion: (versionName: string) => void;
@@ -22,7 +22,7 @@ export default function CompareMenu({
 }: CompareMenuProps) {
   if (!isOpen) return null;
 
-  const availableVersions = versions.filter(v => !selectedVersions.includes(v.name));
+  const availableVersions = versions.filter(v => !selectedVersions.includes(v.id));
   const canAddMore = selectedVersions.length < 4;
 
   return (
@@ -44,13 +44,13 @@ export default function CompareMenu({
 
           {/* Selected Versions */}
           <div className="px-4 py-2 space-y-1">
-            {selectedVersions.map((versionName) => {
-              const version = versions.find(v => v.name === versionName);
+            {selectedVersions.map((versionId) => {
+              const version = versions.find(v => v.id === versionId);
               if (!version) return null;
 
               return (
                 <div
-                  key={version.name}
+                  key={version.id}
                   className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/10 transition-colors group"
                 >
                   <div className="flex items-center gap-2">
@@ -60,7 +60,7 @@ export default function CompareMenu({
                     </span>
                   </div>
                   <button
-                    onClick={() => onRemoveVersion(version.name)}
+                    onClick={() => onRemoveVersion(version.id)}
                     className="p-1 rounded-full transition-all hover:bg-red-500/20"
                   >
                     <X className="size-4 text-[var(--color-text-primary)]/60 group-hover:text-red-500 transition-colors" />
@@ -77,9 +77,9 @@ export default function CompareMenu({
               <div className="px-4 py-2 space-y-1 max-h-[200px] overflow-y-auto">
                 {availableVersions.map((version) => (
                   <button
-                    key={version.name}
+                    key={version.id}
                     onClick={() => {
-                      onAddVersion(version.name);
+                      onAddVersion(version.id);
                       onClose();
                     }}
                     className="w-full flex items-center justify-between py-2 px-3 rounded-lg hover:bg-white/10 transition-colors text-left group"

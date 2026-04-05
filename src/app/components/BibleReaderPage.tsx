@@ -268,7 +268,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [selectedFont, setSelectedFont] = useState('Times New Roman');
   const [fontSize, setFontSize] = useState(18);
   const [pageTransition, setPageTransition] = useState<'slide' | 'curl' | 'fade' | 'scroll'>('slide');
-  const [chapterKey, setChapterKey] = useState(0);
+  const chapterKey = `${selectedBookId}-${selectedChapter}-${selectedVersionId}`;
   const [transitionDirection, setTransitionDirection] = useState<'next' | 'prev'>('next');
   const isTransitioningRef = useRef(false);
   const [showSearch, setShowSearch] = useState(false);
@@ -721,7 +721,6 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     setTimeout(() => { isTransitioningRef.current = false; }, lockDuration);
 
     setTransitionDirection('prev');
-    setChapterKey(prev => prev + 1);
 
     // Scroll to top immediately
     if (scrollContainerRef.current) {
@@ -747,7 +746,6 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     setTimeout(() => { isTransitioningRef.current = false; }, lockDuration);
 
     setTransitionDirection('next');
-    setChapterKey(prev => prev + 1);
 
     // Scroll to top immediately
     if (scrollContainerRef.current) {
@@ -2149,113 +2147,104 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         </div>
       </div>
 
-      {/* Settings Side Menu */}
+      {/* Settings Modal */}
       <AnimatePresence>
         {showSettingsModal && (
           <div
-            className="fixed inset-0 bg-black/20 z-[100] backdrop-blur-sm"
+            className="fixed inset-0 bg-black/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
             onClick={() => setShowSettingsModal(false)}
           >
             <motion.div
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute right-0 top-0 h-full w-80 bg-white/95 backdrop-blur-xl shadow-2xl p-6 overflow-y-auto"
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              transition={{ duration: 0.2 }}
+              className="bg-[#f9f9f9] w-full max-w-md rounded-2xl shadow-xl overflow-hidden"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-8">
-                <h2 className="text-xl font-bold text-[#31393a]">Settings</h2>
+              {/* Header */}
+              <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white">
+                <div className="w-12"></div>
+                <h2 className="text-lg font-semibold text-[#31393a]">Fonts & Settings</h2>
                 <button
                   onClick={() => setShowSettingsModal(false)}
-                  className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="w-12 text-right text-sm font-medium text-gray-400 hover:text-gray-800 transition-colors"
                 >
-                  <X className="size-6 text-[#31393a]/60" />
+                  Done
                 </button>
               </div>
 
-              <div className="space-y-8">
+              {/* Content */}
+              <div className="p-6 space-y-8 bg-[#f9f9f9]">
                 {/* Font Selector */}
-                <div className="space-y-4">
-                  <label className="text-xs font-semibold text-[#31393a]/40 uppercase tracking-widest">Typography</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {['Outfit', 'Serif', 'Playfair', 'Inter'].map((font) => (
-                      <button
-                        key={font}
-                        onClick={() => setSelectedFont(font)}
-                        className={`px-4 py-3 rounded-xl border-2 transition-all ${selectedFont === font ? 'border-[#31393a] bg-gray-50/50' : 'border-gray-100'
-                          }`}
-                      >
-                        <span className="text-sm font-medium" style={{ fontFamily: font }}>{font}</span>
-                      </button>
-                    ))}
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Font family</label>
+                  <div className="relative">
+                    <select
+                      value={selectedFont}
+                      onChange={(e) => setSelectedFont(e.target.value)}
+                      className="w-full appearance-none bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm text-[#31393a] font-medium focus:outline-none focus:ring-2 focus:ring-[#31393a]/20"
+                    >
+                      <option value="Times New Roman">Times New Roman</option>
+                      <option value="Outfit">Outfit</option>
+                      <option value="Serif">Serif</option>
+                      <option value="Playfair">Playfair</option>
+                      <option value="Inter">Inter</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-gray-400 pointer-events-none" />
                   </div>
                 </div>
 
                 {/* Font Size */}
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <label className="text-xs font-semibold text-[#31393a]/40 uppercase tracking-widest">Font Size</label>
-                    <span className="text-sm font-bold text-[#31393a]">{fontSize}px</span>
-                  </div>
-                  <div className="flex items-center gap-4 px-2">
-                    <span className="text-xs text-gray-400">A</span>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Font size</label>
+                  <div className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl px-4 py-3">
+                    <span className="text-xs font-medium text-gray-400">A-</span>
                     <input
                       type="range" min="14" max="32" value={fontSize}
                       onChange={(e) => setFontSize(Number(e.target.value))}
-                      className="flex-1 accent-[#31393a]"
+                      className="flex-1 accent-[#ff6b85]"
                     />
-                    <span className="text-lg text-[#31393a]">A</span>
+                    <span className="text-sm font-medium text-gray-400">A+</span>
                   </div>
                 </div>
 
                 {/* Theme Selector */}
-                <div className="space-y-4">
-                  <label className="text-xs font-semibold text-[#31393a]/40 uppercase tracking-widest">Theme</label>
-                  <div className="flex justify-between px-2">
+                <div className="space-y-3">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Theme</label>
+                  <div className="flex items-center gap-4">
                     {Object.keys(themeConfig).map((theme) => (
                       <button
                         key={theme}
                         onClick={() => setSelectedTheme(theme as any)}
-                        className={`size-11 rounded-full border-2 transition-all ${selectedTheme === theme ? 'border-[#31393a] scale-110 shadow-lg' : 'border-transparent'
+                        className={`size-12 rounded-full border-2 transition-all shadow-sm ${selectedTheme === theme ? 'border-gray-400 ring-4 ring-gray-100' : 'border-gray-200'
                           }`}
-                        style={{ backgroundColor: themeConfig[theme as keyof typeof themeConfig].bg, border: selectedTheme === theme ? '2px solid #31393a' : '1px solid #e5e7eb' }}
+                        style={{ backgroundColor: themeConfig[theme as keyof typeof themeConfig].bg }}
                       />
                     ))}
                   </div>
                 </div>
 
                 {/* Navigation Style */}
-                <div className="space-y-4">
-                  <label className="text-xs font-semibold text-[#31393a]/40 uppercase tracking-widest">Transitions</label>
+                <div className="space-y-2">
+                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Page transitions</label>
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       { id: 'slide', label: 'Slide', icon: ArrowRightLeft },
                       { id: 'curl', label: 'Curl', icon: FileText },
-                      { id: 'fade', label: 'Fade', icon: Zap },
+                      { id: 'fade', label: 'Fast Fade', icon: Zap },
                       { id: 'scroll', label: 'Scroll', icon: ScrollText }
                     ].map((mode) => (
                       <button
                         key={mode.id}
                         onClick={() => setPageTransition(mode.id as any)}
-                        className={`flex flex-col items-center gap-2 p-3 rounded-xl border-2 transition-all ${pageTransition === mode.id ? 'border-[#31393a] bg-gray-50/50' : 'border-gray-100'
+                        className={`flex flex-col items-center justify-center gap-2 p-4 rounded-xl border-2 transition-all ${pageTransition === mode.id ? 'border-[#31393a] bg-white shadow-sm' : 'border-gray-200 bg-white/50 text-gray-400'
                           }`}
                       >
-                        <mode.icon className="size-6 text-[#31393a]" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">{mode.label}</span>
+                        <mode.icon className={`size-6 ${pageTransition === mode.id ? 'text-[#31393a]' : 'text-gray-400'}`} />
+                        <span className={`text-[11px] font-semibold ${pageTransition === mode.id ? 'text-[#31393a]' : 'text-gray-400'}`}>{mode.label}</span>
                       </button>
                     ))}
-                  </div>
-                </div>
-
-                {/* Footnotes Toggle */}
-                <div className="space-y-4 pt-4 border-t border-gray-100">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-[#31393a]/40 uppercase tracking-widest">Hide footnotes</label>
-                    <Switch
-                      checked={hideFootnotes}
-                      onCheckedChange={setHideFootnotes}
-                    />
                   </div>
                 </div>
               </div>

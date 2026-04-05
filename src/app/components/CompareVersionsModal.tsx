@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface CompareVersionsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  versions: Array<{ name: string; fullName: string; language: string }>;
+  versions: Array<{ id: string; name: string; fullName: string; language: string }>;
   selectedVersions: string[];
   onToggleVersion: (versionName: string) => void;
   onStartCompare: () => void;
@@ -67,13 +67,13 @@ export default function CompareVersionsModal({
                   <div key={language} className="space-y-2">
                     <p className="text-sm text-[var(--color-text-primary)]/60 mb-2">{language}</p>
                     {languageVersions.map((version) => {
-                      const isSelected = selectedVersions.includes(version.name);
+                      const isSelected = selectedVersions.includes(version.id);
                       const isDisabled = !isSelected && selectedVersions.length >= 4;
 
                       return (
                         <button
-                          key={version.name}
-                          onClick={() => !isDisabled && onToggleVersion(version.name)}
+                          key={version.id}
+                          onClick={() => !isDisabled && onToggleVersion(version.id)}
                           disabled={isDisabled}
                           className={`w-full text-left px-4 py-2.5 rounded transition-colors ${isSelected
                               ? 'bg-[#fde8ea] text-[#E23744]'

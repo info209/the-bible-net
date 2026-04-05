@@ -178,7 +178,7 @@ export default function HomePage() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="space-y-6 pb-6 bg-transparent min-h-full px-4"
+      className="space-y-6 pt-20 pb-6 bg-transparent min-h-full px-4"
     >
 
       {/* Greeting */}
