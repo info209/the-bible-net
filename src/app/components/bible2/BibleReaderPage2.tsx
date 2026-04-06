@@ -1412,7 +1412,7 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
                   {/* English Section */}
                   <div className="space-y-2">
                     <p className="text-sm text-[#31393a]/60 mb-2">English</p>
-                    {versions.filter(v => v.language === 'English').map(version => (
+                    {(apiVersions || fallbackVersions).filter(v => v.language === 'English').map(version => (
                       <button
                         key={version.name}
                         onClick={() => {
@@ -1433,7 +1433,7 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
                   {/* Telugu Section */}
                   <div className="space-y-2">
                     <p className="text-sm text-[#31393a]/60 mb-2">Telugu</p>
-                    {versions.filter(v => v.language === 'Telugu').map(version => (
+                    {(apiVersions || fallbackVersions).filter(v => v.language === 'Telugu').map(version => (
                       <button
                         key={version.name}
                         onClick={() => {
@@ -1454,7 +1454,7 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
                   {/* Hindi Section */}
                   <div className="space-y-2">
                     <p className="text-sm text-[#31393a]/60 mb-2">Hindi</p>
-                    {versions.filter(v => v.language === 'Hindi').map(version => (
+                    {(apiVersions || fallbackVersions).filter(v => v.language === 'Hindi').map(version => (
                       <button
                         key={version.name}
                         onClick={() => {
