@@ -1189,14 +1189,6 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           }
         };
 
-      // curl is handled by <PageTurnTransition> directly — this fallback is not used
-      case 'curl':
-        return {
-          initial: { opacity: 0 },
-          animate: { opacity: 1 },
-          exit: { opacity: 0 }
-        };
-
       case 'fade':
         return {
           initial: { opacity: 0, scale: 0.985 },
@@ -1300,17 +1292,20 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       setIsAtBottom(scrolledToBottom);
 
-      // Detect scroll direction
-      const isScrollingDown = currentScrollY > lastKnownScrollY;
+      const direction = currentScrollY > lastKnownScrollY ? "down" : "up";
 
       // Reading Mode strict Logic
-      if (currentScrollY > 80 && isScrollingDown) {
-        // Scrolling down past 80px - hide controls for immersive reading
-        setIsReadingMode(true);
+      if (currentScrollY > 80 && direction === "down") {
+        setIsReadingMode((prev) => {
+          if (!prev) return true;
+          return prev;
+        });
         setShowAudioControls(false);
-      } else if (currentScrollY < 40 || !isScrollingDown) {
-        // Near top or scrolling up - show controls
-        setIsReadingMode(false);
+      } else if (currentScrollY < 40 && direction === "up") {
+        setIsReadingMode((prev) => {
+          if (prev) return false;
+          return prev;
+        });
         setShowAudioControls(true);
       }
 
@@ -1378,18 +1373,18 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
 
   return (
-    <div className="fixed inset-0 min-h-screen bg-[var(--color-bg-primary)] flex flex-col z-[100] overflow-hidden">
+    <div className="fixed inset-0 h-[100dvh] bg-[var(--color-bg-primary)] flex flex-col z-[100] overflow-hidden">
       {/* Scrollable Content Area */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto pb-32"
+        className="flex-1 overflow-y-auto pb-32 h-full"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
         {/* Header Section Grouped for Reading Mode - STICKY CONTAINER */}
-        <div 
-          className="sticky top-0 left-0 right-0 z-[50] flex flex-col transition-all duration-300 ease-in-out"
+        <div
+          className="sticky top-0 z-[60] transition-all duration-300 ease-in-out"
           style={{
             transform: isReadingMode ? 'translateY(-100%)' : 'translateY(0)',
             opacity: isReadingMode ? 0 : 1,
@@ -1397,142 +1392,139 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           }}
         >
           {/* Main Header/Navbar - SCROLLS AWAY (Hides) */}
-          <div className="h-16 z-[50] w-full relative">
+          <div className="h-16 w-full">
             <AppHeader onMenuOpen={() => setShowMoreMenu(true)} className="!static" />
           </div>
+        </div>
 
-          {/* Sub Navigation Bar - BECOMES STICKY */}
-          <div className="glass-light border-b border-white/20 shadow-[var(--shadow-xs)] w-full">
-            <div className="max-w-3xl mx-auto px-4 py-1">
-              <div className="flex items-center justify-between">
-                {/* Book/Chapter/Version selectors */}
-                <div className="flex items-center space-x-4">
+        {/* Sub Navigation Bar - BECOMES STICKY */}
+        <div className="sticky top-0 z-[55] glass-light border-b border-white/20">
+          <div className="max-w-3xl mx-auto px-4 py-1">
+            <div className="flex items-center justify-between">
+              {/* Book/Chapter/Version selectors */}
+              <div className="flex items-center space-x-4">
+                <button
+                  onClick={() => {
+                    setShowBookSelector(!showBookSelector);
+                    setShowChapterSelector(false);
+                    setShowVersionSelector(false);
+                  }}
+                  className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors min-w-0"
+                >
+                  <span className="text-sm font-normal truncate max-w-[60px] xs:max-w-none">
+                    {displayBookName}
+                  </span>
+                  <ChevronDown className="size-3 flex-shrink-0" />
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowChapterSelector(!showChapterSelector);
+                    setShowBookSelector(false);
+                    setShowVersionSelector(false);
+                  }}
+                  className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
+                >
+                  <span className="text-sm font-normal">{selectedChapter}</span>
+                  <ChevronDown className="size-3" />
+                </button>
+
+                {comparisonMode ? (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[var(--color-text-primary)]/40 text-sm">|</span>
+                    <button
+                      onClick={() => {
+                        setTempComparisonIds(comparisonVersionIds);
+                        setShowCompareMenu(true);
+                      }}
+                      className="text-sm font-normal text-[var(--color-accent-rose)] hover:opacity-80 transition-all flex items-center gap-1"
+                    >
+                      Comparing
+                    </button>
+                  </div>
+                ) : (
                   <button
                     onClick={() => {
-                      setShowBookSelector(!showBookSelector);
+                      setShowVersionSelector(!showVersionSelector);
+                      setShowBookSelector(false);
                       setShowChapterSelector(false);
-                      setShowVersionSelector(false);
                     }}
                     className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors min-w-0"
                   >
-                    <span className="text-sm font-normal truncate max-w-[60px] xs:max-w-none">
-                      {displayBookName}
+                    <span className="text-sm font-normal truncate max-w-[40px] xs:max-w-none">
+                      {displayVersionName || 'KJV'}
                     </span>
                     <ChevronDown className="size-3 flex-shrink-0" />
                   </button>
+                )}
+              </div>
 
+              {/* Right side tools with better mobile spacing */}
+              <div className="flex items-center -space-x-1 ml-auto mr-3 flex-shrink-0">
+                <button
+                  onClick={() => {
+                    if (comparisonMode) {
+                      setShowCompareMenu(true);
+                    } else {
+                      setTempComparisonIds(selectedVersionId ? [selectedVersionId] : []);
+                      setShowCompareSelector(true);
+                    }
+                  }}
+                  className="p-2 rounded-full transition-all hover:bg-gray-100/50"
+                  title="Compare Versions"
+                >
+                  <MdOutlineLibraryBooks
+                    className={`size-5 transition-colors ${comparisonMode
+                      ? 'text-[var(--color-accent-rose)]'
+                      : 'text-[var(--color-gray-900)]'
+                      }`}
+                  />
+                </button>
+                <button
+                  onClick={() => setShowMusicSelector(true)}
+                  className="p-2 hover:bg-gray-100/50 rounded-full transition-colors text-[var(--color-gray-900)]"
+                  title="Ambient Music"
+                >
+                  <Music className="size-5" />
+                </button>
+                <button
+                  onClick={() => { setShowSearch(true); setSearchQuery(''); }}
+                  className="p-2 hover:bg-gray-100/50 rounded-full transition-colors text-[var(--color-gray-900)]"
+                  title="Search"
+                >
+                  <FiSearch className="size-5" />
+                </button>
+                {/* Refactor to hold position for the popup */}
+                <div className="relative">
                   <button
-                    onClick={() => {
-                      setShowChapterSelector(!showChapterSelector);
-                      setShowBookSelector(false);
-                      setShowVersionSelector(false);
-                    }}
-                    className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
-                  >
-                    <span className="text-sm font-normal">{selectedChapter}</span>
-                    <ChevronDown className="size-3" />
-                  </button>
-
-                  {comparisonMode ? (
-                    <div className="flex items-center space-x-2">
-                      <span className="text-[var(--color-text-primary)]/40 text-sm">|</span>
-                      <button
-                        onClick={() => {
-                          setTempComparisonIds(comparisonVersionIds);
-                          setShowCompareMenu(true);
-                        }}
-                        className="text-sm font-normal text-[var(--color-accent-rose)] hover:opacity-80 transition-all flex items-center gap-1"
-                      >
-                        Comparing
-                      </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setShowVersionSelector(!showVersionSelector);
-                        setShowBookSelector(false);
-                        setShowChapterSelector(false);
-                      }}
-                      className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors min-w-0"
-                    >
-                      <span className="text-sm font-normal truncate max-w-[40px] xs:max-w-none">
-                        {displayVersionName || 'KJV'}
-                      </span>
-                      <ChevronDown className="size-3 flex-shrink-0" />
-                    </button>
-                  )}
-                </div>
-
-                {/* Right side tools with better mobile spacing */}
-                <div className="flex items-center -space-x-1 ml-auto mr-3 flex-shrink-0">
-                  <button
-                    onClick={() => {
-                      if (comparisonMode) {
-                        setShowCompareMenu(true);
-                      } else {
-                        setTempComparisonIds(selectedVersionId ? [selectedVersionId] : []);
-                        setShowCompareSelector(true);
-                      }
-                    }}
-                    className="p-2 rounded-full transition-all hover:bg-gray-100/50"
-                    title="Compare Versions"
-                  >
-                    <MdOutlineLibraryBooks
-                      className={`size-5 transition-colors ${comparisonMode
-                          ? 'text-[var(--color-accent-rose)]'
-                          : 'text-[var(--color-gray-900)]'
-                        }`}
-                    />
-                  </button>
-                  <button
-                    onClick={() => setShowMusicSelector(true)}
+                    onClick={() => setShowMoreMenu(true)}
                     className="p-2 hover:bg-gray-100/50 rounded-full transition-colors text-[var(--color-gray-900)]"
-                    title="Ambient Music"
+                    title="More options"
                   >
-                    <Music className="size-5" />
+                    <MoreVertical className="size-5" />
                   </button>
-                  <button
-                    onClick={() => { setShowSearch(true); setSearchQuery(''); }}
-                    className="p-2 hover:bg-gray-100/50 rounded-full transition-colors text-[var(--color-gray-900)]"
-                    title="Search"
-                  >
-                    <FiSearch className="size-5" />
-                  </button>
-                  {/* Refactor to hold position for the popup */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setShowMoreMenu(true)}
-                      className="p-2 hover:bg-gray-100/50 rounded-full transition-colors text-[var(--color-gray-900)]"
-                      title="More options"
-                    >
-                      <MoreVertical className="size-5" />
-                    </button>
-                    {showMoreMenu && (
-                      <>
-                        <div className="fixed inset-0 z-[100]" onClick={() => setShowMoreMenu(false)}></div>
-                        <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-[101] overflow-hidden">
-                          <button
-                            onClick={() => { setShowMoreMenu(false); setShowSettingsModal(true); }}
-                            className="w-full text-left px-4 py-3 text-sm text-[var(--color-text-primary)] hover:bg-gray-50 flex items-center gap-2"
-                          >
-                            <span>Fonts and Settings</span>
-                          </button>
-                          <div className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer" onClick={() => setHideFootnotes(!hideFootnotes)}>
-                            <span className="text-sm text-[var(--color-text-primary)]">Hide footnotes</span>
-                            <Switch checked={hideFootnotes} onCheckedChange={setHideFootnotes} />
-                          </div>
+                  {showMoreMenu && (
+                    <>
+                      <div className="fixed inset-0 z-[100]" onClick={() => setShowMoreMenu(false)}></div>
+                      <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-xl shadow-lg border border-gray-100 z-[101] overflow-hidden">
+                        <button
+                          onClick={() => { setShowMoreMenu(false); setShowSettingsModal(true); }}
+                          className="w-full text-left px-4 py-3 text-sm text-[var(--color-text-primary)] hover:bg-gray-50 flex items-center gap-2"
+                        >
+                          <span>Fonts and Settings</span>
+                        </button>
+                        <div className="w-full px-4 py-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer" onClick={() => setHideFootnotes(!hideFootnotes)}>
+                          <span className="text-sm text-[var(--color-text-primary)]">Hide footnotes</span>
+                          <Switch checked={hideFootnotes} onCheckedChange={setHideFootnotes} />
                         </div>
-                      </>
-                    )}
-                  </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
           </div>
         </div>
-
-
-
 
         {/* Selector panels */}
         {showBookSelector && (
@@ -1799,63 +1791,109 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         {/* Main Reading Content */}
         <div
           className="transition-colors duration-300 relative overflow-hidden flex-1"
-          style={{ backgroundColor: currentTheme.bg }}
+          style={{
+            backgroundColor: currentTheme.bg,
+            ...(pageTransition === 'curl' && {
+              perspective: '1200px',
+              transformStyle: 'preserve-3d' as const
+            })
+          }}
         >
           <AnimatePresence mode="wait">
             {pageTransition === 'slide' && isDragging ? (
-            /* Interactive slide mode - show both pages */
-            <>
-              {/* Next page (shows when dragging left) */}
-              {dragOffset < 0 && (
+              /* Interactive slide mode - show both pages */
+              <>
+                {/* Next page (shows when dragging left) */}
+                {dragOffset < 0 && (
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      transform: `translateX(${100 + (dragOffset / window.innerWidth) * 100}%)`,
+                      backgroundColor: currentTheme.bg
+                    }}
+                  >
+                    <ChapterContent
+                      book={nextChapterInfo.book}
+                      chapter={nextChapterInfo.chapter}
+                      font={selectedFont}
+                      fontSize={fontSize}
+                      version={displayVersionName || 'KJV'}
+                      scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === displayBookName ? selectedVerse : undefined}
+                      readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === displayBookName ? currentVerse : null}
+                      theme={currentTheme}
+                    />
+                  </div>
+                )}
+
+                {/* Previous page (shows when dragging right) */}
+                {dragOffset > 0 && (
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      transform: `translateX(${-100 + (dragOffset / window.innerWidth) * 100}%)`,
+                      backgroundColor: currentTheme.bg
+                    }}
+                  >
+                    <ChapterContent
+                      book={prevChapterInfo.book}
+                      chapter={prevChapterInfo.chapter}
+                      font={selectedFont}
+                      fontSize={fontSize}
+                      version={displayVersionName || 'KJV'}
+                      scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === displayBookName ? selectedVerse : undefined}
+                      readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === displayBookName ? currentVerse : null}
+                      theme={currentTheme}
+                    />
+                  </div>
+                )}
+
+                {/* Current page */}
                 <div
-                  className="absolute inset-0"
+                  className="relative"
                   style={{
-                    transform: `translateX(${100 + (dragOffset / window.innerWidth) * 100}%)`,
-                    backgroundColor: currentTheme.bg
+                    transform: `translateX(${(dragOffset / window.innerWidth) * 100}%)`,
+                    transition: 'none'
                   }}
                 >
-                  <ChapterContent
-                    book={nextChapterInfo.book}
-                    chapter={nextChapterInfo.chapter}
-                    font={selectedFont}
-                    fontSize={fontSize}
-                    version={displayVersionName || 'KJV'}
-                    scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === displayBookName ? selectedVerse : undefined}
-                    readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === displayBookName ? currentVerse : null}
-                    theme={currentTheme}
-                  />
+                  {comparisonMode ? (
+                    <ComparisonContent
+                      book={selectedBookId || ''}
+                      chapter={selectedChapter}
+                      versionIds={comparisonVersionIds}
+                      bibleVersions={bibleVersions}
+                      theme={currentTheme}
+                      font={selectedFont}
+                      fontSize={fontSize}
+                      onClose={handleExitCompare}
+                      onManageClick={() => setShowCompareSelector(true)}
+                      onVersionRemove={handleRemoveCompareVersion}
+                    />
+                  ) : (
+                    <ChapterContent
+                      book={displayBookName}
+                      chapter={selectedChapter}
+                      font={selectedFont}
+                      fontSize={fontSize}
+                      version={displayVersionName || 'KJV'}
+                      scrollToVerse={selectedVerse}
+                      readingVerse={currentVerse}
+                      theme={currentTheme}
+                      selectedVerses={selectedVerses}
+                      onVerseLongPress={handleVerseLongPress}
+                      onVerseTap={handleVerseTap}
+                      highlights={userHighlights}
+                      notes={userNotes}
+                    />
+                  )}
                 </div>
-              )}
-
-              {/* Previous page (shows when dragging right) */}
-              {dragOffset > 0 && (
-                <div
-                  className="absolute inset-0"
-                  style={{
-                    transform: `translateX(${-100 + (dragOffset / window.innerWidth) * 100}%)`,
-                    backgroundColor: currentTheme.bg
-                  }}
-                >
-                  <ChapterContent
-                    book={prevChapterInfo.book}
-                    chapter={prevChapterInfo.chapter}
-                    font={selectedFont}
-                    fontSize={fontSize}
-                    version={displayVersionName || 'KJV'}
-                    scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === displayBookName ? selectedVerse : undefined}
-                    readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === displayBookName ? currentVerse : null}
-                    theme={currentTheme}
-                  />
-                </div>
-              )}
-
-              {/* Current page */}
-              <div
-                className="relative"
-                style={{
-                  transform: `translateX(${(dragOffset / window.innerWidth) * 100}%)`,
-                  transition: 'none'
-                }}
+              </>
+            ) : pageTransition === 'curl' ? (
+              /* 3D Page Turn Transition */
+              <PageTurnTransition
+                pageKey={chapterKey}
+                direction={transitionDirection === 'next' ? 1 : -1}
+                backgroundColor={currentTheme.bg}
+                className="w-full h-full"
               >
                 {comparisonMode ? (
                   <ComparisonContent
@@ -1887,61 +1925,59 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     notes={userNotes}
                   />
                 )}
-              </div>
-            </>
-          ) : (
-            /* Normal transition modes */
-            <AnimatePresence mode="wait" initial={false}>
-              {(() => {
-                const variants = getTransitionVariants();
-                const { style, ...animationVariants } = variants as any;
-                return (
-                  <motion.div
-                    key={chapterKey}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    variants={animationVariants}
-                    transition={transitionConfig[pageTransition]}
-                    style={{ ...style, backgroundColor: currentTheme.bg }}
-                  >
-                    {comparisonMode ? (
-                      <ComparisonContent
-                        book={selectedBookId || ''}
-                        chapter={selectedChapter}
-                        versionIds={comparisonVersionIds}
-                        bibleVersions={bibleVersions}
-                        theme={currentTheme}
-                        font={selectedFont}
-                        fontSize={fontSize}
-                        onClose={handleExitCompare}
-                        onManageClick={() => setShowCompareSelector(true)}
-                        onVersionRemove={handleRemoveCompareVersion}
-                      />
-                    ) : (
-                      <ChapterContent
-                        book={displayBookName}
-                        chapter={selectedChapter}
-                        font={selectedFont}
-                        fontSize={fontSize}
-                        version={displayVersionName || 'KJV'}
-                        scrollToVerse={selectedVerse}
-                        readingVerse={currentVerse}
-                        theme={currentTheme}
-                        selectedVerses={selectedVerses}
-                        onVerseLongPress={handleVerseLongPress}
-                        onVerseTap={handleVerseTap}
-                        highlights={userHighlights}
-                        notes={userNotes}
-                      />
-                    )}
-                  </motion.div>
-                );
-              })()}
-            </AnimatePresence>
-          )}
-        </AnimatePresence>
-      </div>
+              </PageTurnTransition>
+            ) : (
+              /* Normal transition modes: slide, fade, scroll */
+              <AnimatePresence mode="wait" initial={false}>
+                {(() => {
+                  const variants = getTransitionVariants();
+                  return (
+                    <motion.div
+                      key={chapterKey}
+                      initial="initial"
+                      animate="animate"
+                      exit="exit"
+                      variants={variants}
+                      transition={transitionConfig[pageTransition]}
+                      style={{ backgroundColor: currentTheme.bg }}
+                    >
+                      {comparisonMode ? (
+                        <ComparisonContent
+                          book={selectedBookId || ''}
+                          chapter={selectedChapter}
+                          versionIds={comparisonVersionIds}
+                          bibleVersions={bibleVersions}
+                          theme={currentTheme}
+                          font={selectedFont}
+                          fontSize={fontSize}
+                          onClose={handleExitCompare}
+                          onManageClick={() => setShowCompareSelector(true)}
+                          onVersionRemove={handleRemoveCompareVersion}
+                        />
+                      ) : (
+                        <ChapterContent
+                          book={displayBookName}
+                          chapter={selectedChapter}
+                          font={selectedFont}
+                          fontSize={fontSize}
+                          version={displayVersionName || 'KJV'}
+                          scrollToVerse={selectedVerse}
+                          readingVerse={currentVerse}
+                          theme={currentTheme}
+                          selectedVerses={selectedVerses}
+                          onVerseLongPress={handleVerseLongPress}
+                          onVerseTap={handleVerseTap}
+                          highlights={userHighlights}
+                          notes={userNotes}
+                        />
+                      )}
+                    </motion.div>
+                  );
+                })()}
+              </AnimatePresence>
+            )}
+          </AnimatePresence>
+        </div>
       </div>
 
       {/* Audio Controls - MOVES UP/DOWN WITH SCROLL */}
