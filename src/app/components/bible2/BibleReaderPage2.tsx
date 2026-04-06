@@ -33,12 +33,12 @@ const bibleBooks = {
 };
 
 const versions = [
-  { name: 'NKJV', fullName: 'New King James Version', language: 'English' },
-  { name: 'KJV', fullName: 'King James Version', language: 'English' },
-  { name: 'NASB', fullName: 'New American Standard Bible', language: 'English' },
-  { name: 'AMP', fullName: 'Amplified Bible', language: 'English' },
-  { name: 'TELBSI', fullName: 'పవిత్ర గ్రంథము', language: 'Telugu' },
-  { name: 'HINBSI', fullName: 'पवित्र बाइबिल', language: 'Hindi' },
+  { id: 'NKJV', name: 'NKJV', fullName: 'New King James Version', language: 'English' },
+  { id: 'KJV', name: 'KJV', fullName: 'King James Version', language: 'English' },
+  { id: 'NASB', name: 'NASB', fullName: 'New American Standard Bible', language: 'English' },
+  { id: 'AMP', name: 'AMP', fullName: 'Amplified Bible', language: 'English' },
+  { id: 'TELBSI', name: 'TELBSI', fullName: 'పవిత్ర గ్రంథము', language: 'Telugu' },
+  { id: 'HINBSI', name: 'HINBSI', fullName: 'पवित्र बाइबिल', language: 'Hindi' },
 ];
 
 // Chapter counts for each book
@@ -106,12 +106,20 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [hideFootnotes, setHideFootnotes] = useState(false);
   const [showAudioControlPanel, setShowAudioControlPanel] = useState(false);
-  const [selectedVerse, setSelectedVerse] = useState<number>(1);
+  const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
   const [showVerseSelector, setShowVerseSelector] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(45); // in seconds
   const [audioDuration, setAudioDuration] = useState(216); // 3:36 in seconds
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const [showTimerMenu, setShowTimerMenu] = useState(false);
+  const [ttsVolume, setTtsVolume] = useState(1.0);
+  const [repeatMode, setRepeatMode] = useState<'none' | 'chapter' | 'verse'>('none');
+
+  const handleRepeatModeToggle = () => {
+    const modes: Array<'none' | 'chapter' | 'verse'> = ['none', 'chapter', 'verse'];
+    const currentIndex = modes.indexOf(repeatMode);
+    setRepeatMode(modes[(currentIndex + 1) % modes.length]);
+  };
   const [selectedTimer, setSelectedTimer] = useState<'stop' | 'end-chapter' | '10-mins' | '15-mins' | '30-mins' | '1-hr' | '2-hrs'>('stop');
   const [showSearch, setShowSearch] = useState(false);
   
@@ -466,7 +474,7 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
     }
   };
   
-  const transitionConfig = {
+  const transitionConfig: Record<string, any> = {
     slide: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
     curl: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
     fade: { duration: 0.2, ease: 'easeInOut' },
@@ -1057,7 +1065,7 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
       stopNarration();
       if (audioPlaying) {
         setTimeout(() => {
-          startNarration(selectedVerse);
+          startNarration(selectedVerse ?? undefined);
         }, 100);
       }
     }
@@ -1635,7 +1643,7 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
         <AudioControlPanel
           isOpen={showAudioControlPanel}
           onClose={() => setShowAudioControlPanel(false)}
-          selectedVerse={selectedVerse}
+          selectedVerse={selectedVerse ?? 1}
           audioCurrentTime={audioCurrentTime}
           audioDuration={audioDuration}
           audioPlaying={audioPlaying}
@@ -1645,6 +1653,10 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
           onPlayPauseToggle={handleNarrationPlayPause}
           onSpeedChange={setPlaybackSpeed}
           onTimerClick={() => setShowTimerMenu(true)}
+          ttsVolume={ttsVolume}
+          onVolumeChange={setTtsVolume}
+          repeatMode={repeatMode}
+          onRepeatModeToggle={handleRepeatModeToggle}
         />
 
         {/* Timer Menu */}
