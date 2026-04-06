@@ -132,6 +132,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [ttsVoice, setTtsVoice] = useState<SpeechSynthesisVoice | null>(null);
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [audioControlExpanded, setAudioControlExpanded] = useState(false);
+  const [showAudioSheet, setShowAudioSheet] = useState(false);
   const [showMusicSelector, setShowMusicSelector] = useState(false);
   const [selectedMusic, setSelectedMusic] = useState<string | null>('none');
   const [musicLoopMode, setMusicLoopMode] = useState<'shuffle' | 'repeat-all' | 'repeat-one'>('shuffle');
@@ -788,13 +789,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
 
   // Internal speak function — reads from refs, never from state
-  // Handle real-time volume/rate updates
-  useEffect(() => {
-    if (ttsPlaying && !ttsPaused && window.speechSynthesis.speaking) {
-      window.speechSynthesis.cancel();
-      speakAtIndex(ttsCurrentVerseIndex);
-    }
-  }, [ttsVolume, ttsRate]);
+  // Sync volume/rate changes with active utterance instantly
+  // (Removed redundant cancel-and-restart effect for volume changes)
 
   // States for highlights and notes
   const [userHighlights, setUserHighlights] = useState<any[]>([]);
@@ -1087,19 +1083,20 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Interactive drag handlers for slide transition
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (pageTransition !== 'slide') return;
-
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     touchEndX.current = e.touches[0].clientX; // Initialize endX to startX
     gestureDetected.current = 'none';
+    
+    if (pageTransition !== 'slide') return;
     // Don't set isDragging yet - wait to detect gesture direction
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+
     if (pageTransition !== 'slide') return;
 
-    touchEndX.current = e.touches[0].clientX;
     const diffX = e.touches[0].clientX - touchStartX.current;
     const diffY = e.touches[0].clientY - touchStartY.current;
 
@@ -1265,9 +1262,9 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   // Scroll detection logic - True Fullscreen-Like Reading Mode
   useEffect(() => {
-    let lastKnownScrollY = 0;
-    let throttleTimeout: NodeJS.Timeout | null = null;
     const scrollContainer = scrollContainerRef.current;
+    let animationFrame: number | null = null;
+    let lastScrollYValue = 0;
 
     const executeScrollLogic = () => {
       if (!scrollContainer) return;
@@ -1276,6 +1273,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       const scrollHeight = scrollContainer.scrollHeight;
       const clientHeight = scrollContainer.clientHeight;
       const scrolledToBottom = scrollHeight - currentScrollY - clientHeight < 50;
+      const deltaY = currentScrollY - lastScrollYValue;
+      const direction = deltaY > 0 ? 'down' : deltaY < 0 ? 'up' : scrollDirectionRef.current;
 
       // Tracking progress
       const scrollProgress = (currentScrollY + clientHeight) / scrollHeight;
@@ -1292,43 +1291,34 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       setIsAtBottom(scrolledToBottom);
 
-      const direction = currentScrollY > lastKnownScrollY ? "down" : "up";
-
-      // Reading Mode strict Logic
-      if (currentScrollY > 80 && direction === "down") {
-        setIsReadingMode((prev) => {
-          if (!prev) return true;
-          return prev;
-        });
+      if (direction === 'down' && deltaY > 15 && currentScrollY > 80) {
+        setIsReadingMode(true);
         setShowAudioControls(false);
-      } else if (currentScrollY < 40 && direction === "up") {
-        setIsReadingMode((prev) => {
-          if (prev) return false;
-          return prev;
-        });
+      } else if (direction === 'up' && deltaY < -10) {
+        setIsReadingMode(false);
         setShowAudioControls(true);
       }
 
-      lastKnownScrollY = currentScrollY;
+      lastScrollYValue = currentScrollY;
+      scrollDirectionRef.current = direction;
     };
 
     const handleScroll = () => {
-      if (!throttleTimeout) {
-        throttleTimeout = setTimeout(() => {
-          executeScrollLogic();
-          throttleTimeout = null;
-        }, 100);
-      }
+      if (animationFrame !== null) return;
+      animationFrame = window.requestAnimationFrame(() => {
+        executeScrollLogic();
+        animationFrame = null;
+      });
     };
 
     if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', handleScroll);
+      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
       return () => {
         scrollContainer.removeEventListener('scroll', handleScroll);
-        if (throttleTimeout) clearTimeout(throttleTimeout);
+        if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
       };
     }
-  }, [selectedBookId, selectedChapter, selectedVersionId, displayBookName, displayVersionName]);
+  }, [selectedBookId, selectedChapter, selectedVersionId, displayBookName, displayVersionName, updateProgress]);
 
   useEffect(() => {
     const isImmersive = isReadingMode && !isAnyPopupOpen && !audioControlExpanded;
@@ -1344,7 +1334,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   // Safari-specific fix: Trigger minimal scroll when entering Reading Mode to encourage address bar hide
   useEffect(() => {
     if (isReadingMode) {
-      if (window.scrollY === 0) {
+      const scrollContainer = scrollContainerRef.current;
+      if (scrollContainer && scrollContainer.scrollTop === 0) {
+        scrollContainer.scrollTo({ top: 1, behavior: 'auto' });
+      }
+      if (typeof window !== 'undefined' && window.scrollY === 0) {
         window.scrollTo(0, 1);
       }
     }
@@ -1377,7 +1371,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       {/* Scrollable Content Area */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto pb-20 h-full"
+        className="flex-1 overflow-y-auto pb-24 h-full"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -2031,7 +2025,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 >
                   {/* Equalizer Icon - Left */}
                   <button
-                    onClick={() => setAudioControlExpanded(true)}
+                    onClick={() => setShowAudioSheet(true)}
                     className="p-0.5 rounded-full hover:bg-white/40 transition-colors flex-shrink-0"
                   >
                     <RiEqualizer3Fill className="size-4 text-[var(--color-primary-teal)]/85" />
@@ -2121,7 +2115,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       {/* Bottom Navigation Bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out bg-white/90"
+        className="fixed bottom-0 left-0 right-0 z-20 bg-[var(--color-bg-primary)] border-t border-black/10 transition-all duration-300 ease-in-out pb-safe"
         style={{
           transform: isReadingMode ? 'translateY(100%)' : 'translateY(0)',
           opacity: isReadingMode ? 0 : 1,
@@ -2283,8 +2277,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       {/* Audio Control Panel */}
       <AudioControlPanel
-        isOpen={audioControlExpanded}
-        onClose={() => setAudioControlExpanded(false)}
+        isOpen={showAudioSheet}
+        onClose={() => setShowAudioSheet(false)}
         selectedVerse={selectedVerse || (ttsCurrentVerseIndex + 1) || 1}
         audioCurrentTime={(ttsCurrentVerseIndex + 1) || 1}
         audioDuration={currentChapterVerses.length || 1}

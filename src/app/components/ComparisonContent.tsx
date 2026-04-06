@@ -129,7 +129,7 @@ export default function ComparisonContent({
       style={{ backgroundColor: theme.bg }}
     >
       {/* Comparison Grid Container */}
-      <div className="flex-1 w-full max-w-[98%] mx-auto overflow-y-auto custom-scrollbar pt-8 pb-32">
+      <div className="flex-1 w-full max-w-[98%] mx-auto overflow-y-auto custom-scrollbar pt-8 pb-24">
         <div className="px-2">
             {/* Header Labels (Fixed atop grid) */}
             <div 
@@ -159,7 +159,7 @@ export default function ComparisonContent({
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: vIndex * 0.01 }}
-                  className="grid gap-4"
+                  className="grid gap-4 scroll-mt-[160px]"
                   style={{ gridTemplateColumns: `repeat(${contents.length}, minmax(0, 1fr))` }}
                 >
                   {contents.map((content, idx) => {

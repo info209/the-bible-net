@@ -110,7 +110,7 @@ export default function AudioControlPanel({
     <div className="fixed inset-0 z-[100] overlay-dark" onClick={onClose}>
       <div 
         ref={panelRef}
-        className="absolute bottom-0 left-0 right-0 glass-heavy rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto transition-transform border-t border-white/40" 
+        className="absolute bottom-0 left-0 right-0 glass-heavy rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto transition-transform border-t border-white/40 max-h-[80dvh] overflow-hidden bg-white/95 backdrop-blur-xl" 
         style={{
           transform: `translateY(${currentY}px)`,
           transition: isDragging ? 'none' : 'transform 0.3s ease-out'
@@ -129,7 +129,7 @@ export default function AudioControlPanel({
         </div>
         
         {/* Audio Control Content */}
-        <div className="px-[16px] pt-[110px] pb-[32px]">
+        <div className="px-[16px] pt-[110px] pb-[32px] overflow-y-auto" style={{ paddingBottom: 'max(32px, env(safe-area-inset-bottom))' }}>
           {/* Verse Selector - Positioned above progress bar */}
           <div 
             className="absolute left-[60px] top-[56px] transition-all duration-[var(--transition-slow)]"
@@ -250,19 +250,6 @@ export default function AudioControlPanel({
               </div>
               <span className="text-[8px] font-bold whitespace-nowrap absolute -bottom-[10px] uppercase">
                 {repeatMode}
-              </span>
-            </button>
-
-            {/* Volume toggle icon (we'll show a small slider below instead of download) */}
-            <button 
-              onClick={() => onVolumeChange(ttsVolume === 0 ? 1 : 0)}
-              className="flex flex-col items-center justify-center relative hover:scale-110 active:scale-95 transition-transform"
-            >
-              <div className="size-[28px] flex items-center justify-center">
-                <Gauge className="size-[22px] text-[var(--color-text-tertiary)]" strokeWidth={2.2} />
-              </div>
-              <span className="text-[8px] font-bold text-[var(--color-text-tertiary)] whitespace-nowrap absolute -bottom-[10px]">
-                Vol {Math.round(ttsVolume * 100)}%
               </span>
             </button>
 

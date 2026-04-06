@@ -97,7 +97,8 @@ export default function VerseActionMenu({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 100, scale: 0.95 }}
             transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-lg bg-white rounded-[28px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-gray-200/50 pb-safe z-[1110] overflow-hidden"
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-lg bg-white rounded-[28px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-gray-200/50 pb-safe z-[1110] overflow-y-auto max-h-[80dvh]"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
             <div className="flex flex-col items-center pt-3 pb-5 px-5 relative">
                 <div className="w-10 h-1 bg-gray-200/80 rounded-full mb-4 shrink-0" />
