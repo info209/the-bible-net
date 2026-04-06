@@ -1300,20 +1300,17 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       setIsAtBottom(scrolledToBottom);
 
-      const direction = currentScrollY > lastKnownScrollY ? "down" : "up";
+      // Detect scroll direction
+      const isScrollingDown = currentScrollY > lastKnownScrollY;
 
       // Reading Mode strict Logic
-      if (currentScrollY > 80 && direction === "down") {
-        setIsReadingMode((prev) => {
-          if (!prev) return true;
-          return prev;
-        });
+      if (currentScrollY > 80 && isScrollingDown) {
+        // Scrolling down past 80px - hide controls for immersive reading
+        setIsReadingMode(true);
         setShowAudioControls(false);
-      } else if (currentScrollY < 40 && direction === "up") {
-        setIsReadingMode((prev) => {
-          if (prev) return false;
-          return prev;
-        });
+      } else if (currentScrollY < 40 || !isScrollingDown) {
+        // Near top or scrolling up - show controls
+        setIsReadingMode(false);
         setShowAudioControls(true);
       }
 
@@ -1381,7 +1378,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
 
   return (
-    <div className="fixed inset-0 h-[100dvh] bg-[var(--color-bg-primary)] flex flex-col z-[100] overflow-hidden">
+    <div className="fixed inset-0 min-h-screen bg-[var(--color-bg-primary)] flex flex-col z-[100] overflow-hidden">
       {/* Scrollable Content Area */}
       <div
         ref={scrollContainerRef}
