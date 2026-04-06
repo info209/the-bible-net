@@ -162,9 +162,6 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
   const gestureDetected = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const contentRef = useRef<HTMLDivElement>(null);
   
-  // Scroll detection state - only for bottom nav
-  const [showBottomNav, setShowBottomNav] = useState(true);
-  const [isAtBottom, setIsAtBottom] = useState(false);
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -518,60 +515,7 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
     setSelectedVerse(null);
   }, [selectedBook, selectedChapter]);
   
-  // Scroll detection logic
-  useEffect(() => {
-    const handleScroll = () => {
-      if (isUserInteracting.current) return;
-
-      const currentScrollY = window.scrollY;
-      const scrollHeight = document.documentElement.scrollHeight;
-      const clientHeight = window.innerHeight;
-      const scrolledToBottom = scrollHeight - currentScrollY - clientHeight < 100;
-
-      setIsAtBottom(scrolledToBottom);
-
-      // If at bottom, show both nav and audio controls
-      if (scrolledToBottom) {
-        setShowBottomNav(true);
-        setShowAudioControls(true);
-        return;
-      }
-
-      const isScrollingDown = currentScrollY > lastScrollY.current;
-      const isScrollingUp = currentScrollY < lastScrollY.current;
-
-      if (currentScrollY > 100) {
-        if (isScrollingDown) {
-          setShowBottomNav(false);
-          setShowAudioControls(false);
-        } else if (isScrollingUp) {
-          setShowBottomNav(true);
-          setShowAudioControls(true);
-        }
-      } else {
-        setShowBottomNav(true);
-        setShowAudioControls(true);
-      }
-
-      lastScrollY.current = currentScrollY;
-
-      if (scrollTimeout.current) {
-        clearTimeout(scrollTimeout.current);
-      }
-      
-      if (currentScrollY > 100 && !scrolledToBottom) {
-        scrollTimeout.current = setTimeout(() => {
-          if (!isUserInteracting.current) {
-            setShowBottomNav(false);
-            setShowAudioControls(false);
-          }
-        }, 3000);
-      }
-    };
-
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, []);
+  // Scroll detection logic outsourced to BibleReaderPage2Container
 
   // Trackpad swipe navigation (two-finger swipe on laptop trackpads)
   useEffect(() => {
