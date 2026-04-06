@@ -638,8 +638,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const gestureDetected = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const contentRef = useRef<HTMLDivElement>(null);
 
-  // Scroll detection state - only for bottom nav
-  const [showBottomNav, setShowBottomNav] = useState(true);
+  // Reading Mode & Scroll detection state
+  const [isReadingMode, setIsReadingMode] = useState(false);
   const [showAudioControls, setShowAudioControls] = useState(true);
   const [isAtBottom, setIsAtBottom] = useState(false);
   const lastScrollY = useRef(0);
@@ -1271,22 +1271,18 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     setSelectedVerse(null);
   }, [selectedBookId, selectedChapter]);
 
-  // Scroll detection logic - optimized to fix flickering
+  // Scroll detection logic - True Fullscreen-Like Reading Mode
   useEffect(() => {
     let lastKnownScrollY = 0;
-    let ticking = false;
-    const threshold = 10; // Only toggle after 10px of movement
-    const headerHeight = 100; // Point where header definitely hides
+    let throttleTimeout: NodeJS.Timeout | null = null;
+    const scrollContainer = scrollContainerRef.current;
 
-    const updateScroll = () => {
-      if (!scrollContainerRef.current) {
-        ticking = false;
-        return;
-      }
+    const executeScrollLogic = () => {
+      if (!scrollContainer) return;
 
-      const currentScrollY = scrollContainerRef.current.scrollTop;
-      const scrollHeight = scrollContainerRef.current.scrollHeight;
-      const clientHeight = scrollContainerRef.current.clientHeight;
+      const currentScrollY = scrollContainer.scrollTop;
+      const scrollHeight = scrollContainer.scrollHeight;
+      const clientHeight = scrollContainer.clientHeight;
       const scrolledToBottom = scrollHeight - currentScrollY - clientHeight < 50;
 
       // Tracking progress
@@ -1304,83 +1300,63 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       setIsAtBottom(scrolledToBottom);
 
-      // Flicker Prevention with Hysteresis and Debounce
-      const now = Date.now();
-      const diff = currentScrollY - lastKnownScrollY;
-      const absDiff = Math.abs(diff);
+      const direction = currentScrollY > lastKnownScrollY ? "down" : "up";
 
-      if (scrolledToBottom) {
-        setShowBottomNav(true);
+      // Reading Mode strict Logic
+      if (currentScrollY > 80 && direction === "down") {
+        setIsReadingMode((prev) => {
+          if (!prev) return true;
+          return prev;
+        });
+        setShowAudioControls(false);
+      } else if (currentScrollY < 40 && direction === "up") {
+        setIsReadingMode((prev) => {
+          if (prev) return false;
+          return prev;
+        });
         setShowAudioControls(true);
-      } else if (currentScrollY <= 50) {
-        setShowBottomNav(true);
-        setShowAudioControls(true);
-      } else if (absDiff >= (diff > 0 ? 60 : 20)) { // Hysteresis: hide threshold 60, show threshold 20
-        if (now - lastStateToggleTime.current > 500) { // Lock frequent toggling
-          const isScrollingDown = currentScrollY > lastKnownScrollY;
-          if (currentScrollY > 150) {
-            if (isScrollingDown) {
-              setShowBottomNav(false);
-              setShowAudioControls(false);
-            } else {
-              setShowBottomNav(true);
-              setShowAudioControls(true);
-            }
-            lastStateToggleTime.current = now;
-          }
-        }
-        lastKnownScrollY = currentScrollY;
       }
 
-      // 3. Keep showing if inactivity at bottom, but hide if inactivity in middle
-      if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
-      if (currentScrollY > 200 && !scrolledToBottom && showBottomNav) {
-        scrollTimeout.current = setTimeout(() => {
-          setShowBottomNav(false);
-          setShowAudioControls(false);
-        }, 8000); // Wait longer before auto-hiding
-      }
-
-      ticking = false;
+      lastKnownScrollY = currentScrollY;
     };
 
     const handleScroll = () => {
-      if (!ticking) {
-        window.requestAnimationFrame(updateScroll);
-        ticking = true;
+      if (!throttleTimeout) {
+        throttleTimeout = setTimeout(() => {
+          executeScrollLogic();
+          throttleTimeout = null;
+        }, 100);
       }
     };
 
-    const scrollContainer = scrollContainerRef.current;
     if (scrollContainer) {
       scrollContainer.addEventListener('scroll', handleScroll);
       return () => {
         scrollContainer.removeEventListener('scroll', handleScroll);
-        if (scrollTimeout.current) clearTimeout(scrollTimeout.current);
+        if (throttleTimeout) clearTimeout(throttleTimeout);
       };
     }
   }, [selectedBookId, selectedChapter, selectedVersionId, displayBookName, displayVersionName]);
 
   useEffect(() => {
-    const isImmersive = !showBottomNav && !isAnyPopupOpen && !audioControlExpanded;
+    const isImmersive = isReadingMode && !isAnyPopupOpen && !audioControlExpanded;
 
     // We do not use docEl.requestFullscreen() here because modern browsers 
-    // restrict fullscreen API to explicit user gestures (like a direct onClick event).
-    // The web application's CSS reading mode handles immersive hiding of the UI.
+    // restrict fullscreen API to explicit user gestures.
 
     window.dispatchEvent(
       new CustomEvent('bible-reading-mode', { detail: { isReadingMode: isImmersive } })
     );
-  }, [showBottomNav, isAnyPopupOpen, audioControlExpanded]);
+  }, [isReadingMode, isAnyPopupOpen, audioControlExpanded]);
 
   // Safari-specific fix: Trigger minimal scroll when entering Reading Mode to encourage address bar hide
   useEffect(() => {
-    if (!showBottomNav && scrollContainerRef.current) {
-      if (scrollContainerRef.current.scrollTop === 0) {
-        scrollContainerRef.current.scrollTop = 1;
+    if (isReadingMode) {
+      if (window.scrollY === 0) {
+        window.scrollTo(0, 1);
       }
     }
-  }, [showBottomNav]);
+  }, [isReadingMode]);
 
   // Bible narration functions
   const getBibleContent = () => {
@@ -1415,12 +1391,16 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         onTouchEnd={handleTouchEnd}
       >
         {/* Header Section Grouped for Reading Mode - STICKY CONTAINER */}
-        <div className="sticky top-0 left-0 right-0 z-[50] flex flex-col">
+        <div 
+          className="sticky top-0 left-0 right-0 z-[50] flex flex-col transition-all duration-300 ease-in-out"
+          style={{
+            transform: isReadingMode ? 'translateY(-100%)' : 'translateY(0)',
+            opacity: isReadingMode ? 0 : 1,
+            pointerEvents: isReadingMode ? 'none' : 'auto'
+          }}
+        >
           {/* Main Header/Navbar - SCROLLS AWAY (Hides) */}
-          <div
-            className={`transition-all duration-300 ease-in-out overflow-hidden z-[50] ${!showBottomNav ? 'h-0 opacity-0 pointer-events-none' : 'h-16 opacity-100'
-              }`}
-          >
+          <div className="h-16 z-[50] w-full relative">
             <AppHeader onMenuOpen={() => setShowMoreMenu(true)} className="!static" />
           </div>
 
@@ -2108,8 +2088,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       {/* Bottom Navigation Bar */}
       <div
-        className={`fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)] transition-all duration-700 ease-in-out ${showBottomNav ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
-          }`}
+        className="fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out"
+        style={{
+          transform: isReadingMode ? 'translateY(100%)' : 'translateY(0)',
+          opacity: isReadingMode ? 0 : 1,
+          pointerEvents: isReadingMode ? 'none' : 'auto'
+        }}
       >
         <div className="max-w-3xl mx-auto px-4">
           <div className="flex items-center justify-around h-16">

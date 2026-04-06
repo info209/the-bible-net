@@ -71,23 +71,22 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
   const localeLabel = currentLocale.charAt(0).toUpperCase() + currentLocale.slice(1);
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 h-16 glass-teal flex items-center justify-between px-4 sm:px-6 shadow-sm border-b border-white/10 ${className || ''}`}>
-      {/* Empty div to keep the flex-between balanced for the absolute centered logo */}
-      <div className="flex-1"></div>
+    <header className={`fixed top-0 left-0 right-0 z-50 h-16 glass-teal flex justify-center w-full shadow-sm border-b border-white/10 ${className || ''}`}>
+      <div className="w-full max-w-3xl mx-auto px-6 sm:px-8 h-full flex items-center justify-between">
+        
+        {/* Logo Section (Left Aligned with Content) */}
+        <div className="flex items-center pointer-events-none shrink-0">
+          <Link href="/home" className="flex items-center gap-3 hover:opacity-90 transition-all active:scale-95 pointer-events-auto">
+            <BiBible className="w-8 h-8 text-white" />
+            <div className="flex flex-col">
+              <h1 className="text-[17px] font-bold text-white leading-tight">Holy Bible</h1>
+              <span className="text-[11px] font-normal text-white/90">Your Daily Companion</span>
+            </div>
+          </Link>
+        </div>
 
-      {/* Centered Logo Section */}
-      <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
-        <Link href="/home" className="flex items-center gap-3 hover:opacity-90 transition-all active:scale-95 pointer-events-auto">
-          <BiBible className="w-8 h-8 text-white" />
-          <div className="flex flex-col">
-            <h1 className="text-[17px] font-bold text-white leading-tight">Holy Bible</h1>
-            <span className="text-[11px] font-normal text-white/90">Your Daily Companion</span>
-          </div>
-        </Link>
-      </div>
-
-      {/* Action Buttons */}
-      <div className="flex-1 flex justify-end items-center gap-3 text-white">
+        {/* Action Buttons (Right Aligned with Content) */}
+        <div className="flex justify-end items-center gap-3 text-white">
         {/* Language Selector */}
         <Popover open={isLangOpen} onOpenChange={setIsLangOpen}>
           <PopoverTrigger asChild>
@@ -176,6 +175,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+        </div>
       </div>
 
       {session && (
