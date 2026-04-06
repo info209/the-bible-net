@@ -4,6 +4,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppHeader from "./components/AppHeader";
 import BibleReaderPage from "./components/BibleReaderPage";
+import BibleReaderPage2Container from "./components/bible2/BibleReaderPage2Container";
 import BottomNav from "./components/BottomNav";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -46,7 +47,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const isAdminRoute = pathname.startsWith('/admin');
   const isApiDocs = pathname.startsWith('/api-docs');
   const isAuthRoute = pathname.startsWith('/auth');
-  const isBiblePage = pathname.startsWith('/bible');
+  const isBiblePage = pathname === '/bible' || pathname.startsWith('/bible/');
+  const isBible2Page = pathname === '/bible2' || pathname.startsWith('/bible2/');
+  const isAnyBiblePage = isBiblePage || isBible2Page;
   const isPublicAppPage = pathname !== '/' && !isAdminRoute && !isApiDocs && !isAuthRoute;
 
   return (
@@ -56,10 +59,11 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         1. On /bible, BibleReaderPage renders its own AppHeader (internal to its design).
         2. On Home/Library/Explore, ClientLayout renders a static AppHeader.
       */}
-      {isPublicAppPage && !isBiblePage && <AppHeader />}
+      {isPublicAppPage && !isAnyBiblePage && <AppHeader />}
       
-      {/* Heavy Bible reader only mounts on /bible */}
+      {/* Heavy Bible readers mount outside main to take full height */}
       {isBiblePage && <BibleReaderPage onNavigate={handleNavigate} />}
+      {isBible2Page && <BibleReaderPage2Container onNavigate={handleNavigate} />}
       
       {/* Standard BottomNav for all app pages */}
       {isPublicAppPage && <BottomNav isVisible={!hideBottomNav} onNavigate={handleNavigate} />}
