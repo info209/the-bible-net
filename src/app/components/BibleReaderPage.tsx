@@ -1559,8 +1559,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
         {/* Selector panels */}
         {showBookSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowBookSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-[92vw] max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-sm" onClick={() => setShowBookSelector(false)}>
+            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-2xl rounded-lg w-[92vw] max-w-[360px] max-h-[calc(100dvh-160px)] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
               {/* Header */}
               <div className="flex items-center justify-between p-4">
                 <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Books</h3>
@@ -1596,7 +1596,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               </div>
 
               {/* Content */}
-              <ScrollArea className="h-[60vh] px-4 pb-4">
+              <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4">
                 <div className="grid grid-cols-2 gap-8">
                   {/* Old Testament */}
                   <div>
@@ -1648,21 +1648,21 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     </div>
                   </div>
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           </div>
         )}
 
         {showChapterSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowChapterSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-[92vw] max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-sm" onClick={() => setShowChapterSelector(false)}>
+            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-2xl rounded-lg w-[92vw] max-w-[360px] max-h-[calc(100dvh-160px)] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
                 <div className="w-16"></div>
                 <h3 className="text-base font-normal text-[#31393a]">Select chapter</h3>
                 <button onClick={() => setShowChapterSelector(false)} className="text-sm text-[#31393a] hover:text-[#d23952] transition-colors px-2">Done</button>
               </div>
 
-              <ScrollArea className="flex-1 px-4 py-4">
+              <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-4">
                 <div className="grid grid-cols-5 gap-2">
                   {Array.from({ length: totalChapters }, (_, i) => i + 1).map(chapter => (
                     <button
@@ -1679,14 +1679,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     </button>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           </div>
         )}
 
         {showVerseSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowVerseSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-[92vw] max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-sm" onClick={() => setShowVerseSelector(false)}>
+            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-2xl rounded-lg w-[92vw] max-w-[360px] max-h-[calc(100dvh-160px)] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
                 <button onClick={() => { setShowVerseSelector(false); setShowChapterSelector(true); }} className="flex items-center space-x-1 text-sm text-[#31393a] hover:text-[#d23952] transition-colors">
                   <ChevronLeft className="size-4" />
@@ -1696,7 +1696,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 <button onClick={() => { setShowVerseSelector(false); setShowChapterSelector(false); }} className="text-sm text-[#31393a] hover:text-[#d23952] transition-colors px-2">Done</button>
               </div>
 
-              <ScrollArea className="flex-1 px-4 py-4">
+              <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-4">
                 <div className="grid grid-cols-5 gap-2">
                   {Array.from({ length: 31 }, (_, i) => i + 1).map(verse => (
                     <button
@@ -1714,21 +1714,21 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     </button>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           </div>
         )}
 
         {showVersionSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowVersionSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-[92vw] max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-sm" onClick={() => setShowVersionSelector(false)}>
+            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-2xl rounded-lg w-[92vw] max-w-[360px] max-h-[calc(100dvh-160px)] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="flex justify-end p-4">
                 <button onClick={() => setShowVersionSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <X className="size-6 text-[#31393a]/60" />
                 </button>
               </div>
 
-              <ScrollArea className="flex-1 px-4 pb-4">
+              <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4">
                 <h4 className="font-bold text-[var(--color-accent-rose)] mb-4 text-sm">Bible Versions</h4>
                 <div className="space-y-4">
                   {['English', 'Telugu', 'Hindi'].map(lang => (
@@ -1751,7 +1751,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     </div>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           </div>
         )}
@@ -1761,7 +1761,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
             isOpen={showCompareSelector}
             onClose={() => setShowCompareSelector(false)}
             versions={bibleVersions}
-            selectedVersions={comparisonVersionIds}
+            selectedVersions={tempComparisonIds}
             onToggleVersion={handleToggleCompareVersion}
             onStartCompare={handleStartCompare}
           />
@@ -1780,8 +1780,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         )}
 
         {showMusicSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowMusicSelector(false)}>
-            <div className="absolute top-20 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg sm:w-full sm:max-w-[400px] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-sm" onClick={() => setShowMusicSelector(false)}>
+            <div className="absolute top-20 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-2xl rounded-lg sm:w-full sm:max-w-[400px] max-h-[calc(100dvh-160px)] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
               <div className="flex items-center justify-between px-4 pt-4 pb-2">
                 <div className="w-10"></div>
                 <div className="flex items-center space-x-2">
@@ -1799,7 +1799,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                 </div>
               </div>
 
-              <ScrollArea className="px-4 pb-4 max-h-[360px]">
+              <div className="overflow-y-auto custom-scrollbar px-4 pb-4">
                 <div className="space-y-3">
                   {musicTracks.map((track) => (
                     <button key={track.id} onClick={() => setSelectedMusic(track.id)} className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${selectedMusic === track.id ? 'bg-[#fde8ea]' : 'hover:bg-gray-100/50'}`}>
@@ -1814,7 +1814,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
                     </button>
                   ))}
                 </div>
-              </ScrollArea>
+              </div>
             </div>
           </div>
         )}
@@ -2139,7 +2139,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       <AnimatePresence>
         {showSettingsModal && (
           <div
-            className="fixed inset-0 bg-black/20 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/20 z-[200] flex items-center justify-center p-4 backdrop-blur-sm"
             onClick={() => setShowSettingsModal(false)}
           >
             <motion.div
@@ -2147,11 +2147,11 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 10 }}
               transition={{ duration: 0.2 }}
-              className="bg-[#f9f9f9] w-full max-w-md rounded-2xl shadow-xl overflow-hidden"
+              className="bg-[#f9f9f9] w-full max-w-md rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100dvh-160px)]"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white">
+              <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white shrink-0">
                 <div className="w-12"></div>
                 <h2 className="text-lg font-semibold text-[#31393a]">Fonts & Settings</h2>
                 <button
@@ -2163,7 +2163,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               </div>
 
               {/* Content */}
-              <div className="p-6 space-y-8 bg-[#f9f9f9]">
+              <div className="flex-1 p-6 space-y-8 bg-[#f9f9f9] overflow-y-auto custom-scrollbar">
                 {/* Font Selector */}
                 <div className="space-y-2">
                   <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Font family</label>

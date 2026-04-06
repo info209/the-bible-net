@@ -1,6 +1,6 @@
 "use client";
 
-import { BookOpen, Menu, User, Settings, LogIn, UserPlus, ChevronDown } from 'lucide-react';
+import { Globe, Menu, User, Settings, LogIn, UserPlus } from 'lucide-react';
 import { useSession, signOut } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
@@ -11,7 +11,6 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
@@ -20,6 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { BiBible } from 'react-icons/bi';
 
 interface AppHeaderProps {
   onMenuOpen?: () => void;
@@ -67,27 +67,33 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
     router.push(path);
   };
 
+  // Capitalize the first letter for the label
+  const localeLabel = currentLocale.charAt(0).toUpperCase() + currentLocale.slice(1);
+
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 h-16 glass-teal flex items-center justify-between px-4 sm:px-6 shadow-sm border-b border-white/10 ${className || ''}`}>
-      {/* Logo Section */}
-      <Link href="/home" className="flex items-center gap-3 hover:opacity-90 transition-all active:scale-95">
-        <div className="size-10 rounded-xl bg-white/20 flex items-center justify-center border border-white/30 shadow-inner">
-          <BookOpen className="size-6 text-white" />
-        </div>
-        <div className="flex flex-col">
-          <h1 className="text-lg font-bold text-white leading-tight">WordOfLife</h1>
-          <span className="text-[10px] font-medium text-white/70 tracking-widest uppercase">The Bible App</span>
-        </div>
-      </Link>
+      {/* Empty div to keep the flex-between balanced for the absolute centered logo */}
+      <div className="flex-1"></div>
+
+      {/* Centered Logo Section */}
+      <div className="absolute left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none">
+        <Link href="/home" className="flex items-center gap-3 hover:opacity-90 transition-all active:scale-95 pointer-events-auto">
+          <BiBible className="w-8 h-8 text-white" />
+          <div className="flex flex-col">
+            <h1 className="text-[17px] font-bold text-white leading-tight">Holy Bible</h1>
+            <span className="text-[11px] font-normal text-white/90">Your Daily Companion</span>
+          </div>
+        </Link>
+      </div>
 
       {/* Action Buttons */}
-      <div className="flex items-center gap-3">
+      <div className="flex-1 flex justify-end items-center gap-3 text-white">
         {/* Language Selector */}
         <Popover open={isLangOpen} onOpenChange={setIsLangOpen}>
           <PopoverTrigger asChild>
-            <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/10 border border-white/20 text-white cursor-pointer hover:bg-white/20 active:scale-95 transition-all">
-              <span className="text-sm font-bold uppercase">{currentLocale.toUpperCase()}</span>
-              <ChevronDown className={`size-4 opacity-70 transition-transform duration-300 ${isLangOpen ? 'rotate-180' : ''}`} />
+            <button className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/30 cursor-pointer hover:bg-white/10 active:scale-95 transition-all">
+              <span className="text-[14px] font-medium">{localeLabel}</span>
+              <Globe className="size-4 opacity-90" />
             </button>
           </PopoverTrigger>
           <PopoverContent
@@ -120,29 +126,33 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
           </PopoverContent>
         </Popover>
 
-        {/* User Account */}
+        {/* User Account & Menu */}
         {session?.user ? (
           <button 
             onClick={() => setIsProfilePanelOpen(true)}
-            className="size-10 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/30 cursor-pointer hover:bg-white/10 active:scale-95 transition-all"
           >
-             {session.user.image ? (
-                <img src={session.user.image} alt="User" className="w-6 h-6 rounded-full" />
+            <Menu className="size-[18px] opacity-90" />
+            <div className="size-[22px] rounded-full overflow-hidden flex items-center justify-center">
+              {session.user.image ? (
+                <img src={session.user.image} alt="User" className="w-full h-full object-cover" />
               ) : (
-                <User className="size-5" />
+                <User className="size-4 opacity-90 text-white" />
               )}
+            </div>
           </button>
         ) : (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <button className="size-10 rounded-lg bg-white/10 border border-white/20 flex items-center justify-center text-white hover:bg-white/20 active:scale-95 transition-all">
-                <User className="size-5" />
+              <button className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/30 cursor-pointer hover:bg-white/10 active:scale-95 transition-all">
+                <Menu className="size-[18px] opacity-90" />
+                <User className="size-[18px] opacity-90 text-white" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
               sideOffset={8}
-                className="w-64 rounded-2xl border-none bg-white p-0 shadow-2xl overflow-hidden"
+              className="w-64 rounded-2xl border-none bg-white p-0 shadow-2xl overflow-hidden"
             >
               <div className="px-4 py-4 bg-gray-50/50 border-b border-gray-100">
                 <p className="text-sm font-bold text-gray-900">Welcome</p>
@@ -166,14 +176,6 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
-
-        {/* Floating Menu Toggle (Optional, can be used for sidebar) */}
-        <button 
-          onClick={onMenuOpen}
-          className="size-10 rounded-lg bg-black/10 border border-black/5 flex items-center justify-center text-white/80 hover:bg-black/20 hover:text-white active:scale-95 transition-all"
-        >
-          <Menu className="size-5" />
-        </button>
       </div>
 
       {session && (
@@ -187,3 +189,4 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
     </header>
   );
 }
+
