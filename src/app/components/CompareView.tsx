@@ -71,7 +71,7 @@ export default function CompareView({ book, chapter, selectedVersions, selectedT
     return (
       <div className="px-4 py-6">
         {Array.from({ length: maxVerses }).map((_, verseIndex) => (
-          <div key={verseIndex} className="mb-8">
+          <div key={verseIndex} className="mb-8" style={verseIndex === 0 ? { scrollMarginTop: '64px' } : {}}>
             {allVersionsContent.map((versionData, vIndex) => {
               const verse = versionData.verses[verseIndex];
               if (!verse) return null;
@@ -150,6 +150,7 @@ export default function CompareView({ book, chapter, selectedVersions, selectedT
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: verseIndex * 0.02 }}
           className="flex gap-4 mb-6"
+          style={verseIndex === 0 ? { scrollMarginTop: '64px' } : {}}
         >
           {allVersionsContent.map((versionData, vIndex) => {
             const verse = versionData.verses[verseIndex];

@@ -1377,7 +1377,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       {/* Scrollable Content Area */}
       <div
         ref={scrollContainerRef}
-        className="flex-1 overflow-y-auto pb-32 h-full"
+        className="flex-1 overflow-y-auto pb-20 h-full"
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
@@ -2121,7 +2121,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
       {/* Bottom Navigation Bar */}
       <div
-        className="fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out"
+        className="fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)] transition-all duration-300 ease-in-out bg-white/90"
         style={{
           transform: isReadingMode ? 'translateY(100%)' : 'translateY(0)',
           opacity: isReadingMode ? 0 : 1,
