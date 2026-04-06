@@ -1371,6 +1371,8 @@ export default function BibleReaderPage2Container({ onNavigate }: BibleReaderPag
   return (
     <BibleReaderPage2
       isReadingMode={isReadingMode}
+      showAudioControls={showAudioControls}
+      apiVersions={bibleVersions}
       onNavigate={onNavigate}
       verses={currentChapterVerses}
       chapter={selectedChapter}

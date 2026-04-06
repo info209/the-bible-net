@@ -32,7 +32,7 @@ const bibleBooks = {
   ]
 };
 
-const versions = [
+const fallbackVersions = [
   { id: 'NKJV', name: 'NKJV', fullName: 'New King James Version', language: 'English' },
   { id: 'KJV', name: 'KJV', fullName: 'King James Version', language: 'English' },
   { id: 'NASB', name: 'NASB', fullName: 'New American Standard Bible', language: 'English' },
@@ -62,6 +62,8 @@ const bookChapters: { [key: string]: number } = {
 interface BibleReaderPageProps {
   onNavigate?: (page: 'home' | 'bible' | 'library' | 'explore') => void;
   isReadingMode?: boolean;
+  showAudioControls?: boolean;
+  apiVersions?: any[];
   verses?: any[];
   chapter?: number;
   version?: string;
@@ -79,6 +81,8 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
   const { 
     onNavigate,
     isReadingMode = false,
+    showAudioControls = true,
+    apiVersions,
     verses = [], 
     chapter = 1, 
     version = 'NKJV', 
@@ -160,7 +164,6 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
   
   // Scroll detection state - only for bottom nav
   const [showBottomNav, setShowBottomNav] = useState(true);
-  const [showAudioControls, setShowAudioControls] = useState(true);
   const [isAtBottom, setIsAtBottom] = useState(false);
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
@@ -2135,7 +2138,7 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
       {/* Audio Controls - MOVES UP/DOWN WITH SCROLL */}
       <div 
         className={`fixed left-0 right-0 z-30 pointer-events-none transition-all duration-700 ease-in-out ${
-          showAudioControls ? 'bottom-[90px]' : 'bottom-4'
+          showAudioControls ? 'bottom-[90px] opacity-100' : 'translate-y-[150%] opacity-0'
         }`}
       >
         <div className="max-w-3xl mx-auto px-6 sm:px-8">
@@ -2341,7 +2344,6 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
                   }}
                   onClick={() => {
                     isUserInteracting.current = true;
-                    setShowAudioControls(true); // Ensure it stays visible
                     setAudioControlExpanded(true);
                     handleNarrationPlayPause();
                     setTimeout(() => {
@@ -2431,7 +2433,7 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
       <CompareVersionsModal
         isOpen={showCompareSelector}
         onClose={() => setShowCompareSelector(false)}
-        versions={versions}
+        versions={apiVersions || fallbackVersions}
         selectedVersions={compareMode.selectedVersions}
         onToggleVersion={handleToggleCompareVersion}
         onStartCompare={handleStartCompare}
@@ -2441,7 +2443,7 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
       <CompareMenu
         isOpen={showCompareMenu}
         onClose={() => setShowCompareMenu(false)}
-        versions={versions}
+        versions={apiVersions || fallbackVersions}
         selectedVersions={compareMode.selectedVersions}
         onRemoveVersion={handleRemoveCompareVersion}
         onAddVersion={handleAddCompareVersion}
