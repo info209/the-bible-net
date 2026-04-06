@@ -61,6 +61,7 @@ const bookChapters: { [key: string]: number } = {
 
 interface BibleReaderPageProps {
   onNavigate?: (page: 'home' | 'bible' | 'library' | 'explore') => void;
+  isReadingMode?: boolean;
   verses?: any[];
   chapter?: number;
   version?: string;
@@ -76,7 +77,8 @@ interface BibleReaderPageProps {
 
 export default function BibleReaderPage2(props: BibleReaderPageProps) {
   const { 
-    onNavigate, 
+    onNavigate,
+    isReadingMode = false,
     verses = [], 
     chapter = 1, 
     version = 'NKJV', 
@@ -1135,10 +1137,20 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)] flex flex-col pb-20">
       {/* Main Header/Navbar - SCROLLS AWAY */}
-      <AppHeader />
+      <div 
+        className={`transition-all duration-500 ease-in-out origin-top ${
+          isReadingMode ? 'opacity-0 h-0 overflow-hidden' : 'opacity-100 h-auto'
+        }`}
+      >
+        <AppHeader className="!static" />
+      </div>
 
       {/* Sub Navigation Bar - BECOMES STICKY */}
-      <div className="sticky top-0 left-0 right-0 z-40 glass-light border-b border-white/20 shadow-[var(--shadow-xs)]">
+      <div 
+        className={`sticky transition-all duration-500 ease-in-out ${
+          isReadingMode ? '-top-[60px] opacity-0 pointer-events-none' : 'top-0 opacity-100'
+        } left-0 right-0 z-40 glass-light border-b border-white/20 shadow-[var(--shadow-xs)]`}
+      >
           <div className="max-w-3xl mx-auto px-4 py-1">
             <div className="flex items-center justify-between">
               {/* Book/Chapter/Version selectors */}
@@ -2373,56 +2385,7 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
         </div>
       </div>
 
-      {/* Bottom Navigation Bar - FADES IN/OUT */}
-      <div 
-        className={`fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)] transition-all duration-700 ease-in-out ${
-          showBottomNav ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
-        }`}
-      >
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="flex items-center justify-around h-16">
-            <button
-              onClick={() => onNavigate?.('home')}
-              className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-            >
-              <div className="p-2 rounded-full transition-all">
-                <Home className="size-6 text-gray-500" />
-              </div>
-              <span className="text-xs text-gray-500">Home</span>
-            </button>
 
-            <button
-              onClick={() => onNavigate?.('bible')}
-              className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-            >
-              <div className="p-2 rounded-full bg-[var(--color-primary-teal)]/10 transition-all">
-                <BiBible className="size-6 text-[var(--color-primary-teal)]" />
-              </div>
-              <span className="text-xs text-[var(--color-primary-teal)]">Bible</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate?.('library')}
-              className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-            >
-              <div className="p-2 rounded-full transition-all">
-                <LuLibraryBig className="size-6 text-gray-500" />
-              </div>
-              <span className="text-xs text-gray-500">Library</span>
-            </button>
-
-            <button
-              onClick={() => onNavigate?.('explore')}
-              className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
-            >
-              <div className="p-2 rounded-full transition-all">
-                <Compass className="size-6 text-gray-500" />
-              </div>
-              <span className="text-xs text-gray-500">Explore</span>
-            </button>
-          </div>
-        </div>
-      </div>
 
       {/* Side Menu Overlay */}
       {menuOpen && (

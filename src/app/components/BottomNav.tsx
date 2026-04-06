@@ -1,6 +1,8 @@
 "use client";
 
-import { Home, Book, BookOpen, Compass } from 'lucide-react';
+import { Home, Compass } from 'lucide-react';
+import { BiBible } from 'react-icons/bi';
+import { LuLibraryBig } from 'react-icons/lu';
 import { usePathname } from 'next/navigation';
 
 interface BottomNavProps {
@@ -10,25 +12,23 @@ interface BottomNavProps {
 
 export default function BottomNav({ isVisible = true, onNavigate }: BottomNavProps) {
   const pathname = usePathname();
-  const isBiblePage = pathname?.startsWith('/bible') || false;
+  const isBiblePage = pathname?.startsWith('/bible') || pathname?.startsWith('/bible2') || false;
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home, path: '/home' },
-    { id: 'bible', label: 'Bible', icon: Book, path: '/bible' },
-    { id: 'library', label: 'Library', icon: BookOpen, path: '/library' },
+    { id: 'bible', label: 'Bible', icon: BiBible, path: '/bible' },
+    { id: 'library', label: 'Library', icon: LuLibraryBig, path: '/library' },
     { id: 'explore', label: 'Explore', icon: Compass, path: '/explore' },
   ];
 
   return (
-    <div
-      className={`fixed left-0 right-0 bottom-0 z-[100] glass-medium transition-all duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] ${
-        isVisible
-          ? 'translate-y-0 opacity-100'
-          : 'translate-y-full opacity-0 pointer-events-none'
+    <div 
+      className={`fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)] transition-all duration-700 ease-in-out ${
+        isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
       }`}
     >
-      <div className="max-w-3xl mx-auto pb-safe">
-        <div className="flex items-center justify-around h-16 sm:h-20">
+      <div className="max-w-3xl mx-auto px-4">
+        <div className="flex items-center justify-around h-16">
           {navItems.map((item) => {
             const isActive = (pathname as string) === item.path || (item.id === 'bible' && isBiblePage);
             const Icon = item.icon;
@@ -37,24 +37,12 @@ export default function BottomNav({ isVisible = true, onNavigate }: BottomNavPro
               <button
                 key={item.id}
                 onClick={() => onNavigate?.(item.id as any)}
-                className="relative flex flex-col items-center justify-center gap-1 transition-all duration-200 outline-none hover:-translate-y-1 hover:scale-105 active:scale-90"
+                className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
               >
-                <div
-                  className={`relative p-2.5 rounded-2xl transition-all duration-500 ${
-                    isActive
-                      ? 'bg-[var(--color-primary-teal)] text-white shadow-lg shadow-[var(--color-primary-teal)]/20'
-                      : 'text-[var(--color-text-secondary)] hover:text-[var(--color-text-primary)]'
-                  }`}
-                >
-                  <Icon className={`size-6 ${isActive ? 'stroke-[2.5px]' : 'stroke-2'}`} />
+                <div className={`p-2 rounded-full transition-all ${isActive ? 'bg-[var(--color-primary-teal)]/10' : ''}`}>
+                  <Icon className={`size-6 ${isActive ? 'text-[var(--color-primary-teal)]' : 'text-gray-500'}`} />
                 </div>
-                <span
-                  className={`text-[10px] font-bold tracking-tight uppercase transition-all duration-300 ${
-                    isActive
-                      ? 'text-[var(--color-primary-teal)] opacity-100'
-                      : 'text-[var(--color-text-tertiary)] opacity-60'
-                  }`}
-                >
+                <span className={`text-xs ${isActive ? 'text-[var(--color-primary-teal)]' : 'text-gray-500'}`}>
                   {item.label}
                 </span>
               </button>

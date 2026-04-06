@@ -1370,11 +1370,12 @@ export default function BibleReaderPage2Container({ onNavigate }: BibleReaderPag
 
   return (
     <BibleReaderPage2
+      isReadingMode={isReadingMode}
       onNavigate={onNavigate}
       verses={currentChapterVerses}
       chapter={selectedChapter}
-      version={selectedVersionId || 'KJV'}
-      book={selectedBookId || 'Genesis'}
+      version={displayVersionName || 'KJV'}
+      book={displayBookName || 'Genesis'}
       onChapterChange={setSelectedChapter}
       onBookChange={(bId) => {
         const bookObj = [...bibleBooksState['Old Testament'], ...bibleBooksState['New Testament']].find(b => b.id === bId || b.name === bId);
