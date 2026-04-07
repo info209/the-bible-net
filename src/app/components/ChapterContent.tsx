@@ -99,7 +99,7 @@ export default function ChapterContent({
       if (onVerseLongPress) onVerseLongPress(verseNum, e);
       isLongPressRef.current = true;
       longPressTimerRef.current = null;
-    }, 600);
+    }, 500); // Stabilized at 500ms as requested
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -238,7 +238,7 @@ export default function ChapterContent({
               <div
                 key={verse.number}
                 id={`verse-${book}-${chapter}-${verse.number}`}
-                className={`relative transition-all duration-300 rounded px-2 py-1 select-text cursor-pointer hover:bg-black/[0.02] ${
+                className={`relative transition-all duration-300 rounded px-2 py-1 select-none cursor-pointer hover:bg-black/[0.02] ${
                   isSelected ? 'ring-2 ring-accent-rose/30 bg-accent-rose-lighter/50' : ''
                 }`}
                 onMouseDown={(e) => handlePressStart(e, verse.number)}

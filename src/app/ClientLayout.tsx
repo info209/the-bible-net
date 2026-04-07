@@ -3,8 +3,7 @@
 import { useRouter, usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import AppHeader from "./components/AppHeader";
-import BibleReaderPage from "./components/BibleReaderPage";
-import BibleReaderPage2Container from "./components/bible2/BibleReaderPage2Container";
+import BibleReaderPageContainer from "./components/BibleReaderPageContainer";
 import BottomNav from "./components/BottomNav";
 
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
@@ -62,8 +61,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       {isPublicAppPage && !isAnyBiblePage && <AppHeader />}
       
       {/* Heavy Bible readers mount outside main to take full height */}
-      {isBiblePage && <BibleReaderPage onNavigate={handleNavigate} />}
-      {isBible2Page && <BibleReaderPage2Container onNavigate={handleNavigate} />}
+      {isBiblePage && <BibleReaderPageContainer onNavigate={handleNavigate} />}
+      {isBible2Page && <BibleReaderPageContainer onNavigate={handleNavigate} />}
       
       {/* Standard BottomNav for all app pages */}
       {isPublicAppPage && <BottomNav isVisible={!hideBottomNav} onNavigate={handleNavigate} />}
