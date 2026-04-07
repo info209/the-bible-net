@@ -2102,148 +2102,145 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       {/* Audio Controls - MOVES UP/DOWN WITH SCROLL */}
       {/* Audio Controls - Navigation only side buttons */}
+      {/* Unified Bottom Controls - Play + Navigation */}
       <div 
-        className={`fixed left-0 right-0 z-30 pointer-events-none transition-all duration-500 ease-in-out transform-gpu ${
-          showAudioControls ? 'translate-y-0 opacity-100' : 'translate-y-[150%] opacity-0'
-        }`}
-        style={{ bottom: '90px' }}
-      >
-        <div className="max-w-3xl mx-auto px-6 sm:px-8">
-          <div className="flex items-center justify-between pointer-events-auto">
-            {/* Previous Button - Left side - Only show if not at first chapter */}
-            {!isFirstChapterOfBible && (
-              <button 
-                onClick={handlePrevious}
-                className="ml-[7px] p-3 rounded-full transition-all hover:scale-105 active:scale-95"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.25) 100%)',
-                  backdropFilter: 'blur(40px) saturate(200%)',
-                  WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-                  border: '1px solid rgba(255, 255, 255, 0.7)',
-                  boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15), 0 2px 8px 0 rgba(0, 0, 0, 0.08), inset 0 1px 0 0 rgba(255, 255, 255, 0.8), inset 0 -1px 0 0 rgba(255, 255, 255, 0.2)'
-                }}
-              >
-                <ChevronLeft className="size-5 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-              </button>
-            )}
-
-            {/* Spacer for alignment when left button is hidden */}
-            {isFirstChapterOfBible && <div className="w-[52px]" />}
-
-      {/* Independent Play Button - ALWAYS VISIBLE (unless in background of popup) */}
-      <div 
-        className="fixed left-1/2 -translate-x-1/2 bottom-[80px] z-[60] pointer-events-auto"
-        onClick={() => {
-          // If any popup is open, close them all first
-          if (showBookSelector || showChapterSelector || showVerseSelector || showVersionSelector || showMusicSelector || showMoreMenu || showSettingsMenu || showCompareSelector || showCompareMenu || showSearch) {
-            setShowBookSelector(false);
-            setShowChapterSelector(false);
-            setShowVerseSelector(false);
-            setShowVersionSelector(false);
-            setShowMusicSelector(false);
-            setShowMoreMenu(false);
-            setShowSettingsMenu(false);
-            setShowCompareSelector(false);
-            setShowCompareMenu(false);
-            setShowSearch(false);
-            return;
-          }
+        className="fixed left-0 right-0 z-[60] flex items-center justify-center transition-all duration-500 ease-in-out pointer-events-none"
+        style={{ 
+          bottom: isReadingMode ? '16px' : 'calc(64px + 16px)',
         }}
       >
-        <AnimatePresence mode="wait">
-          {audioControlExpanded ? (
-            <motion.div
-              key="expanded"
-              initial={{ width: 56, opacity: 0, scale: 0.9 }}
-              animate={{ width: 'auto', opacity: 1, scale: 1 }}
-              exit={{ width: 56, opacity: 0, scale: 0.9 }}
-              className="rounded-full px-2 py-1 flex items-center gap-3"
+        <div className="relative w-full max-w-3xl mx-auto h-[72px] flex items-center justify-center px-6">
+          {/* Previous Button - Left side */}
+          {!isFirstChapterOfBible && (
+            <button 
+              onClick={handlePrevious}
+              className="absolute left-6 p-3 rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto"
               style={{
                 background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.25) 100%)',
                 backdropFilter: 'blur(40px) saturate(200%)',
                 WebkitBackdropFilter: 'blur(40px) saturate(200%)',
                 border: '1px solid rgba(255, 255, 255, 0.7)',
-                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)'
+                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
+                minWidth: '48px',
+                minHeight: '48px'
               }}
             >
-              <button 
-                onClick={(e) => { e.stopPropagation(); setShowAudioControlPanel(true); }}
-                className="p-1.5 rounded-full hover:bg-white/40 transition-colors"
-              >
-                <RiEqualizer3Fill className="size-5 text-[var(--color-primary-teal)]" />
-              </button>
+              <ChevronLeft className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+            </button>
+          )}
 
-              <button 
-                onClick={(e) => { e.stopPropagation(); handleNarrationPlayPause(); }}
-                className="relative w-11 h-11 flex items-center justify-center bg-white/30 rounded-full"
-              >
-                {audioPlaying ? (
-                  <Pause className="size-5 text-[var(--color-primary-teal)] fill-current" />
-                ) : (
-                  <Play className="size-5 text-[var(--color-primary-teal)] fill-current translate-x-0.5" />
-                )}
-              </button>
+          {/* Center Play Button Container */}
+          <div 
+            className="relative pointer-events-auto"
+            onClick={() => {
+              if (showBookSelector || showChapterSelector || showVerseSelector || showVersionSelector || showMusicSelector || showMoreMenu || showSettingsMenu || showCompareSelector || showCompareMenu || showSearch) {
+                setShowBookSelector(false);
+                setShowChapterSelector(false);
+                setShowVerseSelector(false);
+                setShowVersionSelector(false);
+                setShowMusicSelector(false);
+                setShowMoreMenu(false);
+                setShowSettingsMenu(false);
+                setShowCompareSelector(false);
+                setShowCompareMenu(false);
+                setShowSearch(false);
+                return;
+              }
+            }}
+          >
+            <AnimatePresence mode="wait">
+              {audioControlExpanded ? (
+                <motion.div
+                  key="expanded"
+                  initial={{ width: 56, opacity: 0, scale: 0.9 }}
+                  animate={{ width: 'auto', opacity: 1, scale: 1 }}
+                  exit={{ width: 56, opacity: 0, scale: 0.9 }}
+                  className="rounded-full px-2 py-1 flex items-center gap-3"
+                  style={{
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.25) 100%)',
+                    backdropFilter: 'blur(40px) saturate(200%)',
+                    WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+                    border: '1px solid rgba(255, 255, 255, 0.7)',
+                    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
+                    minHeight: '56px'
+                  }}
+                >
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); setShowAudioControlPanel(true); }}
+                    className="p-2 rounded-full hover:bg-white/40 transition-colors"
+                  >
+                    <RiEqualizer3Fill className="size-6 text-[var(--color-primary-teal)]" />
+                  </button>
 
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAudioControlExpanded(false);
-                  setAudioPlaying(false);
-                  stopNarration();
-                }}
-                className="p-1.5 rounded-full hover:bg-white/40 transition-colors"
-              >
-                <X className="size-5 text-[var(--color-primary-teal)]" />
-              </button>
-            </motion.div>
-          ) : (
-            <motion.button
-              key="collapsed"
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.8, opacity: 0 }}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
-              onClick={(e) => {
-                // If popups are handled by the outer div, this will still trigger narration
-                setAudioControlExpanded(true);
-                handleNarrationPlayPause();
-              }}
-              className="p-5 rounded-full shadow-lg"
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); handleNarrationPlayPause(); }}
+                    className="relative w-12 h-12 flex items-center justify-center bg-white/30 rounded-full"
+                  >
+                    {audioPlaying ? (
+                      <Pause className="size-6 text-[var(--color-primary-teal)] fill-current" />
+                    ) : (
+                      <Play className="size-6 text-[var(--color-primary-teal)] fill-current translate-x-0.5" />
+                    )}
+                  </button>
+
+                  <button 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAudioControlExpanded(false);
+                      setAudioPlaying(false);
+                      stopNarration();
+                    }}
+                    className="p-2 rounded-full hover:bg-white/40 transition-colors"
+                  >
+                    <X className="size-6 text-[var(--color-primary-teal)]" />
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.button
+                  key="collapsed"
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => {
+                    setAudioControlExpanded(true);
+                    handleNarrationPlayPause();
+                  }}
+                  className="flex items-center justify-center rounded-full shadow-lg"
+                  style={{
+                    width: '64px',
+                    height: '64px',
+                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.3) 100%)',
+                    backdropFilter: 'blur(40px) saturate(200%)',
+                    WebkitBackdropFilter: 'blur(40px) saturate(200%)',
+                    border: '1px solid rgba(255, 255, 255, 0.8)'
+                  }}
+                >
+                  <Play className="size-8 text-[var(--color-primary-teal)] fill-current" />
+                </motion.button>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* Next Button - Right side */}
+          {!isLastChapterOfBible && (
+            <button 
+              onClick={handleNext}
+              className="absolute right-6 p-3 rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto"
               style={{
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.3) 100%)',
+                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.25) 100%)',
                 backdropFilter: 'blur(40px) saturate(200%)',
                 WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-                border: '1px solid rgba(255, 255, 255, 0.8)'
+                border: '1px solid rgba(255, 255, 255, 0.7)',
+                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
+                minWidth: '48px',
+                minHeight: '48px'
               }}
             >
-              <Play className="size-7 text-[var(--color-primary-teal)] fill-current" />
-            </motion.button>
+              <ChevronRight className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+            </button>
           )}
-        </AnimatePresence>
-      </div>
-
-
-            {/* Spacer for alignment when right button is hidden */}
-            {isLastChapterOfBible && <div className="w-[60px]" />}
-
-            {/* Next Button - Right side - Only show if not at last chapter */}
-            {!isLastChapterOfBible && (
-              <button 
-                onClick={handleNext}
-                className="mr-[7px] p-3 rounded-full transition-all hover:scale-105 active:scale-95"
-                style={{
-                  background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.25) 100%)',
-                  backdropFilter: 'blur(40px) saturate(200%)',
-                  WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-                  border: '1px solid rgba(255, 255, 255, 0.7)',
-                  boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15), 0 2px 8px 0 rgba(0, 0, 0, 0.08), inset 0 1px 0 0 rgba(255, 255, 255, 0.8), inset 0 -1px 0 0 rgba(255, 255, 255, 0.2)'
-                }}
-              >
-                <ChevronRight className="size-5 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-              </button>
-            )}
-          </div>
         </div>
       </div>
 
