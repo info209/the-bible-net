@@ -91,7 +91,18 @@ export default function CompareView({
         const results = await Promise.all(fetchPromises);
         
         if (isMounted) {
-          const successResults = results.filter(r => r.success).map(r => r.data);
+          const successResults = results
+            .map((r, index) => {
+              if (r.success) {
+                return {
+                  ...r.data,
+                  versionId: resolvedVersions[index].id
+                };
+              }
+              return null;
+            })
+            .filter(Boolean);
+          
           if (successResults.length > 0) {
             setContents(successResults);
           } else {

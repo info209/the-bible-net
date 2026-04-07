@@ -64,6 +64,7 @@ interface BibleReaderPageProps {
   isReadingMode?: boolean;
   showAudioControls?: boolean;
   apiVersions?: any[];
+  books?: { 'Old Testament': { id: string, name: string }[], 'New Testament': { id: string, name: string }[] };
   verses?: any[];
   chapter?: number;
   version?: string;
@@ -83,6 +84,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     isReadingMode = false,
     showAudioControls = true,
     apiVersions,
+    books = {
+      'Old Testament': bibleBooks['Old Testament'].map(name => ({ id: name, name })),
+      'New Testament': bibleBooks['New Testament'].map(name => ({ id: name, name }))
+    },
     verses = [],
     chapter = 1,
     version = 'NKJV',
@@ -215,7 +220,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   ];
 
   // Helper functions for navigation
-  const allBooks = [...bibleBooks['Old Testament'], ...bibleBooks['New Testament']];
+  const allBooks = [...books['Old Testament'], ...books['New Testament']].map(b => typeof b === 'string' ? b : b.name);
   const currentBookIndex = allBooks.indexOf(selectedBook);
   const isFirstChapterOfBible = selectedBook === 'Genesis' && selectedChapter === 1;
   const isLastChapterOfBible = selectedBook === 'Revelation' && selectedChapter === bookChapters['Revelation'];
@@ -1098,7 +1103,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   }, [selectedBook, selectedChapter]);
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)] flex flex-col pb-20 overflow-x-hidden" style={{ "--header-height": "60px" } as any}>
+    <div className="min-h-screen bg-[var(--color-bg-primary)] flex flex-col pb-20" style={{ "--header-height": "60px" } as any}>
       {/* Main Header/Navbar - SCROLLS AWAY */}
       <AppHeader className="!static" />
 
@@ -1245,24 +1250,32 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">Old Testament</h4>
                   <div className="space-y-2">
                     {(bookSortType === 'alphabetical'
-                      ? [...bibleBooks['Old Testament']].sort()
-                      : bibleBooks['Old Testament']
-                    ).map(book => (
-                      <button
-                        key={book}
-                        onClick={() => {
-                          setSelectedBook(book);
-                          setShowBookSelector(false);
-                          setSelectedChapter(1);
-                        }}
-                        className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
-                            ? 'text-[var(--color-accent-rose)] font-medium'
-                            : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
-                          }`}
-                      >
-                        {book}
-                      </button>
-                    ))}
+                      ? [...books['Old Testament']].sort((a, b) => {
+                          const nameA = typeof a === 'string' ? a : a.name;
+                          const nameB = typeof b === 'string' ? b : b.name;
+                          return nameA.localeCompare(nameB);
+                        })
+                      : books['Old Testament']
+                    ).map(book => {
+                      const bookName = typeof book === 'string' ? book : book.name;
+                      const bookId = typeof book === 'string' ? book : book.id;
+                      return (
+                        <button
+                          key={bookId}
+                          onClick={() => {
+                            setSelectedBook(bookId);
+                            setShowBookSelector(false);
+                            setSelectedChapter(1);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
+                              ? 'text-[var(--color-accent-rose)] font-medium'
+                              : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
+                            }`}
+                        >
+                          {bookName}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1271,24 +1284,32 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">New Testament</h4>
                   <div className="space-y-2">
                     {(bookSortType === 'alphabetical'
-                      ? [...bibleBooks['New Testament']].sort()
-                      : bibleBooks['New Testament']
-                    ).map(book => (
-                      <button
-                        key={book}
-                        onClick={() => {
-                          setSelectedBook(book);
-                          setShowBookSelector(false);
-                          setSelectedChapter(1);
-                        }}
-                        className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
-                            ? 'text-[var(--color-accent-rose)] font-medium'
-                            : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
-                          }`}
-                      >
-                        {book}
-                      </button>
-                    ))}
+                      ? [...books['New Testament']].sort((a, b) => {
+                          const nameA = typeof a === 'string' ? a : a.name;
+                          const nameB = typeof b === 'string' ? b : b.name;
+                          return nameA.localeCompare(nameB);
+                        })
+                      : books['New Testament']
+                    ).map(book => {
+                      const bookName = typeof book === 'string' ? book : book.name;
+                      const bookId = typeof book === 'string' ? book : book.id;
+                      return (
+                        <button
+                          key={bookId}
+                          onClick={() => {
+                            setSelectedBook(bookId);
+                            setShowBookSelector(false);
+                            setSelectedChapter(1);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
+                              ? 'text-[var(--color-accent-rose)] font-medium'
+                              : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
+                            }`}
+                        >
+                          {bookName}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               </div>
