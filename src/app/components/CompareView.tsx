@@ -1,12 +1,17 @@
+"use client";
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { mockBibleContent } from './ChapterContent';
-import { teluguBible, hindiBible } from './BibleData';
+import { X } from 'lucide-react';
+import { ComparisonSkeleton } from './BibleSkeleton';
 
 interface CompareViewProps {
   book: string;
   chapter: number;
-  selectedVersions: string[];
+  selectedVersions: string[]; // These can be names OR abbreviations like 'NKJV'
   selectedTheme: 'light' | 'sepia' | 'cream' | 'dark';
+  apiVersions?: any[]; // Full version list from API to resolve names to IDs
+  font?: string;
+  fontSize?: number;
 }
 
 const themeConfig = {
@@ -34,86 +39,169 @@ const themeConfig = {
 
 // Background colors for each version (subtle tints)
 const versionColors = [
-  'rgba(255, 107, 107, 0.03)', // Coral tint
-  'rgba(44, 184, 176, 0.03)',  // Teal tint
-  'rgba(255, 159, 64, 0.03)',  // Amber tint
-  'rgba(138, 88, 207, 0.03)'   // Purple tint
+  'rgba(210, 57, 82, 0.03)', // Rose/Coral
+  'rgba(0, 106, 111, 0.03)', // Teal
+  'rgba(59, 130, 246, 0.03)', // Blue
+  'rgba(245, 158, 11, 0.03)', // Amber
+  'rgba(16, 185, 129, 0.03)', // Emerald
+  'rgba(139, 92, 246, 0.03)', // Violet
 ];
 
-export default function CompareView({ book, chapter, selectedVersions, selectedTheme }: CompareViewProps) {
+export default function CompareView({ 
+  book, 
+  chapter, 
+  selectedVersions, 
+  selectedTheme, 
+  apiVersions = [],
+  font = 'Inter',
+  fontSize = 18
+}: CompareViewProps) {
   const currentTheme = themeConfig[selectedTheme];
+  const [contents, setContents] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Get content for all selected versions
-  const getVersionContent = (versionName: string) => {
-    let bibleData = mockBibleContent;
-    if (versionName === 'TELBSI') {
-      bibleData = teluguBible as any;
-    } else if (versionName === 'HINBSI') {
-      bibleData = hindiBible as any;
-    }
-    return bibleData[book]?.[chapter]?.verses || [];
-  };
+  // Map selected versions to API IDs and short names
+  const resolvedVersions = useMemo(() => {
+    return selectedVersions.map(vSource => {
+      const match = apiVersions.find(av => 
+        av.id === vSource || av.name === vSource || av.fullName === vSource
+      );
+      return {
+        id: match?.id || vSource,
+        shortName: match?.name || vSource,
+        fullName: match?.fullName || vSource
+      };
+    });
+  }, [selectedVersions, apiVersions]);
 
-  const allVersionsContent = selectedVersions.map(versionName => ({
-    version: versionName,
-    verses: getVersionContent(versionName)
-  }));
+  useEffect(() => {
+    let isMounted = true;
 
-  // Get the maximum number of verses (in case versions have different verse counts)
-  const maxVerses = Math.max(...allVersionsContent.map(v => v.verses.length));
+    const fetchAllVersions = async () => {
+      if (!book || !chapter || resolvedVersions.length === 0) return;
+      
+      setIsLoading(true);
+      setError(null);
+      try {
+        const fetchPromises = resolvedVersions.map(v => 
+          fetch(`/api/v1/bible/${v.id}/${book}/${chapter}`).then(res => res.json())
+        );
+        
+        const results = await Promise.all(fetchPromises);
+        
+        if (isMounted) {
+          const successResults = results.filter(r => r.success).map(r => r.data);
+          if (successResults.length > 0) {
+            setContents(successResults);
+          } else {
+            setError('Failed to fetch version contents');
+          }
+        }
+      } catch (err) {
+        if (isMounted) {
+          setError('An error occurred during comparison');
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
 
-  // Check if we're on mobile (less than 768px)
+    fetchAllVersions();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [book, chapter, resolvedVersions]);
+
+  // Get all unique verse numbers across all versions for alignment
+  const allVerseNumbers = useMemo(() => {
+    const numbers = new Set<number>();
+    contents.forEach(content => {
+      content.verses?.forEach((v: any) => {
+        if (v.number) numbers.add(Number(v.number));
+      });
+    });
+    return Array.from(numbers).sort((a, b) => a - b);
+  }, [contents]);
+
+  if (isLoading) {
+    return (
+      <div className="pt-20">
+        <ComparisonSkeleton theme={currentTheme} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] px-6 text-center w-full" style={{ backgroundColor: currentTheme.bg }}>
+        <div className="size-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+          <X className="size-8 text-red-500" />
+        </div>
+        <h3 className="text-lg font-bold text-gray-900 mb-2">Comparison Failed</h3>
+        <p className="text-gray-500 max-w-xs">{error}</p>
+      </div>
+    );
+  }
+
   const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
-  const isTablet = typeof window !== 'undefined' && window.innerWidth >= 768 && window.innerWidth < 1024;
 
   // Inline layout for mobile
   if (isMobile) {
     return (
-      <div className="px-4 py-6">
-        {Array.from({ length: maxVerses }).map((_, verseIndex) => (
-          <div key={verseIndex} className="mb-8" style={verseIndex === 0 ? { scrollMarginTop: '64px' } : {}}>
-            {allVersionsContent.map((versionData, vIndex) => {
-              const verse = versionData.verses[verseIndex];
+      <div className="px-4 py-16">
+        {allVerseNumbers.map((num, verseIndex) => (
+          <div key={num} className="mb-10 first:scroll-mt-20">
+            {contents.map((versionData, vIndex) => {
+              const verse = versionData.verses.find((v: any) => v.number === num);
               if (!verse) return null;
+
+              const versionMeta = resolvedVersions.find(rv => rv.id === versionData.versionId);
+              const bg = versionColors[vIndex % versionColors.length];
 
               return (
                 <motion.div
-                  key={`${versionData.version}-${verseIndex}`}
+                  key={`${versionData.versionId}-${num}`}
                   initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: verseIndex * 0.02 }}
-                  className="mb-4 pb-4"
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3 }}
+                  className="mb-4 pb-4 px-4 py-4 rounded-xl border border-black/[0.03]"
                   style={{
-                    backgroundColor: vIndex < versionColors.length ? versionColors[vIndex] : 'transparent',
-                    borderRadius: '8px',
-                    padding: '12px'
+                    backgroundColor: currentTheme.bg === '#fefefe' ? bg : 'rgba(255, 255, 255, 0.03)',
                   }}
                 >
-                  {/* Version Label */}
+                  {/* Version Label - Showing Abbreviation */}
                   <div 
-                    className="text-xs font-semibold mb-2 tracking-wide"
-                    style={{ 
-                      color: currentTheme.verseNumber,
-                      opacity: 0.8
-                    }}
+                    className="text-[10px] font-bold mb-2 tracking-widest uppercase opacity-60"
+                    style={{ color: currentTheme.verseNumber }}
                   >
-                    {versionData.version}
+                    {versionMeta?.shortName || versionData.versionId}
                   </div>
 
                   {/* Verse Text */}
-                  <div className="leading-relaxed" style={{ color: currentTheme.text }}>
+                  <div 
+                    className="leading-relaxed" 
+                    style={{ 
+                      color: currentTheme.text,
+                      fontFamily: font,
+                      fontSize: `${fontSize}px`
+                    }}
+                  >
                     <span 
-                      className="font-semibold mr-2"
-                      style={{ color: currentTheme.verseNumber }}
+                      className="font-bold mr-3"
+                      style={{ color: currentTheme.verseNumber, opacity: 0.4 }}
                     >
-                      {verse.number}
+                      {num}
                     </span>
                     <span>{verse.text}</span>
                   </div>
                 </motion.div>
               );
             })}
-            {/* Removed divider line */}
           </div>
         ))}
       </div>
@@ -121,68 +209,88 @@ export default function CompareView({ book, chapter, selectedVersions, selectedT
   }
 
   // Side-by-side layout for tablet/desktop
-  const columnCount = selectedVersions.length;
-  const columnWidth = columnCount === 2 ? '50%' : columnCount === 3 ? '33.333%' : '25%';
+  const columnCount = contents.length;
+  const gridTemplateColumns = `repeat(${columnCount}, minmax(0, 1fr))`;
 
   return (
-    <div className="px-4 py-6">
-      {/* Column Headers */}
-      <div className="flex gap-4 mb-6 pb-4 border-b sticky top-[60px] z-10 backdrop-blur-xl" style={{ borderColor: `${currentTheme.text}20`, backgroundColor: currentTheme.bg }}>
-        {allVersionsContent.map((versionData, index) => (
-          <div
-            key={versionData.version}
-            className="font-bold text-center"
-            style={{ 
-              width: columnWidth,
-              color: currentTheme.verseNumber
-            }}
-          >
-            {versionData.version}
-          </div>
-        ))}
+    <div className="px-4 py-16 max-w-7xl mx-auto">
+      {/* Column Headers - Sticky */}
+      <div 
+        className="grid gap-6 mb-8 pb-4 border-b sticky top-[60px] z-10 backdrop-blur-xl transition-colors duration-300" 
+        style={{ 
+          borderColor: `${currentTheme.text}15`, 
+          backgroundColor: `${currentTheme.bg}CC`,
+          gridTemplateColumns 
+        }}
+      >
+        {contents.map((versionData, index) => {
+          const versionMeta = resolvedVersions.find(rv => rv.id === versionData.versionId);
+          return (
+            <div
+              key={versionData.versionId}
+              className="font-black text-center py-2 text-xs sm:text-sm tracking-[0.2em] uppercase"
+              style={{ color: currentTheme.verseNumber }}
+            >
+              {versionMeta?.shortName || versionData.versionId}
+            </div>
+          );
+        })}
       </div>
 
       {/* Verse Rows */}
-      {Array.from({ length: maxVerses }).map((_, verseIndex) => (
-        <motion.div
-          key={verseIndex}
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: verseIndex * 0.02 }}
-          className="flex gap-4 mb-6"
-          style={verseIndex === 0 ? { scrollMarginTop: '64px' } : {}}
-        >
-          {allVersionsContent.map((versionData, vIndex) => {
-            const verse = versionData.verses[verseIndex];
+      <div className="space-y-6">
+        {allVerseNumbers.map((num, verseIndex) => (
+          <div
+            key={num}
+            className="grid gap-6"
+            style={{ gridTemplateColumns }}
+          >
+            {contents.map((versionData, vIndex) => {
+              const verse = versionData.verses.find((v: any) => v.number === num);
+              const bg = versionColors[vIndex % versionColors.length];
 
-            return (
-              <div
-                key={`${versionData.version}-${verseIndex}`}
-                className="px-4 py-3 rounded-lg"
-                style={{
-                  width: columnWidth,
-                  backgroundColor: vIndex < versionColors.length ? versionColors[vIndex] : 'transparent',
-                  color: currentTheme.text
-                }}
-              >
-                {verse ? (
-                  <div className="leading-relaxed">
-                    <span 
-                      className="font-semibold mr-2"
-                      style={{ color: currentTheme.verseNumber }}
-                    >
-                      {verse.number}
-                    </span>
-                    <span>{verse.text}</span>
-                  </div>
-                ) : (
-                  <div className="text-center opacity-30">—</div>
-                )}
-              </div>
-            );
-          })}
-        </motion.div>
-      ))}
+              return (
+                <motion.div 
+                  key={`${versionData.versionId}-${num}`} 
+                  initial={{ opacity: 0, y: 15 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.4, delay: vIndex * 0.05 }}
+                  className="px-6 py-6 rounded-[2rem] transition-all hover:scale-[1.02] border border-black/[0.02] shadow-sm flex flex-col"
+                  style={{ 
+                    backgroundColor: currentTheme.bg === '#fefefe' ? bg : 'rgba(255, 255, 255, 0.03)',
+                  }}
+                >
+                   {verse ? (
+                    <div className="flex items-start gap-4">
+                      <span 
+                        className="font-bold text-[11px] mt-1.5 opacity-30 select-none" 
+                        style={{ color: currentTheme.verseNumber }}
+                      >
+                        {num}
+                      </span>
+                      <p 
+                        style={{ 
+                          fontFamily: font, 
+                          fontSize: `${fontSize}px`,
+                          color: currentTheme.text 
+                        }}
+                        className="leading-relaxed font-normal"
+                      >
+                        {verse.text}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex items-center justify-center italic opacity-20 text-sm">
+                      Verse not available
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

@@ -169,6 +169,22 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
   // Prevent scroll handler from interfering with clicks
   const isUserInteracting = useRef(false);
   
+  const isAnyPopupOpen = showBookSelector || showChapterSelector || 
+    showVersionSelector || showMusicSelector || showMoreMenu || 
+    showSettingsMenu || showAudioControlPanel || showVerseSelector || 
+    showTimerMenu || showSearch || showCompareSelector || showCompareMenu;
+
+  useEffect(() => {
+    if (isAnyPopupOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = 'unset';
+    }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, [isAnyPopupOpen]);
+
   // Audio narration state
   const [narrationPlaying, setNarrationPlaying] = useState(false);
   const [currentReadingVerse, setCurrentReadingVerse] = useState<number | null>(null);
@@ -2059,6 +2075,9 @@ export default function BibleReaderPage2(props: BibleReaderPageProps) {
                         chapter={selectedChapter}
                         selectedVersions={compareMode.selectedVersions}
                         selectedTheme={selectedTheme}
+                        apiVersions={apiVersions}
+                        font={selectedFont}
+                        fontSize={fontSize}
                       />
                     ) : (
                       <ChapterContent

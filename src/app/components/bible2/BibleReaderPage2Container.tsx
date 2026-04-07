@@ -401,10 +401,13 @@ export default function BibleReaderPage2Container({ onNavigate }: BibleReaderPag
   // Lock background scroll when any popup is open
   useEffect(() => {
     if (isAnyPopupOpen) {
-      if (scrollContainerRef.current) scrollContainerRef.current.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
     } else {
-      if (scrollContainerRef.current) scrollContainerRef.current.style.overflow = '';
+      document.body.style.overflow = 'unset';
     }
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, [isAnyPopupOpen]);
 
   // Debounced Bible search
@@ -1264,16 +1267,13 @@ export default function BibleReaderPage2Container({ onNavigate }: BibleReaderPag
 
   // Scroll detection logic - True Fullscreen-Like Reading Mode
   useEffect(() => {
-    const scrollContainer = scrollContainerRef.current;
     let animationFrame: number | null = null;
-    let lastScrollYValue = 0;
+    let lastScrollYValue = typeof window !== 'undefined' ? window.scrollY : 0;
 
     const executeScrollLogic = () => {
-      if (!scrollContainer) return;
-
-      const currentScrollY = scrollContainer.scrollTop;
-      const scrollHeight = scrollContainer.scrollHeight;
-      const clientHeight = scrollContainer.clientHeight;
+      const currentScrollY = window.scrollY;
+      const scrollHeight = document.documentElement.scrollHeight;
+      const clientHeight = window.innerHeight;
       const scrolledToBottom = scrollHeight - currentScrollY - clientHeight < 50;
       const deltaY = currentScrollY - lastScrollYValue;
       const direction = deltaY > 0 ? 'down' : deltaY < 0 ? 'up' : scrollDirectionRef.current;
@@ -1313,13 +1313,11 @@ export default function BibleReaderPage2Container({ onNavigate }: BibleReaderPag
       });
     };
 
-    if (scrollContainer) {
-      scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
-      return () => {
-        scrollContainer.removeEventListener('scroll', handleScroll);
-        if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
-      };
-    }
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (animationFrame !== null) window.cancelAnimationFrame(animationFrame);
+    };
   }, [selectedBookId, selectedChapter, selectedVersionId, displayBookName, displayVersionName, updateProgress]);
 
   useEffect(() => {
@@ -1336,10 +1334,6 @@ export default function BibleReaderPage2Container({ onNavigate }: BibleReaderPag
   // Safari-specific fix: Trigger minimal scroll when entering Reading Mode to encourage address bar hide
   useEffect(() => {
     if (isReadingMode) {
-      const scrollContainer = scrollContainerRef.current;
-      if (scrollContainer && scrollContainer.scrollTop === 0) {
-        scrollContainer.scrollTo({ top: 1, behavior: 'auto' });
-      }
       if (typeof window !== 'undefined' && window.scrollY === 0) {
         window.scrollTo(0, 1);
       }
