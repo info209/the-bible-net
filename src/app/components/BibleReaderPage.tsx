@@ -1099,112 +1099,113 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)] flex flex-col pb-20 overflow-x-hidden" style={{ "--header-height": "60px" } as any}>
-      {/* Main Header/Navbar - STICKY TOP */}
+      {/* Unified Sticky Header - Contains both Main and Sub Navigation */}
       <div 
-        className={`sticky transition-all duration-300 ease-in-out transform-gpu z-[50] ${
-          isReadingMode ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
-        }`}
-        style={{ top: isReadingMode ? '-60px' : '0' }}
+        className="sticky top-0 z-[50] w-full overflow-hidden"
+        style={{ height: 'auto' }}
       >
-        <AppHeader className="!static" />
-      </div>
+        <div 
+          className="transition-transform duration-500 ease-in-out transform-gpu"
+          style={{ 
+            transform: isReadingMode ? 'translateY(-60px)' : 'translateY(0)'
+          }}
+        >
+          {/* Main App Header (60px height) */}
+          <div className={`${isReadingMode ? 'opacity-0' : 'opacity-100'} transition-opacity duration-500`}>
+            <AppHeader className="!static" />
+          </div>
 
-      {/* Sub Navigation Bar - STICKY BELOW HEADER */}
-      <div 
-        className={`sticky transition-all duration-300 ease-in-out transform-gpu ${
-          isReadingMode ? 'top-0' : 'top-[var(--header-height)]'
-        } left-0 right-0 z-[40] glass-light border-b border-white/20 shadow-[var(--shadow-xs)] opacity-100 translate-y-0`}
-      >
-          <div className="max-w-3xl mx-auto px-4 py-1">
-            <div className="flex items-center justify-between">
-              {/* Book/Chapter/Version selectors */}
-              <div className="flex items-center space-x-4">
-                <button
-                  onClick={() => {
-                    setShowBookSelector(!showBookSelector);
-                    setShowChapterSelector(false);
-                    setShowVersionSelector(false);
-                  }}
-                  className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
-                >
-                  <span className="text-sm font-normal">{selectedBook}</span>
-                  <ChevronDown className="size-3" />
-                </button>
-
-                <button
-                  onClick={() => {
-                    setShowChapterSelector(!showChapterSelector);
-                    setShowBookSelector(false);
-                    setShowVersionSelector(false);
-                  }}
-                  className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
-                >
-                  <span className="text-sm font-normal">{selectedChapter}</span>
-                  <ChevronDown className="size-3" />
-                </button>
-
-                {compareMode.isActive ? (
-                  <span className="text-sm font-normal text-[var(--color-text-primary)] opacity-70">
-                    Comparing
-                  </span>
-                ) : (
+          {/* Sub Navigation Bar - Will slide to top: 0 when header translates up */}
+          <div className="glass-light border-b border-white/20 shadow-[var(--shadow-xs)]">
+            <div className="max-w-3xl mx-auto px-4 py-1">
+              <div className="flex items-center justify-between">
+                {/* Book/Chapter/Version selectors */}
+                <div className="flex items-center space-x-4">
                   <button
                     onClick={() => {
-                      setShowVersionSelector(!showVersionSelector);
-                      setShowBookSelector(false);
+                      setShowBookSelector(!showBookSelector);
                       setShowChapterSelector(false);
+                      setShowVersionSelector(false);
                     }}
                     className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
                   >
-                    <span className="text-sm font-normal">{selectedVersion}</span>
+                    <span className="text-sm font-normal">{selectedBook}</span>
                     <ChevronDown className="size-3" />
                   </button>
-                )}
-              </div>
 
-              {/* Right side tools - Compare, Audio, Music and Settings */}
-              <div className="flex items-center -space-x-1 ml-auto mr-3">
-                <button 
-                  onClick={() => {
-                    if (compareMode.isActive) {
-                      setShowCompareMenu(true);
-                    } else {
-                      setShowCompareSelector(true);
-                    }
-                  }}
-                  className="p-2 rounded-full transition-all hover:bg-gray-100/50"
-                  aria-label="Compare Versions"
-                >
-                  <MdOutlineLibraryBooks 
-                    className={`size-5 transition-colors ${
-                      compareMode.isActive 
-                        ? 'text-[#E23744]' 
-                        : 'text-[var(--color-gray-900)]'
-                    }`}
-                  />
-                </button>
-                <button 
-                  onClick={() => setShowMusicSelector(true)}
-                  className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
-                >
-                  <Music className="size-5 text-[var(--color-gray-900)]" />
-                </button>
-                <button 
-                  onClick={() => setShowSearch(true)}
-                  className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
-                >
-                  <FiSearch className="size-5 text-[var(--color-gray-900)]" />
-                </button>
-                <button 
-                  onClick={() => setShowMoreMenu(true)}
-                  className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
-                >
-                  <MoreVertical className="size-5 text-[var(--color-gray-900)]" />
-                </button>
+                  <button
+                    onClick={() => {
+                      setShowChapterSelector(!showChapterSelector);
+                      setShowBookSelector(false);
+                      setShowVersionSelector(false);
+                    }}
+                    className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
+                  >
+                    <span className="text-sm font-normal">{selectedChapter}</span>
+                    <ChevronDown className="size-3" />
+                  </button>
+
+                  {compareMode.isActive ? (
+                    <span className="text-sm font-normal text-[var(--color-text-primary)] opacity-70">
+                      Comparing
+                    </span>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setShowVersionSelector(!showVersionSelector);
+                        setShowBookSelector(false);
+                        setShowChapterSelector(false);
+                      }}
+                      className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
+                    >
+                      <span className="text-sm font-normal">{selectedVersion}</span>
+                      <ChevronDown className="size-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Right side tools */}
+                <div className="flex items-center -space-x-1 ml-auto mr-3">
+                  <button 
+                    onClick={() => {
+                      if (compareMode.isActive) {
+                        setShowCompareMenu(true);
+                      } else {
+                        setShowCompareSelector(true);
+                      }
+                    }}
+                    className="p-2 rounded-full transition-all hover:bg-gray-100/50"
+                  >
+                    <MdOutlineLibraryBooks 
+                      className={`size-5 transition-colors ${
+                        compareMode.isActive ? 'text-[#E23744]' : 'text-[var(--color-gray-900)]'
+                      }`}
+                    />
+                  </button>
+                  <button 
+                    onClick={() => setShowMusicSelector(true)}
+                    className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
+                  >
+                    <Music className="size-5 text-[var(--color-gray-900)]" />
+                  </button>
+                  <button 
+                    onClick={() => setShowSearch(true)}
+                    className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
+                  >
+                    <FiSearch className="size-5 text-[var(--color-gray-900)]" />
+                  </button>
+                  <button 
+                    onClick={() => setShowMoreMenu(true)}
+                    className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
+                  >
+                    <MoreVertical className="size-5 text-[var(--color-gray-900)]" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
         {/* Selector panels */}
         {showBookSelector && (
