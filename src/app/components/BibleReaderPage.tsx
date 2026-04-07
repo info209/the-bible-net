@@ -1101,9 +1101,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     <div className="min-h-screen bg-[var(--color-bg-primary)] flex flex-col pb-20 overflow-x-hidden" style={{ "--header-height": "60px" } as any}>
       {/* Main Header/Navbar - STICKY TOP */}
       <div 
-        className={`sticky top-0 z-[50] transition-all duration-300 ease-in-out transform-gpu ${
+        className={`sticky transition-all duration-300 ease-in-out transform-gpu z-[50] ${
           isReadingMode ? '-translate-y-full opacity-0' : 'translate-y-0 opacity-100'
         }`}
+        style={{ top: isReadingMode ? '-60px' : '0' }}
       >
         <AppHeader className="!static" />
       </div>
