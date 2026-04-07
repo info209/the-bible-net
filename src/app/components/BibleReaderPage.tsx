@@ -78,14 +78,14 @@ interface BibleReaderPageProps {
 }
 
 export default function BibleReaderPage(props: BibleReaderPageProps) {
-  const { 
+  const {
     onNavigate,
     isReadingMode = false,
     showAudioControls = true,
     apiVersions,
-    verses = [], 
-    chapter = 1, 
-    version = 'NKJV', 
+    verses = [],
+    chapter = 1,
+    version = 'NKJV',
     book = 'Genesis',
     onChapterChange,
     onBookChange,
@@ -128,7 +128,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   };
   const [selectedTimer, setSelectedTimer] = useState<'stop' | 'end-chapter' | '10-mins' | '15-mins' | '30-mins' | '1-hr' | '2-hrs'>('stop');
   const [showSearch, setShowSearch] = useState(false);
-  
+
   // Compare mode state
   const [compareMode, setCompareMode] = useState<{
     isActive: boolean;
@@ -139,20 +139,20 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   });
   const [showCompareSelector, setShowCompareSelector] = useState(false);
   const [showCompareMenu, setShowCompareMenu] = useState(false);
-  
+
   // Book sorting state
   const [bookSortType, setBookSortType] = useState<'traditional' | 'alphabetical'>('traditional');
-  
+
   // Reading settings state
   const [selectedFont, setSelectedFont] = useState('Times New Roman');
   const [fontSize, setFontSize] = useState(18); // Standard book reading size (18px)
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'sepia' | 'cream' | 'dark'>('light');
   const [pageTransition, setPageTransition] = useState<'slide' | 'curl' | 'fade' | 'scroll'>('slide'); // Changed to 'slide' as default
-  
+
   // Page transition state
   const [transitionDirection, setTransitionDirection] = useState<'next' | 'prev' | null>(null);
   const [chapterKey, setChapterKey] = useState(0);
-  
+
   // Touch/swipe state for interactive slide
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState(0);
@@ -161,17 +161,17 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const touchEndX = useRef<number>(0);
   const gestureDetected = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const contentRef = useRef<HTMLDivElement>(null);
-  
+
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
-  
+
   // Prevent scroll handler from interfering with clicks
   const isUserInteracting = useRef(false);
-  
-  const isAnyPopupOpen = showBookSelector || showChapterSelector || 
-    showVersionSelector || showMusicSelector || showMoreMenu || 
-    showSettingsMenu || showAudioControlPanel || showVerseSelector || 
+
+  const isAnyPopupOpen = showBookSelector || showChapterSelector ||
+    showVersionSelector || showMusicSelector || showMoreMenu ||
+    showSettingsMenu || showAudioControlPanel || showVerseSelector ||
     showTimerMenu || showSearch || showCompareSelector || showCompareMenu;
 
   useEffect(() => {
@@ -192,11 +192,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const narrationVerseIndexRef = useRef(0);
   const narrationPlayingRef = useRef(false);
   const isAutoAdvancingRef = useRef(false);
-  
+
   // Timer state for time-based narration
   const narrationTimerRef = useRef<NodeJS.Timeout | null>(null);
   const narrationStartTimeRef = useRef<number | null>(null);
-  
+
   // Music tracks
   const musicTracks = [
     { id: 'none', name: 'None', thumbnail: null },
@@ -219,9 +219,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const currentBookIndex = allBooks.indexOf(selectedBook);
   const isFirstChapterOfBible = selectedBook === 'Genesis' && selectedChapter === 1;
   const isLastChapterOfBible = selectedBook === 'Revelation' && selectedChapter === bookChapters['Revelation'];
-  
+
   const totalChapters = bookChapters[selectedBook] || 50;
-  
+
   // Get next chapter info for preview during drag
   const getNextChapter = () => {
     if (selectedChapter < totalChapters) {
@@ -231,7 +231,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
     return { book: selectedBook, chapter: selectedChapter };
   };
-  
+
   // Get previous chapter info for preview during drag
   const getPrevChapter = () => {
     if (selectedChapter > 1) {
@@ -242,7 +242,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
     return { book: selectedBook, chapter: selectedChapter };
   };
-  
+
   const nextChapterInfo = getNextChapter();
   const prevChapterInfo = getPrevChapter();
 
@@ -252,7 +252,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     setSelectedChapter(chapter);
     setSelectedVerse(verse);
     setShowSearch(false);
-    
+
     // Scroll to the verse after a short delay to allow state to update
     setTimeout(() => {
       const verseElement = document.getElementById(`verse-${book}-${chapter}-${verse}`);
@@ -260,7 +260,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         const elementTop = verseElement.getBoundingClientRect().top;
         const currentScroll = window.scrollY;
         const targetScroll = currentScroll + elementTop - 100;
-        
+
         window.scrollTo({
           top: targetScroll,
           behavior: 'smooth'
@@ -321,13 +321,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const handlePrevious = () => {
     setTransitionDirection('prev');
     setChapterKey(prev => prev + 1);
-    
+
     // Scroll to top immediately
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
     });
-    
+
     setTimeout(() => {
       if (selectedChapter > 1) {
         // Go to previous chapter in same book
@@ -344,13 +344,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const handleNext = () => {
     setTransitionDirection('next');
     setChapterKey(prev => prev + 1);
-    
+
     // Scroll to top immediately
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
     });
-    
+
     setTimeout(() => {
       if (selectedChapter < totalChapters) {
         // Go to next chapter in same book
@@ -363,11 +363,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       }
     }, 50);
   };
-  
+
   // Interactive drag handlers for slide transition
   const handleTouchStart = (e: React.TouchEvent) => {
     if (pageTransition !== 'slide') return;
-    
+
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     gestureDetected.current = 'none';
@@ -376,11 +376,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (pageTransition !== 'slide') return;
-    
+
     touchEndX.current = e.touches[0].clientX;
     const diffX = e.touches[0].clientX - touchStartX.current;
     const diffY = e.touches[0].clientY - touchStartY.current;
-    
+
     // Detect gesture direction only once
     if (gestureDetected.current === 'none' && (Math.abs(diffX) > 10 || Math.abs(diffY) > 10)) {
       if (Math.abs(diffY) > Math.abs(diffX)) {
@@ -390,18 +390,18 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         setIsDragging(true); // Only engage drag system for horizontal gestures
       }
     }
-    
+
     // If vertical scroll, do nothing - let native scrolling work
     if (gestureDetected.current === 'vertical') {
       return;
     }
-    
+
     // If horizontal and dragging is engaged, handle page navigation
     if (gestureDetected.current === 'horizontal' && isDragging) {
       // Limit drag to prevent going forward from last chapter or backward from first
       if (diffX < 0 && isLastChapterOfBible) return;
       if (diffX > 0 && isFirstChapterOfBible) return;
-      
+
       setDragOffset(diffX);
     }
   };
@@ -421,11 +421,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       }
       return;
     }
-    
+
     if (!isDragging) return;
-    
+
     const threshold = window.innerWidth * 0.3; // 30% of screen width
-    
+
     if (Math.abs(dragOffset) > threshold) {
       // Complete the transition
       if (dragOffset < 0 && !isLastChapterOfBible) {
@@ -436,17 +436,17 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         handlePrevious();
       }
     }
-    
+
     // Reset drag state
     setIsDragging(false);
     setDragOffset(0);
     gestureDetected.current = 'none';
   };
-  
+
   // Get transition animation variants
   const getTransitionVariants = () => {
     const direction = transitionDirection === 'next' ? 1 : -1;
-    
+
     switch (pageTransition) {
       case 'slide':
         return {
@@ -454,19 +454,19 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           animate: { x: 0, opacity: 1 },
           exit: { x: `${-100 * direction}%`, opacity: 1 }
         };
-      
+
       case 'curl':
         const origin = direction > 0 ? 'left center' : 'right center';
         return {
-          initial: { 
+          initial: {
             rotateY: 90 * direction,
             opacity: 0
           },
-          animate: { 
+          animate: {
             rotateY: 0,
             opacity: 1
           },
-          exit: { 
+          exit: {
             rotateY: -90 * direction,
             opacity: 0
           },
@@ -474,14 +474,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             transformOrigin: origin
           }
         };
-      
+
       case 'fade':
         return {
           initial: { opacity: 0 },
           animate: { opacity: 1 },
           exit: { opacity: 0 }
         };
-      
+
       case 'scroll':
       default:
         return {
@@ -491,14 +491,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         };
     }
   };
-  
+
   const transitionConfig: Record<string, any> = {
     slide: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
     curl: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
     fade: { duration: 0.2, ease: 'easeInOut' },
     scroll: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
   };
-  
+
   // Theme configurations
   const themeConfig = {
     light: {
@@ -522,15 +522,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       verseNumber: '#FF4757'
     }
   };
-  
+
   const currentTheme = themeConfig[selectedTheme];
-  
+
   // Reset selectedVerse when chapter or book changes - set to null so it doesn't auto-scroll
   useEffect(() => {
     // Clear selected verse so chapter opens at the top naturally
     setSelectedVerse(null);
   }, [selectedBook, selectedChapter]);
-  
+
   // Scroll detection logic outsourced to BibleReaderPage2Container
 
   // Trackpad swipe navigation (two-finger swipe on laptop trackpads)
@@ -548,7 +548,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       // Check if this is primarily a horizontal swipe
       if (horizontalDelta > verticalDelta && horizontalDelta > swipeThreshold) {
         const now = Date.now();
-        
+
         // Debounce to prevent multiple triggers
         if (now - lastSwipeTime < swipeDebounce) {
           return;
@@ -583,13 +583,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
     // Stop any ongoing narration
     window.speechSynthesis.cancel();
-    
+
     // Clear any existing timer
     if (narrationTimerRef.current) {
       clearTimeout(narrationTimerRef.current);
       narrationTimerRef.current = null;
     }
-    
+
     // Start timer if time-based option is selected
     narrationStartTimeRef.current = Date.now();
     if (selectedTimer === '10-mins') {
@@ -613,7 +613,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         stopNarration();
       }, 2 * 60 * 60 * 1000); // 2 hours
     }
-    
+
     const verses = getBibleContent();
     console.log('Got verses:', verses.length, 'verses');
     if (verses.length === 0) return;
@@ -627,24 +627,24 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   const readNextVerse = (verses: any[], index: number) => {
     console.log('readNextVerse called with index:', index, 'of', verses.length, 'verses');
-    
+
     // At the beginning of each chapter, announce the book name and chapter number
     if (index === 0 && verses.length > 0) {
       const chapterAnnouncement = `${selectedBook} Chapter ${selectedChapter}`;
       console.log('Announcing chapter:', chapterAnnouncement);
-      
+
       const announcementUtterance = new SpeechSynthesisUtterance(chapterAnnouncement);
       announcementUtterance.rate = playbackSpeed;
       announcementUtterance.pitch = 1;
       announcementUtterance.volume = 1;
-      
+
       // After announcement finishes, continue with first verse (skip announcement on next call)
       announcementUtterance.onend = () => {
         console.log('Chapter announcement finished, continuing with first verse');
         // Start reading from verse 1 by incrementing index in the recursive call
         continueReadingFromFirstVerse(verses);
       };
-      
+
       // Handle errors during announcement
       announcementUtterance.onerror = (event: any) => {
         // Check if this is a real error or just a cancellation
@@ -652,15 +652,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           console.log('Chapter announcement canceled/interrupted (expected)');
           return;
         }
-        
+
         // Log actual errors with error type
         console.error('Chapter announcement error type:', event.error || 'unknown');
         console.error('Chapter announcement error details:', event);
-        
+
         // Continue anyway - don't let announcement errors block verse reading
         continueReadingFromFirstVerse(verses);
       };
-      
+
       const continueReadingFromFirstVerse = (verses: any[]) => {
         // Now read the actual first verse
         const verse = verses[0];
@@ -676,7 +676,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             const elementTop = verseElement.getBoundingClientRect().top;
             const currentScroll = window.scrollY;
             const targetScroll = currentScroll + elementTop - 100;
-            
+
             window.scrollTo({
               top: targetScroll,
               behavior: 'smooth'
@@ -706,12 +706,12 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
         verseUtterance.onerror = (event: any) => {
           console.log('[Error Handler] Verse:', verseNumber, 'Error Type:', event.error);
-          
+
           if (event.error === 'canceled' || event.error === 'interrupted') {
             console.log('[Error Handler] Ignoring expected cancellation/interruption');
             return;
           }
-          
+
           // For real errors, log and stop narration
           console.error('[Error Handler] Real error detected, stopping narration');
           console.error('[Error Handler] Full event:', event);
@@ -724,15 +724,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         utteranceRef.current = verseUtterance;
         window.speechSynthesis.speak(verseUtterance);
       };
-      
+
       window.speechSynthesis.speak(announcementUtterance);
       return; // Exit early, will continue after announcement
     }
-    
+
     if (index >= verses.length) {
       // Finished reading all verses in current chapter
       console.log('Finished chapter. Timer setting:', selectedTimer);
-      
+
       // Check timer setting to determine behavior
       if (selectedTimer === 'end-chapter') {
         // Stop at end of this chapter
@@ -743,15 +743,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         setAudioPlaying(false);
         return;
       }
-      
+
       // For 'stop' (default) or time-based timers (10-mins, 15-mins, 30-mins, 1-hr, 2-hrs), continue to next chapter
       // Time-based timers will be stopped by the setTimeout in startNarration
       const totalChapters = bookChapters[selectedBook] || 50;
       const currentBookIndex = allBooks.indexOf(selectedBook);
-      
+
       let nextBook = selectedBook;
       let nextChapter = selectedChapter;
-      
+
       if (selectedChapter < totalChapters) {
         // Move to next chapter in same book
         nextChapter = selectedChapter + 1;
@@ -768,19 +768,19 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         setAudioPlaying(false);
         return;
       }
-      
+
       console.log('Auto-continuing to next chapter:', nextBook, nextChapter);
-      
+
       // Set progress to 100% before moving to next chapter
       setAudioCurrentTime(audioDuration);
-      
+
       console.log('[Auto-Advance] Starting auto-advance to next chapter');
       console.log('[Auto-Advance] Current states - audioPlaying:', audioPlaying, 'narrationPlaying:', narrationPlayingRef.current);
       console.log('[Auto-Advance] Current chapter:', selectedBook, selectedChapter, '-> Next chapter:', nextBook, nextChapter);
-      
+
       // Set flag to indicate this is an auto-advance, not manual navigation
       isAutoAdvancingRef.current = true;
-      
+
       // Fetch verses for the next chapter using the nextBook/nextChapter variables
       // (not getBibleContent() which uses state that hasn't updated yet)
       let bibleData = mockBibleContent;
@@ -790,9 +790,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         bibleData = hindiBible as any;
       }
       const nextChapterVerses = bibleData[nextBook]?.[nextChapter]?.verses || [];
-      
+
       console.log('Auto-advance: Fetched', nextChapterVerses.length, 'verses for', nextBook, nextChapter);
-      
+
       if (nextChapterVerses.length === 0) {
         console.log('No verses found for next chapter, stopping');
         setNarrationPlaying(false);
@@ -802,31 +802,31 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         isAutoAdvancingRef.current = false;
         return;
       }
-      
+
       console.log('[Auto-Advance] Updating state to next chapter:', nextBook, nextChapter);
-      
+
       // Update the book and chapter state
       setSelectedBook(nextBook);
       setSelectedChapter(nextChapter);
       setSelectedVerse(1); // Reset to verse 1 for the new chapter
-      
+
       // Small delay to allow state to update and new chapter to load
       setTimeout(() => {
         console.log('[Auto-Advance] Timeout fired - starting narration of new chapter');
         console.log('[Auto-Advance] State should now be:', nextBook, nextChapter);
         console.log('[Auto-Advance] States before readNextVerse - audioPlaying:', audioPlaying, 'narrationPlaying:', narrationPlayingRef.current);
-        
+
         // Make sure narration is still supposed to be playing
         if (!narrationPlayingRef.current) {
           console.log('[Auto-Advance] Narration was stopped during chapter transition, aborting');
           isAutoAdvancingRef.current = false;
           return;
         }
-        
+
         narrationVerseIndexRef.current = 0;
         console.log('[Auto-Advance] Calling readNextVerse with', nextChapterVerses.length, 'verses');
         readNextVerse(nextChapterVerses, 0);
-        
+
         // Reset auto-advancing flag after narration starts successfully
         setTimeout(() => {
           console.log('[Auto-Advance] Resetting isAutoAdvancingRef flag');
@@ -834,7 +834,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           isAutoAdvancingRef.current = false;
         }, 1000); // Increased to 1000ms to ensure chapter announcement completes
       }, 1000); // 1 second delay between chapters
-      
+
       return;
     }
 
@@ -851,7 +851,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         const elementTop = verseElement.getBoundingClientRect().top;
         const currentScroll = window.scrollY;
         const targetScroll = currentScroll + elementTop - 100;
-        
+
         window.scrollTo({
           top: targetScroll,
           behavior: 'smooth'
@@ -874,7 +874,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       // Ensure highlight is set even if there was a delay
       setCurrentReadingVerse(verseNumber);
       console.log('Speech started for verse:', verseNumber);
-      
+
       // Update progress based on verse completion
       const totalVerses = verses.length;
       const verseProgress = (index / totalVerses) * audioDuration;
@@ -896,14 +896,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     utterance.onerror = (event: any) => {
       // Check if this is a cancellation error (which is expected when pausing)
       const errorType = event.error || '';
-      
+
       console.log('[Error Handler] Verse:', verseNumber, 'Error Type:', errorType);
-      
+
       if (errorType === 'canceled' || errorType === 'interrupted') {
         console.log('[Error Handler] Ignoring expected cancellation/interruption');
         return; // Ignore cancellation errors - this is normal when pausing
       }
-      
+
       // For real errors, log and stop narration
       console.error('[Error Handler] Real error detected, stopping narration');
       console.error('[Error Handler] Full event:', event);
@@ -926,13 +926,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       narrationPlayingRef.current = false;
       // Then cancel (this may trigger onerror with 'canceled', which we now ignore)
       window.speechSynthesis.cancel();
-      
+
       // Clear the timer but keep the start time for potential resume
       if (narrationTimerRef.current) {
         clearTimeout(narrationTimerRef.current);
         narrationTimerRef.current = null;
       }
-      
+
       // Keep currentReadingVerse so we can resume from here
       console.log('Cancelled speech synthesis, keeping currentReadingVerse:', currentReadingVerse);
     }
@@ -940,20 +940,20 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   const resumeNarration = () => {
     console.log('resumeNarration called. currentReadingVerse:', currentReadingVerse, 'selectedVerse:', selectedVerse);
-    
+
     // If there was a timer active, calculate remaining time and restart it
     if (narrationStartTimeRef.current && (selectedTimer === '10-mins' || selectedTimer === '15-mins' || selectedTimer === '30-mins' || selectedTimer === '1-hr' || selectedTimer === '2-hrs')) {
       const elapsed = Date.now() - narrationStartTimeRef.current;
       let totalDuration = 0;
-      
+
       if (selectedTimer === '10-mins') totalDuration = 10 * 60 * 1000;
       else if (selectedTimer === '15-mins') totalDuration = 15 * 60 * 1000;
       else if (selectedTimer === '30-mins') totalDuration = 30 * 60 * 1000;
       else if (selectedTimer === '1-hr') totalDuration = 60 * 60 * 1000;
       else if (selectedTimer === '2-hrs') totalDuration = 2 * 60 * 60 * 1000;
-      
+
       const remaining = totalDuration - elapsed;
-      
+
       if (remaining > 0) {
         // Restart timer with remaining time
         narrationTimerRef.current = setTimeout(() => {
@@ -965,11 +965,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         return;
       }
     }
-    
+
     // Resume from where we left off (currentReadingVerse) or start fresh
     const resumeFrom = currentReadingVerse || selectedVerse || 1;
     console.log('Resuming from verse:', resumeFrom);
-    
+
     // Don't call startNarration as it would reset the timer
     // Instead, manually start the narration
     const verses = getBibleContent();
@@ -983,14 +983,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   const stopNarration = () => {
     window.speechSynthesis.cancel();
-    
+
     // Clear any active timer
     if (narrationTimerRef.current) {
       clearTimeout(narrationTimerRef.current);
       narrationTimerRef.current = null;
     }
     narrationStartTimeRef.current = null;
-    
+
     setNarrationPlaying(false);
     narrationPlayingRef.current = false;
     setCurrentReadingVerse(null);
@@ -1039,7 +1039,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   // Update audio progress while playing (only for non-narration audio)
   useEffect(() => {
     let progressInterval: NodeJS.Timeout | null = null;
-    
+
     // Only use time-based progress when NOT using narration
     // Narration updates progress in the utterance.onstart callback based on verse completion
     if (audioPlaying && !narrationPlayingRef.current) {
@@ -1058,7 +1058,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       // Reset to beginning when stopped (not paused)
       setAudioCurrentTime(0);
     }
-    
+
     return () => {
       if (progressInterval) {
         clearInterval(progressInterval);
@@ -1070,22 +1070,22 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   useEffect(() => {
     console.log('[Chapter Change Effect] Book:', selectedBook, 'Chapter:', selectedChapter);
     console.log('[Chapter Change Effect] audioPlaying:', audioPlaying, 'narrationPlayingRef:', narrationPlayingRef.current, 'isAutoAdvancing:', isAutoAdvancingRef.current);
-    
+
     // Calculate duration based on chapter content
     const verses = getBibleContent();
     const estimatedSecondsPerVerse = 10; // Average time to read a verse
     const newDuration = verses.length * estimatedSecondsPerVerse;
-    
+
     setAudioDuration(newDuration);
     setAudioCurrentTime(0);
-    
+
     // Only restart narration if this is manual navigation (not auto-advance)
     // Auto-advance handles its own narration continuation
     if (audioPlaying && narrationPlayingRef.current && !isAutoAdvancingRef.current) {
       console.log('[Chapter Change Effect] Manual navigation detected - restarting narration');
       // Stop current narration
       window.speechSynthesis.cancel();
-      
+
       // Restart from verse 1
       setTimeout(() => {
         narrationVerseIndexRef.current = 0;
@@ -1099,758 +1099,719 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)] flex flex-col pb-20 overflow-x-hidden" style={{ "--header-height": "60px" } as any}>
-      {/* Unified Sticky Header - Contains both Main and Sub Navigation */}
-      <div 
-        className="sticky top-0 z-[50] w-full overflow-hidden"
-        style={{ height: 'auto' }}
-      >
-        <div 
-          className="transition-transform duration-500 ease-in-out transform-gpu"
-          style={{ 
-            transform: isReadingMode ? 'translateY(-60px)' : 'translateY(0)'
-          }}
-        >
-          {/* Main App Header (60px height) */}
-          <div className={`${isReadingMode ? 'opacity-0' : 'opacity-100'} transition-opacity duration-500`}>
-            <AppHeader className="!static" />
-          </div>
+      {/* Main Header/Navbar - SCROLLS AWAY */}
+      <AppHeader className="!static" />
 
-          {/* Sub Navigation Bar - Will slide to top: 0 when header translates up */}
-          <div className="glass-light border-b border-white/20 shadow-[var(--shadow-xs)]">
-            <div className="max-w-3xl mx-auto px-4 py-1">
-              <div className="flex items-center justify-between">
-                {/* Book/Chapter/Version selectors */}
-                <div className="flex items-center space-x-4">
-                  <button
-                    onClick={() => {
-                      setShowBookSelector(!showBookSelector);
-                      setShowChapterSelector(false);
-                      setShowVersionSelector(false);
-                    }}
-                    className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
-                  >
-                    <span className="text-sm font-normal">{selectedBook}</span>
-                    <ChevronDown className="size-3" />
-                  </button>
+      {/* Sub Navigation Bar - BECOMES STICKY */}
+      <div className="sticky top-0 left-0 right-0 z-40 glass-light border-b border-white/20 shadow-[var(--shadow-xs)]">
+        <div className="max-w-3xl mx-auto px-4 py-1">
+          <div className="flex items-center justify-between">
+            {/* Book/Chapter/Version selectors */}
+            <div className="flex items-center space-x-4">
+              <button
+                onClick={() => {
+                  setShowBookSelector(!showBookSelector);
+                  setShowChapterSelector(false);
+                  setShowVersionSelector(false);
+                }}
+                className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
+              >
+                <span className="text-sm font-normal">{selectedBook}</span>
+                <ChevronDown className="size-3" />
+              </button>
 
-                  <button
-                    onClick={() => {
-                      setShowChapterSelector(!showChapterSelector);
-                      setShowBookSelector(false);
-                      setShowVersionSelector(false);
-                    }}
-                    className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
-                  >
-                    <span className="text-sm font-normal">{selectedChapter}</span>
-                    <ChevronDown className="size-3" />
-                  </button>
+              <button
+                onClick={() => {
+                  setShowChapterSelector(!showChapterSelector);
+                  setShowBookSelector(false);
+                  setShowVersionSelector(false);
+                }}
+                className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
+              >
+                <span className="text-sm font-normal">{selectedChapter}</span>
+                <ChevronDown className="size-3" />
+              </button>
 
-                  {compareMode.isActive ? (
-                    <span className="text-sm font-normal text-[var(--color-text-primary)] opacity-70">
-                      Comparing
-                    </span>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setShowVersionSelector(!showVersionSelector);
-                        setShowBookSelector(false);
-                        setShowChapterSelector(false);
-                      }}
-                      className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
-                    >
-                      <span className="text-sm font-normal">{selectedVersion}</span>
-                      <ChevronDown className="size-3" />
-                    </button>
-                  )}
-                </div>
+              {compareMode.isActive ? (
+                <span className="text-sm font-normal text-[var(--color-text-primary)] opacity-70">
+                  Comparing
+                </span>
+              ) : (
+                <button
+                  onClick={() => {
+                    setShowVersionSelector(!showVersionSelector);
+                    setShowBookSelector(false);
+                    setShowChapterSelector(false);
+                  }}
+                  className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
+                >
+                  <span className="text-sm font-normal">{selectedVersion}</span>
+                  <ChevronDown className="size-3" />
+                </button>
+              )}
+            </div>
 
-                {/* Right side tools */}
-                <div className="flex items-center -space-x-1 ml-auto mr-3">
-                  <button 
-                    onClick={() => {
-                      if (compareMode.isActive) {
-                        setShowCompareMenu(true);
-                      } else {
-                        setShowCompareSelector(true);
-                      }
-                    }}
-                    className="p-2 rounded-full transition-all hover:bg-gray-100/50"
-                  >
-                    <MdOutlineLibraryBooks 
-                      className={`size-5 transition-colors ${
-                        compareMode.isActive ? 'text-[#E23744]' : 'text-[var(--color-gray-900)]'
-                      }`}
-                    />
-                  </button>
-                  <button 
-                    onClick={() => setShowMusicSelector(true)}
-                    className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
-                  >
-                    <Music className="size-5 text-[var(--color-gray-900)]" />
-                  </button>
-                  <button 
-                    onClick={() => setShowSearch(true)}
-                    className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
-                  >
-                    <FiSearch className="size-5 text-[var(--color-gray-900)]" />
-                  </button>
-                  <button 
-                    onClick={() => setShowMoreMenu(true)}
-                    className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
-                  >
-                    <MoreVertical className="size-5 text-[var(--color-gray-900)]" />
-                  </button>
-                </div>
-              </div>
+            {/* Right side tools */}
+            <div className="flex items-center -space-x-1 ml-auto mr-3">
+              <button
+                onClick={() => {
+                  if (compareMode.isActive) {
+                    setShowCompareMenu(true);
+                  } else {
+                    setShowCompareSelector(true);
+                  }
+                }}
+                className="p-2 rounded-full transition-all hover:bg-gray-100/50"
+              >
+                <MdOutlineLibraryBooks
+                  className={`size-5 transition-colors ${compareMode.isActive ? 'text-[#E23744]' : 'text-[var(--color-gray-900)]'
+                    }`}
+                />
+              </button>
+              <button
+                onClick={() => setShowMusicSelector(true)}
+                className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
+              >
+                <Music className="size-5 text-[var(--color-gray-900)]" />
+              </button>
+              <button
+                onClick={() => setShowSearch(true)}
+                className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
+              >
+                <FiSearch className="size-5 text-[var(--color-gray-900)]" />
+              </button>
+              <button
+                onClick={() => setShowMoreMenu(true)}
+                className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
+              >
+                <MoreVertical className="size-5 text-[var(--color-gray-900)]" />
+              </button>
             </div>
           </div>
         </div>
       </div>
 
-        {/* Selector panels */}
-        {showBookSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowBookSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-              {/* Header */}
-              <div className="flex items-center justify-between p-4">
-                <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Books</h3>
-                
-                <div className="flex items-center gap-3">
-                  {/* Sort Toggle */}
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-[var(--color-text-primary)] font-medium">
-                      {bookSortType === 'traditional' ? 'Traditional' : 'Alphabetical'}
-                    </span>
-                    <div className="flex bg-gray-200/80 rounded-full p-0.5">
-                      <button
-                        onClick={() => setBookSortType('traditional')}
-                        className={`p-1.5 rounded-full transition-all ${
-                          bookSortType === 'traditional'
-                            ? 'bg-white shadow-sm'
-                            : 'bg-transparent'
+      {/* Selector panels */}
+      {showBookSelector && (
+        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowBookSelector(false)}>
+          <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-4">
+              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Books</h3>
+
+              <div className="flex items-center gap-3">
+                {/* Sort Toggle */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-[var(--color-text-primary)] font-medium">
+                    {bookSortType === 'traditional' ? 'Traditional' : 'Alphabetical'}
+                  </span>
+                  <div className="flex bg-gray-200/80 rounded-full p-0.5">
+                    <button
+                      onClick={() => setBookSortType('traditional')}
+                      className={`p-1.5 rounded-full transition-all ${bookSortType === 'traditional'
+                          ? 'bg-white shadow-sm'
+                          : 'bg-transparent'
                         }`}
-                        aria-label="Traditional sort"
-                      >
-                        <RiSortDesc className={`size-4 ${
-                          bookSortType === 'traditional' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
+                      aria-label="Traditional sort"
+                    >
+                      <RiSortDesc className={`size-4 ${bookSortType === 'traditional' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
                         }`} />
-                      </button>
-                      <button
-                        onClick={() => setBookSortType('alphabetical')}
-                        className={`p-1.5 rounded-full transition-all ${
-                          bookSortType === 'alphabetical'
-                            ? 'bg-white shadow-sm'
-                            : 'bg-transparent'
+                    </button>
+                    <button
+                      onClick={() => setBookSortType('alphabetical')}
+                      className={`p-1.5 rounded-full transition-all ${bookSortType === 'alphabetical'
+                          ? 'bg-white shadow-sm'
+                          : 'bg-transparent'
                         }`}
-                        aria-label="Alphabetical sort"
-                      >
-                        <RiSortAlphabetAsc className={`size-4 ${
-                          bookSortType === 'alphabetical' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
+                      aria-label="Alphabetical sort"
+                    >
+                      <RiSortAlphabetAsc className={`size-4 ${bookSortType === 'alphabetical' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
                         }`} />
-                      </button>
-                    </div>
+                    </button>
                   </div>
-                  
-                  <button onClick={() => setShowBookSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                    <X className="size-6 text-[var(--color-text-primary)]/60" />
+                </div>
+
+                <button onClick={() => setShowBookSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                  <X className="size-6 text-[var(--color-text-primary)]/60" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <div className="grid grid-cols-2 gap-8">
+                {/* Old Testament */}
+                <div>
+                  <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">Old Testament</h4>
+                  <div className="space-y-2">
+                    {(bookSortType === 'alphabetical'
+                      ? [...bibleBooks['Old Testament']].sort()
+                      : bibleBooks['Old Testament']
+                    ).map(book => (
+                      <button
+                        key={book}
+                        onClick={() => {
+                          setSelectedBook(book);
+                          setShowBookSelector(false);
+                          setSelectedChapter(1);
+                        }}
+                        className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
+                            ? 'text-[var(--color-accent-rose)] font-medium'
+                            : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
+                          }`}
+                      >
+                        {book}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* New Testament */}
+                <div>
+                  <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">New Testament</h4>
+                  <div className="space-y-2">
+                    {(bookSortType === 'alphabetical'
+                      ? [...bibleBooks['New Testament']].sort()
+                      : bibleBooks['New Testament']
+                    ).map(book => (
+                      <button
+                        key={book}
+                        onClick={() => {
+                          setSelectedBook(book);
+                          setShowBookSelector(false);
+                          setSelectedChapter(1);
+                        }}
+                        className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === book
+                            ? 'text-[var(--color-accent-rose)] font-medium'
+                            : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
+                          }`}
+                      >
+                        {book}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showChapterSelector && (
+        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowChapterSelector(false)}>
+          <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header with Done button */}
+            <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
+              <div className="w-16"></div> {/* Spacer for centering */}
+              <h3 className="text-base font-normal text-[#31393a]">Select chapter</h3>
+              <button
+                onClick={() => setShowChapterSelector(false)}
+                className="text-sm text-[#31393a] hover:text-[#E23744] transition-colors px-2"
+              >
+                Done
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="grid grid-cols-5 gap-2">
+                {Array.from({ length: totalChapters }, (_, i) => i + 1).map(chapter => (
+                  <button
+                    key={chapter}
+                    onClick={() => {
+                      setSelectedChapter(chapter);
+                      setShowChapterSelector(false);
+                      setShowVerseSelector(true);
+                    }}
+                    className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedChapter === chapter
+                        ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
+                        : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
+                      }`}
+                  >
+                    {chapter.toString().padStart(2, '0')}
                   </button>
-                </div>
-              </div>
-              
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 pb-4">
-                <div className="grid grid-cols-2 gap-8">
-                  {/* Old Testament */}
-                  <div>
-                    <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">Old Testament</h4>
-                    <div className="space-y-2">
-                      {(bookSortType === 'alphabetical' 
-                        ? [...bibleBooks['Old Testament']].sort()
-                        : bibleBooks['Old Testament']
-                      ).map(book => (
-                        <button
-                          key={book}
-                          onClick={() => {
-                            setSelectedBook(book);
-                            setShowBookSelector(false);
-                            setSelectedChapter(1);
-                          }}
-                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${
-                            selectedBook === book
-                              ? 'text-[var(--color-accent-rose)] font-medium'
-                              : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
-                          }`}
-                        >
-                          {book}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  {/* New Testament */}
-                  <div>
-                    <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">New Testament</h4>
-                    <div className="space-y-2">
-                      {(bookSortType === 'alphabetical' 
-                        ? [...bibleBooks['New Testament']].sort()
-                        : bibleBooks['New Testament']
-                      ).map(book => (
-                        <button
-                          key={book}
-                          onClick={() => {
-                            setSelectedBook(book);
-                            setShowBookSelector(false);
-                            setSelectedChapter(1);
-                          }}
-                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${
-                            selectedBook === book
-                              ? 'text-[var(--color-accent-rose)] font-medium'
-                              : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
-                          }`}
-                        >
-                          {book}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                ))}
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {showChapterSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowChapterSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-              {/* Header with Done button */}
-              <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
-                <div className="w-16"></div> {/* Spacer for centering */}
-                <h3 className="text-base font-normal text-[#31393a]">Select chapter</h3>
-                <button 
-                  onClick={() => setShowChapterSelector(false)} 
-                  className="text-sm text-[#31393a] hover:text-[#E23744] transition-colors px-2"
-                >
-                  Done
-                </button>
-              </div>
-              
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-4">
-                <div className="grid grid-cols-5 gap-2">
-                  {Array.from({ length: totalChapters }, (_, i) => i + 1).map(chapter => (
-                    <button
-                      key={chapter}
-                      onClick={() => {
-                        setSelectedChapter(chapter);
-                        setShowChapterSelector(false);
-                        setShowVerseSelector(true);
-                      }}
-                      className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${
-                        selectedChapter === chapter
-                          ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
-                          : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
+      {showVerseSelector && (
+        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowVerseSelector(false)}>
+          <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header with Back and Done buttons */}
+            <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
+              <button
+                onClick={() => {
+                  setShowVerseSelector(false);
+                  setShowChapterSelector(true);
+                }}
+                className="flex items-center space-x-1 text-sm text-[#31393a] hover:text-[#E23744] transition-colors"
+              >
+                <ChevronLeft className="size-4" />
+                <span>Back</span>
+              </button>
+              <h3 className="text-base font-normal text-[#31393a]">Select verse</h3>
+              <button
+                onClick={() => {
+                  setShowVerseSelector(false);
+                  setShowChapterSelector(false);
+                }}
+                className="text-sm text-[#31393a] hover:text-[#E23744] transition-colors px-2"
+              >
+                Done
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-4 py-4">
+              <div className="grid grid-cols-5 gap-2">
+                {Array.from({ length: 31 }, (_, i) => i + 1).map(verse => (
+                  <button
+                    key={verse}
+                    onClick={() => {
+                      setSelectedVerse(verse);
+                      setShowVerseSelector(false);
+                      setShowChapterSelector(false);
+                    }}
+                    className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedVerse === verse
+                        ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
+                        : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
                       }`}
+                  >
+                    {verse.toString().padStart(2, '0')}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showVersionSelector && (
+        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowVersionSelector(false)}>
+          <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Close button */}
+            <div className="flex justify-end p-4">
+              <button onClick={() => setShowVersionSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                <X className="size-6 text-[#31393a]/60" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-4 pb-4">
+              <h4 className="font-bold text-[#E23744] mb-4 text-sm">Bible Versions</h4>
+              <div className="space-y-3">
+                {/* English Section */}
+                <div className="space-y-2">
+                  <p className="text-sm text-[#31393a]/60 mb-2">English</p>
+                  {(apiVersions || fallbackVersions).filter(v => v.language === 'English').map(version => (
+                    <button
+                      key={version.name}
+                      onClick={() => {
+                        setSelectedVersion(version.name);
+                        setShowVersionSelector(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
+                          ? 'bg-[#fde8ea] text-[#E23744]'
+                          : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
+                        }`}
                     >
-                      {chapter.toString().padStart(2, '0')}
+                      <div className="text-base font-medium">{version.fullName} ({version.name})</div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Telugu Section */}
+                <div className="space-y-2">
+                  <p className="text-sm text-[#31393a]/60 mb-2">Telugu</p>
+                  {(apiVersions || fallbackVersions).filter(v => v.language === 'Telugu').map(version => (
+                    <button
+                      key={version.name}
+                      onClick={() => {
+                        setSelectedVersion(version.name);
+                        setShowVersionSelector(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
+                          ? 'bg-[#fde8ea] text-[#E23744]'
+                          : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
+                        }`}
+                    >
+                      <div className="text-base font-medium">{version.fullName} ({version.name})</div>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Hindi Section */}
+                <div className="space-y-2">
+                  <p className="text-sm text-[#31393a]/60 mb-2">Hindi</p>
+                  {(apiVersions || fallbackVersions).filter(v => v.language === 'Hindi').map(version => (
+                    <button
+                      key={version.name}
+                      onClick={() => {
+                        setSelectedVersion(version.name);
+                        setShowVersionSelector(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
+                          ? 'bg-[#fde8ea] text-[#E23744]'
+                          : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
+                        }`}
+                    >
+                      <div className="text-base font-medium">{version.fullName} ({version.name})</div>
                     </button>
                   ))}
                 </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {showVerseSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowVerseSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-              {/* Header with Back and Done buttons */}
-              <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
-                <button 
-                  onClick={() => {
-                    setShowVerseSelector(false);
-                    setShowChapterSelector(true);
-                  }} 
-                  className="flex items-center space-x-1 text-sm text-[#31393a] hover:text-[#E23744] transition-colors"
-                >
-                  <ChevronLeft className="size-4" />
-                  <span>Back</span>
-                </button>
-                <h3 className="text-base font-normal text-[#31393a]">Select verse</h3>
-                <button 
-                  onClick={() => {
-                    setShowVerseSelector(false);
-                    setShowChapterSelector(false);
-                  }} 
-                  className="text-sm text-[#31393a] hover:text-[#E23744] transition-colors px-2"
-                >
-                  Done
-                </button>
-              </div>
-              
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-4">
-                <div className="grid grid-cols-5 gap-2">
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map(verse => (
-                    <button
-                      key={verse}
-                      onClick={() => {
-                        setSelectedVerse(verse);
-                        setShowVerseSelector(false);
-                        setShowChapterSelector(false);
-                      }}
-                      className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${
-                        selectedVerse === verse
-                          ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
-                          : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
-                      }`}
-                    >
-                      {verse.toString().padStart(2, '0')}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
+      {showMusicSelector && (
+        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowMusicSelector(false)}>
+          <div className="absolute top-20 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg sm:w-full sm:max-w-[400px] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header with loop/shuffle controls */}
+            <div className="flex items-center justify-between px-4 pt-4 pb-2">
+              {/* Empty left side for alignment */}
+              <div className="w-10"></div>
 
-        {showVersionSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowVersionSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-              {/* Close button */}
-              <div className="flex justify-end p-4">
-                <button onClick={() => setShowVersionSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+              {/* Right side - Shuffle/Loop, Play, and Close buttons */}
+              <div className="flex items-center space-x-2">
+                {/* Loop/Shuffle/Repeat Toggle */}
+                <button
+                  onClick={() => {
+                    const modes: Array<'shuffle' | 'repeat-all' | 'repeat-one'> = ['shuffle', 'repeat-all', 'repeat-one'];
+                    const currentIndex = modes.indexOf(musicLoopMode);
+                    setMusicLoopMode(modes[(currentIndex + 1) % modes.length]);
+                  }}
+                  className="flex items-center space-x-1.5 px-3 py-2 hover:bg-gray-100 rounded-full transition-colors"
+                >
+                  {musicLoopMode === 'shuffle' ? (
+                    <>
+                      <Shuffle className="size-5 text-[#31393a]" />
+                      <span className="text-sm text-[#31393a]">Shuffle</span>
+                    </>
+                  ) : musicLoopMode === 'repeat-all' ? (
+                    <>
+                      <Repeat className="size-5 text-[#31393a]" />
+                      <span className="text-sm text-[#31393a]">Repeat All</span>
+                    </>
+                  ) : (
+                    <>
+                      <Repeat1 className="size-5 text-[#31393a]" />
+                      <span className="text-sm text-[#31393a]">Repeat One</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Play button */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (selectedMusic && selectedMusic !== 'none') {
+                      setAudioPlaying(!audioPlaying);
+                    }
+                  }}
+                  disabled={!selectedMusic || selectedMusic === 'none'}
+                  className={`p-2 rounded-full transition-colors ${selectedMusic && selectedMusic !== 'none'
+                      ? 'hover:bg-gray-100 cursor-pointer'
+                      : 'opacity-40 cursor-not-allowed'
+                    }`}
+                >
+                  {audioPlaying ? (
+                    <Pause className="size-5 text-[var(--color-primary-teal)] fill-current" />
+                  ) : (
+                    <Play className="size-5 text-[var(--color-primary-teal)] fill-current" />
+                  )}
+                </button>
+
+                {/* Close button */}
+                <button onClick={() => setShowMusicSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                   <X className="size-6 text-[#31393a]/60" />
                 </button>
               </div>
-              
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 pb-4">
-                <h4 className="font-bold text-[#E23744] mb-4 text-sm">Bible Versions</h4>
-                <div className="space-y-3">
-                  {/* English Section */}
-                  <div className="space-y-2">
-                    <p className="text-sm text-[#31393a]/60 mb-2">English</p>
-                    {(apiVersions || fallbackVersions).filter(v => v.language === 'English').map(version => (
-                      <button
-                        key={version.name}
-                        onClick={() => {
-                          setSelectedVersion(version.name);
-                          setShowVersionSelector(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 rounded transition-colors ${
-                          selectedVersion === version.name
-                            ? 'bg-[#fde8ea] text-[#E23744]'
-                            : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
-                        }`}
-                      >
-                        <div className="text-base font-medium">{version.fullName} ({version.name})</div>
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Telugu Section */}
-                  <div className="space-y-2">
-                    <p className="text-sm text-[#31393a]/60 mb-2">Telugu</p>
-                    {(apiVersions || fallbackVersions).filter(v => v.language === 'Telugu').map(version => (
-                      <button
-                        key={version.name}
-                        onClick={() => {
-                          setSelectedVersion(version.name);
-                          setShowVersionSelector(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 rounded transition-colors ${
-                          selectedVersion === version.name
-                            ? 'bg-[#fde8ea] text-[#E23744]'
-                            : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
-                        }`}
-                      >
-                        <div className="text-base font-medium">{version.fullName} ({version.name})</div>
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Hindi Section */}
-                  <div className="space-y-2">
-                    <p className="text-sm text-[#31393a]/60 mb-2">Hindi</p>
-                    {(apiVersions || fallbackVersions).filter(v => v.language === 'Hindi').map(version => (
-                      <button
-                        key={version.name}
-                        onClick={() => {
-                          setSelectedVersion(version.name);
-                          setShowVersionSelector(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 rounded transition-colors ${
-                          selectedVersion === version.name
-                            ? 'bg-[#fde8ea] text-[#E23744]'
-                            : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
-                        }`}
-                      >
-                        <div className="text-base font-medium">{version.fullName} ({version.name})</div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
             </div>
-          </div>
-        )}
 
-        {showMusicSelector && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowMusicSelector(false)}>
-            <div className="absolute top-20 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg sm:w-full sm:max-w-[400px] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-              {/* Header with loop/shuffle controls */}
-              <div className="flex items-center justify-between px-4 pt-4 pb-2">
-                {/* Empty left side for alignment */}
-                <div className="w-10"></div>
-                
-                {/* Right side - Shuffle/Loop, Play, and Close buttons */}
-                <div className="flex items-center space-x-2">
-                  {/* Loop/Shuffle/Repeat Toggle */}
-                  <button 
-                    onClick={() => {
-                      const modes: Array<'shuffle' | 'repeat-all' | 'repeat-one'> = ['shuffle', 'repeat-all', 'repeat-one'];
-                      const currentIndex = modes.indexOf(musicLoopMode);
-                      setMusicLoopMode(modes[(currentIndex + 1) % modes.length]);
-                    }}
-                    className="flex items-center space-x-1.5 px-3 py-2 hover:bg-gray-100 rounded-full transition-colors"
-                  >
-                    {musicLoopMode === 'shuffle' ? (
-                      <>
-                        <Shuffle className="size-5 text-[#31393a]" />
-                        <span className="text-sm text-[#31393a]">Shuffle</span>
-                      </>
-                    ) : musicLoopMode === 'repeat-all' ? (
-                      <>
-                        <Repeat className="size-5 text-[#31393a]" />
-                        <span className="text-sm text-[#31393a]">Repeat All</span>
-                      </>
-                    ) : (
-                      <>
-                        <Repeat1 className="size-5 text-[#31393a]" />
-                        <span className="text-sm text-[#31393a]">Repeat One</span>
-                      </>
-                    )}
-                  </button>
-                  
-                  {/* Play button */}
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (selectedMusic && selectedMusic !== 'none') {
-                        setAudioPlaying(!audioPlaying);
-                      }
-                    }}
-                    disabled={!selectedMusic || selectedMusic === 'none'}
-                    className={`p-2 rounded-full transition-colors ${
-                      selectedMusic && selectedMusic !== 'none'
-                        ? 'hover:bg-gray-100 cursor-pointer'
-                        : 'opacity-40 cursor-not-allowed'
-                    }`}
-                  >
-                    {audioPlaying ? (
-                      <Pause className="size-5 text-[var(--color-primary-teal)] fill-current" />
-                    ) : (
-                      <Play className="size-5 text-[var(--color-primary-teal)] fill-current" />
-                    )}
-                  </button>
-                  
-                  {/* Close button */}
-                  <button onClick={() => setShowMusicSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                    <X className="size-6 text-[#31393a]/60" />
-                  </button>
-                </div>
-              </div>
-              
-              {/* Content - Music list (max 5 tracks visible) */}
-              <div className="overflow-y-auto px-4 pb-4 max-h-[360px]">
-                <div className="space-y-3">
-                  {musicTracks.map((track) => (
-                    <button
-                      key={track.id}
-                      onClick={() => setSelectedMusic(track.id)}
-                      className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${
-                        selectedMusic === track.id
-                          ? 'bg-[#fde8ea]'
-                          : 'bg-transparent hover:bg-gray-50'
+            {/* Content - Music list (max 5 tracks visible) */}
+            <div className="overflow-y-auto px-4 pb-4 max-h-[360px]">
+              <div className="space-y-3">
+                {musicTracks.map((track) => (
+                  <button
+                    key={track.id}
+                    onClick={() => setSelectedMusic(track.id)}
+                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${selectedMusic === track.id
+                        ? 'bg-[#fde8ea]'
+                        : 'bg-transparent hover:bg-gray-50'
                       }`}
-                    >
-                      {/* Left side - Thumbnail and name */}
-                      <div className="flex items-center space-x-3">
-                        {/* Thumbnail with play icon overlay for selected track */}
-                        <div className="size-12 rounded-full overflow-hidden bg-black flex-shrink-0 relative">
-                          {track.thumbnail ? (
-                            <img src={track.thumbnail} alt={track.name} className="size-full object-cover" />
-                          ) : (
-                            <div className="size-full bg-black" />
-                          )}
-                          
-                          {/* Play icon overlay for selected music */}
-                          {selectedMusic === track.id && track.id !== 'none' && (
-                            <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                              <Play className="size-5 text-white fill-current" />
-                            </div>
-                          )}
-                        </div>
+                  >
+                    {/* Left side - Thumbnail and name */}
+                    <div className="flex items-center space-x-3">
+                      {/* Thumbnail with play icon overlay for selected track */}
+                      <div className="size-12 rounded-full overflow-hidden bg-black flex-shrink-0 relative">
+                        {track.thumbnail ? (
+                          <img src={track.thumbnail} alt={track.name} className="size-full object-cover" />
+                        ) : (
+                          <div className="size-full bg-black" />
+                        )}
 
-                        {/* Track name */}
-                        <span className={`text-base ${
-                          selectedMusic === track.id
-                            ? 'text-[#E23744] font-medium'
-                            : 'text-[#31393a]'
-                        }`}>
-                          {track.name}
-                        </span>
+                        {/* Play icon overlay for selected music */}
+                        {selectedMusic === track.id && track.id !== 'none' && (
+                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                            <Play className="size-5 text-white fill-current" />
+                          </div>
+                        )}
                       </div>
 
-                      {/* Right side - Equalizer indicator */}
-                      {selectedMusic === track.id && track.id !== 'none' ? (
-                        <EqualizerIcon className="text-[#E23744] h-5" />
-                      ) : (
-                        <div className="w-5" />
-                      )}
-                    </button>
-                  ))}
-                </div>
+                      {/* Track name */}
+                      <span className={`text-base ${selectedMusic === track.id
+                          ? 'text-[#E23744] font-medium'
+                          : 'text-[#31393a]'
+                        }`}>
+                        {track.name}
+                      </span>
+                    </div>
+
+                    {/* Right side - Equalizer indicator */}
+                    {selectedMusic === track.id && track.id !== 'none' ? (
+                      <EqualizerIcon className="text-[#E23744] h-5" />
+                    ) : (
+                      <div className="w-5" />
+                    )}
+                  </button>
+                ))}
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Audio Control Panel */}
-        <AudioControlPanel
-          isOpen={showAudioControlPanel}
-          onClose={() => setShowAudioControlPanel(false)}
-          selectedVerse={selectedVerse ?? 1}
-          audioCurrentTime={audioCurrentTime}
-          audioDuration={audioDuration}
-          audioPlaying={audioPlaying}
-          playbackSpeed={playbackSpeed}
-          onVerseChange={setSelectedVerse}
-          onTimeChange={setAudioCurrentTime}
-          onPlayPauseToggle={handleNarrationPlayPause}
-          onSpeedChange={setPlaybackSpeed}
-          onTimerClick={() => setShowTimerMenu(true)}
-          ttsVolume={ttsVolume}
-          onVolumeChange={setTtsVolume}
-          repeatMode={repeatMode}
-          onRepeatModeToggle={handleRepeatModeToggle}
-        />
+      {/* Audio Control Panel */}
+      <AudioControlPanel
+        isOpen={showAudioControlPanel}
+        onClose={() => setShowAudioControlPanel(false)}
+        selectedVerse={selectedVerse ?? 1}
+        audioCurrentTime={audioCurrentTime}
+        audioDuration={audioDuration}
+        audioPlaying={audioPlaying}
+        playbackSpeed={playbackSpeed}
+        onVerseChange={setSelectedVerse}
+        onTimeChange={setAudioCurrentTime}
+        onPlayPauseToggle={handleNarrationPlayPause}
+        onSpeedChange={setPlaybackSpeed}
+        onTimerClick={() => setShowTimerMenu(true)}
+        ttsVolume={ttsVolume}
+        onVolumeChange={setTtsVolume}
+        repeatMode={repeatMode}
+        onRepeatModeToggle={handleRepeatModeToggle}
+      />
 
-        {/* Timer Menu */}
-        {showTimerMenu && (
-          <div className="fixed inset-0 z-[110] bg-black/20" onClick={() => setShowTimerMenu(false)}>
-            <div 
-              className="absolute bottom-0 left-0 right-0 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border-t border-white/30 rounded-t-[32px] shadow-[0px_8px_12px_6px_rgba(0,0,0,0.15),0px_4px_4px_0px_rgba(0,0,0,0.3)] max-w-[600px] mx-auto max-h-[70vh] overflow-hidden flex flex-col" 
-              onClick={(e) => e.stopPropagation()}
-            >
-              {/* Header */}
-              <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-                <button 
-                  onClick={() => setShowTimerMenu(false)}
-                  className="flex items-center gap-1 text-[#31393a]"
-                >
-                  <ChevronLeft className="size-5" />
-                  <span className="text-base">Back</span>
-                </button>
-                <h3 className="text-lg font-semibold text-[#31393a]">Timer</h3>
-                <button 
-                  onClick={() => setShowTimerMenu(false)}
-                  className="text-base text-[var(--color-primary-teal)] font-medium"
-                >
-                  Done
-                </button>
-              </div>
-
-              {/* Timer Options */}
-              <div className="flex-1 overflow-y-auto px-6 py-4">
-                <div className="space-y-0">
-                  {/* Stop the timer */}
-                  <button
-                    onClick={() => setSelectedTimer('stop')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">Timer Off</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === 'stop' 
-                        ? 'bg-[#E23744] border-[#E23744]' 
-                        : 'border-gray-300'
-                    }`} />
-                  </button>
-
-                  {/* End of this chapter */}
-                  <button
-                    onClick={() => setSelectedTimer('end-chapter')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">End of this chapter</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === 'end-chapter' 
-                        ? 'bg-[#E23744] border-[#E23744]' 
-                        : 'border-gray-300'
-                    }`} />
-                  </button>
-
-                  {/* 10 mins */}
-                  <button
-                    onClick={() => setSelectedTimer('10-mins')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">10 mins</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === '10-mins' 
-                        ? 'bg-[#E23744] border-[#E23744]' 
-                        : 'border-gray-300'
-                    }`} />
-                  </button>
-
-                  {/* 15 mins */}
-                  <button
-                    onClick={() => setSelectedTimer('15-mins')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">15 mins</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === '15-mins' 
-                        ? 'bg-[#E23744] border-[#E23744]' 
-                        : 'border-gray-300'
-                    }`} />
-                  </button>
-
-                  {/* 30 mins */}
-                  <button
-                    onClick={() => setSelectedTimer('30-mins')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">30 mins</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === '30-mins' 
-                        ? 'bg-[#E23744] border-[#E23744]' 
-                        : 'border-gray-300'
-                    }`} />
-                  </button>
-
-                  {/* 1 hr */}
-                  <button
-                    onClick={() => setSelectedTimer('1-hr')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">1 hr</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === '1-hr' 
-                        ? 'bg-[#E23744] border-[#E23744]' 
-                        : 'border-gray-300'
-                    }`} />
-                  </button>
-
-                  {/* 2 hrs */}
-                  <button
-                    onClick={() => setSelectedTimer('2-hrs')}
-                    className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                  >
-                    <span className="text-base text-[#31393a]">2 hrs</span>
-                    <div className={`size-6 rounded-full border-2 transition-all ${
-                      selectedTimer === '2-hrs' 
-                        ? 'bg-[#E23744] border-[#E23744]' 
-                        : 'border-gray-300'
-                    }`} />
-                  </button>
-                </div>
-              </div>
+      {/* Timer Menu */}
+      {showTimerMenu && (
+        <div className="fixed inset-0 z-[110] bg-black/20" onClick={() => setShowTimerMenu(false)}>
+          <div
+            className="absolute bottom-0 left-0 right-0 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border-t border-white/30 rounded-t-[32px] shadow-[0px_8px_12px_6px_rgba(0,0,0,0.15),0px_4px_4px_0px_rgba(0,0,0,0.3)] max-w-[600px] mx-auto max-h-[70vh] overflow-hidden flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+              <button
+                onClick={() => setShowTimerMenu(false)}
+                className="flex items-center gap-1 text-[#31393a]"
+              >
+                <ChevronLeft className="size-5" />
+                <span className="text-base">Back</span>
+              </button>
+              <h3 className="text-lg font-semibold text-[#31393a]">Timer</h3>
+              <button
+                onClick={() => setShowTimerMenu(false)}
+                className="text-base text-[var(--color-primary-teal)] font-medium"
+              >
+                Done
+              </button>
             </div>
-          </div>
-        )}
 
-        {/* More Menu (Three Dots) - Simple menu with options */}
-        {showMoreMenu && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowMoreMenu(false)}>
-            <div className="absolute top-20 right-4 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[280px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-              <div className="py-2">
-                {/* Fonts & Settings Option */}
+            {/* Timer Options */}
+            <div className="flex-1 overflow-y-auto px-6 py-4">
+              <div className="space-y-0">
+                {/* Stop the timer */}
                 <button
-                  onClick={() => {
-                    setShowMoreMenu(false);
-                    setShowSettingsMenu(true);
+                  onClick={() => setSelectedTimer('stop')}
+                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
+                >
+                  <span className="text-base text-[#31393a]">Timer Off</span>
+                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'stop'
+                      ? 'bg-[#E23744] border-[#E23744]'
+                      : 'border-gray-300'
+                    }`} />
+                </button>
+
+                {/* End of this chapter */}
+                <button
+                  onClick={() => setSelectedTimer('end-chapter')}
+                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
+                >
+                  <span className="text-base text-[#31393a]">End of this chapter</span>
+                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'end-chapter'
+                      ? 'bg-[#E23744] border-[#E23744]'
+                      : 'border-gray-300'
+                    }`} />
+                </button>
+
+                {/* 10 mins */}
+                <button
+                  onClick={() => setSelectedTimer('10-mins')}
+                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
+                >
+                  <span className="text-base text-[#31393a]">10 mins</span>
+                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '10-mins'
+                      ? 'bg-[#E23744] border-[#E23744]'
+                      : 'border-gray-300'
+                    }`} />
+                </button>
+
+                {/* 15 mins */}
+                <button
+                  onClick={() => setSelectedTimer('15-mins')}
+                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
+                >
+                  <span className="text-base text-[#31393a]">15 mins</span>
+                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '15-mins'
+                      ? 'bg-[#E23744] border-[#E23744]'
+                      : 'border-gray-300'
+                    }`} />
+                </button>
+
+                {/* 30 mins */}
+                <button
+                  onClick={() => setSelectedTimer('30-mins')}
+                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
+                >
+                  <span className="text-base text-[#31393a]">30 mins</span>
+                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '30-mins'
+                      ? 'bg-[#E23744] border-[#E23744]'
+                      : 'border-gray-300'
+                    }`} />
+                </button>
+
+                {/* 1 hr */}
+                <button
+                  onClick={() => setSelectedTimer('1-hr')}
+                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
+                >
+                  <span className="text-base text-[#31393a]">1 hr</span>
+                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '1-hr'
+                      ? 'bg-[#E23744] border-[#E23744]'
+                      : 'border-gray-300'
+                    }`} />
+                </button>
+
+                {/* 2 hrs */}
+                <button
+                  onClick={() => setSelectedTimer('2-hrs')}
+                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
+                >
+                  <span className="text-base text-[#31393a]">2 hrs</span>
+                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '2-hrs'
+                      ? 'bg-[#E23744] border-[#E23744]'
+                      : 'border-gray-300'
+                    }`} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* More Menu (Three Dots) - Simple menu with options */}
+      {showMoreMenu && (
+        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowMoreMenu(false)}>
+          <div className="absolute top-20 right-4 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[280px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="py-2">
+              {/* Fonts & Settings Option */}
+              <button
+                onClick={() => {
+                  setShowMoreMenu(false);
+                  setShowSettingsMenu(true);
+                }}
+                className="w-full px-4 py-3 text-left text-base text-[#31393a] hover:bg-gray-100/50 transition-colors"
+              >
+                Fonts & Settings
+              </button>
+
+              {/* Hide Footnotes Toggle */}
+              <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 transition-colors">
+                <span className="text-base text-[#31393a]">Hide footnotes</span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setHideFootnotes(!hideFootnotes);
                   }}
-                  className="w-full px-4 py-3 text-left text-base text-[#31393a] hover:bg-gray-100/50 transition-colors"
-                >
-                  Fonts & Settings
-                </button>
-                
-                {/* Hide Footnotes Toggle */}
-                <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 transition-colors">
-                  <span className="text-base text-[#31393a]">Hide footnotes</span>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setHideFootnotes(!hideFootnotes);
-                    }}
-                    className={`relative w-11 h-6 rounded-full transition-colors ${
-                      hideFootnotes ? 'bg-[var(--color-primary-teal)]' : 'bg-gray-300'
+                  className={`relative w-11 h-6 rounded-full transition-colors ${hideFootnotes ? 'bg-[var(--color-primary-teal)]' : 'bg-gray-300'
                     }`}
-                  >
-                    <div
-                      className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-                        hideFootnotes ? 'translate-x-5' : 'translate-x-0'
+                >
+                  <div
+                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${hideFootnotes ? 'translate-x-5' : 'translate-x-0'
                       }`}
-                    />
-                  </button>
-                </div>
+                  />
+                </button>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Settings Menu */}
-        {showSettingsMenu && (
-          <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowSettingsMenu(false)}>
-            <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-              {/* Header */}
-              <div className="flex items-center justify-between p-4 border-b border-gray-200">
-                <div className="w-12" /> {/* Spacer instead of Back button */}
-                <h3 className="text-lg font-semibold text-[#31393a]">Fonts & Settings</h3>
-                <button
-                  onClick={() => setShowSettingsMenu(false)}
-                  className="text-sm text-[#31393a]/60 hover:text-[#31393a] transition-colors"
-                >
-                  Done
-                </button>
-              </div>
-              
-              {/* Content */}
-              <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-                {/* Font Family Selection */}
-                <div className="space-y-2">
-                  <label className="text-xs text-[#31393a]/60">Font family</label>
-                  <div className="relative">
-                    <select
-                      value={selectedFont}
-                      onChange={(e) => setSelectedFont(e.target.value)}
-                      className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-base text-[#31393a] appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#E23744] focus:border-transparent"
-                    >
-                      <option value="Times New Roman">Times New Roman</option>
-                      <option value="Georgia">Georgia</option>
-                      <option value="Arial">Arial</option>
-                      <option value="Verdana">Verdana</option>
-                      <option value="Helvetica">Helvetica</option>
-                      <option value="Merriweather">Merriweather</option>
-                    </select>
-                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-[#31393a] pointer-events-none" />
-                  </div>
+      {/* Settings Menu */}
+      {showSettingsMenu && (
+        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowSettingsMenu(false)}>
+          <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <div className="w-12" /> {/* Spacer instead of Back button */}
+              <h3 className="text-lg font-semibold text-[#31393a]">Fonts & Settings</h3>
+              <button
+                onClick={() => setShowSettingsMenu(false)}
+                className="text-sm text-[#31393a]/60 hover:text-[#31393a] transition-colors"
+              >
+                Done
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
+              {/* Font Family Selection */}
+              <div className="space-y-2">
+                <label className="text-xs text-[#31393a]/60">Font family</label>
+                <div className="relative">
+                  <select
+                    value={selectedFont}
+                    onChange={(e) => setSelectedFont(e.target.value)}
+                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-base text-[#31393a] appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#E23744] focus:border-transparent"
+                  >
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Georgia">Georgia</option>
+                    <option value="Arial">Arial</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Helvetica">Helvetica</option>
+                    <option value="Merriweather">Merriweather</option>
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-[#31393a] pointer-events-none" />
                 </div>
+              </div>
 
-                {/* Font Size Slider */}
-                <div className="space-y-2">
-                  <label className="text-xs text-[#31393a]/60">Font size</label>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-[#31393a]">A-</span>
-                    <div className="flex-1 relative">
-                      <input
-                        type="range"
-                        min="12"
-                        max="24"
-                        value={fontSize}
-                        onChange={(e) => setFontSize(Number(e.target.value))}
-                        className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer
+              {/* Font Size Slider */}
+              <div className="space-y-2">
+                <label className="text-xs text-[#31393a]/60">Font size</label>
+                <div className="flex items-center gap-3">
+                  <span className="text-xs text-[#31393a]">A-</span>
+                  <div className="flex-1 relative">
+                    <input
+                      type="range"
+                      min="12"
+                      max="24"
+                      value={fontSize}
+                      onChange={(e) => setFontSize(Number(e.target.value))}
+                      className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer
                           [&::-webkit-slider-thumb]:appearance-none
                           [&::-webkit-slider-thumb]:size-6
                           [&::-webkit-slider-thumb]:rounded-full
@@ -1864,255 +1825,247 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                           [&::-moz-range-thumb]:border-4
                           [&::-moz-range-thumb]:border-[#f5bcc1]
                           [&::-moz-range-thumb]:cursor-pointer"
-                        style={{
-                          background: `linear-gradient(to right, #E23744 0%, #E23744 ${((fontSize - 12) / 12) * 100}%, #ededed ${((fontSize - 12) / 12) * 100}%, #ededed 100%)`
-                        }}
-                      />
-                    </div>
-                    <span className="text-sm text-[#31393a]">A+</span>
+                      style={{
+                        background: `linear-gradient(to right, #E23744 0%, #E23744 ${((fontSize - 12) / 12) * 100}%, #ededed ${((fontSize - 12) / 12) * 100}%, #ededed 100%)`
+                      }}
+                    />
                   </div>
+                  <span className="text-sm text-[#31393a]">A+</span>
                 </div>
+              </div>
 
-                {/* Theme Selection */}
-                <div className="space-y-2">
-                  <label className="text-xs text-[#31393a]/60">Theme</label>
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => setSelectedTheme('light')}
-                      className={`size-11 rounded-full border-2 transition-all ${
-                        selectedTheme === 'light'
-                          ? 'border-[#31393a] scale-110'
-                          : 'border-gray-300'
+              {/* Theme Selection */}
+              <div className="space-y-2">
+                <label className="text-xs text-[#31393a]/60">Theme</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setSelectedTheme('light')}
+                    className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'light'
+                        ? 'border-[#31393a] scale-110'
+                        : 'border-gray-300'
                       }`}
-                      style={{ backgroundColor: '#ffffff' }}
-                    />
-                    <button
-                      onClick={() => setSelectedTheme('sepia')}
-                      className={`size-11 rounded-full border-2 transition-all ${
-                        selectedTheme === 'sepia'
-                          ? 'border-[#31393a] scale-110'
-                          : 'border-gray-300'
+                    style={{ backgroundColor: '#ffffff' }}
+                  />
+                  <button
+                    onClick={() => setSelectedTheme('sepia')}
+                    className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'sepia'
+                        ? 'border-[#31393a] scale-110'
+                        : 'border-gray-300'
                       }`}
-                      style={{ backgroundColor: '#f5e6d3' }}
-                    />
-                    <button
-                      onClick={() => setSelectedTheme('cream')}
-                      className={`size-11 rounded-full border-2 transition-all ${
-                        selectedTheme === 'cream'
-                          ? 'border-[#31393a] scale-110'
-                          : 'border-gray-300'
+                    style={{ backgroundColor: '#f5e6d3' }}
+                  />
+                  <button
+                    onClick={() => setSelectedTheme('cream')}
+                    className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'cream'
+                        ? 'border-[#31393a] scale-110'
+                        : 'border-gray-300'
                       }`}
-                      style={{ backgroundColor: '#fef3e2' }}
-                    />
-                    <button
-                      onClick={() => setSelectedTheme('dark')}
-                      className={`size-11 rounded-full border-2 transition-all ${
-                        selectedTheme === 'dark'
-                          ? 'border-[#ffffff] scale-110'
-                          : 'border-gray-300'
+                    style={{ backgroundColor: '#fef3e2' }}
+                  />
+                  <button
+                    onClick={() => setSelectedTheme('dark')}
+                    className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'dark'
+                        ? 'border-[#ffffff] scale-110'
+                        : 'border-gray-300'
                       }`}
-                      style={{ backgroundColor: '#2e3737' }}
-                    />
-                  </div>
+                    style={{ backgroundColor: '#2e3737' }}
+                  />
                 </div>
+              </div>
 
-                {/* Page Transitions */}
-                <div className="space-y-2">
-                  <label className="text-xs text-[#31393a]/60">Page transitions</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <button
-                      onClick={() => setPageTransition('slide')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${
-                        pageTransition === 'slide'
-                          ? 'border-[#31393a] bg-gray-50'
-                          : 'border-gray-200'
+              {/* Page Transitions */}
+              <div className="space-y-2">
+                <label className="text-xs text-[#31393a]/60">Page transitions</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => setPageTransition('slide')}
+                    className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'slide'
+                        ? 'border-[#31393a] bg-gray-50'
+                        : 'border-gray-200'
                       }`}
-                    >
-                      <ArrowRightLeft className="size-6 text-[#31393a]" />
-                      <span className="text-xs text-[#31393a]">Slide</span>
-                    </button>
-                    <button
-                      onClick={() => setPageTransition('curl')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${
-                        pageTransition === 'curl'
-                          ? 'border-[#31393a] bg-gray-50'
-                          : 'border-gray-200'
+                  >
+                    <ArrowRightLeft className="size-6 text-[#31393a]" />
+                    <span className="text-xs text-[#31393a]">Slide</span>
+                  </button>
+                  <button
+                    onClick={() => setPageTransition('curl')}
+                    className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'curl'
+                        ? 'border-[#31393a] bg-gray-50'
+                        : 'border-gray-200'
                       }`}
-                    >
-                      <FileText className="size-6 text-[#31393a]" />
-                      <span className="text-xs text-[#31393a]">Curl</span>
-                    </button>
-                    <button
-                      onClick={() => setPageTransition('fade')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${
-                        pageTransition === 'fade'
-                          ? 'border-[#31393a] bg-gray-50'
-                          : 'border-gray-200'
+                  >
+                    <FileText className="size-6 text-[#31393a]" />
+                    <span className="text-xs text-[#31393a]">Curl</span>
+                  </button>
+                  <button
+                    onClick={() => setPageTransition('fade')}
+                    className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'fade'
+                        ? 'border-[#31393a] bg-gray-50'
+                        : 'border-gray-200'
                       }`}
-                    >
-                      <Zap className="size-6 text-[#31393a]" />
-                      <span className="text-xs text-[#31393a]">Fast Fade</span>
-                    </button>
-                    <button
-                      onClick={() => setPageTransition('scroll')}
-                      className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${
-                        pageTransition === 'scroll'
-                          ? 'border-[#31393a] bg-gray-50'
-                          : 'border-gray-200'
+                  >
+                    <Zap className="size-6 text-[#31393a]" />
+                    <span className="text-xs text-[#31393a]">Fast Fade</span>
+                  </button>
+                  <button
+                    onClick={() => setPageTransition('scroll')}
+                    className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'scroll'
+                        ? 'border-[#31393a] bg-gray-50'
+                        : 'border-gray-200'
                       }`}
-                    >
-                      <ScrollText className="size-6 text-[#31393a]" />
-                      <span className="text-xs text-[#31393a]">Scroll</span>
-                    </button>
-                  </div>
+                  >
+                    <ScrollText className="size-6 text-[#31393a]" />
+                    <span className="text-xs text-[#31393a]">Scroll</span>
+                  </button>
                 </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* Main Reading Content */}
-        <div 
-          className="transition-colors duration-300 relative overflow-hidden"
-          style={{ backgroundColor: currentTheme.bg }}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-        >
-          {pageTransition === 'slide' && isDragging ? (
-            /* Interactive slide mode - show both pages */
-            <>
-              {/* Next page (shows when dragging left) */}
-              {dragOffset < 0 && (
-                <div 
-                  className="absolute inset-0"
-                  style={{
-                    transform: `translateX(${100 + (dragOffset / window.innerWidth) * 100}%)`,
-                    backgroundColor: currentTheme.bg
-                  }}
-                >
-                  <ChapterContent
-                    book={nextChapterInfo.book}
-                    chapter={nextChapterInfo.chapter}
-                    font={selectedFont}
-                    fontSize={fontSize}
-                    version={selectedVersion}
-                    scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? selectedVerse : undefined}
-                    readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? currentReadingVerse : null}
-                    theme={currentTheme}
-                  />
-                </div>
-              )}
-              
-              {/* Previous page (shows when dragging right) */}
-              {dragOffset > 0 && (
-                <div 
-                  className="absolute inset-0"
-                  style={{
-                    transform: `translateX(${-100 + (dragOffset / window.innerWidth) * 100}%)`,
-                    backgroundColor: currentTheme.bg
-                  }}
-                >
-                  <ChapterContent
-                    book={prevChapterInfo.book}
-                    chapter={prevChapterInfo.chapter}
-                    font={selectedFont}
-                    fontSize={fontSize}
-                    version={selectedVersion}
-                    scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? selectedVerse : undefined}
-                    readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? currentReadingVerse : null}
-                    theme={currentTheme}
-                  />
-                </div>
-              )}
-              
-              {/* Current page */}
-              <div 
-                className="relative"
+      {/* Main Reading Content */}
+      <div
+        className="transition-colors duration-300 relative overflow-hidden"
+        style={{ backgroundColor: currentTheme.bg }}
+        onTouchStart={handleTouchStart}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
+      >
+        {pageTransition === 'slide' && isDragging ? (
+          /* Interactive slide mode - show both pages */
+          <>
+            {/* Next page (shows when dragging left) */}
+            {dragOffset < 0 && (
+              <div
+                className="absolute inset-0"
                 style={{
-                  transform: `translateX(${(dragOffset / window.innerWidth) * 100}%)`,
-                  transition: 'none'
+                  transform: `translateX(${100 + (dragOffset / window.innerWidth) * 100}%)`,
+                  backgroundColor: currentTheme.bg
                 }}
               >
-                {compareMode.isActive ? (
-                  <CompareView
-                    book={selectedBook}
-                    chapter={selectedChapter}
-                    selectedVersions={compareMode.selectedVersions}
-                    selectedTheme={selectedTheme}
-                  />
-                ) : (
-                  <ChapterContent
-                    book={selectedBook}
-                    chapter={selectedChapter}
-                    font={selectedFont}
-                    fontSize={fontSize}
-                    version={selectedVersion}
-                    scrollToVerse={selectedVerse}
-                    readingVerse={currentReadingVerse}
-                    theme={currentTheme}
-                  />
-                )}
+                <ChapterContent
+                  book={nextChapterInfo.book}
+                  chapter={nextChapterInfo.chapter}
+                  font={selectedFont}
+                  fontSize={fontSize}
+                  version={selectedVersion}
+                  scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? selectedVerse : undefined}
+                  readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? currentReadingVerse : null}
+                  theme={currentTheme}
+                />
               </div>
-            </>
-          ) : (
-            /* Normal transition modes */
-            <AnimatePresence mode="wait" initial={false}>
-              {(() => {
-                const variants = getTransitionVariants();
-                const { style, ...animationVariants } = variants;
-                return (
-                  <motion.div
-                    key={chapterKey}
-                    initial="initial"
-                    animate="animate"
-                    exit="exit"
-                    variants={animationVariants}
-                    transition={transitionConfig[pageTransition]}
-                    style={style}
-                  >
-                    {compareMode.isActive ? (
-                      <CompareView
-                        book={selectedBook}
-                        chapter={selectedChapter}
-                        selectedVersions={compareMode.selectedVersions}
-                        selectedTheme={selectedTheme}
-                        apiVersions={apiVersions}
-                        font={selectedFont}
-                        fontSize={fontSize}
-                      />
-                    ) : (
-                      <ChapterContent
-                        book={selectedBook}
-                        chapter={selectedChapter}
-                        font={selectedFont}
-                        fontSize={fontSize}
-                        version={selectedVersion}
-                        scrollToVerse={selectedVerse}
-                        readingVerse={currentReadingVerse}
-                        theme={currentTheme}
-                      />
-                    )}
-                  </motion.div>
-                );
-              })()}
-            </AnimatePresence>
-          )}
-        </div>
+            )}
+
+            {/* Previous page (shows when dragging right) */}
+            {dragOffset > 0 && (
+              <div
+                className="absolute inset-0"
+                style={{
+                  transform: `translateX(${-100 + (dragOffset / window.innerWidth) * 100}%)`,
+                  backgroundColor: currentTheme.bg
+                }}
+              >
+                <ChapterContent
+                  book={prevChapterInfo.book}
+                  chapter={prevChapterInfo.chapter}
+                  font={selectedFont}
+                  fontSize={fontSize}
+                  version={selectedVersion}
+                  scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? selectedVerse : undefined}
+                  readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? currentReadingVerse : null}
+                  theme={currentTheme}
+                />
+              </div>
+            )}
+
+            {/* Current page */}
+            <div
+              className="relative"
+              style={{
+                transform: `translateX(${(dragOffset / window.innerWidth) * 100}%)`,
+                transition: 'none'
+              }}
+            >
+              {compareMode.isActive ? (
+                <CompareView
+                  book={selectedBook}
+                  chapter={selectedChapter}
+                  selectedVersions={compareMode.selectedVersions}
+                  selectedTheme={selectedTheme}
+                />
+              ) : (
+                <ChapterContent
+                  book={selectedBook}
+                  chapter={selectedChapter}
+                  font={selectedFont}
+                  fontSize={fontSize}
+                  version={selectedVersion}
+                  scrollToVerse={selectedVerse}
+                  readingVerse={currentReadingVerse}
+                  theme={currentTheme}
+                />
+              )}
+            </div>
+          </>
+        ) : (
+          /* Normal transition modes */
+          <AnimatePresence mode="wait" initial={false}>
+            {(() => {
+              const variants = getTransitionVariants();
+              const { style, ...animationVariants } = variants;
+              return (
+                <motion.div
+                  key={chapterKey}
+                  initial="initial"
+                  animate="animate"
+                  exit="exit"
+                  variants={animationVariants}
+                  transition={transitionConfig[pageTransition]}
+                  style={style}
+                >
+                  {compareMode.isActive ? (
+                    <CompareView
+                      book={selectedBook}
+                      chapter={selectedChapter}
+                      selectedVersions={compareMode.selectedVersions}
+                      selectedTheme={selectedTheme}
+                      apiVersions={apiVersions}
+                      font={selectedFont}
+                      fontSize={fontSize}
+                    />
+                  ) : (
+                    <ChapterContent
+                      book={selectedBook}
+                      chapter={selectedChapter}
+                      font={selectedFont}
+                      fontSize={fontSize}
+                      version={selectedVersion}
+                      scrollToVerse={selectedVerse}
+                      readingVerse={currentReadingVerse}
+                      theme={currentTheme}
+                    />
+                  )}
+                </motion.div>
+              );
+            })()}
+          </AnimatePresence>
+        )}
+      </div>
 
       {/* Audio Controls - MOVES UP/DOWN WITH SCROLL */}
       {/* Audio Controls - Navigation only side buttons */}
       {/* Unified Bottom Controls - Play + Navigation */}
-      <div 
+      <div
         className="fixed left-0 right-0 z-[60] flex items-center justify-center transition-all duration-500 ease-in-out pointer-events-none"
-        style={{ 
+        style={{
           bottom: isReadingMode ? '16px' : 'calc(64px + 16px)',
         }}
       >
         <div className="relative w-full max-w-3xl mx-auto h-[72px] flex items-center justify-center px-6">
           {/* Previous Button - Left side */}
           {!isFirstChapterOfBible && (
-            <button 
+            <button
               onClick={handlePrevious}
               className="absolute left-6 p-3 rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto"
               style={{
@@ -2130,7 +2083,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           )}
 
           {/* Center Play Button Container */}
-          <div 
+          <div
             className="relative pointer-events-auto"
             onClick={() => {
               if (showBookSelector || showChapterSelector || showVerseSelector || showVersionSelector || showMusicSelector || showMoreMenu || showSettingsMenu || showCompareSelector || showCompareMenu || showSearch) {
@@ -2165,14 +2118,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     minHeight: '56px'
                   }}
                 >
-                  <button 
+                  <button
                     onClick={(e) => { e.stopPropagation(); setShowAudioControlPanel(true); }}
                     className="p-2 rounded-full hover:bg-white/40 transition-colors"
                   >
                     <RiEqualizer3Fill className="size-6 text-[var(--color-primary-teal)]" />
                   </button>
 
-                  <button 
+                  <button
                     onClick={(e) => { e.stopPropagation(); handleNarrationPlayPause(); }}
                     className="relative w-12 h-12 flex items-center justify-center bg-white/30 rounded-full"
                   >
@@ -2183,7 +2136,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     )}
                   </button>
 
-                  <button 
+                  <button
                     onClick={(e) => {
                       e.stopPropagation();
                       setAudioControlExpanded(false);
@@ -2225,7 +2178,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
           {/* Next Button - Right side */}
           {!isLastChapterOfBible && (
-            <button 
+            <button
               onClick={handleNext}
               className="absolute right-6 p-3 rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto"
               style={{
@@ -2248,11 +2201,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       {/* Side Menu Overlay */}
       {menuOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-[100] backdrop-blur-sm"
           onClick={() => setMenuOpen(false)}
         >
-          <div 
+          <div
             className="absolute right-0 top-0 h-full w-80 bg-white shadow-2xl p-6"
             onClick={(e) => e.stopPropagation()}
           >
