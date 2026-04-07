@@ -1112,9 +1112,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       <div 
         className={`sticky transition-all duration-300 ease-in-out transform-gpu ${
           isReadingMode ? 'top-0' : 'top-[var(--header-height)]'
-        } ${
-          isReadingMode ? '-translate-y-[calc(var(--header-height)+10px)] opacity-0 pointer-events-none' : 'translate-y-0 opacity-100'
-        } left-0 right-0 z-[40] glass-light border-b border-white/20 shadow-[var(--shadow-xs)]`}
+        } left-0 right-0 z-[40] glass-light border-b border-white/20 shadow-[var(--shadow-xs)] opacity-100 translate-y-0`}
       >
           <div className="max-w-3xl mx-auto px-4 py-1">
             <div className="flex items-center justify-between">
