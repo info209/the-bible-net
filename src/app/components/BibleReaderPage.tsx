@@ -164,6 +164,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const touchStartX = useRef<number>(0);
   const touchStartY = useRef<number>(0);
   const touchEndX = useRef<number>(0);
+  const touchEndY = useRef<number>(0);
   const gestureDetected = useRef<'none' | 'horizontal' | 'vertical'>('none');
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -373,19 +374,16 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
+    touchEndX.current = e.touches[0].clientX;
+    touchEndY.current = e.touches[0].clientY;
     gestureDetected.current = 'none';
-    
-    if (pageTransition !== 'slide') return;
-    
-    // Don't set isDragging yet - wait to detect gesture direction
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     touchEndX.current = e.touches[0].clientX;
+    touchEndY.current = e.touches[0].clientY;
     const diffX = e.touches[0].clientX - touchStartX.current;
     const diffY = e.touches[0].clientY - touchStartY.current;
-
-    if (pageTransition !== 'slide') return;
 
     // Detect gesture direction only once
     if (gestureDetected.current === 'none' && (Math.abs(diffX) > 5 || Math.abs(diffY) > 5)) {
@@ -393,7 +391,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         gestureDetected.current = 'vertical';
       } else {
         gestureDetected.current = 'horizontal';
-        setIsDragging(true); // Only engage drag system for horizontal gestures
       }
     }
 
@@ -402,8 +399,17 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       return;
     }
 
+    if (pageTransition !== 'slide') {
+      // For non-slide transitions we only need horizontal gesture detection
+      return;
+    }
+
     // If horizontal and dragging is engaged, handle page navigation
-    if (gestureDetected.current === 'horizontal' && isDragging) {
+    if (gestureDetected.current === 'horizontal') {
+      if (!isDragging) {
+        setIsDragging(true);
+      }
+
       // Limit drag to prevent going forward from last chapter or backward from first
       if (diffX < 0 && isLastChapterOfBible) return;
       if (diffX > 0 && isFirstChapterOfBible) return;
@@ -414,17 +420,22 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   const handleTouchEnd = () => {
     if (pageTransition !== 'slide') {
-      // For non-slide transitions, use simple swipe detection
+      // For non-slide transitions, use simple horizontal swipe detection
       const swipeThreshold = 75;
-      const diff = touchStartX.current - touchEndX.current;
+      const diffX = touchEndX.current - touchStartX.current;
+      const diffY = touchEndY.current - touchStartY.current;
+      const absDiffX = Math.abs(diffX);
+      const absDiffY = Math.abs(diffY);
 
-      if (Math.abs(diff) > swipeThreshold) {
-        if (diff > 0 && !isLastChapterOfBible) {
+      if (absDiffX > swipeThreshold && absDiffX > absDiffY) {
+        if (diffX < 0 && !isLastChapterOfBible) {
           handleNext();
-        } else if (diff < 0 && !isFirstChapterOfBible) {
+        } else if (diffX > 0 && !isFirstChapterOfBible) {
           handlePrevious();
         }
       }
+
+      gestureDetected.current = 'none';
       return;
     }
 
@@ -499,10 +510,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   };
 
   const transitionConfig: Record<string, any> = {
-    slide: { duration: 0.4, ease: [0.4, 0, 0.2, 1] },
-    curl: { duration: 0.5, ease: [0.4, 0, 0.2, 1] },
-    fade: { duration: 0.2, ease: 'easeInOut' },
-    scroll: { duration: 0.3, ease: [0.4, 0, 0.2, 1] }
+    slide: { duration: 0.7, ease: [0.4, 0, 0.2, 1] },
+    curl: { duration: 0.9, ease: [0.4, 0, 0.2, 1] },
+    fade: { duration: 0.5, ease: 'easeInOut' },
+    scroll: { duration: 0.6, ease: [0.4, 0, 0.2, 1] }
   };
 
   // Theme configurations
@@ -1661,9 +1672,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       <AudioControlPanel
         isOpen={showAudioControlPanel}
         onClose={() => setShowAudioControlPanel(false)}
-        selectedVerse={selectedVerse ?? 1}
-        audioCurrentTime={audioCurrentTime}
-        audioDuration={audioDuration}
+        selectedVerse={narrationPlayingRef.current ? (currentReadingVerse ?? 1) : (selectedVerse ?? 1)}
+        audioCurrentTime={narrationPlayingRef.current ? (currentReadingVerse ?? 1) : audioCurrentTime}
+        audioDuration={narrationPlayingRef.current ? getBibleContent().length : audioDuration}
         audioPlaying={audioPlaying}
         playbackSpeed={playbackSpeed}
         onVerseChange={setSelectedVerse}
