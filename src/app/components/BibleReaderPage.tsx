@@ -371,23 +371,24 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   // Interactive drag handlers for slide transition
   const handleTouchStart = (e: React.TouchEvent) => {
-    if (pageTransition !== 'slide') return;
-
     touchStartX.current = e.touches[0].clientX;
     touchStartY.current = e.touches[0].clientY;
     gestureDetected.current = 'none';
+    
+    if (pageTransition !== 'slide') return;
+    
     // Don't set isDragging yet - wait to detect gesture direction
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    if (pageTransition !== 'slide') return;
-
     touchEndX.current = e.touches[0].clientX;
     const diffX = e.touches[0].clientX - touchStartX.current;
     const diffY = e.touches[0].clientY - touchStartY.current;
 
+    if (pageTransition !== 'slide') return;
+
     // Detect gesture direction only once
-    if (gestureDetected.current === 'none' && (Math.abs(diffX) > 10 || Math.abs(diffY) > 10)) {
+    if (gestureDetected.current === 'none' && (Math.abs(diffX) > 5 || Math.abs(diffY) > 5)) {
       if (Math.abs(diffY) > Math.abs(diffX)) {
         gestureDetected.current = 'vertical';
       } else {
@@ -536,6 +537,25 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     setSelectedVerse(null);
   }, [selectedBook, selectedChapter]);
 
+  // Handle verse navigation during narration
+  useEffect(() => {
+    if (narrationPlayingRef.current && selectedVerse && selectedVerse > 0) {
+      console.log('[Verse Navigation] User changed verse to:', selectedVerse, 'during narration');
+      // Stop current narration and restart from the selected verse
+      window.speechSynthesis.cancel();
+      
+      // Slight delay to ensure cancellation is processed
+      setTimeout(() => {
+        const verses = getBibleContent();
+        if (verses.length >= selectedVerse) {
+          console.log('[Verse Navigation] Restarting narration from verse:', selectedVerse);
+          narrationVerseIndexRef.current = selectedVerse - 1;
+          readNextVerse(verses, selectedVerse - 1);
+        }
+      }, 100);
+    }
+  }, [selectedVerse]);
+
   // Scroll detection logic outsourced to BibleReaderPage2Container
 
   // Trackpad swipe navigation (two-finger swipe on laptop trackpads)
@@ -641,7 +661,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       const announcementUtterance = new SpeechSynthesisUtterance(chapterAnnouncement);
       announcementUtterance.rate = playbackSpeed;
       announcementUtterance.pitch = 1;
-      announcementUtterance.volume = 1;
+      announcementUtterance.volume = ttsVolume;
 
       // After announcement finishes, continue with first verse (skip announcement on next call)
       announcementUtterance.onend = () => {
@@ -693,7 +713,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         const verseUtterance = new SpeechSynthesisUtterance(verseText);
         verseUtterance.rate = playbackSpeed;
         verseUtterance.pitch = 1;
-        verseUtterance.volume = 1;
+        verseUtterance.volume = ttsVolume;
 
         // Highlight verse IMMEDIATELY before starting speech
         setCurrentReadingVerse(verseNumber);
@@ -736,9 +756,26 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
     if (index >= verses.length) {
       // Finished reading all verses in current chapter
-      console.log('Finished chapter. Timer setting:', selectedTimer);
+      console.log('Finished chapter. Repeat mode:', repeatMode);
 
-      // Check timer setting to determine behavior
+      // Handle repeat/loop modes
+      if (repeatMode === 'verse') {
+        // Not applicable here as verse repeat is handled when playing a verse
+        // Just continue to next chapter or stop
+        setNarrationPlaying(false);
+        narrationPlayingRef.current = false;
+        setCurrentReadingVerse(null);
+        setAudioPlaying(false);
+        return;
+      } else if (repeatMode === 'chapter') {
+        // Repeat the chapter - go back to the beginning
+        console.log('Chapter repeat: restarting from verse 1');
+        narrationVerseIndexRef.current = 0;
+        readNextVerse(verses, 0);
+        return;
+      }
+
+      // For 'none' mode: Check timer setting to determine behavior
       if (selectedTimer === 'end-chapter') {
         // Stop at end of this chapter
         console.log('End-chapter timer: stopping at end of chapter');
@@ -868,7 +905,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     const utterance = new SpeechSynthesisUtterance(verseText);
     utterance.rate = playbackSpeed;
     utterance.pitch = 1;
-    utterance.volume = 1;
+    utterance.volume = ttsVolume;
 
     // Highlight verse IMMEDIATELY before starting speech
     setCurrentReadingVerse(verseNumber);
@@ -889,11 +926,18 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
     // When verse finishes, read the next one (keep highlight until next verse starts)
     utterance.onend = () => {
-      console.log('Speech ended for verse:', verseNumber, 'narrationPlayingRef:', narrationPlayingRef.current);
+      console.log('Speech ended for verse:', verseNumber, 'narrationPlayingRef:', narrationPlayingRef.current, 'repeatMode:', repeatMode);
       if (narrationPlayingRef.current) {
-        narrationVerseIndexRef.current = index + 1;
-        // Immediately read next verse (its highlight will replace this one)
-        readNextVerse(verses, index + 1);
+        if (repeatMode === 'verse') {
+          // Repeat the same verse
+          console.log('Verse repeat: replaying verse', verseNumber);
+          readNextVerse(verses, index);
+        } else {
+          // Move to next verse
+          narrationVerseIndexRef.current = index + 1;
+          // Immediately read next verse (its highlight will replace this one)
+          readNextVerse(verses, index + 1);
+        }
       }
       // Don't clear currentReadingVerse when paused - keep the highlight for resume
     };
@@ -1625,6 +1669,22 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         onVolumeChange={setTtsVolume}
         repeatMode={repeatMode}
         onRepeatModeToggle={handleRepeatModeToggle}
+        selectedChapter={selectedChapter}
+        totalChapters={totalChapters}
+        selectedBook={selectedBook}
+        onChapterChange={(chapter: number) => {
+          setSelectedChapter(chapter);
+          setTransitionDirection(chapter > selectedChapter ? 'next' : 'prev');
+          setChapterKey(prev => prev + 1);
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+        onBookChange={(direction: 'prev' | 'next') => {
+          if (direction === 'next' && !isLastChapterOfBible) {
+            handleNext();
+          } else if (direction === 'prev' && !isFirstChapterOfBible) {
+            handlePrevious();
+          }
+        }}
       />
 
       {/* Timer Menu */}

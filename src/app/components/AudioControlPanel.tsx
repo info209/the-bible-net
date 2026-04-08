@@ -18,6 +18,11 @@ interface AudioControlPanelProps {
   onVolumeChange: (vol: number) => void;
   repeatMode: 'none' | 'chapter' | 'verse';
   onRepeatModeToggle: () => void;
+  selectedChapter?: number;
+  totalChapters?: number;
+  selectedBook?: string;
+  onChapterChange?: (chapter: number) => void;
+  onBookChange?: (direction: 'prev' | 'next') => void;
 }
 
 export default function AudioControlPanel({
@@ -36,7 +41,12 @@ export default function AudioControlPanel({
   ttsVolume,
   onVolumeChange,
   repeatMode,
-  onRepeatModeToggle
+  onRepeatModeToggle,
+  selectedChapter = 1,
+  totalChapters = 50,
+  selectedBook = '',
+  onChapterChange,
+  onBookChange
 }: AudioControlPanelProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
@@ -177,9 +187,33 @@ export default function AudioControlPanel({
               />
             </div>
             <div className="flex justify-between text-[11px] text-black font-medium">
-              <span>Verse {Math.floor(audioCurrentTime)}</span>
-              <span>Total {Math.floor(audioDuration)}</span>
+              <span>Progress: {Math.round((audioCurrentTime / audioDuration) * 100)}%</span>
+              <span>{Math.floor(audioCurrentTime)}/{Math.floor(audioDuration)} verses</span>
             </div>
+          </div>
+
+          {/* Chapter Navigation */}
+          <div className="flex items-center justify-center gap-[16px] mb-[24px]">
+            {/* Previous Chapter Button */}
+            <button 
+              onClick={() => onBookChange?.('prev')}
+              className="bg-[var(--color-bg-secondary)] rounded-full shadow-[var(--shadow-sm)] size-[32px] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+              title="Previous chapter"
+            >
+              <ChevronLeft className="size-[16px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+            </button>
+            <div className="text-center px-4">
+              <p className="text-[12px] text-gray-600 font-medium">{selectedBook}</p>
+              <p className="text-[14px] text-gray-800 font-semibold">Chapter {selectedChapter}</p>
+            </div>
+            {/* Next Chapter Button */}
+            <button 
+              onClick={() => onBookChange?.('next')}
+              className="bg-[var(--color-bg-secondary)] rounded-full shadow-[var(--shadow-sm)] size-[32px] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+              title="Next chapter"
+            >
+              <ChevronRight className="size-[16px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+            </button>
           </div>
 
           {/* Main Controls */}
@@ -188,6 +222,7 @@ export default function AudioControlPanel({
             <button 
               onClick={() => onVerseChange(Math.max(1, selectedVerse - 1))}
               className="relative bg-[var(--color-bg-secondary)] rounded-full shadow-[var(--shadow-sm)] size-[36px] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+              title="Previous verse"
             >
               <ChevronLeft className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
             </button>
@@ -233,6 +268,7 @@ export default function AudioControlPanel({
             <button 
               onClick={() => onVerseChange(selectedVerse + 1)}
               className="relative bg-[var(--color-bg-secondary)] rounded-full shadow-[var(--shadow-sm)] size-[36px] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+              title="Next verse"
             >
               <ChevronRight className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
             </button>
@@ -280,18 +316,29 @@ export default function AudioControlPanel({
           </div>
 
           {/* Volume Slider row */}
-          <div className="px-10 flex items-center justify-center gap-4 mt-2">
-            <span className="text-xs font-bold text-gray-400">0%</span>
-            <input 
-              type="range" 
-              min="0" 
-              max="1" 
-              step="0.1"
-              value={ttsVolume} 
-              onChange={(e) => onVolumeChange(parseFloat(e.target.value))}
-              className="w-full accent-[var(--color-primary-teal)]" 
-            />
-            <span className="text-xs font-bold text-gray-400">100%</span>
+          <div className="px-6 mt-6">
+            <div className="flex items-center justify-center gap-3">
+              <span className="text-xs font-medium text-gray-600">Volume</span>
+              <div className="flex-1 flex items-center gap-2">
+                <span className="text-xs font-semibold text-gray-500">0%</span>
+                <input 
+                  type="range" 
+                  min="0" 
+                  max="100" 
+                  step="5"
+                  value={Math.round(ttsVolume * 100)}
+                  onChange={(e) => onVolumeChange(parseInt(e.target.value) / 100)}
+                  className="flex-1 h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-[var(--color-primary-teal)]"
+                  style={{
+                    background: `linear-gradient(to right, var(--color-primary-teal) 0%, var(--color-primary-teal) ${Math.round(ttsVolume * 100)}%, #e5e7eb ${Math.round(ttsVolume * 100)}%, #e5e7eb 100%)`
+                  }}
+                />
+                <span className="text-xs font-semibold text-gray-500">100%</span>
+              </div>
+            </div>
+            <div className="text-center mt-2 text-xs text-gray-600 font-medium">
+              {Math.round(ttsVolume * 100)}%
+            </div>
           </div>
         </div>
       </div>
