@@ -661,7 +661,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       const announcementUtterance = new SpeechSynthesisUtterance(chapterAnnouncement);
       announcementUtterance.rate = playbackSpeed;
       announcementUtterance.pitch = 1;
-      announcementUtterance.volume = ttsVolume;
+      const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
+      announcementUtterance.volume = constrainedVolume;
+      console.log('[Volume] Setting announcement volume to:', constrainedVolume);
 
       // After announcement finishes, continue with first verse (skip announcement on next call)
       announcementUtterance.onend = () => {
@@ -713,7 +715,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         const verseUtterance = new SpeechSynthesisUtterance(verseText);
         verseUtterance.rate = playbackSpeed;
         verseUtterance.pitch = 1;
-        verseUtterance.volume = ttsVolume;
+        const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
+        verseUtterance.volume = constrainedVolume;
+        console.log('[Volume] Setting verse utterance volume to:', constrainedVolume);
 
         // Highlight verse IMMEDIATELY before starting speech
         setCurrentReadingVerse(verseNumber);
@@ -905,7 +909,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     const utterance = new SpeechSynthesisUtterance(verseText);
     utterance.rate = playbackSpeed;
     utterance.pitch = 1;
-    utterance.volume = ttsVolume;
+    const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
+    utterance.volume = constrainedVolume;
+    console.log('[Volume] Setting reading utterance volume to:', constrainedVolume);
 
     // Highlight verse IMMEDIATELY before starting speech
     setCurrentReadingVerse(verseNumber);
