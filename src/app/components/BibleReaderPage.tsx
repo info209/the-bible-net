@@ -265,7 +265,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       if (verseElement) {
         const elementTop = verseElement.getBoundingClientRect().top;
         const currentScroll = window.scrollY;
-        const targetScroll = currentScroll + elementTop - 100;
+        const targetScroll = currentScroll + elementTop - 180;
 
         window.scrollTo({
           top: targetScroll,
@@ -713,7 +713,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           if (verseElement) {
             const elementTop = verseElement.getBoundingClientRect().top;
             const currentScroll = window.scrollY;
-            const targetScroll = currentScroll + elementTop - 100;
+            const targetScroll = currentScroll + elementTop - 180;
 
             window.scrollTo({
               top: targetScroll,
@@ -907,7 +907,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       if (verseElement) {
         const elementTop = verseElement.getBoundingClientRect().top;
         const currentScroll = window.scrollY;
-        const targetScroll = currentScroll + elementTop - 100;
+        const targetScroll = currentScroll + elementTop - 180;
 
         window.scrollTo({
           top: targetScroll,

@@ -92,7 +92,7 @@ export default function SongDetail({ songId, bookId, onBack }: SongDetailProps) 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f8f9fa] to-[#e6f0f1] pb-24">
       {/* Header */}
-      <div className="glass-light border-b border-white/20 sticky top-0 z-40">
+      <div className="glass-light border-b border-white/20 sticky top-16 z-40">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">

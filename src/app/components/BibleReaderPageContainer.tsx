@@ -709,7 +709,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
           const elementTop = verseElement.getBoundingClientRect().top;
           const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
           const currentScroll = scrollContainerRef.current.scrollTop;
-          const targetScroll = currentScroll + elementTop - containerTop - 100;
+          const targetScroll = currentScroll + elementTop - containerTop - 180;
 
           scrollContainerRef.current.scrollTo({
             top: targetScroll,

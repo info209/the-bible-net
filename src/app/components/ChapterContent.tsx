@@ -187,10 +187,10 @@ export default function ChapterContent({
             const elementTop = verseElement.getBoundingClientRect().top;
             const containerTop = scrollContainer.getBoundingClientRect().top;
             const currentScroll = scrollContainer.scrollTop;
-            const targetScroll = currentScroll + elementTop - containerTop - 100;
+            const targetScroll = currentScroll + elementTop - containerTop - 180;
             scrollContainer.scrollTo({ top: targetScroll, behavior: 'smooth' });
           } else {
-            verseElement.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }
       }, 300);

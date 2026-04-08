@@ -237,7 +237,7 @@ export default function SongsLibrary({ onBack, isEmbedded }: SongsLibraryProps) 
   return (
     <div className={`${!isEmbedded ? 'min-h-screen bg-gradient-to-br from-[#f8f9fa] to-[#e6f0f1] pb-24' : ''}`}>
       {/* Header with Search and Filter */}
-      <div className="glass-light border-b border-white/20 sticky top-0 z-40">
+      <div className="glass-light border-b border-white/20 sticky top-16 z-40">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center justify-between mb-4">
             <div>
