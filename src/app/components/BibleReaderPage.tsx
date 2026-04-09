@@ -1260,7 +1260,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       {/* Selector panels */}
       {showBookSelector && (
         <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowBookSelector(false)}>
-          <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
             {/* Header */}
             <div className="flex items-center justify-between p-4">
               <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Books</h3>
@@ -1308,7 +1308,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               <div className="grid grid-cols-2 gap-8">
                 {/* Old Testament */}
                 <div>
-                  <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">Old Testament</h4>
+                  <h4 className="sticky top-0 bg-white text-[var(--color-text-primary)] mb-3 pt-2 pb-2 text-sm font-semibold z-10">Old Testament</h4>
                   <div className="space-y-2">
                     {(bookSortType === 'alphabetical'
                       ? [...books['Old Testament']].sort((a, b) => {
@@ -1342,7 +1342,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
                 {/* New Testament */}
                 <div>
-                  <h4 className="sticky top-0 backdrop-blur-3xl backdrop-saturate-[180%] text-[var(--color-text-primary)] mb-3 pb-2 text-sm font-semibold z-10">New Testament</h4>
+                  <h4 className="sticky top-0 bg-white text-[var(--color-text-primary)] mb-3 pt-2 pb-2 text-sm font-semibold z-10">New Testament</h4>
                   <div className="space-y-2">
                     {(bookSortType === 'alphabetical'
                       ? [...books['New Testament']].sort((a, b) => {

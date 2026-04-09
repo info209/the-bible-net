@@ -171,7 +171,7 @@ export default function HomeView() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="space-y-6 pt-20 pb-6 bg-transparent min-h-full px-4"
+      className="space-y-6 pt-10 pb-6 bg-transparent min-h-full px-4"
     >
       {/* Greeting - Figma Style */}
       <div className="flex items-center space-x-3 animate-fade-in">
