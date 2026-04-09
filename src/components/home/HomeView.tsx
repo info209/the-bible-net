@@ -1,18 +1,17 @@
 "use client";
 
-import { Heart, MessageCircle, Share2, Maximize2, Play, Pause, X, User, BookOpen } from 'lucide-react';
-import HomeSkeleton from './HomeSkeleton';
+import { Heart, MessageCircle, Share2, Maximize2, Play, Pause, X, User, BookOpen, Globe } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { useReadingProgress } from '@/lib/useReadingProgress';
 import { getRelativeTime } from '@/utils/time';
+import HomeSkeleton from '@/app/components/HomeSkeleton';
 
-export default function HomePage() {
+export default function HomeView() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { latestProgress, allProgress, isLoading: progressLoading } = useReadingProgress();
@@ -48,6 +47,13 @@ export default function HomePage() {
     fetchData();
   }, []);
 
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) return "Good morning";
+    if (hour >= 12 && hour < 17) return "Good afternoon";
+    return "Good evening";
+  };
+
   const handleLike = async (contentId: string, type: 'verse' | 'devotion') => {
     try {
       const res = await fetch('/api/interactions/like', {
@@ -58,14 +64,11 @@ export default function HomePage() {
 
       const data = await res.json();
       if (res.ok) {
-        // Optimistic update or refresh data
         if (type === 'verse') {
           setVerse({ ...verse, likeCount: data.likeCount });
         } else {
           setDevotion({ ...devotion, likeCount: data.likeCount });
         }
-      } else {
-        alert(data.error || 'Failed to like');
       }
     } catch (error) {
       console.error('Like error:', error);
@@ -74,7 +77,6 @@ export default function HomePage() {
 
   const handleCommentClick = (contentId: string, type: 'verse' | 'devotion') => {
     if (!session) {
-      // Redirect to login with callback
       router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`);
       return;
     }
@@ -111,7 +113,6 @@ export default function HomePage() {
       if (res.ok) {
         setNewComment('');
         fetchComments(activeContent.id, activeContent.type);
-        // Update count
         if (activeContent.type === 'verse') {
           setVerse({ ...verse, commentCount: (verse.commentCount || 0) + 1 });
         } else {
@@ -133,24 +134,17 @@ export default function HomePage() {
 
     if (navigator.share) {
       try {
-        await navigator.share({
-          title: 'The Bible Net',
-          text,
-          url
-        });
+        await navigator.share({ title: 'The Bible Net', text, url });
       } catch (error) {
         console.log('Share failed', error);
       }
     } else {
-      // Fallback: Copy to clipboard
       navigator.clipboard.writeText(`${text} ${url}`);
       alert('Link copied to clipboard!');
     }
   };
 
   const handleExpand = (verse: any) => {
-    // Expected route: /bible/:book/:chapter?verse=
-    // Extract book and chapter from reference (e.g., Psalm 23:1-3)
     const match = verse.reference.match(/^(.+?)\s+(\d+):(\d+)/);
     if (match) {
       const book = match[1].toLowerCase().replace(/\s+/g, '-');
@@ -172,7 +166,6 @@ export default function HomePage() {
 
   const dailyVerses = verse ? [verse] : [];
 
-
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -180,21 +173,20 @@ export default function HomePage() {
       transition={{ duration: 0.5, ease: "easeOut" }}
       className="space-y-6 pt-20 pb-6 bg-transparent min-h-full px-4"
     >
-
-      {/* Greeting */}
+      {/* Greeting - Figma Style */}
       <div className="flex items-center space-x-3 animate-fade-in">
         <div className="size-10 rounded-full bg-gradient-to-br from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] flex items-center justify-center text-white font-bold text-lg uppercase shadow-sm">
           {(session?.user as any)?.firstName?.[0] || session?.user?.name?.[0] || 'G'}
         </div>
         <div>
-          <p className="text-gray-600 text-sm font-medium">Shalom,</p>
+          <p className="text-gray-600 text-sm">{getGreeting()},</p>
           <h2 className="text-xl font-bold text-gray-800">
             {(session?.user as any)?.firstName || session?.user?.name || 'Guest'}
           </h2>
         </div>
       </div>
 
-      {/* Profile Setup Banner */}
+      {/* Profile Setup Banner (Preserved) */}
       {status === 'authenticated' && (session?.user as any).onboardingCompleted === false && (
         <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-100 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm animate-fade-in gap-4 sm:gap-2">
           <div className="flex items-center space-x-3">
@@ -214,12 +206,12 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Daily Verse Card */}
+      {/* Daily Verse Card - Figma Design */}
       <div className="relative overflow-hidden">
         <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentSlide * 100}%)` }}>
           {dailyVerses.map((verse, index) => (
             <div key={index} className="w-full flex-shrink-0">
-              <div className={`bg-gradient-to-br ${verse.bgColor || 'from-teal-600 to-teal-500'} rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex flex-col`}>
+              <div className={`bg-gradient-to-br ${verse.bgColor || 'from-cyan-400 to-teal-500'} rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex flex-col`}>
                 {/* Decorative elements */}
                 <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
                 <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
@@ -236,7 +228,7 @@ export default function HomePage() {
 
                   {/* Verse text */}
                   <div className="flex-1 flex items-center my-6">
-                    <p className="text-white text-lg leading-relaxed font-serif italic">
+                    <p className="text-white text-lg leading-relaxed font-serif italic text-justify">
                       "{verse.text}"
                     </p>
                   </div>
@@ -248,9 +240,9 @@ export default function HomePage() {
                       className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                     >
                       <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                        <Heart className="size-4" />
+                        <Heart className={`size-4 ${verse.likeCount > 0 ? 'fill-white' : ''}`} />
                       </div>
-                      <span className="text-xs">{verse.likeCount || 0}</span>
+                      <span className="text-xs">{verse.likeCount ? (verse.likeCount >= 1000 ? (verse.likeCount/1000).toFixed(1) + 'k' : verse.likeCount) : 0}</span>
                     </button>
                     <button
                       onClick={() => handleCommentClick(verse._id, 'verse')}
@@ -259,7 +251,7 @@ export default function HomePage() {
                       <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                         <MessageCircle className="size-4" />
                       </div>
-                      <span className="text-xs">{verse.commentCount || 0}</span>
+                      <span className="text-xs">{verse.commentCount ? (verse.commentCount >= 1000 ? (verse.commentCount/1000).toFixed(1) + 'k' : verse.commentCount) : 0}</span>
                     </button>
                     <button
                       onClick={() => handleShare(verse, 'verse')}
@@ -294,19 +286,20 @@ export default function HomePage() {
         </div>
 
         {/* Slide indicators */}
-        <div className="flex justify-center space-x-2 mt-4">
-          {dailyVerses.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => setCurrentSlide(index)}
-              className={`h-2 rounded-full transition-all ${currentSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'
-                }`}
-            />
-          ))}
-        </div>
+        {dailyVerses.length > 1 && (
+          <div className="flex justify-center space-x-2 mt-4">
+            {dailyVerses.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => setCurrentSlide(index)}
+                className={`h-2 rounded-full transition-all ${currentSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Daily Devotional Card */}
+      {/* Daily Devotional Card - Figma Design */}
       {devotion ? (
         <div className="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[320px]">
           {/* Decorative elements */}
@@ -324,7 +317,7 @@ export default function HomePage() {
                 onClick={() => setAudioPlaying(!audioPlaying)}
                 className="p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform"
               >
-                {audioPlaying ? <Pause className="size-5 text-[var(--color-accent-rose)]" /> : <Play className="size-5 text-[var(--color-accent-rose)]" />}
+                {audioPlaying ? <Pause className="size-5 text-[var(--color-accent-rose)]" /> : <Play className="size-5 text-[var(--color-accent-rose)] ml-0.5" />}
               </button>
             </div>
 
@@ -348,7 +341,7 @@ export default function HomePage() {
                 className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
               >
                 <div className="bg-white p-2 rounded-full shadow-sm">
-                  <Heart className="size-4" />
+                  <Heart className={`size-4 ${devotion.likeCount > 0 ? 'fill-[var(--color-accent-rose)] text-[var(--color-accent-rose)]' : ''}`} />
                 </div>
                 <span className="text-xs">{devotion.likeCount || 0}</span>
               </button>
@@ -385,7 +378,7 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Reading Plan */}
+      {/* My Reading Plan - Figma Style */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-gray-800">My Reading Plan</h3>
@@ -412,17 +405,15 @@ export default function HomePage() {
                     </p>
                   </div>
                   <div className="size-12 rounded-full bg-gradient-to-br from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] flex items-center justify-center text-white font-bold text-sm">
-                    {latestProgress.completed ? '100%' : '---'}
+                    {latestProgress.completed ? '100%' : (latestProgress.progressPercent ? `${Math.round(latestProgress.progressPercent)}%` : '---')}
                   </div>
                 </div>
-                {latestProgress.progressPercent !== undefined && (
-                   <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+                <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
                     <div
                       className="bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] h-2 rounded-full transition-all"
-                      style={{ width: `${latestProgress.completed ? 100 : latestProgress.progressPercent}%` }}
+                      style={{ width: `${latestProgress.completed ? 100 : (latestProgress.progressPercent || 0)}%` }}
                     />
-                  </div>
-                )}
+                </div>
                 <button 
                   onClick={() => router.push(`/bible/${latestProgress.versionId}/${latestProgress.bookId}/${latestProgress.chapter}`)}
                   className="w-full py-2 bg-[#e6f0f1] text-[var(--color-primary-teal)] rounded-lg text-sm font-medium hover:bg-[#d0e5e7] transition-colors mt-2"
@@ -431,10 +422,6 @@ export default function HomePage() {
                 </button>
              </div>
              
-             {/* If there are more progress items, show second latest? Or just one? 
-                 The prompt says Case 2 show "Continue Reading" (singular)
-                 But the UI grid looks better with 2. I'll show one and one empty/placeholder or just one.
-                 Actually, I'll filter for the second latest. */}
              {allProgress.length > 1 && (
                 <div className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow border border-gray-100 flex flex-col justify-between hidden sm:flex">
                 <div className="flex items-start justify-between mb-3">
@@ -470,7 +457,7 @@ export default function HomePage() {
         )}
       </div>
 
-      {/* Prayer Wall Preview */}
+      {/* Community Prayer Wall - Figma Design */}
       <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl p-6 shadow-xl">
         <h3 className="text-xl font-bold text-gray-800 mb-4">Community Prayer Requests</h3>
         <div className="space-y-3">
@@ -503,7 +490,7 @@ export default function HomePage() {
         </button>
       </div>
 
-      {/* Comment Modal - Radix Dialog */}
+      {/* Comment Modal - Preserved */}
       <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
         <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-t-[32px] sm:rounded-2xl glass-ios border-none shadow-2xl [&>[data-slot=dialog-close]]:hidden flex flex-col max-h-[90vh]">
           <DialogHeader className="p-4 border-b flex flex-row items-center justify-between bg-white/10 backdrop-blur-sm space-y-0">

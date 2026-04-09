@@ -1,5 +1,9 @@
-import HomePage from "../components/HomePage";
+import HomeView from "@/components/home/HomeView";
 
 export default function Page() {
-  return <HomePage />;
+  return (
+    <div className="max-w-3xl mx-auto">
+      <HomeView />
+    </div>
+  );
 }
