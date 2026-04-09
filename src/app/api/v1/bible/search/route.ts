@@ -9,24 +9,57 @@ export const dynamic = 'force-dynamic';
  * /api/v1/bible/search:
  *   get:
  *     summary: Search for verses across the entire Bible
+ *     description: Perform a full-text search for verses matching a query within a specific version.
  *     tags: [Bible]
  *     parameters:
  *       - in: query
  *         name: q
  *         required: true
- *         schema: { type: string }
- *         description: Search query
+ *         schema: { type: string, minLength: 2 }
+ *         description: Search query (minimum 2 characters)
  *       - in: query
  *         name: versionId
  *         required: true
  *         schema: { type: string }
- *         description: Bible version ID
+ *         description: Bible version ID or abbreviation (e.g., KJV)
  *       - in: query
  *         name: limit
  *         schema: { type: integer, default: 30 }
+ *         description: Maximum number of results
  *     responses:
  *       200:
- *         description: Search results
+ *         description: Search results retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     results:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           verseId: { type: string }
+ *                           number: { type: number }
+ *                           text: { type: string }
+ *                           book: { type: object, properties: { id: { type: string }, name: { type: string } } }
+ *                           chapter: { type: object, properties: { number: { type: number } } }
+ *                     total: { type: number }
+ *                     query: { type: string }
+ *       400:
+ *         description: Invalid query or missing parameters
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 export async function GET(req: NextRequest) {
     try {

@@ -12,6 +12,88 @@ const profileUpdateSchema = z.object({
     onboardingCompleted: z.boolean().optional(),
 });
 
+/**
+ * @swagger
+ * /api/user/profile:
+ *   get:
+ *     summary: Get current user profile
+ *     description: Retrieve the authenticated user's profile information. Sensitive fields are excluded.
+ *     tags: [User]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Successfully retrieved profile
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data: { $ref: '#/components/schemas/User' }
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: User not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *   put:
+ *     summary: Update user profile
+ *     description: Update the authenticated user's profile information (e.g., name, preferences).
+ *     tags: [User]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [firstName, lastName, country, preferredLanguage, preferredBibleVersion]
+ *             properties:
+ *               firstName: { type: string, minLength: 2 }
+ *               lastName: { type: string }
+ *               country: { type: string, enum: [New Zealand, United States, United Kingdom, India, Australia, Canada] }
+ *               preferredLanguage: { type: string, enum: [English, Spanish, French, Hindi, Telugu] }
+ *               preferredBibleVersion: { type: string, enum: [NKJV, KJV, NIV, ESV] }
+ *               onboardingCompleted: { type: boolean }
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 message: { type: string }
+ *                 data: { $ref: '#/components/schemas/User' }
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
+
 export async function GET(req: NextRequest) {
     try {
         const session = await getUserSession();

@@ -9,20 +9,50 @@ export const dynamic = 'force-dynamic';
  * @swagger
  * /api/v1/bible/{version}/{book}/chapters:
  *   get:
- *     summary: Get chapters for a specific book
+ *     summary: Get chapters for a specific Bible book
+ *     description: Retrieve all chapters for a given book ID within a specific version.
  *     tags: [Bible]
  *     parameters:
  *       - in: path
  *         name: version
  *         required: true
  *         schema: { type: string }
+ *         description: Version ID or abbreviation (e.g., KJV, NKJV)
  *       - in: path
  *         name: book
  *         required: true
  *         schema: { type: string }
+ *         description: Book ID or slug (e.g., genesis, john)
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 50 }
+ *         description: Items per page
  *     responses:
  *       200:
- *         description: Success
+ *         description: Successfully retrieved chapters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/BibleChapter' }
+ *       404:
+ *         description: Book not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 export async function GET(
     req: NextRequest,

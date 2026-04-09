@@ -8,6 +8,7 @@ import { CommentRepository } from '@/repositories/commentRepository';
  * /api/interactions/comment:
  *   post:
  *     summary: Add a comment to content
+ *     description: Authenticated users can post comments on verses or devotions.
  *     tags: [Interactions]
  *     security:
  *       - BearerAuth: []
@@ -19,14 +20,41 @@ import { CommentRepository } from '@/repositories/commentRepository';
  *             type: object
  *             required: [contentId, type, comment]
  *             properties:
- *               contentId: { type: string }
- *               type: { type: string, enum: [verse, devotion] }
- *               comment: { type: string }
+ *               contentId:
+ *                 type: string
+ *                 description: ID of the content being commented on
+ *               type:
+ *                 type: string
+ *                 enum: [verse, devotion]
+ *                 description: Type of the content
+ *               comment:
+ *                 type: string
+ *                 description: The comment text (max 500 chars)
  *     responses:
  *       200:
- *         description: Comment added
+ *         description: Comment added successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 comment: { $ref: '#/components/schemas/Comment' }
+ *       400:
+ *         description: Validation error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  *       401:
  *         description: Authentication required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 export async function POST(req: NextRequest) {
     try {
@@ -57,19 +85,37 @@ export async function POST(req: NextRequest) {
  * /api/interactions/comment:
  *   get:
  *     summary: Get comments for content
+ *     description: Retrieve a list of comments for a specific verse or devotion.
  *     tags: [Interactions]
  *     parameters:
  *       - in: query
  *         name: contentId
  *         required: true
  *         schema: { type: string }
+ *         description: The ID of the verse or devotion
  *       - in: query
  *         name: type
  *         required: true
  *         schema: { type: string, enum: [verse, devotion] }
+ *         description: The type of the content
  *     responses:
  *       200:
- *         description: List of comments
+ *         description: List of comments retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/Comment' }
+ *       400:
+ *         description: Missing required parameters
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 export async function GET(req: NextRequest) {
     try {

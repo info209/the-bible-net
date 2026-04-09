@@ -8,14 +8,25 @@ import { connectDB } from '@/lib/db';
  * /api/daily/devotion:
  *   get:
  *     summary: Get the daily devotion
+ *     description: Retrieve the curated daily devotion content, including text and audio.
  *     tags: [Daily Content]
  *     responses:
  *       200:
- *         description: Success
+ *         description: Successfully retrieved daily devotion
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Content'
+ *       404:
+ *         description: Daily devotion not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 export async function GET() {
     try {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Heart, MessageCircle, Share2, Maximize2, Play, Pause, X, User, BookOpen, Globe } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,10 +16,12 @@ export default function HomeView() {
   const router = useRouter();
   const { latestProgress, allProgress, isLoading: progressLoading } = useReadingProgress();
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   const [verse, setVerse] = useState<any>(null);
   const [devotion, setDevotion] = useState<any>(null);
+  const [prayers, setPrayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -31,13 +33,15 @@ export default function HomeView() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [verseRes, devotionRes] = await Promise.all([
+        const [verseRes, devotionRes, prayersRes] = await Promise.all([
           fetch('/api/daily/verse'),
-          fetch('/api/daily/devotion')
+          fetch('/api/daily/devotion'),
+          fetch('/api/prayers?limit=3')
         ]);
 
         if (verseRes.ok) setVerse(await verseRes.json());
         if (devotionRes.ok) setDevotion(await devotionRes.json());
+        if (prayersRes.ok) setPrayers(await prayersRes.json());
       } catch (error) {
         console.error('Error fetching home data:', error);
       } finally {
@@ -158,6 +162,43 @@ export default function HomeView() {
 
   const handleReadMore = (devotionId: string) => {
     router.push(`/devotion/${devotionId}`);
+  };
+
+  const toggleAudio = () => {
+    if (!devotion?.audioUrl) {
+      alert('Audio not available for this devotional.');
+      return;
+    }
+
+    if (!audioRef.current) {
+      audioRef.current = new Audio(devotion.audioUrl);
+      audioRef.current.onended = () => setAudioPlaying(false);
+    }
+
+    if (audioPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setAudioPlaying(!audioPlaying);
+  };
+
+  const handleIntercede = async (prayerId: string) => {
+    if (!session) {
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`);
+      return;
+    }
+    try {
+      const res = await fetch(`/api/prayers/${prayerId}/intercede`, {
+        method: 'POST'
+      });
+      if (res.ok) {
+        const updatedPrayer = await res.json();
+        setPrayers(prayers.map(p => p._id === prayerId ? updatedPrayer : p));
+      }
+    } catch (error) {
+      console.error('Intercession error:', error);
+    }
   };
 
   if (loading || progressLoading) {
@@ -314,7 +355,7 @@ export default function HomeView() {
                 <p className="text-gray-600 text-sm">{devotion.reference}</p>
               </div>
               <button
-                onClick={() => setAudioPlaying(!audioPlaying)}
+                onClick={toggleAudio}
                 className="p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform"
               >
                 {audioPlaying ? <Pause className="size-5 text-[var(--color-accent-rose)]" /> : <Play className="size-5 text-[var(--color-accent-rose)] ml-0.5" />}
@@ -461,31 +502,45 @@ export default function HomeView() {
       <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl p-6 shadow-xl">
         <h3 className="text-xl font-bold text-gray-800 mb-4">Community Prayer Requests</h3>
         <div className="space-y-3">
-          {[
-            { name: 'Sarah M.', prayer: 'Please pray for my family during this difficult time...', time: '2 hours ago' },
-            { name: 'John D.', prayer: 'Praise God! My prayer was answered today!', time: '5 hours ago' },
-            { name: 'Mary K.', prayer: 'Seeking wisdom for an important decision...', time: '1 day ago' }
-          ].map((request, i) => (
-            <div key={i} className="bg-white/80 backdrop-blur-sm rounded-lg p-4 hover:bg-white transition-colors">
-              <div className="flex items-start space-x-3">
-                <div className="size-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold">
-                  {request.name[0]}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="font-semibold text-gray-800">{request.name}</p>
-                    <span className="text-xs text-gray-500">{request.time}</span>
+          {prayers.length === 0 ? (
+            <div className="bg-white/50 rounded-lg p-8 text-center text-gray-500 italic">
+              No public prayer requests yet.
+            </div>
+          ) : (
+            prayers.map((request, i) => (
+              <div key={request._id} className="bg-white/80 backdrop-blur-sm rounded-lg p-4 hover:bg-white transition-colors">
+                <div className="flex items-start space-x-3">
+                  <div className="size-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold uppercase">
+                    {(request.anonymous ? 'A' : (request.userId?.firstName?.[0] || 'U'))}
                   </div>
-                  <p className="text-sm text-gray-600">{request.prayer}</p>
-                  <button className="text-xs text-[var(--color-primary-teal)] font-medium mt-2 hover:underline">
-                    🙏 Pray for this
-                  </button>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="font-semibold text-gray-800">
+                        {request.anonymous ? 'Anonymous' : `${request.userId?.firstName} ${request.userId?.lastName?.[0]}.`}
+                      </p>
+                      <span className="text-xs text-gray-500">{getRelativeTime(request.createdAt)}</span>
+                    </div>
+                    <p className="text-sm text-gray-600 line-clamp-2">{request.text}</p>
+                    <button 
+                      onClick={() => handleIntercede(request._id)}
+                      className={`text-xs font-medium mt-2 hover:underline flex items-center gap-1.5 ${
+                        request.intercessors?.includes((session?.user as any)?.id) 
+                        ? 'text-orange-600' 
+                        : 'text-[var(--color-primary-teal)]'
+                      }`}
+                    >
+                      <span>🙏</span> {request.intercessionCount > 0 ? `${request.intercessionCount} praying` : 'Pray for this'}
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
-        <button className="w-full mt-4 py-3 bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] text-white rounded-xl font-medium hover:shadow-lg transition-all">
+        <button 
+          onClick={() => router.push('/community/prayers')}
+          className="w-full mt-4 py-3 bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] text-white rounded-xl font-medium hover:shadow-lg transition-all"
+        >
           View All Prayers
         </button>
       </div>

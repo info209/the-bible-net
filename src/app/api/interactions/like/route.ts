@@ -9,8 +9,11 @@ import { LikeRepository } from '@/repositories/likeRepository';
  * @swagger
  * /api/interactions/like:
  *   post:
- *     summary: Like a piece of content
+ *     summary: Like/Unlike a piece of content (Toggle)
+ *     description: Toggles a like for the given content. Works for both authenticated users and guests.
  *     tags: [Interactions]
+ *     security:
+ *       - BearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -19,13 +22,40 @@ import { LikeRepository } from '@/repositories/likeRepository';
  *             type: object
  *             required: [contentId, type]
  *             properties:
- *               contentId: { type: string }
- *               type: { type: string, enum: [verse, devotion] }
+ *               contentId:
+ *                 type: string
+ *                 description: The ID of the verse or devotion to like
+ *               type:
+ *                 type: string
+ *                 enum: [verse, devotion]
+ *                 description: The type of content
  *     responses:
  *       200:
- *         description: Like added
+ *         description: Successfully toggled like
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 likeCount: { type: number, description: New total like count }
+ *                 action: { type: string, enum: [liked, unliked] }
+ *                 liked: { type: boolean, description: Current like status }
  *       400:
- *         description: Already liked or invalid input
+ *         description: Invalid input or missing parameters
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       401:
+ *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 export async function POST(req: NextRequest) {
     try {

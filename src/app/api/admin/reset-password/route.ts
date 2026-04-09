@@ -5,6 +5,38 @@ import { resetPasswordSchema } from '@/lib/validations/admin';
 import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 
+/**
+ * @swagger
+ * /api/admin/reset-password:
+ *   post:
+ *     summary: Reset admin password using a token
+ *     description: Reset the password for an admin account using a valid reset token received via email.
+ *     tags: [Admin]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [token, password]
+ *             properties:
+ *               token: { type: string, description: The reset token from the email link }
+ *               password: { type: string, format: password, description: The new password }
+ *     responses:
+ *       200:
+ *         description: Password reset successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message: { type: string, example: Password has been reset successfully }
+ *       400:
+ *         description: Invalid/expired token or validation error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 export async function POST(req: Request) {
     try {
         const body = await req.json();

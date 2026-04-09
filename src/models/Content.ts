@@ -11,6 +11,9 @@ export interface IContent extends Document {
     highlightQuote?: string;
     likeCount: number;
     commentCount: number;
+    audioUrl?: string;
+    bgColor?: string;
+    version?: string;
     createdBy: string;
     createdAt: Date;
     updatedAt: Date;
@@ -61,6 +64,18 @@ const ContentSchema = new Schema<IContent>(
         commentCount: {
             type: Number,
             default: 0,
+        },
+        audioUrl: {
+            type: String,
+            trim: true,
+        },
+        bgColor: {
+            type: String,
+            trim: true,
+        },
+        version: {
+            type: String,
+            trim: true,
         },
         createdBy: {
             type: String,

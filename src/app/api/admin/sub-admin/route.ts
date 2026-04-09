@@ -7,6 +7,68 @@ import { subAdminSchema } from '@/lib/validations/admin';
 import bcrypt from 'bcryptjs';
 import { LoggingService } from '@/services/loggingService';
 
+/**
+ * @swagger
+ * /api/admin/sub-admin:
+ *   get:
+ *     summary: List all sub-admins (Super Admin only)
+ *     description: Retrieve a list of all users with the SUB_ADMIN role. Restricted to Super Admins.
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of sub-admins retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items: { $ref: '#/components/schemas/User' }
+ *       403:
+ *         description: Forbidden - Super Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *   post:
+ *     summary: Create a new sub-admin (Super Admin only)
+ *     description: Create a new account with the SUB_ADMIN role. Restricted to Super Admins.
+ *     tags: [Admin]
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [firstName, lastName, email, password]
+ *             properties:
+ *               firstName: { type: string }
+ *               lastName: { type: string }
+ *               email: { type: string, format: email }
+ *               password: { type: string, format: password }
+ *     responses:
+ *       201:
+ *         description: Sub-admin created successfully
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/User' }
+ *       400:
+ *         description: Email already in use or validation error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       403:
+ *         description: Forbidden - Super Admin access required
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 export async function GET() {
     const session = await auth();
     if (!session || session.user.role !== UserRole.SUPER_ADMIN) {

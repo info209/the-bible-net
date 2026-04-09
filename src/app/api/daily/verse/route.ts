@@ -8,14 +8,25 @@ import { connectDB } from '@/lib/db';
  * /api/daily/verse:
  *   get:
  *     summary: Get the daily Bible verse
+ *     description: Retrieve the curated Bible verse of the day.
  *     tags: [Daily Content]
  *     responses:
  *       200:
- *         description: Success
+ *         description: Successfully retrieved daily verse
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/Content'
+ *       404:
+ *         description: Daily verse not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 export async function GET() {
     try {

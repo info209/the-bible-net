@@ -4,6 +4,69 @@ import { connectDB } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
 
+/**
+ * @swagger
+ * /api/v1/bible/compare/{v1}/{v2}/{book}/{chapter}:
+ *   get:
+ *     summary: Compare two Bible versions side-by-side
+ *     description: Retrieve aligned verses from two different versions for a specific book and chapter.
+ *     tags: [Bible]
+ *     parameters:
+ *       - in: path
+ *         name: v1
+ *         required: true
+ *         schema: { type: string }
+ *         description: First Bible version (e.g., KJV)
+ *       - in: path
+ *         name: v2
+ *         required: true
+ *         schema: { type: string }
+ *         description: Second Bible version (e.g., NKJV)
+ *       - in: path
+ *         name: book
+ *         required: true
+ *         schema: { type: string }
+ *         description: Book ID or slug (e.g., genesis)
+ *       - in: path
+ *         name: chapter
+ *         required: true
+ *         schema: { type: integer }
+ *         description: Chapter number
+ *     responses:
+ *       200:
+ *         description: Aligned verses retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     version1: { $ref: '#/components/schemas/BibleVersion' }
+ *                     version2: { $ref: '#/components/schemas/BibleVersion' }
+ *                     book: { $ref: '#/components/schemas/BibleBook' }
+ *                     chapter: { type: number }
+ *                     verses:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           number: { type: number }
+ *                           v1: { type: string }
+ *                           v2: { type: string }
+ *       404:
+ *         description: One or both versions not found for this book/chapter
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ */
 export async function GET(
     req: NextRequest,
     { params }: { params: { v1: string, v2: string, book: string, chapter: string } }

@@ -8,28 +8,56 @@ export const dynamic = 'force-dynamic';
  * @swagger
  * /api/v1/bible/{version}/{book}/{chapter}:
  *   get:
- *     summary: Get verses for a specific chapter
+ *     summary: Get verses for a specific Bible chapter
+ *     description: Retrieve all verses for a given chapter, optionally filtered by a search query.
  *     tags: [Bible]
  *     parameters:
  *       - in: path
  *         name: version
  *         required: true
  *         schema: { type: string }
+ *         description: Version ID or abbreviation (e.g., KJV, NKJV)
  *       - in: path
  *         name: book
  *         required: true
  *         schema: { type: string }
+ *         description: Book ID or slug (e.g., genesis, john)
  *       - in: path
  *         name: chapter
  *         required: true
- *         schema: { type: string }
+ *         schema: { type: integer }
+ *         description: Chapter number
  *       - in: query
  *         name: q
  *         schema: { type: string }
- *         description: Optional search query
+ *         description: Optional text search filter within the chapter
  *     responses:
  *       200:
- *         description: Success
+ *         description: Successfully retrieved chapter content
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/BibleVerse' }
+ *       400:
+ *         description: Invalid parameters
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       404:
+ *         description: Chapter or version not found
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 export async function GET(
     req: NextRequest,

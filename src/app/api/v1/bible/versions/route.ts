@@ -9,17 +9,34 @@ export const dynamic = 'force-dynamic';
  * /api/v1/bible/versions:
  *   get:
  *     summary: List all available Bible versions
+ *     description: Retrieve a paginated list of supported Bible versions (e.g., KJV, NKJV).
  *     tags: [Bible]
  *     parameters:
  *       - in: query
  *         name: page
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number for pagination
  *       - in: query
  *         name: limit
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 20 }
+ *         description: Number of versions per page
  *     responses:
  *       200:
- *         description: Success
+ *         description: Successfully retrieved list of versions
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data:
+ *                   type: array
+ *                   items: { $ref: '#/components/schemas/BibleVersion' }
+ *       500:
+ *         description: Internal server error
+ *         content:
+ *           application/json:
+ *             schema: { $ref: '#/components/schemas/Error' }
  */
 export async function GET(req: NextRequest) {
     try {
