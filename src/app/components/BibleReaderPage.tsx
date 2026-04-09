@@ -1170,7 +1170,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       {/* Sub Navigation Bar - BECOMES STICKY */}
       <div className="sticky top-0 left-0 right-0 z-40 glass-light border-b border-white/20 shadow-[var(--shadow-xs)]">
-        <div className="max-w-3xl mx-auto px-4 py-1">
+        <div className="max-w-3xl mx-auto px-3 sm:px-8 py-1">
           <div className="flex items-center justify-between">
             {/* Book/Chapter/Version selectors */}
             <div className="flex items-center space-x-4">

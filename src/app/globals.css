@@ -232,6 +232,16 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
+
+  /* Global Cursor Pointer for Interactive Elements */
+  button, 
+  a, 
+  [role="button"],
+  input[type="button"],
+  input[type="submit"],
+  select {
+    cursor: pointer !important;
+  }
 }
 
 /**

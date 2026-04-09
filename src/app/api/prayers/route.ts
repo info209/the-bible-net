@@ -7,14 +7,18 @@ import { Prayer } from '@/models/Prayer';
  * @swagger
  * /api/prayers:
  *   get:
- *     summary: Fetch latest public prayer requests
- *     description: Retrieve a list of recent public prayer requests with user details.
+ *     summary: Fetch public prayer requests
+ *     description: Retrieve a list of public prayer requests with filtering and sorting options.
  *     tags: [Prayers]
  *     parameters:
  *       - in: query
  *         name: limit
- *         schema: { type: integer, default: 10 }
+ *         schema: { type: integer, default: 20 }
  *         description: Number of prayers to return
+ *       - in: query
+ *         name: sort
+ *         schema: { type: string, enum: [newest, trending] }
+ *         description: Sort order (newest or most prayed for)
  *     responses:
  *       200:
  *         description: List of prayers retrieved successfully
@@ -71,10 +75,19 @@ export async function GET(req: Request) {
   try {
     await connectDB();
     const { searchParams } = new URL(req.url);
-    const limit = parseInt(searchParams.get('limit') || '10');
+    const limit = parseInt(searchParams.get('limit') || '20');
+    const sort = searchParams.get('sort') || 'newest';
+
+    const sortOption: any = {};
+    if (sort === 'trending') {
+      sortOption.intercessionCount = -1;
+      sortOption.createdAt = -1;
+    } else {
+      sortOption.createdAt = -1;
+    }
 
     const prayers = await Prayer.find({ isPublic: true })
-      .sort({ createdAt: -1 })
+      .sort(sortOption)
       .limit(limit)
       .populate('userId', 'firstName lastName image');
 

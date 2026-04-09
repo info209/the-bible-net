@@ -72,7 +72,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 h-16 glass-teal flex justify-center w-full shadow-sm border-b border-white/10 ${className || ''}`}>
-      <div className="w-full max-w-3xl mx-auto px-6 sm:px-8 h-full flex items-center justify-between">
+      <div className="w-full max-w-3xl mx-auto px-3 sm:px-8 h-full flex items-center justify-between">
         
         {/* Logo Section (Left Aligned with Content) */}
         <div className="flex items-center pointer-events-none shrink-0">

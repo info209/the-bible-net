@@ -194,19 +194,25 @@ export default function AudioControlPanel({
 
           {/* Main Controls */}
           <div className="flex items-center justify-center gap-[54px] mb-[32px]">
-            {/* Skip Back Button */}
+            {/* Skip Back Button (Chapter/Book navigation) */}
             <button 
-              onClick={() => onVerseChange(Math.max(1, selectedVerse - 1))}
-              className="relative bg-[var(--color-bg-secondary)] rounded-full shadow-[var(--shadow-sm)] size-[36px] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+              onClick={() => {
+                if (selectedChapter > 1) {
+                  onChapterChange?.(selectedChapter - 1);
+                } else {
+                  onBookChange?.('prev');
+                }
+              }}
+              className="relative bg-[var(--color-bg-secondary)] rounded-full shadow-[var(--shadow-sm)] size-[36px] aspect-square shrink-0 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
             >
               <ChevronLeft className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
             </button>
 
-            {/* Center group with 30s back, play, 30s forward */}
+            {/* Center group with Verse navigate and play */}
             <div className="flex items-center gap-[24px]">
-              {/* 30 second back */}
+              {/* Verse Prev (labeled V-) */}
               <button 
-                onClick={() => onTimeChange(Math.max(0, audioCurrentTime - 30))}
+                onClick={() => onVerseChange(Math.max(1, selectedVerse - 1))}
                 className="relative size-[32px] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
               >
                 <div className="relative">
@@ -227,9 +233,9 @@ export default function AudioControlPanel({
                 )}
               </button>
 
-              {/* 30 second forward */}
+              {/* Verse Next (labeled V+) */}
               <button 
-                onClick={() => onTimeChange(Math.min(audioDuration, audioCurrentTime + 30))}
+                onClick={() => onVerseChange(selectedVerse + 1)}
                 className="relative size-[32px] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
               >
                 <div className="relative">
@@ -239,10 +245,16 @@ export default function AudioControlPanel({
               </button>
             </div>
 
-            {/* Skip Forward Button */}
+            {/* Skip Forward Button (Chapter/Book navigation) */}
             <button 
-              onClick={() => onVerseChange(selectedVerse + 1)}
-              className="relative bg-[var(--color-bg-secondary)] rounded-full shadow-[var(--shadow-sm)] size-[36px] flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
+              onClick={() => {
+                if (selectedChapter < totalChapters) {
+                  onChapterChange?.(selectedChapter + 1);
+                } else {
+                  onBookChange?.('next');
+                }
+              }}
+              className="relative bg-[var(--color-bg-secondary)] rounded-full shadow-[var(--shadow-sm)] size-[36px] aspect-square shrink-0 flex items-center justify-center hover:scale-105 active:scale-95 transition-transform"
             >
               <ChevronRight className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
             </button>
