@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
-import { Verse, Book, Chapter } from '@/models/Bible';
+import { Verse, Book, Chapter, BibleVersion } from '@/models/Bible';
 
 export const dynamic = 'force-dynamic';
 
