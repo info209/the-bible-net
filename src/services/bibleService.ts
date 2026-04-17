@@ -43,14 +43,19 @@ export class BibleService {
 
     /**
      * Get all Bible versions with optional pagination
+     * @param page - Page number for pagination
+     * @param limit - Items per page
+     * @param includeInactive - Include inactive versions (default: false)
      */
-    static async getAllVersions(page?: number, limit?: number): Promise<any> {
-        // No cache for admin list to ensure progress is seen
-        let query = BibleVersion.find().sort({ abbreviation: 1 });
+    static async getAllVersions(page?: number, limit?: number, includeInactive: boolean = false): Promise<any> {
+        // Build filter query
+        const filter = includeInactive ? {} : { isActive: true };
+        
+        let query = BibleVersion.find(filter).sort({ language: 1, abbreviation: 1 });
         let total = 0;
 
         if (page && limit) {
-            total = await BibleVersion.countDocuments();
+            total = await BibleVersion.countDocuments(filter);
             query = query.skip((page - 1) * limit).limit(limit);
         }
 
@@ -62,6 +67,13 @@ export class BibleService {
         } : versions;
 
         return result;
+    }
+
+    /**
+     * Get all versions including inactive ones (for admin)
+     */
+    static async getAllVersionsAdmin(page?: number, limit?: number): Promise<any> {
+        return this.getAllVersions(page, limit, true);
     }
 
     /**

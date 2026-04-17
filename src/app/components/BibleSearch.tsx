@@ -1,22 +1,21 @@
 import { useState, useEffect, useRef } from 'react';
 import { FiSearch } from 'react-icons/fi';
 import { X, Clock, Trash2, BookOpen } from 'lucide-react';
-import { mockBibleContent } from './ChapterContent';
-import { teluguBible, hindiBible } from './BibleData';
-
 interface SearchResult {
   book: string;
   chapter: number;
   verse: number;
   text: string;
   preview: string;
+  versionAbbr?: string;
+  versionName?: string;
 }
 
 interface BibleSearchProps {
   isOpen: boolean;
   onClose: () => void;
   selectedVersion: string;
-  onNavigateToVerse: (book: string, chapter: number, verse: number) => void;
+  onNavigateToVerse: (book: string, chapter: number, verse: number, version?: string) => void;
 }
 
 const SEARCH_HISTORY_KEY = 'bible_search_history';
@@ -52,65 +51,41 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
     }
   }, [isOpen]);
 
-  // Get Bible content based on version
-  const getBibleContent = () => {
-    if (selectedVersion === 'TELBSI') {
-      return teluguBible as any;
-    } else if (selectedVersion === 'HINBSI') {
-      return hindiBible as any;
-    }
-    return mockBibleContent;
-  };
-
-  // Search function
-  const performSearch = (query: string) => {
-    if (!query.trim()) {
+  // Search function using Server API
+  const performSearch = async (query: string) => {
+    if (!query.trim() || query.trim().length < 2) {
       setSearchResults([]);
       return;
     }
 
     setIsSearching(true);
-    const results: SearchResult[] = [];
-    const bibleData = getBibleContent();
-    const searchTerms = query.toLowerCase().split(' ').filter(term => term.length > 0);
+    try {
+      // We search across all versions if no specific version is 'locked' in search.
+      // Or we can default to selectedVersion. 
+      // User said "All bible content should be visible", so we'll omit versionId to search everything.
+      const response = await fetch(`/api/v1/bible/search?q=${encodeURIComponent(query)}&limit=50`);
+      const data = await response.json();
 
-    // Search through all books and chapters
-    Object.keys(bibleData).forEach((book) => {
-      Object.keys(bibleData[book]).forEach((chapterNum) => {
-        const chapter = bibleData[book][chapterNum];
-        if (chapter && chapter.verses) {
-          chapter.verses.forEach((verse: any) => {
-            const verseText = verse.text.toLowerCase();
-            
-            // Check if all search terms are present in the verse
-            const allTermsFound = searchTerms.every(term => verseText.includes(term));
-            
-            if (allTermsFound) {
-              // Create a preview with highlighted search terms
-              let preview = verse.text;
-              if (preview.length > 150) {
-                // Find the position of the first search term
-                const firstTermIndex = verseText.indexOf(searchTerms[0]);
-                const start = Math.max(0, firstTermIndex - 50);
-                const end = Math.min(verse.text.length, firstTermIndex + 100);
-                preview = (start > 0 ? '...' : '') + verse.text.slice(start, end) + (end < verse.text.length ? '...' : '');
-              }
-
-              results.push({
-                book,
-                chapter: parseInt(chapterNum),
-                verse: verse.number,
-                text: verse.text,
-                preview
-              });
-            }
-          });
-        }
-      });
-    });
-
-    setSearchResults(results);
-    setIsSearching(false);
+      if (data.success && data.data.results) {
+        const formattedResults: SearchResult[] = data.data.results.map((r: any) => ({
+          book: r.book.name,
+          chapter: r.chapter.number,
+          verse: r.number,
+          text: r.text,
+          preview: r.text, // The backend doesn't provide preview yet, using text
+          versionAbbr: r.version?.abbreviation,
+          versionName: r.version?.name
+        }));
+        setSearchResults(formattedResults);
+      } else {
+        setSearchResults([]);
+      }
+    } catch (error) {
+      console.error('Search failed:', error);
+      setSearchResults([]);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   // Debounced search as user types
@@ -119,11 +94,11 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
       clearTimeout(searchTimeoutRef.current);
     }
 
-    if (searchQuery.trim()) {
+    if (searchQuery.trim() && searchQuery.trim().length >= 2) {
       setShowSuggestions(true);
       searchTimeoutRef.current = setTimeout(() => {
         performSearch(searchQuery);
-      }, 300); // 300ms debounce
+      }, 500); // 500ms debounce for server hits
     } else {
       setSearchResults([]);
       setShowSuggestions(false);
@@ -134,7 +109,7 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchQuery, selectedVersion]);
+  }, [searchQuery]);
 
   // Add to search history
   const addToHistory = (query: string) => {
@@ -161,7 +136,7 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
 
   // Handle result click
   const handleResultClick = (result: SearchResult) => {
-    onNavigateToVerse(result.book, result.chapter, result.verse);
+    onNavigateToVerse(result.book, result.chapter, result.verse, result.versionAbbr);
     onClose();
   };
 
@@ -176,15 +151,18 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
     if (!query.trim()) return text;
 
     const terms = query.toLowerCase().split(' ').filter(term => term.length > 0);
+    // Escape special characters in terms
+    const escapedTerms = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     let highlightedText = text;
     
-    terms.forEach(term => {
+    escapedTerms.forEach(term => {
       const regex = new RegExp(`(${term})`, 'gi');
-      highlightedText = highlightedText.replace(regex, '<mark class="bg-yellow-200 text-[#31393a]">$1</mark>');
+      highlightedText = highlightedText.replace(regex, '<mark class="bg-yellow-200/80 text-black px-0.5 rounded-sm">$1</mark>');
     });
 
     return highlightedText;
   };
+
 
   if (!isOpen) return null;
 
@@ -295,8 +273,13 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
                         <div className="flex items-start space-x-3">
                           <BookOpen className="size-5 text-[#E23744] flex-shrink-0 mt-0.5" />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-[#E23744] mb-1">
-                              {result.book} {result.chapter}:{result.verse}
+                            <div className="text-sm font-medium text-[#E23744] mb-1 flex items-center justify-between">
+                              <span>{result.book} {result.chapter}:{result.verse}</span>
+                              {result.versionAbbr && (
+                                <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 uppercase tracking-wider font-bold">
+                                  {result.versionAbbr}
+                                </span>
+                              )}
                             </div>
                             <div 
                               className="text-sm text-[#31393a] leading-relaxed"

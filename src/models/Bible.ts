@@ -7,8 +7,11 @@ export interface IBibleVersion extends Document {
     abbreviation: string; // e.g. "KJV"
     language: string;  // e.g. "en"
     copyright?: string;
-    status: 'active' | 'importing' | 'failed';
+    status: 'active' | 'inactive' | 'importing' | 'failed';
     importProgress: number;
+    isActive: boolean; // Simplified active/inactive state
+    createdAt?: Date;
+    updatedAt?: Date;
 }
 
 
@@ -62,8 +65,13 @@ const BibleVersionSchema = new Schema<IBibleVersion>({
     copyright: { type: String, maxlength: [500, 'Copyright notice too long'] },
     status: {
         type: String,
-        enum: ['active', 'importing', 'failed'],
-        default: 'active'
+        enum: ['active', 'inactive', 'importing', 'failed'],
+        default: 'inactive'
+    },
+    isActive: {
+        type: Boolean,
+        default: false,
+        index: true
     },
     importProgress: {
         type: Number,
@@ -71,7 +79,7 @@ const BibleVersionSchema = new Schema<IBibleVersion>({
         min: 0,
         max: 100
     },
-});
+}, { timestamps: true });
 
 
 const BookSchema = new Schema<IBook>({

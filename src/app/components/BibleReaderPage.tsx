@@ -253,7 +253,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const prevChapterInfo = getPrevChapter();
 
   // Navigate to specific verse from search
-  const handleNavigateToVerse = (book: string, chapter: number, verse: number) => {
+  const handleNavigateToVerse = (book: string, chapter: number, verse: number, version?: string) => {
+    if (version && version !== selectedVersion) {
+      setSelectedVersion(version);
+    }
     setSelectedBook(book);
     setSelectedChapter(chapter);
     setSelectedVerse(verse);

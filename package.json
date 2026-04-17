@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint",
     "build:css": "tailwindcss -i ./src/app/globals.css -o ./public/tw-debug.css --minify",
-    "watch:css": "tailwindcss -i ./src/app/globals.css -o ./public/tw-debug.css --watch"
+    "watch:css": "tailwindcss -i ./src/app/globals.css -o ./public/tw-debug.css --watch",
+    "import:bible": "npx tsx --tsconfig tsconfig.scripts.json scripts/import_bible.ts",
+    "import:bible:dry": "npx tsx --tsconfig tsconfig.scripts.json scripts/import_bible.ts --dry-run"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

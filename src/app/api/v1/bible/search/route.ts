@@ -66,50 +66,80 @@ export async function GET(req: NextRequest) {
         await connectDB();
         const { searchParams } = new URL(req.url);
         const q = searchParams.get('q');
-        const versionId = searchParams.get('versionId');
-        const limit = parseInt(searchParams.get('limit') || '30');
+        const versionIdParam = searchParams.get('versionId');
+        const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
 
         if (!q || q.trim().length < 2) {
             return NextResponse.json({ success: false, error: 'Query must be at least 2 characters' }, { status: 400 });
         }
 
-        if (!versionId) {
-            return NextResponse.json({ success: false, error: 'versionId is required' }, { status: 400 });
+        const query: any = {
+            text: { $regex: q.trim(), $options: 'i' }
+        };
+
+        // Handle version filtering
+        if (versionIdParam) {
+            // Check if it's a valid Mongo ID, otherwise treat as abbreviation
+            if (versionIdParam.match(/^[0-9a-fA-F]{24}$/)) {
+                query.version = versionIdParam;
+            } else {
+                const versionDoc = await BibleVersion.findOne({ abbreviation: versionIdParam.toUpperCase() }).select('_id');
+                if (versionDoc) {
+                    query.version = versionDoc._id;
+                } else {
+                    return NextResponse.json({ success: false, error: `Version not found: ${versionIdParam}` }, { status: 404 });
+                }
+            }
+        } else {
+            // Optional: You might want to only search 'active' versions
+            const activeVersions = await BibleVersion.find({ isActive: true }).select('_id');
+            if (activeVersions.length > 0) {
+                query.version = { $in: activeVersions.map(v => v._id) };
+            }
         }
 
-        // Search verses matching the query in the given version
-        const verses = await Verse.find({
-            version: versionId,
-            text: { $regex: q.trim(), $options: 'i' }
-        })
-        .limit(limit)
-        .lean();
-
-        // Populate book and chapter info for each verse
-        const results = await Promise.all(
-            verses.map(async (verse: any) => {
-                const [book, chapter] = await Promise.all([
-                    Book.findById(verse.book).select('name abbreviation').lean(),
-                    Chapter.findById(verse.chapter).select('number').lean(),
-                ]);
-
-                return {
-                    verseId: verse._id,
-                    number: verse.number,
-                    text: verse.text,
-                    book: book ? { id: book._id, name: (book as any).name } : null,
-                    chapter: chapter ? { number: (chapter as any).number } : null,
-                };
+        // Perform search with population for efficiency
+        const verses = await Verse.find(query)
+            .populate({
+                path: 'book',
+                select: 'name abbreviation'
             })
-        );
+            .populate({
+                path: 'chapter',
+                select: 'number'
+            })
+            .populate({
+                path: 'version',
+                select: 'abbreviation name'
+            })
+            .limit(limit)
+            .lean();
 
-        const validResults = results.filter(r => r.book && r.chapter);
+        const results = verses.map((v: any) => ({
+            verseId: v._id,
+            number: v.number,
+            text: v.text,
+            book: v.book ? { 
+                id: v.book._id, 
+                name: v.book.name, 
+                abbreviation: v.book.abbreviation 
+            } : null,
+            chapter: v.chapter ? { 
+                id: v.chapter._id,
+                number: v.chapter.number 
+            } : null,
+            version: v.version ? {
+                id: v.version._id,
+                abbreviation: v.version.abbreviation,
+                name: v.version.name
+            } : null
+        })).filter(r => r.book && r.chapter && r.version);
 
         return NextResponse.json({
             success: true,
             data: {
-                results: validResults,
-                total: validResults.length,
+                results,
+                total: results.length,
                 query: q
             }
         });
@@ -121,3 +151,4 @@ export async function GET(req: NextRequest) {
         );
     }
 }
+
