@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, BookmarkPlus, Copy, Share2, Type, FileText, Check, List, BookOpen, PenTool, ChevronLeft, Plus, RotateCcw } from 'lucide-react';
+import { X, BookmarkPlus, Copy, Share2, Type, FileText, Check, List, Columns2, PenTool, ChevronLeft, Plus, RotateCcw } from 'lucide-react';
 
 interface VerseActionMenuProps {
     isOpen: boolean;
@@ -145,7 +145,7 @@ export default function VerseActionMenu({
                                     {/* More Controls (Using ... logic) */}
                                     <div className="flex flex-col gap-1.5 h-16">
                                         <button onClick={onCompare} className="flex-1 flex items-center gap-2 px-3 rounded-xl bg-white border border-slate-100 hover:bg-slate-50 transition-all text-xs font-bold text-slate-700 shadow-sm active:scale-95 border-l-4 border-l-[var(--color-primary-teal)]" title="Compare Versions">
-                                            <BookOpen className="size-4" />
+                                            <Columns2 className="size-4" />
                                             <span>Compare</span>
                                         </button>
                                         <button onClick={onShare} className="flex-1 flex items-center gap-2 px-3 rounded-xl bg-white border border-slate-100 hover:bg-slate-50 transition-all text-xs font-bold text-slate-700 shadow-sm active:scale-95 border-l-4 border-l-slate-800" title="Share">

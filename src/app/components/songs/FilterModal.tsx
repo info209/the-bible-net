@@ -113,7 +113,7 @@ export default function FilterModal({ currentFilters, availableBooks, onClose, o
                   onClick={() => toggleArrayFilter('categories', cat)}
                   className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${
                     localFilters.categories.includes(cat)
-                      ? 'bg-[var(--color-accent-rose)] text-white'
+                      ? 'bg-[var(--color-primary-teal)] text-white'
                       : 'bg-gray-100 text-[var(--color-text-secondary)] hover:bg-gray-200'
                   }`}
                 >

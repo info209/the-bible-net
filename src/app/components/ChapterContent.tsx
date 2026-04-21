@@ -88,25 +88,51 @@ export default function ChapterContent({
   const isLongPressRef = useRef(false);
 
   const handlePressStart = (e: React.MouseEvent | React.TouchEvent, verseNum: number) => {
+    // Only handle left click for mouse
     if ('button' in e && e.button !== 0) return;
+    
+    // Stop propagation to prevent parent gestures from taking over immediately
+    // but don't preventDefault yet so scrolling can still start
     e.stopPropagation();
+
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    
+    console.log(`[VersePress] Start verse ${verseNum} at (${Math.round(clientX)}, ${Math.round(clientY)})`);
+    
     touchStartPosRef.current = { x: clientX, y: clientY };
-    if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+    
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+    }
+    
     isLongPressRef.current = false;
+    
     longPressTimerRef.current = setTimeout(() => {
+      console.log(`[VersePress] Trigger long press for verse ${verseNum}`);
       if (onVerseLongPress) onVerseLongPress(verseNum, e);
       isLongPressRef.current = true;
       longPressTimerRef.current = null;
-    }, 500); // Stabilized at 500ms as requested
+      
+      // If mobile, try to provide haptic feedback if available
+      if ('vibrate' in navigator) {
+        try { navigator.vibrate(50); } catch (e) {}
+      }
+    }, 600); // 600ms for a distinctive long press
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!touchStartPosRef.current) return;
-    const dist = Math.sqrt(Math.pow(e.clientX - touchStartPosRef.current.x, 2) + Math.pow(e.clientY - touchStartPosRef.current.y, 2));
+    
+    const dist = Math.sqrt(
+      Math.pow(e.clientX - touchStartPosRef.current.x, 2) + 
+      Math.pow(e.clientY - touchStartPosRef.current.y, 2)
+    );
+    
+    // If moved more than 10px, it's a scroll or swipe, not a long press
     if (dist > 10) {
       if (longPressTimerRef.current) {
+        console.log(`[VersePress] Cancel: Movement detected (${Math.round(dist)}px)`);
         clearTimeout(longPressTimerRef.current);
         longPressTimerRef.current = null;
       }
@@ -114,32 +140,49 @@ export default function ChapterContent({
   };
 
   const handlePressEnd = (e: React.MouseEvent | React.TouchEvent, verseNum: number) => {
+    const isLong = isLongPressRef.current;
+    
+    console.log(`[VersePress] End verse ${verseNum}. WasLong: ${isLong}`);
+
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
+    
     if (!touchStartPosRef.current) return;
-    if (isLongPressRef.current) {
+
+    if (isLong) {
        touchStartPosRef.current = null;
        isLongPressRef.current = false;
        return; 
     }
+
     const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : (e as React.MouseEvent).clientY;
-    const moveDist = Math.sqrt(Math.pow(clientX - touchStartPosRef.current.x, 2) + Math.pow(clientY - touchStartPosRef.current.y, 2));
+    
+    const moveDist = Math.sqrt(
+      Math.pow(clientX - touchStartPosRef.current.x, 2) + 
+      Math.pow(clientY - touchStartPosRef.current.y, 2)
+    );
+    
+    // If not a long press and moved very little, it's a tap
     if (moveDist < 15) {
+      console.log(`[VersePress] Trigger tap for verse ${verseNum}`);
       if (onVerseTap) onVerseTap(verseNum, e);
     }
+    
     touchStartPosRef.current = null;
     isLongPressRef.current = false;
   };
 
   const handlePressCancel = () => {
     if (longPressTimerRef.current) {
+      console.log(`[VersePress] Cancel: Press interrupted`);
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
     touchStartPosRef.current = null;
+    isLongPressRef.current = false;
   };
 
   useEffect(() => {

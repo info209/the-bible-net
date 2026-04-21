@@ -406,7 +406,7 @@ export default function HomeView() {
               </button>
               <button
                 onClick={() => handleReadMore(devotion._id)}
-                className="px-4 py-2 bg-[var(--color-accent-rose)] text-white rounded-full text-sm font-medium hover:bg-[#b92d42] transition-colors shadow-md"
+                className="px-4 py-2 bg-[var(--color-primary-teal)] text-white rounded-full text-sm font-medium hover:bg-[var(--color-primary-teal-dark)] transition-colors shadow-md"
               >
                 Read More
               </button>

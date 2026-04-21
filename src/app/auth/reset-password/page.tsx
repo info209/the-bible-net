@@ -100,7 +100,7 @@ function ResetPasswordContent() {
                             <button
                                 type="button"
                                 onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-[var(--color-accent-rose)] transition-colors"
+                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-[var(--color-primary-teal)] transition-colors"
                             >
                                 {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                             </button>
@@ -135,7 +135,7 @@ function ResetPasswordContent() {
                 <button
                     type="submit"
                     disabled={loading || validations.some(v => !v.met)}
-                    className="w-full bg-[var(--color-accent-rose)] hover:bg-[#b02e43] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-accent-rose)]/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3 text-lg"
+                    className="w-full bg-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-dark)] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale flex items-center justify-center gap-3 text-lg"
                 >
                     {loading ? (
                         <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />

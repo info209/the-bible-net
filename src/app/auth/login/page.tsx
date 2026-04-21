@@ -81,7 +81,7 @@ export default function LoginPage() {
                 whileHover={{ x: -2, scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => router.push('/home')}
-                className="absolute left-6 top-6 p-2 rounded-full bg-white/10 text-slate-500 hover:text-[var(--color-accent-rose)] hover:bg-white/20 transition-all outline-none backdrop-blur-sm"
+                className="absolute left-6 top-6 p-2 rounded-full bg-white/10 text-slate-500 hover:text-[var(--color-primary-teal)] hover:bg-white/20 transition-all outline-none backdrop-blur-sm"
                 title="Back to Home"
             >
                 <ChevronLeft className="w-5 h-5" />
@@ -149,7 +149,7 @@ export default function LoginPage() {
                         </div>
                         <span className="text-slate-600 font-bold">Remember Me</span>
                     </label>
-                    <Link href="/auth/forgot-password" className="text-[var(--color-accent-rose)] font-bold hover:underline underline-offset-4">
+                    <Link href="/auth/forgot-password" className="text-[var(--color-primary-teal)] font-bold hover:underline underline-offset-4">
                         Forgot Password?
                     </Link>
                 </div>
@@ -157,7 +157,7 @@ export default function LoginPage() {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[var(--color-accent-rose)] hover:bg-[#b02e43] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-accent-rose)]/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none text-lg flex items-center justify-center gap-2"
+                    className="w-full bg-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-dark)] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none text-lg flex items-center justify-center gap-2"
                 >
                     {loading ? (
                         <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
@@ -191,7 +191,7 @@ export default function LoginPage() {
             <div className="text-center pt-2">
                 <p className="text-slate-500 text-sm font-medium">
                     New to The Bible?{' '}
-                    <Link href="/auth/register" className="text-[var(--color-accent-rose)] font-extrabold hover:underline underline-offset-4">
+                    <Link href="/auth/register" className="text-[var(--color-primary-teal)] font-extrabold hover:underline underline-offset-4">
                         Create Account
                     </Link>
                 </p>

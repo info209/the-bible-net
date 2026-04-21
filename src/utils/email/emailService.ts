@@ -11,6 +11,29 @@ export class EmailService {
     },
   });
 
+  private static async executeWithRetry(mailOptions: any, retries = 3): Promise<void> {
+    for (let attempt = 1; attempt <= retries; attempt++) {
+      try {
+        await this.transporter.sendMail(mailOptions);
+        return;
+      } catch (error: any) {
+        console.error(`Email sending failed (attempt ${attempt}/${retries}):`, error);
+        
+        if (attempt < retries && ['ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET'].includes(error.code)) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+          continue;
+        }
+
+        if (process.env.NODE_ENV !== 'production' && error.code === 'ECONNREFUSED') {
+          console.warn('Development mode: Email sending bypassed due to connection refusal.');
+          return;
+        }
+
+        throw error;
+      }
+    }
+  }
+
   static async sendOTP(email: string, otp: string): Promise<void> {
     const mailOptions = {
       from: `"The Bible Net" <${process.env.EMAIL_USER}>`,
@@ -35,7 +58,7 @@ export class EmailService {
     };
 
     try {
-      await this.transporter.sendMail(mailOptions);
+      await this.executeWithRetry(mailOptions);
     } catch (error) {
       console.error('Email sending failed:', error);
       throw new Error('Could not send verification email. Please try again.');
@@ -66,7 +89,7 @@ export class EmailService {
     };
 
     try {
-      await this.transporter.sendMail(mailOptions);
+      await this.executeWithRetry(mailOptions);
     } catch (error) {
       console.error('Password reset email failed:', error);
       throw new Error('Could not send password reset email.');

@@ -1024,25 +1024,46 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     const progress = Math.max(0, Math.min(1, x / rect.width));
     const newVerseIndex = Math.floor(progress * currentChapterVerses.length);
 
+    if (ttsPaused) {
+      ttsIndexRef.current = newVerseIndex;
+      setTtsCurrentVerseIndex(newVerseIndex);
+      setCurrentVerse(currentChapterVerses[newVerseIndex]?.number || null);
+      return;
+    }
+
     // Stop and restart from new index
     stopTTS();
     setTimeout(() => startTTS(newVerseIndex), 10);
-  }, [currentChapterVerses.length, stopTTS, startTTS]);
+  }, [currentChapterVerses, ttsPaused, stopTTS, startTTS]);
 
   // TTS Control additions
   const handlePrevVerse = useCallback(() => {
     if (ttsCurrentVerseIndex > 0) {
-      stopTTS();
-      setTimeout(() => startTTS(ttsCurrentVerseIndex - 1), 50);
+      const newIndex = ttsCurrentVerseIndex - 1;
+      if (ttsPaused) {
+        ttsIndexRef.current = newIndex;
+        setTtsCurrentVerseIndex(newIndex);
+        setCurrentVerse(currentChapterVerses?.[newIndex]?.number || null);
+      } else {
+        stopTTS();
+        setTimeout(() => startTTS(newIndex), 50);
+      }
     }
-  }, [ttsCurrentVerseIndex, stopTTS, startTTS]);
+  }, [ttsCurrentVerseIndex, ttsPaused, currentChapterVerses, stopTTS, startTTS]);
 
   const handleNextVerse = useCallback(() => {
     if (currentChapterVerses && ttsCurrentVerseIndex < currentChapterVerses.length - 1) {
-      stopTTS();
-      setTimeout(() => startTTS(ttsCurrentVerseIndex + 1), 50);
+      const newIndex = ttsCurrentVerseIndex + 1;
+      if (ttsPaused) {
+        ttsIndexRef.current = newIndex;
+        setTtsCurrentVerseIndex(newIndex);
+        setCurrentVerse(currentChapterVerses[newIndex]?.number || null);
+      } else {
+        stopTTS();
+        setTimeout(() => startTTS(newIndex), 50);
+      }
     }
-  }, [ttsCurrentVerseIndex, currentChapterVerses, stopTTS, startTTS]);
+  }, [ttsCurrentVerseIndex, currentChapterVerses, ttsPaused, stopTTS, startTTS]);
 
   const toggleRepeatMode = useCallback(() => {
     setRepeatMode(prev => {
@@ -1433,6 +1454,15 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         };
         processNotes();
       }}
+      selectedVerses={selectedVerses}
+      onVerseLongPress={handleVerseLongPress}
+      onVerseTap={(v) => {
+        if (v === 0) onVerseMenuClose();
+        else handleVerseTap(v);
+      }}
+      onSaveVerses={onVerseMenuSave}
+      onCompareVerses={onVerseMenuCompare}
+      onShareVerses={onVerseMenuShare}
       onPlayAudio={() => startTTS(0)}
       onPauseAudio={() => pauseTTS()}
     />

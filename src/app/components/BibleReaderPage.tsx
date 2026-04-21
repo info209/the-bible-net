@@ -10,11 +10,12 @@ import AppHeader from './AppHeader';
 import EqualizerIcon from './EqualizerIcon';
 import ChapterContent, { mockBibleContent } from './ChapterContent';
 import AudioControlPanel from './AudioControlPanel';
-import BibleSearch from './BibleSearch';
+import VerseActionMenu from './VerseActionMenu';
 import { teluguBible, hindiBible } from './BibleData';
 import CompareVersionsModal from './CompareVersionsModal';
 import CompareMenu from './CompareMenu';
 import CompareView from './CompareView';
+import BibleSearch from './BibleSearch';
 
 const bibleBooks = {
   'Old Testament': [
@@ -69,13 +70,19 @@ interface BibleReaderPageProps {
   chapter?: number;
   version?: string;
   book?: string;
-  onChapterChange?: (chap: number) => void;
+  onChapterChange?: (chapter: number) => void;
   onBookChange?: (book: string) => void;
   onVersionChange?: (ver: string) => void;
+  selectedVerses?: number[];
+  onVerseLongPress?: (verseNumber: number, e?: React.MouseEvent | React.TouchEvent) => void;
+  onVerseTap?: (verseNumber: number, e?: React.MouseEvent | React.TouchEvent) => void;
   onSaveHighlight?: (verses: number[], color: string) => void;
   onSaveNote?: (verses: number[], note: string) => void;
   onPlayAudio?: () => void;
   onPauseAudio?: () => void;
+  onCompareVerses?: () => void;
+  onShareVerses?: () => void;
+  onSaveVerses?: (labels: string[]) => void;
 }
 
 export default function BibleReaderPage(props: BibleReaderPageProps) {
@@ -88,13 +95,23 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       'Old Testament': bibleBooks['Old Testament'].map(name => ({ id: name, name })),
       'New Testament': bibleBooks['New Testament'].map(name => ({ id: name, name }))
     },
-    verses = [],
     chapter = 1,
-    version = 'NKJV',
+    version = 'KJV',
     book = 'Genesis',
     onChapterChange,
     onBookChange,
-    onVersionChange
+    onVersionChange,
+    selectedVerses = [],
+    verses = [],
+    onVerseLongPress,
+    onVerseTap,
+    onSaveHighlight,
+    onSaveNote,
+    onCompareVerses,
+    onShareVerses,
+    onSaveVerses,
+    onPlayAudio,
+    onPauseAudio
   } = props;
 
   const selectedBook = book;
@@ -178,7 +195,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const isAnyPopupOpen = showBookSelector || showChapterSelector ||
     showVersionSelector || showMusicSelector || showMoreMenu ||
     showSettingsMenu || showAudioControlPanel || showVerseSelector ||
-    showTimerMenu || showSearch || showCompareSelector || showCompareMenu;
+    showTimerMenu || showSearch || showCompareSelector || showCompareMenu ||
+    selectedVerses.length > 0;
 
   useEffect(() => {
     if (isAnyPopupOpen) {
@@ -1185,7 +1203,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 }}
                 className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
               >
-                <span className="text-sm font-normal">{selectedBook}</span>
+                <span className="text-sm font-bold">{selectedBook}</span>
                 <ChevronDown className="size-3" />
               </button>
 
@@ -1197,12 +1215,12 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 }}
                 className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
               >
-                <span className="text-sm font-normal">{selectedChapter}</span>
+                <span className="text-sm font-bold">{selectedChapter}</span>
                 <ChevronDown className="size-3" />
               </button>
 
               {compareMode.isActive ? (
-                <span className="text-sm font-normal text-[var(--color-text-primary)] opacity-70">
+                <span className="text-sm font-bold text-[var(--color-text-primary)] opacity-70">
                   Comparing
                 </span>
               ) : (
@@ -1214,7 +1232,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   }}
                   className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
                 >
-                  <span className="text-sm font-normal">{selectedVersion}</span>
+                  <span className="text-sm font-bold">{selectedVersion}</span>
                   <ChevronDown className="size-3" />
                 </button>
               )}
@@ -2145,6 +2163,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       scrollToVerse={selectedVerse}
                       readingVerse={currentReadingVerse}
                       theme={currentTheme}
+                      selectedVerses={selectedVerses}
+                      onVerseLongPress={onVerseLongPress}
+                      onVerseTap={onVerseTap}
                     />
                   )}
                 </motion.div>
@@ -2168,18 +2189,18 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           {!isFirstChapterOfBible && (
             <button
               onClick={handlePrevious}
-              className="absolute left-6 p-3 rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto"
+              className="absolute left-6 p-2 rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto"
               style={{
                 background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.25) 100%)',
                 backdropFilter: 'blur(40px) saturate(200%)',
                 WebkitBackdropFilter: 'blur(40px) saturate(200%)',
                 border: '1px solid rgba(255, 255, 255, 0.7)',
                 boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
-                minWidth: '48px',
-                minHeight: '48px'
+                minWidth: '40px',
+                minHeight: '40px'
               }}
             >
-              <ChevronLeft className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+              <ChevronLeft className="size-5 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
             </button>
           )}
 
@@ -2216,24 +2237,24 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     WebkitBackdropFilter: 'blur(40px) saturate(200%)',
                     border: '1px solid rgba(255, 255, 255, 0.7)',
                     boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
-                    minHeight: '56px'
+                    minHeight: '48px'
                   }}
                 >
                   <button
                     onClick={(e) => { e.stopPropagation(); setShowAudioControlPanel(true); }}
-                    className="p-2 rounded-full hover:bg-white/40 transition-colors"
+                    className="p-1.5 rounded-full hover:bg-white/40 transition-colors"
                   >
-                    <RiEqualizer3Fill className="size-6 text-[var(--color-primary-teal)]" />
+                    <RiEqualizer3Fill className="size-5 text-[var(--color-primary-teal)]" />
                   </button>
 
                   <button
                     onClick={(e) => { e.stopPropagation(); handleNarrationPlayPause(); }}
-                    className="relative w-12 h-12 flex items-center justify-center bg-white/30 rounded-full"
+                    className="relative w-10 h-10 flex items-center justify-center bg-white/30 rounded-full"
                   >
                     {audioPlaying ? (
-                      <Pause className="size-6 text-[var(--color-primary-teal)] fill-current" />
+                      <Pause className="size-5 text-[var(--color-primary-teal)] fill-current" />
                     ) : (
-                      <Play className="size-6 text-[var(--color-primary-teal)] fill-current translate-x-0.5" />
+                      <Play className="size-5 text-[var(--color-primary-teal)] fill-current translate-x-0.5" />
                     )}
                   </button>
 
@@ -2244,9 +2265,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       setAudioPlaying(false);
                       stopNarration();
                     }}
-                    className="p-2 rounded-full hover:bg-white/40 transition-colors"
+                    className="p-1.5 rounded-full hover:bg-white/40 transition-colors"
                   >
-                    <X className="size-6 text-[var(--color-primary-teal)]" />
+                    <X className="size-5 text-[var(--color-primary-teal)]" />
                   </button>
                 </motion.div>
               ) : (
@@ -2263,15 +2284,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   }}
                   className="flex items-center justify-center rounded-full shadow-lg"
                   style={{
-                    width: '64px',
-                    height: '64px',
+                    width: '52px',
+                    height: '52px',
                     background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.3) 100%)',
                     backdropFilter: 'blur(40px) saturate(200%)',
                     WebkitBackdropFilter: 'blur(40px) saturate(200%)',
                     border: '1px solid rgba(255, 255, 255, 0.8)'
                   }}
                 >
-                  <Play className="size-8 text-[var(--color-primary-teal)] fill-current" />
+                  <Play className="size-6 text-[var(--color-primary-teal)] fill-current" />
                 </motion.button>
               )}
             </AnimatePresence>
@@ -2281,18 +2302,18 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           {!isLastChapterOfBible && (
             <button
               onClick={handleNext}
-              className="absolute right-6 p-3 rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto"
+              className="absolute right-6 p-2 rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto"
               style={{
                 background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.25) 100%)',
                 backdropFilter: 'blur(40px) saturate(200%)',
                 WebkitBackdropFilter: 'blur(40px) saturate(200%)',
                 border: '1px solid rgba(255, 255, 255, 0.7)',
                 boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
-                minWidth: '48px',
-                minHeight: '48px'
+                minWidth: '40px',
+                minHeight: '40px'
               }}
             >
-              <ChevronRight className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+              <ChevronRight className="size-5 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
             </button>
           )}
         </div>
@@ -2360,6 +2381,22 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         onAddVersion={handleAddCompareVersion}
         onExitCompare={handleExitCompare}
       />
+      <AnimatePresence>
+        {selectedVerses.length > 0 && (
+          <VerseActionMenu
+            isOpen={true}
+            bookName={selectedBook}
+            chapter={selectedChapter}
+            selectedVerses={selectedVerses}
+            onClose={() => onVerseTap?.(0)} // container handles clearing
+            onHighlight={(color) => onSaveHighlight?.(selectedVerses, color)}
+            onSave={(labels) => onSaveVerses?.(labels)}
+            onNote={(note) => onSaveNote?.(selectedVerses, note)}
+            onCompare={() => onCompareVerses?.()}
+            onShare={() => onShareVerses?.()}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 }

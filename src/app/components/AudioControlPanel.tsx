@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw, RotateCw, Repeat, Download, Gauge, Timer } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw, RotateCw, Repeat, Download, Gauge, Timer, Volume2 } from 'lucide-react';
 
 interface AudioControlPanelProps {
   isOpen: boolean;
@@ -140,27 +140,7 @@ export default function AudioControlPanel({
         
         {/* Audio Control Content */}
         <div className="px-[16px] pt-[110px] pb-[32px] overflow-y-auto" style={{ paddingBottom: 'max(32px, env(safe-area-inset-bottom))' }}>
-          {/* Verse Selector - Positioned above progress bar */}
-          <div 
-            className="absolute left-[60px] top-[56px] transition-all duration-[var(--transition-slow)]"
-            style={{ 
-              left: `calc(60px + ${(audioCurrentTime / audioDuration) * 100}%)`,
-              transform: 'translateX(-50%)'
-            }}
-          >
-            <div className="flex flex-col items-center">
-              <div className="bg-[var(--color-accent-rose-lighter)] rounded-[var(--radius-xs)] px-[8px] py-[2px] flex flex-col items-center min-w-[48px]">
-                <p className="text-[9px] leading-[14px] text-[var(--color-accent-rose)]">Verse</p>
-                <p className="text-[14px] leading-[18px] text-[var(--color-accent-rose)] font-semibold">{selectedVerse}</p>
-              </div>
-              {/* Triangle pointer */}
-              <div className="relative w-[12px] h-[8px]">
-                <svg width="12" height="8" viewBox="0 0 12 8" fill="none">
-                  <path d="M6 8L0 0H12L6 8Z" fill="var(--color-accent-rose-lighter)" />
-                </svg>
-              </div>
-            </div>
-          </div>
+
 
           {/* Progress Bar */}
           <div className="mb-[12px] px-[44px]">
@@ -172,11 +152,24 @@ export default function AudioControlPanel({
                 className="absolute top-[8px] h-[4px] bg-[var(--color-accent-rose)] rounded-[2px]" 
                 style={{ width: `${(audioCurrentTime / audioDuration) * 100}%` }}
               />
-              {/* Slider thumb */}
+              {/* Slider thumb with attached Verse Tooltip */}
               <div 
-                className="absolute top-[0px] w-[20px] h-[20px] bg-[var(--color-accent-rose)] border-[4px] border-[var(--color-accent-rose-light)] rounded-full -ml-[10px]"
+                className="absolute top-[0px] w-[20px] h-[20px] bg-[var(--color-accent-rose)] border-[4px] border-[var(--color-accent-rose-light)] rounded-full -ml-[10px] pointer-events-none"
                 style={{ left: `${(audioCurrentTime / audioDuration) * 100}%` }}
-              />
+              >
+                  {/* Tooltip fixed exactly above the thumb */}
+                  <div className="absolute -top-[45px] left-1/2 -translate-x-1/2 flex flex-col items-center">
+                      <div className="bg-[var(--color-accent-rose-lighter)] rounded-[var(--radius-xs)] px-[8px] py-[2px] flex flex-col items-center min-w-[40px] shadow-sm">
+                          <p className="text-[8px] leading-[12px] text-[var(--color-accent-rose)]">Verse</p>
+                          <p className="text-[12px] leading-[16px] text-[var(--color-accent-rose)] font-bold">{selectedVerse}</p>
+                      </div>
+                      <div className="w-[8px] h-[6px]">
+                          <svg width="8" height="6" viewBox="0 0 12 8" fill="none" className="mx-auto block">
+                              <path d="M6 8L0 0H12L6 8Z" fill="var(--color-accent-rose-lighter)" />
+                          </svg>
+                      </div>
+                  </div>
+              </div>
               <input
                 type="range"
                 min="1"
@@ -215,9 +208,9 @@ export default function AudioControlPanel({
                 onClick={() => onVerseChange(Math.max(1, selectedVerse - 1))}
                 className="relative size-[32px] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
               >
-                <div className="relative">
+                <div className="relative flex items-center justify-center">
                    <RotateCcw className="size-[24px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-                   <span className="absolute top-[7px] left-[7px] text-[7px] font-bold text-[var(--color-primary-teal)]">V-</span>
+                   <span className="absolute text-[7px] font-bold text-[var(--color-primary-teal)] mt-[2px]">V-</span>
                 </div>
               </button>
 
@@ -238,9 +231,9 @@ export default function AudioControlPanel({
                 onClick={() => onVerseChange(selectedVerse + 1)}
                 className="relative size-[32px] flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
               >
-                <div className="relative">
+                <div className="relative flex items-center justify-center">
                   <RotateCw className="size-[24px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-                  <span className="absolute top-[7px] right-[7px] text-[7px] font-bold text-[var(--color-primary-teal)]">V+</span>
+                  <span className="absolute text-[7px] font-bold text-[var(--color-primary-teal)] mt-[2px]">V+</span>
                 </div>
               </button>
             </div>
@@ -303,7 +296,7 @@ export default function AudioControlPanel({
 
           {/* Volume Slider row */}
           <div className="px-10 flex items-center justify-center gap-4 mt-2">
-            <span className="text-xs font-bold text-gray-400">0%</span>
+            <Volume2 className="w-4 h-4 text-gray-400 shrink-0" strokeWidth={2.5} />
             <input 
               type="range" 
               min="0" 
@@ -317,7 +310,7 @@ export default function AudioControlPanel({
               }}
               className="w-full accent-[var(--color-primary-teal)]" 
             />
-            <span className="text-xs font-bold text-gray-400">100%</span>
+            <span className="text-xs font-bold text-gray-400 shrink-0">100%</span>
           </div>
         </div>
       </div>

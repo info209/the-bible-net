@@ -46,7 +46,7 @@ export default function ForgotPassword() {
             <div>
                 <button
                     onClick={() => router.back()}
-                    className="text-slate-400 font-bold text-sm hover:text-[var(--color-accent-rose)] transition-colors flex items-center gap-1 mb-6 group"
+                    className="text-slate-400 font-bold text-sm hover:text-[var(--color-primary-teal)] transition-colors flex items-center gap-1 mb-6 group"
                 >
                     <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                     Back to Login
@@ -87,7 +87,7 @@ export default function ForgotPassword() {
                 <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-[var(--color-accent-rose)] hover:bg-[#b02e43] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-accent-rose)]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 group text-lg"
+                    className="w-full bg-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-dark)] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 group text-lg"
                 >
                     {loading ? (
                         <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />

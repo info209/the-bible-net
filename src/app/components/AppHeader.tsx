@@ -100,7 +100,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
             sideOffset={8}
             className="w-48 rounded-xl border-none bg-white p-0 shadow-2xl overflow-hidden"
           >
-            <p className="px-4 py-2.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50 border-b border-gray-100">
+            <p className="px-4 py-2.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50">
               Select Language
             </p>
             {languages.map((lang) => (
@@ -165,11 +165,6 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
                 <DropdownMenuItem onClick={() => navigateTo('/auth/register')} className="px-4 py-3 gap-3 cursor-pointer">
                   <UserPlus className="w-4 h-4 text-gray-400" />
                   <span>Create Account</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator className="bg-gray-100" />
-                <DropdownMenuItem onClick={() => onMenuOpen?.()} className="px-4 py-3 gap-3 cursor-pointer">
-                  <Settings className="w-4 h-4 text-gray-400" />
-                  <span>Settings</span>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>

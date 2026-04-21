@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, AlertCircle, ArrowRight, ChevronLeft } from 'lucide-react';
+import { User, Mail, Lock, AlertCircle, ArrowRight, ChevronLeft, IdCard, Contact, Eye, EyeOff } from 'lucide-react';
 
 export default function RegisterStep1() {
     const router = useRouter();
@@ -14,6 +14,8 @@ export default function RegisterStep1() {
         email: '',
         password: '',
     });
+    const [tncAccepted, setTncAccepted] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -57,7 +59,7 @@ export default function RegisterStep1() {
                 whileHover={{ x: -2, scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => router.push('/home')}
-                className="absolute left-6 top-6 p-2 rounded-full bg-white/10 text-slate-500 hover:text-[var(--color-accent-rose)] hover:bg-white/20 transition-all outline-none backdrop-blur-sm"
+                className="absolute left-6 top-6 p-2 rounded-full bg-white/10 text-slate-500 hover:text-[var(--color-primary-teal)] hover:bg-white/20 transition-all outline-none backdrop-blur-sm"
                 title="Back to Home"
             >
                 <ChevronLeft className="w-5 h-5" />
@@ -80,11 +82,11 @@ export default function RegisterStep1() {
                     </motion.div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-1.5">
                         <label className="text-sm font-bold text-slate-700 ml-1">First Name</label>
                         <div className="relative group">
-                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
+                            <IdCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
                             <input
                                 type="text"
                                 required
@@ -98,7 +100,7 @@ export default function RegisterStep1() {
                     <div className="space-y-1.5">
                         <label className="text-sm font-bold text-slate-700 ml-1">Last Name</label>
                         <div className="relative group">
-                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
+                            <Contact className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
                             <input
                                 type="text"
                                 required
@@ -131,25 +133,44 @@ export default function RegisterStep1() {
                     <div className="relative group">
                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
                         <input
-                            type="password"
+                            type={showPassword ? "text" : "password"}
                             required
                             minLength={8}
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                            className="w-full bg-gray-100/50 border-none rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-accent-rose)]/20 transition-all placeholder:text-gray-400 font-medium"
+                            className="w-full bg-gray-100/50 border-none rounded-2xl py-4 pl-12 pr-12 outline-none focus:ring-2 focus:ring-[var(--color-accent-rose)]/20 transition-all placeholder:text-gray-400 font-medium"
                             placeholder="Min. 8 characters"
                         />
+                        <button 
+                            type="button" 
+                            onClick={() => setShowPassword(!showPassword)} 
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary-teal)] transition-colors"
+                        >
+                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                        </button>
                     </div>
                 </div>
 
-                <div className="bg-slate-50/50 backdrop-blur-sm p-4 rounded-xl text-slate-500 text-xs italic leading-relaxed border border-slate-200/40 font-medium shadow-inner">
-                    By continuing you agree to receive a 6-digit verification code via email and accept our <Link href="/terms" className="text-[var(--color-accent-rose)] font-bold hover:underline">Terms of Service</Link>.
+                <div className="flex items-start gap-3 px-1">
+                    <div className="flex items-center h-5 mt-0.5">
+                        <input
+                            type="checkbox"
+                            id="tnc"
+                            required
+                            checked={tncAccepted}
+                            onChange={(e) => setTncAccepted(e.target.checked)}
+                            className="w-5 h-5 rounded-[6px] border-slate-300 text-[var(--color-primary-teal)] focus:ring-[var(--color-primary-teal)] accent-[var(--color-primary-teal)] cursor-pointer"
+                        />
+                    </div>
+                    <label htmlFor="tnc" className="text-sm text-slate-600 font-medium cursor-pointer leading-relaxed">
+                        I agree to the <Link href="/terms" className="text-[var(--color-primary-teal)] font-bold hover:underline">Terms & Conditions</Link>.
+                    </label>
                 </div>
 
                 <button
                     type="submit"
-                    disabled={loading}
-                    className="w-full bg-[var(--color-accent-rose)] hover:bg-[#b02e43] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-accent-rose)]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 group text-lg"
+                    disabled={loading || !tncAccepted || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || formData.password.length < 8}
+                    className="w-full bg-[var(--color-primary-teal)] disabled:bg-slate-300 hover:bg-[var(--color-primary-teal-dark)] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 disabled:shadow-none transition-all active:scale-[0.98] disabled:active:scale-100 flex items-center justify-center gap-3 group text-lg"
                 >
                     {loading ? (
                         <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
@@ -164,7 +185,7 @@ export default function RegisterStep1() {
             <div className="text-center pt-2">
                 <p className="text-slate-500 text-sm font-medium">
                     Already have an account?{' '}
-                    <Link href="/auth/login" className="text-[var(--color-accent-rose)] font-extrabold hover:underline underline-offset-4 font-sans">
+                    <Link href="/auth/login" className="text-[var(--color-primary-teal)] font-extrabold hover:underline underline-offset-4 font-sans">
                         Sign In
                     </Link>
                 </p>
