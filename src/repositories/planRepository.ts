@@ -1,18 +1,17 @@
 import { Plan, IPlan } from '@/models/Plan';
 import { PlanProgress, IPlanProgress, IPlanDayProgress } from '@/models/PlanProgress';
-import { FilterQuery } from 'mongoose';
-import { Types } from 'mongoose';
+import mongoose, { Types } from 'mongoose';
 
 export class PlanRepository {
   /**
    * Get all published plans with optional filtering
    */
   static async getPublishedPlans(
-    filter: FilterQuery<IPlan> = {},
+    filter: Record<string, any> = {},
     skip: number = 0,
     limit: number = 20
   ) {
-    const query: FilterQuery<IPlan> = { isPublished: true, ...filter };
+    const query: Record<string, any> = { isPublished: true, ...filter };
     const plans = await Plan.find(query)
       .skip(skip)
       .limit(limit)
@@ -319,17 +318,15 @@ export class PlanRepository {
    * Search plans by title or description
    */
   static async searchPlans(query: string, skip: number = 0, limit: number = 20) {
-    return await Plan.find(
-      {
-        isPublished: true,
-        $or: [
-          { title: { $regex: query, $options: 'i' } },
-          { description: { $regex: query, $options: 'i' } },
-        ],
-      },
-      skip,
-      limit
-    )
+    return await Plan.find({
+      isPublished: true,
+      $or: [
+        { title: { $regex: query, $options: 'i' } },
+        { description: { $regex: query, $options: 'i' } },
+      ],
+    })
+      .skip(skip)
+      .limit(limit)
       .sort({ createdAt: -1 })
       .lean();
   }
