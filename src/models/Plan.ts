@@ -106,7 +106,7 @@ const PlanSchema = new Schema<IPlan>(
       type: [PlanDaySchema],
       required: [true, 'Plan days are required'],
       validate: {
-        validator: function (v: IPlanDay[]) {
+        validator: function (this: any, v: IPlanDay[]) {
           return v.length > 0 && v.length === this.duration;
         },
         message: 'Number of days must match the plan duration',
