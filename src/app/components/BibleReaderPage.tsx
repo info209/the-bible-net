@@ -17,6 +17,8 @@ import CompareMenu from './CompareMenu';
 import CompareView from './CompareView';
 import BibleSearch from './BibleSearch';
 
+import FontsSettingsModal, { ThemeType, TransitionType } from './FontsSettingsModal';
+import AudioFloatingPlayer from './AudioFloatingPlayer';
 const bibleBooks = {
   'Old Testament': [
     'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
@@ -1881,167 +1883,18 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       )}
 
       {/* Settings Menu */}
-      {showSettingsMenu && (
-        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowSettingsMenu(false)}>
-          <div className="absolute top-20 left-1/2 -translate-x-1/2 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[85vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <div className="w-12" /> {/* Spacer instead of Back button */}
-              <h3 className="text-lg font-semibold text-[#31393a]">Fonts & Settings</h3>
-              <button
-                onClick={() => setShowSettingsMenu(false)}
-                className="text-sm text-[#31393a]/60 hover:text-[#31393a] transition-colors"
-              >
-                Done
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
-              {/* Font Family Selection */}
-              <div className="space-y-2">
-                <label className="text-xs text-[#31393a]/60">Font family</label>
-                <div className="relative">
-                  <select
-                    value={selectedFont}
-                    onChange={(e) => setSelectedFont(e.target.value)}
-                    className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg text-base text-[#31393a] appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#E23744] focus:border-transparent"
-                  >
-                    <option value="Times New Roman">Times New Roman</option>
-                    <option value="Georgia">Georgia</option>
-                    <option value="Arial">Arial</option>
-                    <option value="Verdana">Verdana</option>
-                    <option value="Helvetica">Helvetica</option>
-                    <option value="Merriweather">Merriweather</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 size-4 text-[#31393a] pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Font Size Slider */}
-              <div className="space-y-2">
-                <label className="text-xs text-[#31393a]/60">Font size</label>
-                <div className="flex items-center gap-3">
-                  <span className="text-xs text-[#31393a]">A-</span>
-                  <div className="flex-1 relative">
-                    <input
-                      type="range"
-                      min="12"
-                      max="24"
-                      value={fontSize}
-                      onChange={(e) => setFontSize(Number(e.target.value))}
-                      className="w-full h-2 bg-gray-200 rounded-full appearance-none cursor-pointer
-                          [&::-webkit-slider-thumb]:appearance-none
-                          [&::-webkit-slider-thumb]:size-6
-                          [&::-webkit-slider-thumb]:rounded-full
-                          [&::-webkit-slider-thumb]:bg-[#E23744]
-                          [&::-webkit-slider-thumb]:border-4
-                          [&::-webkit-slider-thumb]:border-[#f5bcc1]
-                          [&::-webkit-slider-thumb]:cursor-pointer
-                          [&::-moz-range-thumb]:size-6
-                          [&::-moz-range-thumb]:rounded-full
-                          [&::-moz-range-thumb]:bg-[#E23744]
-                          [&::-moz-range-thumb]:border-4
-                          [&::-moz-range-thumb]:border-[#f5bcc1]
-                          [&::-moz-range-thumb]:cursor-pointer"
-                      style={{
-                        background: `linear-gradient(to right, #E23744 0%, #E23744 ${((fontSize - 12) / 12) * 100}%, #ededed ${((fontSize - 12) / 12) * 100}%, #ededed 100%)`
-                      }}
-                    />
-                  </div>
-                  <span className="text-sm text-[#31393a]">A+</span>
-                </div>
-              </div>
-
-              {/* Theme Selection */}
-              <div className="space-y-2">
-                <label className="text-xs text-[#31393a]/60">Theme</label>
-                <div className="flex items-center gap-3">
-                  <button
-                    onClick={() => setSelectedTheme('light')}
-                    className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'light'
-                        ? 'border-[#31393a] scale-110'
-                        : 'border-gray-300'
-                      }`}
-                    style={{ backgroundColor: '#ffffff' }}
-                  />
-                  <button
-                    onClick={() => setSelectedTheme('sepia')}
-                    className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'sepia'
-                        ? 'border-[#31393a] scale-110'
-                        : 'border-gray-300'
-                      }`}
-                    style={{ backgroundColor: '#f5e6d3' }}
-                  />
-                  <button
-                    onClick={() => setSelectedTheme('cream')}
-                    className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'cream'
-                        ? 'border-[#31393a] scale-110'
-                        : 'border-gray-300'
-                      }`}
-                    style={{ backgroundColor: '#fef3e2' }}
-                  />
-                  <button
-                    onClick={() => setSelectedTheme('dark')}
-                    className={`size-11 rounded-full border-2 transition-all ${selectedTheme === 'dark'
-                        ? 'border-[#ffffff] scale-110'
-                        : 'border-gray-300'
-                      }`}
-                    style={{ backgroundColor: '#2e3737' }}
-                  />
-                </div>
-              </div>
-
-              {/* Page Transitions */}
-              <div className="space-y-2">
-                <label className="text-xs text-[#31393a]/60">Page transitions</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setPageTransition('slide')}
-                    className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'slide'
-                        ? 'border-[#31393a] bg-gray-50'
-                        : 'border-gray-200'
-                      }`}
-                  >
-                    <ArrowRightLeft className="size-6 text-[#31393a]" />
-                    <span className="text-xs text-[#31393a]">Slide</span>
-                  </button>
-                  <button
-                    onClick={() => setPageTransition('curl')}
-                    className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'curl'
-                        ? 'border-[#31393a] bg-gray-50'
-                        : 'border-gray-200'
-                      }`}
-                  >
-                    <FileText className="size-6 text-[#31393a]" />
-                    <span className="text-xs text-[#31393a]">Curl</span>
-                  </button>
-                  <button
-                    onClick={() => setPageTransition('fade')}
-                    className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'fade'
-                        ? 'border-[#31393a] bg-gray-50'
-                        : 'border-gray-200'
-                      }`}
-                  >
-                    <Zap className="size-6 text-[#31393a]" />
-                    <span className="text-xs text-[#31393a]">Fast Fade</span>
-                  </button>
-                  <button
-                    onClick={() => setPageTransition('scroll')}
-                    className={`flex flex-col items-center gap-2 px-3 py-3 rounded-lg border-2 transition-all ${pageTransition === 'scroll'
-                        ? 'border-[#31393a] bg-gray-50'
-                        : 'border-gray-200'
-                      }`}
-                  >
-                    <ScrollText className="size-6 text-[#31393a]" />
-                    <span className="text-xs text-[#31393a]">Scroll</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <FontsSettingsModal
+        isOpen={showSettingsMenu}
+        onClose={() => setShowSettingsMenu(false)}
+        selectedFont={selectedFont}
+        onFontChange={setSelectedFont}
+        fontSize={fontSize}
+        onFontSizeChange={setFontSize}
+        selectedTheme={selectedTheme}
+        onThemeChange={setSelectedTheme}
+        pageTransition={pageTransition as any}
+        onPageTransitionChange={(t: any) => setPageTransition(t)}
+      />
 
       {/* Main Reading Content */}
       <div
@@ -2175,149 +2028,24 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         )}
       </div>
 
-      {/* Audio Controls - MOVES UP/DOWN WITH SCROLL */}
-      {/* Audio Controls - Navigation only side buttons */}
-      {/* Unified Bottom Controls - Play + Navigation */}
-      <div
-        className="fixed left-0 right-0 z-[60] flex items-center justify-center transition-all duration-500 ease-in-out pointer-events-none"
-        style={{
-          bottom: isReadingMode ? '16px' : 'calc(64px + 16px)',
-        }}
-      >
-        <div className="relative w-full max-w-3xl mx-auto h-[72px] flex items-center justify-center px-6">
-          {/* Previous Button - Left side */}
-          {!isFirstChapterOfBible && (
-            <button
-              onClick={handlePrevious}
-              className="absolute left-6 p-2 rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.25) 100%)',
-                backdropFilter: 'blur(40px) saturate(200%)',
-                WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-                border: '1px solid rgba(255, 255, 255, 0.7)',
-                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
-                minWidth: '40px',
-                minHeight: '40px'
-              }}
-            >
-              <ChevronLeft className="size-5 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-            </button>
-          )}
-
-          {/* Center Play Button Container */}
-          <div
-            className="relative pointer-events-auto"
-            onClick={() => {
-              if (showBookSelector || showChapterSelector || showVerseSelector || showVersionSelector || showMusicSelector || showMoreMenu || showSettingsMenu || showCompareSelector || showCompareMenu || showSearch) {
-                setShowBookSelector(false);
-                setShowChapterSelector(false);
-                setShowVerseSelector(false);
-                setShowVersionSelector(false);
-                setShowMusicSelector(false);
-                setShowMoreMenu(false);
-                setShowSettingsMenu(false);
-                setShowCompareSelector(false);
-                setShowCompareMenu(false);
-                setShowSearch(false);
-                return;
-              }
-            }}
-          >
-            <AnimatePresence mode="wait">
-              {audioControlExpanded ? (
-                <motion.div
-                  key="expanded"
-                  initial={{ width: 56, opacity: 0, scale: 0.9 }}
-                  animate={{ width: 'auto', opacity: 1, scale: 1 }}
-                  exit={{ width: 56, opacity: 0, scale: 0.9 }}
-                  className="rounded-full px-2 py-1 flex items-center gap-3"
-                  style={{
-                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.25) 100%)',
-                    backdropFilter: 'blur(40px) saturate(200%)',
-                    WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-                    border: '1px solid rgba(255, 255, 255, 0.7)',
-                    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
-                    minHeight: '48px'
-                  }}
-                >
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setShowAudioControlPanel(true); }}
-                    className="p-1.5 rounded-full hover:bg-white/40 transition-colors"
-                  >
-                    <RiEqualizer3Fill className="size-5 text-[var(--color-primary-teal)]" />
-                  </button>
-
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleNarrationPlayPause(); }}
-                    className="relative w-10 h-10 flex items-center justify-center bg-white/30 rounded-full"
-                  >
-                    {audioPlaying ? (
-                      <Pause className="size-5 text-[var(--color-primary-teal)] fill-current" />
-                    ) : (
-                      <Play className="size-5 text-[var(--color-primary-teal)] fill-current translate-x-0.5" />
-                    )}
-                  </button>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setAudioControlExpanded(false);
-                      setAudioPlaying(false);
-                      stopNarration();
-                    }}
-                    className="p-1.5 rounded-full hover:bg-white/40 transition-colors"
-                  >
-                    <X className="size-5 text-[var(--color-primary-teal)]" />
-                  </button>
-                </motion.div>
-              ) : (
-                <motion.button
-                  key="collapsed"
-                  initial={{ scale: 0.8, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  exit={{ scale: 0.8, opacity: 0 }}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => {
-                    setAudioControlExpanded(true);
-                    handleNarrationPlayPause();
-                  }}
-                  className="flex items-center justify-center rounded-full shadow-lg"
-                  style={{
-                    width: '52px',
-                    height: '52px',
-                    background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.5) 0%, rgba(255, 255, 255, 0.3) 100%)',
-                    backdropFilter: 'blur(40px) saturate(200%)',
-                    WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-                    border: '1px solid rgba(255, 255, 255, 0.8)'
-                  }}
-                >
-                  <Play className="size-6 text-[var(--color-primary-teal)] fill-current" />
-                </motion.button>
-              )}
-            </AnimatePresence>
-          </div>
-
-          {/* Next Button - Right side */}
-          {!isLastChapterOfBible && (
-            <button
-              onClick={handleNext}
-              className="absolute right-6 p-2 rounded-full transition-all hover:scale-105 active:scale-95 pointer-events-auto"
-              style={{
-                background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0.25) 100%)',
-                backdropFilter: 'blur(40px) saturate(200%)',
-                WebkitBackdropFilter: 'blur(40px) saturate(200%)',
-                border: '1px solid rgba(255, 255, 255, 0.7)',
-                boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.15)',
-                minWidth: '40px',
-                minHeight: '40px'
-              }}
-            >
-              <ChevronRight className="size-5 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-            </button>
-          )}
-        </div>
-      </div>
+      {/* Audio Controls Floating Button */}
+      {showAudioControls && (
+        <AudioFloatingPlayer
+          isPlaying={audioPlaying}
+          progress={audioDuration > 0 ? audioCurrentTime / audioDuration : 0}
+          onPlayPause={() => {
+            if (audioPlaying) {
+               stopNarration();
+               setAudioPlaying(false);
+            } else {
+               startNarration(selectedVerse || 1);
+            }
+          }}
+          onNext={handleNext}
+          onPrev={handlePrevious}
+          className={isReadingMode ? 'mb-4' : 'mb-20'}
+        />
+      )}
 
 
 

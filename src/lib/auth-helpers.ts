@@ -2,6 +2,7 @@ import { adminAuth } from "./auth/admin";
 import { userAuth } from "./auth/user";
 import { UserRole } from "@/types/user";
 import { Session } from "next-auth";
+import { NextResponse } from "next/server";
 
 /**
  * Ensures the session is an Admin session (SUPER_ADMIN or SUB_ADMIN)
@@ -43,4 +44,17 @@ export async function getSessionWithType(): Promise<{ session: Session | null, t
     }
 
     return { session: null, type: 'GUEST' };
+}
+
+/**
+ * Standardized error response for API routes
+ */
+export function getErrorResponse(message: string, status: number = 500) {
+    return NextResponse.json(
+        {
+            success: false,
+            error: message,
+        },
+        { status }
+    );
 }
