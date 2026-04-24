@@ -1,17 +1,16 @@
 ﻿"use client";
 
 import { useEffect } from "react";
-import { Slider } from "./ui/slider";
 import {
   ArrowLeft,
   Check,
   Square,
-  FlipHorizontal,
   Layers,
+  FlipHorizontal,
 } from "lucide-react";
 
 export type ThemeType = "light" | "sepia" | "cream" | "dark";
-export type TransitionType = "slide" | "fade" | "flip" | "curl" | "scroll";
+export type TransitionType = "slide" | "fade" | "flip";
 
 const FONTS = [
   "Times New Roman",
@@ -46,27 +45,81 @@ export default function FontsSettingsModal({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 overlay-dark flex items-center justify-center px-4">
-      <div className="w-full max-w-md rounded-2xl glass-heavy p-6">
+  // 🔥 THEME SYSTEM
+  const getThemeStyles = () => {
+    switch (selectedTheme) {
+      case "dark":
+        return {
+          bg: "#2e2e2e",
+          text: "#ffffff",
+          subText: "#b0b0b0",
+          border: "#444",
+          card: "#3a3a3a",
+          accent: "#ffffff",
+        };
 
+      case "sepia":
+        return {
+          bg: "#f5e6c8",
+          text: "#5b4636",
+          subText: "#8a6f5a",
+          border: "#e0c9a6",
+          card: "#f8ecd4",
+          accent: "var(--color-accent-rose)",
+        };
+
+      case "cream":
+        return {
+          bg: "#f8f6f1",
+          text: "#31393a",
+          subText: "#7c7c7c",
+          border: "#e5e5e5",
+          card: "#ffffff",
+          accent: "var(--color-accent-rose)",
+        };
+
+      default:
+        return {
+          bg: "#ffffff",
+          text: "#31393a",
+          subText: "#7c7c7c",
+          border: "#e5e5e5",
+          card: "#ffffff",
+          accent: "var(--color-accent-rose)",
+        };
+    }
+  };
+
+  const theme = getThemeStyles();
+
+  const progressPercent = ((fontSize - 12) / (28 - 12)) * 100;
+
+  return (
+    <div className="fixed inset-0 z-50 overlay-light flex items-center justify-center px-4">
+      <div
+        className="w-full max-w-md rounded-2xl shadow-xl p-6 transition-all duration-300"
+        style={{
+          background: theme.bg,
+          color: theme.text,
+        }}
+      >
         {/* HEADER */}
         <div className="flex items-center justify-between mb-6">
           <button
             onClick={onClose}
-            className="flex items-center gap-1 text-sm text-gray-600"
+            className="flex items-center gap-1 text-sm"
+            style={{ color: theme.subText }}
           >
             <ArrowLeft size={16} />
             Back
           </button>
 
-          <h2 className="text-base font-semibold text-[var(--color-text-primary)]">
-            Fonts & Settings
-          </h2>
+          <h2 className="text-base font-semibold">Fonts & Settings</h2>
 
           <button
             onClick={onClose}
-            className="text-sm font-medium text-[var(--color-primary-teal)]"
+            className="text-sm font-medium"
+            style={{ color: "var(--color-primary-teal)" }}
           >
             Done
           </button>
@@ -74,7 +127,7 @@ export default function FontsSettingsModal({
 
         {/* FONT FAMILY */}
         <div className="mb-6">
-          <p className="text-xs text-[var(--color-text-secondary)] mb-2">
+          <p className="text-xs mb-2" style={{ color: theme.subText }}>
             Font family
           </p>
 
@@ -82,8 +135,13 @@ export default function FontsSettingsModal({
             <select
               value={selectedFont}
               onChange={(e) => onFontChange(e.target.value)}
-              className="w-full appearance-none rounded-xl border border-[var(--color-gray-200)] bg-white px-4 py-3 text-sm outline-none"
-              style={{ fontFamily: selectedFont }}
+              className="w-full appearance-none rounded-xl px-4 py-3 text-sm outline-none"
+              style={{
+                background: theme.card,
+                border: `1px solid ${theme.border}`,
+                fontFamily: selectedFont,
+                color: theme.text,
+              }}
             >
               {FONTS.map((font) => (
                 <option key={font} value={font} style={{ fontFamily: font }}>
@@ -92,7 +150,10 @@ export default function FontsSettingsModal({
               ))}
             </select>
 
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+            <span
+              className="absolute right-3 top-1/2 -translate-y-1/2"
+              style={{ color: theme.subText }}
+            >
               ▾
             </span>
           </div>
@@ -100,48 +161,115 @@ export default function FontsSettingsModal({
 
         {/* FONT SIZE */}
         <div className="mb-6">
-          <p className="text-xs text-[var(--color-text-secondary)] mb-3">
+          <p className="text-xs mb-4" style={{ color: theme.subText }}>
             Font size
           </p>
 
           <div className="flex items-center gap-3">
-            <span className="text-xs text-gray-500">A-</span>
+            <span style={{ color: theme.subText }}>A-</span>
 
-            <Slider
-              value={[fontSize]}
-              min={12}
-              max={28}
-              step={1}
-              onValueChange={(v) => onFontSizeChange(v[0])}
-              className="flex-1"
-            />
+            <div className="relative flex-1 h-6">
+              {/* BASE LINE */}
+              <div
+                className="absolute top-1/2 left-0 right-0 h-[2px] -translate-y-1/2 rounded-full"
+                style={{ background: theme.border }}
+              />
 
-            <span className="text-xs text-gray-500">A+</span>
+              {/* ACTIVE LINE */}
+              <div
+                className="absolute top-1/2 left-0 h-[2px] -translate-y-1/2 rounded-full transition-all"
+                style={{
+                  width: `${progressPercent}%`,
+                  background: theme.accent,
+                }}
+              />
+
+              {/* DOTS */}
+              {[0, 1, 2, 3].map((i) => {
+                const stepValue = 12 + i * ((28 - 12) / 3);
+                const isActive = fontSize >= stepValue;
+
+                return (
+                  <div
+                    key={i}
+                    className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2"
+                    style={{ left: `${(i / 3) * 100}%` }}
+                  >
+                    <div
+                      className="w-2.5 h-2.5 rounded-full"
+                      style={{
+                        background: isActive
+                          ? theme.accent
+                          : theme.border,
+                      }}
+                    />
+                  </div>
+                );
+              })}
+
+              {/* INPUT */}
+              <input
+                type="range"
+                min={12}
+                max={28}
+                step={1}
+                value={fontSize}
+                onChange={(e) =>
+                  onFontSizeChange(Number(e.target.value))
+                }
+                className="absolute inset-0 w-full opacity-0 cursor-pointer"
+              />
+
+              {/* THUMB */}
+              <div
+                className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-5 h-5 rounded-full border-2 border-white shadow-md"
+                style={{
+                  left: `${progressPercent}%`,
+                  background: theme.accent,
+                }}
+              />
+            </div>
+
+            <span style={{ color: theme.subText }}>A+</span>
           </div>
         </div>
 
         {/* THEME */}
         <div className="mb-6">
-          <p className="text-xs text-[var(--color-text-secondary)] mb-3">
+          <p className="text-xs mb-3" style={{ color: theme.subText }}>
             Theme
           </p>
 
           <div className="flex gap-3">
-            {["light", "sepia", "cream", "dark"].map((theme: any) => {
-              const active = selectedTheme === theme;
+            {["light", "sepia", "cream", "dark"].map((t: any) => {
+              const active = selectedTheme === t;
 
               return (
                 <button
-                  key={theme}
-                  onClick={() => onThemeChange(theme)}
-                  className={`w-10 h-10 rounded-full flex items-center justify-center border ${
-                    active
-                      ? "border-[var(--color-primary-teal)]"
-                      : "border-gray-200"
-                  }`}
+                  key={t}
+                  onClick={() => onThemeChange(t)}
+                  className="px-4 py-2 rounded-full border flex items-center justify-center transition-all"
+                  style={{
+                    borderColor: active
+                      ? "var(--color-primary-teal)"
+                      : theme.border,
+                    background:
+                      t === "dark"
+                        ? "#2e2e2e"
+                        : t === "sepia"
+                        ? "#f5e6c8"
+                        : t === "cream"
+                        ? "#f8f6f1"
+                        : "#ffffff",
+                  }}
                 >
                   {active && (
-                    <Check size={14} className="text-[var(--color-primary-teal)]" />
+                    <Check
+                      size={14}
+                      style={{
+                        color: "var(--color-primary-teal)",
+                      }}
+                    />
                   )}
                 </button>
               );
@@ -151,7 +279,7 @@ export default function FontsSettingsModal({
 
         {/* TRANSITIONS */}
         <div>
-          <p className="text-xs text-[var(--color-text-secondary)] mb-3">
+          <p className="text-xs mb-3" style={{ color: theme.subText }}>
             Page transitions
           </p>
 
@@ -164,11 +292,15 @@ export default function FontsSettingsModal({
                 <button
                   key={t.id}
                   onClick={() => onPageTransitionChange(t.id)}
-                  className={`rounded-xl p-3 flex flex-col items-center gap-1 border ${
-                    active
-                      ? "border-[var(--color-primary-teal)] bg-[var(--color-primary-teal-subtle)]"
-                      : "border-gray-200"
-                  }`}
+                  className="rounded-xl p-3 flex flex-col items-center gap-1 transition-all"
+                  style={{
+                    border: `1px solid ${
+                      active ? theme.accent : theme.border
+                    }`,
+                    background: active
+                      ? "rgba(210,57,82,0.08)"
+                      : theme.card,
+                  }}
                 >
                   <Icon size={18} />
                   <span className="text-xs">{t.label}</span>
@@ -177,7 +309,6 @@ export default function FontsSettingsModal({
             })}
           </div>
         </div>
-
       </div>
     </div>
   );
