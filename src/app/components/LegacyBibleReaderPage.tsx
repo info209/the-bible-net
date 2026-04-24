@@ -2280,6 +2280,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         isOpen={showAudioSheet}
         onClose={() => setShowAudioSheet(false)}
         selectedVerse={selectedVerse || (ttsCurrentVerseIndex + 1) || 1}
+        totalVerses={currentChapterVerses.length || 1}
         audioCurrentTime={(ttsCurrentVerseIndex + 1) || 1}
         audioDuration={currentChapterVerses.length || 1}
         audioPlaying={ttsPlaying && !ttsPaused}

@@ -136,6 +136,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [hideFootnotes, setHideFootnotes] = useState(false);
   const [showAudioControlPanel, setShowAudioControlPanel] = useState(false);
+  const [audioPlayerState, setAudioPlayerState] = useState<'default' | 'minimized'>('default');
   const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
   const [showVerseSelector, setShowVerseSelector] = useState(false);
   const [audioCurrentTime, setAudioCurrentTime] = useState(45); // in seconds
@@ -1694,10 +1695,18 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       {/* Audio Control Panel */}
       <AudioControlPanel
         isOpen={showAudioControlPanel}
-        onClose={() => setShowAudioControlPanel(false)}
+        onClose={() => {
+          setShowAudioControlPanel(false);
+          setAudioPlayerState('default');
+        }}
+        onMinimize={() => {
+          setShowAudioControlPanel(false);
+          setAudioPlayerState('minimized');
+        }}
         selectedVerse={narrationPlayingRef.current ? (currentReadingVerse ?? 1) : (selectedVerse ?? 1)}
+        totalVerses={getBibleContent().length}
         audioCurrentTime={narrationPlayingRef.current ? (currentReadingVerse ?? 1) : audioCurrentTime}
-        audioDuration={narrationPlayingRef.current ? getBibleContent().length : audioDuration}
+        audioDuration={audioDuration}
         audioPlaying={audioPlaying}
         playbackSpeed={playbackSpeed}
         onVerseChange={setSelectedVerse}
@@ -2028,11 +2037,12 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         )}
       </div>
 
-      {/* Audio Controls Floating Button */}
-      {showAudioControls && (
+      {/* Audio Controls Floating Button — hidden when bottom sheet is open */}
+      {showAudioControls && !showAudioControlPanel && (
         <AudioFloatingPlayer
+          playerState={audioPlayerState}
           isPlaying={audioPlaying}
-          progress={audioDuration > 0 ? audioCurrentTime / audioDuration : 0}
+          progress={getBibleContent().length > 0 ? (selectedVerse ?? 1) / getBibleContent().length : 0}
           onPlayPause={handleNarrationPlayPause}
           onNext={handleNext}
           onPrev={handlePrevious}
