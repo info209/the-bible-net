@@ -1,9 +1,5 @@
-import LibraryView from "@/components/library/LibraryView";
+import { BiblePlansLibrary } from "@/components/library";
 
 export default function Page() {
-  return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
-      <LibraryView />
-    </div>
-  );
+  return <BiblePlansLibrary />;
 }

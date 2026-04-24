@@ -8,6 +8,7 @@ interface ProgressRingProps {
   className?: string;
   color?: string;
   trackColor?: string;
+  children?: React.ReactNode;
 }
 
 export default function ProgressRing({
@@ -17,6 +18,7 @@ export default function ProgressRing({
   className = '',
   color = 'var(--color-primary-teal)',
   trackColor = 'transparent',
+  children,
 }: ProgressRingProps) {
   const center = size / 2;
   const radius = center - strokeWidth / 2;
@@ -25,30 +27,37 @@ export default function ProgressRing({
   const strokeDashoffset = circumference - clampedProgress * circumference;
 
   return (
-    <svg width={size} height={size} className={`-rotate-90 origin-center ${className}`}>
-      {/* Track */}
-      <circle
-        cx={center}
-        cy={center}
-        r={radius}
-        fill="transparent"
-        stroke={trackColor}
-        strokeWidth={strokeWidth}
-      />
-      {/* Progress */}
-      <motion.circle
-        cx={center}
-        cy={center}
-        r={radius}
-        fill="transparent"
-        stroke={color}
-        strokeWidth={strokeWidth}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        initial={{ strokeDashoffset: circumference }}
-        animate={{ strokeDashoffset }}
-        transition={{ duration: 0.1, ease: 'linear' }}
-      />
-    </svg>
+    <div className={`relative inline-flex ${className}`} style={{ width: size, height: size }}>
+      <svg width={size} height={size} className="-rotate-90 origin-center">
+        {/* Track */}
+        <circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="transparent"
+          stroke={trackColor}
+          strokeWidth={strokeWidth}
+        />
+        {/* Progress */}
+        <motion.circle
+          cx={center}
+          cy={center}
+          r={radius}
+          fill="transparent"
+          stroke={color}
+          strokeWidth={strokeWidth}
+          strokeLinecap="round"
+          strokeDasharray={circumference}
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset }}
+          transition={{ duration: 0.1, ease: 'linear' }}
+        />
+      </svg>
+      {children ? (
+        <div className="absolute inset-0 flex items-center justify-center">
+          {children}
+        </div>
+      ) : null}
+    </div>
   );
 }

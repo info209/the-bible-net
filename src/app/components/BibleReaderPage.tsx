@@ -2043,6 +2043,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           }}
           onNext={handleNext}
           onPrev={handlePrevious}
+          title={`${selectedBook} ${selectedChapter}:${selectedVerse ?? 1}`}
+          subtitle={selectedVersion}
           className={isReadingMode ? 'mb-4' : 'mb-20'}
         />
       )}
