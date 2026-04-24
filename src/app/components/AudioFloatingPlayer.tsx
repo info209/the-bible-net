@@ -1,115 +1,146 @@
 ﻿"use client";
 
 import { useState } from "react";
+import { Play, Pause, X, ChevronUp } from "lucide-react";
 import ProgressRing from "./ui/ProgressRing";
 
-interface AudioFloatingPlayerProps {
+interface Props {
   isPlaying: boolean;
   progress: number;
   onPlayPause: () => void;
   onNext: () => void;
   onPrev: () => void;
-  className?: string;
-  title?: string;
-  subtitle?: string;
+  title: string;
+  subtitle: string;
+  onOpenPanel: () => void;
 }
 
 export default function AudioFloatingPlayer({
   isPlaying,
   progress,
   onPlayPause,
+  onOpenPanel,
   onNext,
   onPrev,
-  className = "",
-  title = "Audio Playback",
-  subtitle = "Bible Narration",
-}: AudioFloatingPlayerProps) {
+  title,
+  subtitle,
+}: Props) {
   const [expanded, setExpanded] = useState(false);
 
   return (
     <>
+      {/* ✅ MINIMIZED PLAYER (Image 3 style) */}
       {!expanded && (
         <div
-          onClick={() => setExpanded(true)}
-          className={`fixed bottom-6 left-1/2 z-50 -translate-x-1/2 cursor-pointer rounded-full bg-white px-4 py-3 shadow-xl transition-all ${className}`}
+          onClick={onOpenPanel}
+          className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 
+          w-[92%] max-w-[420px]
+          bg-[var(--color-bg-primary)]
+          border border-[var(--color-border)]
+          shadow-xl rounded-full px-4 py-3 flex items-center gap-3"
         >
-          <div className="flex items-center gap-3">
-            <ProgressRing progress={progress} size={40} strokeWidth={4} trackColor="#e5e7eb" color="#10b981">
-              <div className="flex h-8 w-8 items-center justify-center">
-                <div className="flex gap-[2px]">
-                  {[1, 2, 3].map((i) => (
-                    <span key={i} className="h-4 w-[3px] rounded-full bg-emerald-600 animate-pulse" />
-                  ))}
-                </div>
-              </div>
-            </ProgressRing>
-
-            <div>
-              <p className="text-sm font-medium text-slate-900">{title}</p>
-              <p className="text-xs text-gray-400">{subtitle}</p>
-            </div>
-
+          {/* Progress Ring */}
+          <ProgressRing
+            progress={progress}
+            size={44}
+            strokeWidth={4}
+            trackColor="var(--color-bg-tertiary)"
+            color="var(--color-accent-rose)"
+          >
             <button
-              onClick={(event) => {
-                event.stopPropagation();
+              onClick={(e) => {
+                e.stopPropagation();
                 onPlayPause();
               }}
-              className="ml-auto text-slate-900"
-              type="button"
+              className="w-8 h-8 flex items-center justify-center"
             >
-              {isPlaying ? "❚❚" : "▶"}
+              {isPlaying ? (
+                <Pause className="text-[var(--color-accent-rose)]" />
+              ) : (
+                <Play className="text-[var(--color-accent-rose)] ml-[2px]" />
+              )}
             </button>
+          </ProgressRing>
+
+          {/* Text */}
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold truncate text-[var(--color-text-primary)]">
+              {title}
+            </p>
+            <p className="text-xs text-[var(--color-text-secondary)] truncate">
+              {subtitle}
+            </p>
           </div>
+
+          {/* Expand */}
+          <ChevronUp className="text-gray-400" />
         </div>
       )}
 
+      {/* ✅ EXPANDED PLAYER (Image 2 + 4 style) */}
       {expanded && (
-        <div className="fixed inset-x-0 bottom-0 z-50 rounded-t-3xl bg-white p-6 shadow-2xl">
-          <div className="relative text-center mb-5">
-            <p className="text-base font-semibold text-slate-900">{title}</p>
-            <p className="text-sm text-gray-400">{subtitle}</p>
-            <button
-              type="button"
-              onClick={() => setExpanded(false)}
-              className="absolute right-0 top-0 text-slate-500 hover:text-slate-700"
-            >
-              ✕
-            </button>
-          </div>
+        <div className="fixed inset-0 z-50 bg-black/40 flex items-end">
+          <div className="w-full bg-[var(--color-bg-primary)] rounded-t-3xl p-5 shadow-2xl">
 
-          <div className="flex items-center justify-center gap-6 mb-6">
-            <button
-              type="button"
-              onClick={onPrev}
-              className="rounded-full border border-gray-200 px-4 py-3 text-slate-900 transition hover:bg-gray-100"
-            >
-              ⏮
-            </button>
+            {/* Header */}
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <p className="font-semibold text-[var(--color-text-primary)]">
+                  {title}
+                </p>
+                <p className="text-sm text-[var(--color-text-secondary)]">
+                  {subtitle}
+                </p>
+              </div>
 
-            <ProgressRing progress={progress} size={120} strokeWidth={8} trackColor="#e5e7eb" color="#10b981">
-              <button
-                type="button"
-                onClick={onPlayPause}
-                className="flex h-20 w-20 items-center justify-center rounded-full bg-emerald-700 text-white text-2xl shadow-lg"
-              >
-                {isPlaying ? "❚❚" : "▶"}
+              <button onClick={() => setExpanded(false)}>
+                <X className="text-gray-500" />
               </button>
-            </ProgressRing>
+            </div>
 
-            <button
-              type="button"
-              onClick={onNext}
-              className="rounded-full border border-gray-200 px-4 py-3 text-slate-900 transition hover:bg-gray-100"
-            >
-              ⏭
-            </button>
-          </div>
+            {/* MAIN PLAYER */}
+            <div className="flex justify-center items-center gap-8 mb-6">
 
-          <div className="h-2 overflow-hidden rounded-full bg-gray-200">
-            <div
-              className="h-full bg-emerald-600"
-              style={{ width: `${Math.min(100, Math.max(0, progress * 100))}%` }}
-            />
+              {/* Prev */}
+              <button onClick={onPrev} className="px-4 py-3 rounded-full border border-gray-200 
+text-[var(--color-text-primary)] 
+hover:bg-gray-100 transition">
+                ⏮
+              </button>
+
+              {/* Big Play */}
+              <ProgressRing
+                progress={progress}
+                size={130}
+                strokeWidth={8}
+                trackColor="var(--color-bg-tertiary)"
+                color="var(--color-accent-rose)"
+              >
+                <button
+                  onClick={onPlayPause}
+                  className="w-20 h-20 rounded-full 
+                  bg-[var(--color-accent-rose)] 
+                  flex items-center justify-center text-white text-2xl shadow-lg"
+                >
+                  {isPlaying ? "❚❚" : "▶"}
+                </button>
+              </ProgressRing>
+
+              {/* Next */}
+              <button onClick={onNext} className="px-4 py-3 rounded-full border border-gray-200 
+text-[var(--color-text-primary)] 
+hover:bg-gray-100 transition">
+                ⏭
+              </button>
+            </div>
+
+            {/* Progress Bar */}
+            <div className="h-2 bg-[var(--color-bg-tertiary)] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-[var(--color-accent-rose)]"
+                style={{ width: `${progress * 100}%` }}
+              />
+            </div>
           </div>
         </div>
       )}

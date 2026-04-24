@@ -577,7 +577,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       console.log('[Verse Navigation] User changed verse to:', selectedVerse, 'during narration');
       // Stop current narration and restart from the selected verse
       window.speechSynthesis.cancel();
-      
+
       // Slight delay to ensure cancellation is processed
       setTimeout(() => {
         const verses = getBibleContent();
@@ -1298,8 +1298,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     <button
                       onClick={() => setBookSortType('traditional')}
                       className={`p-1.5 rounded-full transition-all ${bookSortType === 'traditional'
-                          ? 'bg-white shadow-sm'
-                          : 'bg-transparent'
+                        ? 'bg-white shadow-sm'
+                        : 'bg-transparent'
                         }`}
                       aria-label="Traditional sort"
                     >
@@ -1309,8 +1309,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     <button
                       onClick={() => setBookSortType('alphabetical')}
                       className={`p-1.5 rounded-full transition-all ${bookSortType === 'alphabetical'
-                          ? 'bg-white shadow-sm'
-                          : 'bg-transparent'
+                        ? 'bg-white shadow-sm'
+                        : 'bg-transparent'
                         }`}
                       aria-label="Alphabetical sort"
                     >
@@ -1335,10 +1335,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   <div className="space-y-2">
                     {(bookSortType === 'alphabetical'
                       ? [...books['Old Testament']].sort((a, b) => {
-                          const nameA = typeof a === 'string' ? a : a.name;
-                          const nameB = typeof b === 'string' ? b : b.name;
-                          return nameA.localeCompare(nameB);
-                        })
+                        const nameA = typeof a === 'string' ? a : a.name;
+                        const nameB = typeof b === 'string' ? b : b.name;
+                        return nameA.localeCompare(nameB);
+                      })
                       : books['Old Testament']
                     ).map(book => {
                       const bookName = typeof book === 'string' ? book : book.name;
@@ -1352,8 +1352,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                             setSelectedChapter(1);
                           }}
                           className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
-                              ? 'text-[var(--color-accent-rose)] font-medium'
-                              : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
+                            ? 'text-[var(--color-accent-rose)] font-medium'
+                            : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
                             }`}
                         >
                           {bookName}
@@ -1369,10 +1369,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   <div className="space-y-2">
                     {(bookSortType === 'alphabetical'
                       ? [...books['New Testament']].sort((a, b) => {
-                          const nameA = typeof a === 'string' ? a : a.name;
-                          const nameB = typeof b === 'string' ? b : b.name;
-                          return nameA.localeCompare(nameB);
-                        })
+                        const nameA = typeof a === 'string' ? a : a.name;
+                        const nameB = typeof b === 'string' ? b : b.name;
+                        return nameA.localeCompare(nameB);
+                      })
                       : books['New Testament']
                     ).map(book => {
                       const bookName = typeof book === 'string' ? book : book.name;
@@ -1386,8 +1386,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                             setSelectedChapter(1);
                           }}
                           className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
-                              ? 'text-[var(--color-accent-rose)] font-medium'
-                              : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
+                            ? 'text-[var(--color-accent-rose)] font-medium'
+                            : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
                             }`}
                         >
                           {bookName}
@@ -1429,8 +1429,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       setShowVerseSelector(true);
                     }}
                     className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedChapter === chapter
-                        ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
-                        : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
+                      ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
+                      : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
                       }`}
                   >
                     {chapter.toString().padStart(2, '0')}
@@ -1481,8 +1481,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       setShowChapterSelector(false);
                     }}
                     className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedVerse === verse
-                        ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
-                        : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
+                      ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
+                      : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
                       }`}
                   >
                     {verse.toString().padStart(2, '0')}
@@ -1519,8 +1519,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                         setShowVersionSelector(false);
                       }}
                       className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
-                          ? 'bg-[#fde8ea] text-[#E23744]'
-                          : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
+                        ? 'bg-[#fde8ea] text-[#E23744]'
+                        : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
                         }`}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>
@@ -1539,8 +1539,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                         setShowVersionSelector(false);
                       }}
                       className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
-                          ? 'bg-[#fde8ea] text-[#E23744]'
-                          : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
+                        ? 'bg-[#fde8ea] text-[#E23744]'
+                        : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
                         }`}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>
@@ -1559,8 +1559,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                         setShowVersionSelector(false);
                       }}
                       className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
-                          ? 'bg-[#fde8ea] text-[#E23744]'
-                          : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
+                        ? 'bg-[#fde8ea] text-[#E23744]'
+                        : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
                         }`}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>
@@ -1620,8 +1620,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   }}
                   disabled={!selectedMusic || selectedMusic === 'none'}
                   className={`p-2 rounded-full transition-colors ${selectedMusic && selectedMusic !== 'none'
-                      ? 'hover:bg-gray-100 cursor-pointer'
-                      : 'opacity-40 cursor-not-allowed'
+                    ? 'hover:bg-gray-100 cursor-pointer'
+                    : 'opacity-40 cursor-not-allowed'
                     }`}
                 >
                   {audioPlaying ? (
@@ -1646,8 +1646,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     key={track.id}
                     onClick={() => setSelectedMusic(track.id)}
                     className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${selectedMusic === track.id
-                        ? 'bg-[#fde8ea]'
-                        : 'bg-transparent hover:bg-gray-50'
+                      ? 'bg-[#fde8ea]'
+                      : 'bg-transparent hover:bg-gray-50'
                       }`}
                   >
                     {/* Left side - Thumbnail and name */}
@@ -1670,8 +1670,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
                       {/* Track name */}
                       <span className={`text-base ${selectedMusic === track.id
-                          ? 'text-[#E23744] font-medium'
-                          : 'text-[#31393a]'
+                        ? 'text-[#E23744] font-medium'
+                        : 'text-[#31393a]'
                         }`}>
                         {track.name}
                       </span>
@@ -1762,8 +1762,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 >
                   <span className="text-base text-[#31393a]">Timer Off</span>
                   <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'stop'
-                      ? 'bg-[#E23744] border-[#E23744]'
-                      : 'border-gray-300'
+                    ? 'bg-[#E23744] border-[#E23744]'
+                    : 'border-gray-300'
                     }`} />
                 </button>
 
@@ -1774,8 +1774,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 >
                   <span className="text-base text-[#31393a]">End of this chapter</span>
                   <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'end-chapter'
-                      ? 'bg-[#E23744] border-[#E23744]'
-                      : 'border-gray-300'
+                    ? 'bg-[#E23744] border-[#E23744]'
+                    : 'border-gray-300'
                     }`} />
                 </button>
 
@@ -1786,8 +1786,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 >
                   <span className="text-base text-[#31393a]">10 mins</span>
                   <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '10-mins'
-                      ? 'bg-[#E23744] border-[#E23744]'
-                      : 'border-gray-300'
+                    ? 'bg-[#E23744] border-[#E23744]'
+                    : 'border-gray-300'
                     }`} />
                 </button>
 
@@ -1798,8 +1798,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 >
                   <span className="text-base text-[#31393a]">15 mins</span>
                   <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '15-mins'
-                      ? 'bg-[#E23744] border-[#E23744]'
-                      : 'border-gray-300'
+                    ? 'bg-[#E23744] border-[#E23744]'
+                    : 'border-gray-300'
                     }`} />
                 </button>
 
@@ -1810,8 +1810,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 >
                   <span className="text-base text-[#31393a]">30 mins</span>
                   <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '30-mins'
-                      ? 'bg-[#E23744] border-[#E23744]'
-                      : 'border-gray-300'
+                    ? 'bg-[#E23744] border-[#E23744]'
+                    : 'border-gray-300'
                     }`} />
                 </button>
 
@@ -1822,8 +1822,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 >
                   <span className="text-base text-[#31393a]">1 hr</span>
                   <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '1-hr'
-                      ? 'bg-[#E23744] border-[#E23744]'
-                      : 'border-gray-300'
+                    ? 'bg-[#E23744] border-[#E23744]'
+                    : 'border-gray-300'
                     }`} />
                 </button>
 
@@ -1834,8 +1834,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 >
                   <span className="text-base text-[#31393a]">2 hrs</span>
                   <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '2-hrs'
-                      ? 'bg-[#E23744] border-[#E23744]'
-                      : 'border-gray-300'
+                    ? 'bg-[#E23744] border-[#E23744]'
+                    : 'border-gray-300'
                     }`} />
                 </button>
               </div>
@@ -2033,19 +2033,12 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         <AudioFloatingPlayer
           isPlaying={audioPlaying}
           progress={audioDuration > 0 ? audioCurrentTime / audioDuration : 0}
-          onPlayPause={() => {
-            if (audioPlaying) {
-               stopNarration();
-               setAudioPlaying(false);
-            } else {
-               startNarration(selectedVerse || 1);
-            }
-          }}
+          onPlayPause={handleNarrationPlayPause}
           onNext={handleNext}
           onPrev={handlePrevious}
           title={`${selectedBook} ${selectedChapter}:${selectedVerse ?? 1}`}
           subtitle={selectedVersion}
-          className={isReadingMode ? 'mb-4' : 'mb-20'}
+          onOpenPanel={() => setShowAudioControlPanel(true)}
         />
       )}
 
