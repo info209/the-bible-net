@@ -1212,7 +1212,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 }}
                 className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
               >
-                <span className="text-sm font-bold">{selectedBook}</span>
+                <span className="text-sm font-medium">{selectedBook}</span>
                 <ChevronDown className="size-3" />
               </button>
 
@@ -1224,12 +1224,12 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 }}
                 className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
               >
-                <span className="text-sm font-bold">{selectedChapter}</span>
+                <span className="text-sm font-medium">{selectedChapter}</span>
                 <ChevronDown className="size-3" />
               </button>
 
               {compareMode.isActive ? (
-                <span className="text-sm font-bold text-[var(--color-text-primary)] opacity-70">
+                <span className="text-sm font-medium text-[var(--color-text-primary)] opacity-70">
                   Comparing
                 </span>
               ) : (
@@ -1241,7 +1241,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   }}
                   className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
                 >
-                  <span className="text-sm font-bold">{selectedVersion}</span>
+                  <span className="text-sm font-medium">{selectedVersion}</span>
                   <ChevronDown className="size-3" />
                 </button>
               )}
@@ -2051,6 +2051,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       {showAudioControls && !showAudioControlPanel && (
         <AudioFloatingPlayer
           playerState={audioPlayerState}
+          isReadingMode={isReadingMode}
           isPlaying={audioPlaying}
           progress={(() => {
               const total = getBibleContent().length;

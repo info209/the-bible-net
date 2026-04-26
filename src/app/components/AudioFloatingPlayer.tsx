@@ -6,7 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import ProgressRing from "./ui/ProgressRing";
 
 // Sits above BottomNav (64px) with 12px breathing room + safe-area
-const BOTTOM_OFFSET = "calc(64px + 12px + env(safe-area-inset-bottom))";
+const BOTTOM_NAV_HEIGHT = 64; // px
+const BREATHING = 12; // px gap above nav
 const LONG_PRESS_DURATION = 500; // ms
 
 interface Props {
@@ -19,6 +20,8 @@ interface Props {
   title: string;
   subtitle: string;
   onOpenPanel: () => void;
+  /** When true the bottom nav is hidden — shift buttons down to sit at safe-area-inset */
+  isReadingMode?: boolean;
 }
 
 export default function AudioFloatingPlayer({
@@ -31,9 +34,16 @@ export default function AudioFloatingPlayer({
   title,
   subtitle,
   onOpenPanel,
+  isReadingMode = false,
 }: Props) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const didLongPress = useRef(false);
+
+  // When footer is hidden, float just above the safe-area inset.
+  // When footer is visible, float above the 64px nav bar.
+  const bottomValue = isReadingMode
+    ? `calc(${BREATHING}px + env(safe-area-inset-bottom))`
+    : `calc(${BOTTOM_NAV_HEIGHT}px + ${BREATHING}px + env(safe-area-inset-bottom))`;
 
   const startLongPress = useCallback(() => {
     didLongPress.current = false;
@@ -64,11 +74,10 @@ export default function AudioFloatingPlayer({
         <motion.div
           key="default-controls"
           initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ opacity: 1, y: 0, bottom: bottomValue }}
           exit={{ opacity: 0, y: 16 }}
-          transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+          transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
           className="fixed left-0 right-0 z-50 pointer-events-none"
-          style={{ bottom: BOTTOM_OFFSET }}
         >
           {/*
             max-w-3xl keeps buttons inside the reading content area on desktop.
@@ -149,11 +158,10 @@ export default function AudioFloatingPlayer({
         <motion.div
           key="pill-minimized"
           initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ opacity: 1, y: 0, bottom: bottomValue }}
           exit={{ opacity: 0, y: 16 }}
-          transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+          transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
           className="fixed left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[420px]"
-          style={{ bottom: BOTTOM_OFFSET }}
           onClick={onOpenPanel}
         >
           <div

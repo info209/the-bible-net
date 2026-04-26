@@ -210,9 +210,11 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         refId,
         metadata: {
           bookId: selectedBookId || undefined,
+          bookName: displayBookName || undefined,
           chapter: selectedChapter,
           verse: verseNum,
           versionId: selectedVersionId || undefined,
+          versionName: displayVersionName || undefined,
           labels
         }
       });
@@ -222,18 +224,17 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
   const onVerseMenuNote = async (note: string) => {
     if (!session?.user || selectedVerses.length === 0) return;
-
-    // A note can cover multiple verses? Usually notes are per verse or per selection.
-    // For now, let's save it to the first verse in selection or a compound refId.
     const refId = `${selectedBookId}_${selectedChapter}_${selectedVerses.join('-')}_${selectedVersionId}`;
     await saveItem({
       type: 'note',
       refId,
       metadata: {
         bookId: selectedBookId || undefined,
+        bookName: displayBookName || undefined,
         chapter: selectedChapter,
         verses: selectedVerses,
         versionId: selectedVersionId || undefined,
+        versionName: displayVersionName || undefined,
         content: note
       }
     });
@@ -1440,9 +1441,11 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
                 refId,
                 metadata: {
                   bookId: selectedBookId || undefined,
+                  bookName: displayBookName || undefined,
                   chapter: selectedChapter,
                   verse: verseNum,
                   versionId: selectedVersionId || undefined,
+                  versionName: displayVersionName || undefined,
                   color
                 }
               });
@@ -1456,7 +1459,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
                       : h
                   );
                 }
-                return [...prev, { refId, metadata: { bookId: selectedBookId, chapter: selectedChapter, verse: verseNum, versionId: selectedVersionId, color } }];
+                return [...prev, { refId, metadata: { bookId: selectedBookId, bookName: displayBookName, chapter: selectedChapter, verse: verseNum, versionId: selectedVersionId, versionName: displayVersionName, color } }];
               });
             }
           }
@@ -1472,9 +1475,11 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
             refId,
             metadata: {
               bookId: selectedBookId || undefined,
+              bookName: displayBookName || undefined,
               chapter: selectedChapter,
               verses: verses,
               versionId: selectedVersionId || undefined,
+              versionName: displayVersionName || undefined,
               content: note
             }
           });

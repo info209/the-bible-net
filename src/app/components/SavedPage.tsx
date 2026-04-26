@@ -39,9 +39,10 @@ function BibleCard({
   onNavigate: () => void;
 }) {
   const { bookName, chapter, versionName, versionId, bookId } = item.metadata;
+  const displayBook  = bookName ?? bookId ?? '—';
   const versionLabel = versionName ?? versionId ?? '';
   const chapterLabel = chapter != null ? `Chapter ${chapter}` : '';
-  const displayTitle = [bookName, chapterLabel].filter(Boolean).join(' · ');
+  const displayTitle = [displayBook, chapterLabel].filter(Boolean).join(' · ');
   const displaySub = versionLabel ? `(${versionLabel})` : '';
 
   return (
@@ -158,12 +159,8 @@ export default function SavedPage() {
 
   const handleNavigate = (item: SavedItemClient) => {
     if (item.type === 'bible') {
-      const { versionId, bookId, chapter } = item.metadata;
-      if (versionId && bookId && chapter != null) {
-        router.push(`/bible/${versionId}/${bookId}/${chapter}`);
-      } else {
-        router.push('/bible');
-      }
+      // Navigate to the SPA Bible reader — no dynamic route exists
+      router.push('/bible');
     } else if (item.type === 'journal') {
       router.push(`/journals/${item.refId}`);
     } else if (item.type === 'reading_plan') {
