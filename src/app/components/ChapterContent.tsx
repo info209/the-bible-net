@@ -4,6 +4,20 @@ import { motion } from 'framer-motion';
 import BibleSkeleton from './BibleSkeleton';
 import { teluguBible, hindiBible } from './BibleData';
 
+// Map color IDs (as stored in DB) to actual CSS colors
+const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
+  yellow: '#FFD234',
+  green:  '#4CD964',
+  blue:   '#34AADC',
+  pink:   '#FF6B9D',
+  purple: '#A66CFF',
+  orange: '#FF9500',
+  red:    '#FF3B30',
+  teal:   '#5AC8FA',
+  lime:   '#A4D65E',
+  rose:   '#FF2D55',
+};
+
 interface ChapterContentProps {
   book: string;
   chapter: number;
@@ -293,7 +307,9 @@ export default function ChapterContent({
                 onPointerMove={handlePointerMove}
                 style={{
                   color: theme.text,
-                  backgroundColor: highlight?.metadata?.color || (isReading ? 'var(--color-primary-teal-subtle)' : 'transparent'),
+                  backgroundColor: highlight?.metadata?.color && highlight.metadata.color !== 'none'
+                    ? (HIGHLIGHT_COLOR_MAP[highlight.metadata.color] ?? highlight.metadata.color) + '66'
+                    : (isReading ? 'var(--color-primary-teal-subtle)' : 'transparent'),
                 }}
               >
                 <sup className="font-bold mr-1.5 select-none opacity-60" style={{ color: theme.verseNumber }}>{verse.number}</sup>

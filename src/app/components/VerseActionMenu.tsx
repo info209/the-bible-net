@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     BookmarkPlus, FileText, Columns2, Plus, X, ChevronLeft,
-    Check, List, Type, Trash2
+    Check, List, Type, Trash2, PenTool
 } from 'lucide-react';
 
 interface VerseActionMenuProps {
@@ -44,20 +44,6 @@ const ALL_COLORS = [
 ];
 
 const SUGGESTED_LABELS = ['Joy', 'Love', 'Pride', 'Faith', 'Hope', 'Peace'];
-
-// Single clean highlighter/marker icon (no duplicate paths)
-function HighlighterIcon({ color }: { color: string }) {
-    return (
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            {/* Marker body */}
-            <rect x="7" y="2" width="10" height="14" rx="2" ry="2" />
-            {/* Tip */}
-            <path d="M12 16l-3 5h6l-3-5z" />
-            {/* Highlight line at bottom */}
-            <line x1="4" y1="22" x2="20" y2="22" />
-        </svg>
-    );
-}
 
 export default function VerseActionMenu({
     isOpen,
@@ -312,7 +298,11 @@ export default function VerseActionMenu({
                                             : 'bg-gray-50 hover:bg-gray-100'
                                     }`}
                                 >
-                                    <HighlighterIcon color={highlightMode ? '#fff' : '#31C4BE'} />
+                                    <PenTool
+                                    className="w-[22px] h-[22px]"
+                                    style={{ color: highlightMode ? '#fff' : '#31C4BE' }}
+                                    strokeWidth={2}
+                                />
                                     <span className={`text-[10px] font-semibold tracking-wide ${
                                         highlightMode ? 'text-white' : 'text-gray-600'
                                     }`}>

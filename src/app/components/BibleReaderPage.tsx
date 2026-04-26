@@ -85,6 +85,10 @@ interface BibleReaderPageProps {
   onCompareVerses?: () => void;
   onShareVerses?: () => void;
   onSaveVerses?: (labels: string[]) => void;
+  /** Highlights for the current chapter from the API */
+  userHighlights?: any[];
+  /** Notes for the current chapter from the API */
+  userNotes?: any[];
 }
 
 export default function BibleReaderPage(props: BibleReaderPageProps) {
@@ -113,7 +117,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     onShareVerses,
     onSaveVerses,
     onPlayAudio,
-    onPauseAudio
+    onPauseAudio,
+    userHighlights = [],
+    userNotes = [],
   } = props;
 
   const selectedBook = book;
@@ -1985,6 +1991,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   scrollToVerse={selectedVerse}
                   readingVerse={currentReadingVerse}
                   theme={currentTheme}
+                  highlights={userHighlights}
+                  notes={userNotes}
                 />
               )}
             </div>
@@ -2028,6 +2036,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       selectedVerses={selectedVerses}
                       onVerseLongPress={onVerseLongPress}
                       onVerseTap={onVerseTap}
+                      highlights={userHighlights}
+                      notes={userNotes}
                     />
                   )}
                 </motion.div>

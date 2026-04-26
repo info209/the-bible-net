@@ -1323,13 +1323,11 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       // READING MODE TOGGLE - With stabilization
       if (Math.abs(deltaY) > threshold) {
         if (deltaY > 0 && currentScrollY > 80) {
-          // Scrolling down
+          // Scrolling down — enter reading mode but keep audio controls visible
           setIsReadingMode(prev => prev ? prev : true);
-          setShowAudioControls(prev => !prev ? prev : false);
         } else if (deltaY < -threshold) {
-          // Scrolling up
+          // Scrolling up — exit reading mode
           setIsReadingMode(prev => !prev ? prev : false);
-          setShowAudioControls(prev => prev ? prev : true);
         }
         lastKnownScrollY = currentScrollY;
       }
@@ -1421,17 +1419,46 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         const processHighlights = async () => {
           for (const verseNum of verses) {
             const refId = `${selectedBookId}_${selectedChapter}_${verseNum}_${selectedVersionId}`;
-            await saveItem({
-              type: 'highlight',
-              refId,
-              metadata: {
-                bookId: selectedBookId || undefined,
-                chapter: selectedChapter,
-                verse: verseNum,
-                versionId: selectedVersionId || undefined,
-                color
-              }
-            });
+            if (color === 'none') {
+              // Remove highlight
+              await saveItem({
+                type: 'highlight',
+                refId,
+                metadata: {
+                  bookId: selectedBookId || undefined,
+                  chapter: selectedChapter,
+                  verse: verseNum,
+                  versionId: selectedVersionId || undefined,
+                  color
+                }
+              });
+              // Remove from local state immediately
+              setUserHighlights(prev => prev.filter(h => h.metadata?.verse !== verseNum));
+            } else {
+              await saveItem({
+                type: 'highlight',
+                refId,
+                metadata: {
+                  bookId: selectedBookId || undefined,
+                  chapter: selectedChapter,
+                  verse: verseNum,
+                  versionId: selectedVersionId || undefined,
+                  color
+                }
+              });
+              // Update local state immediately so verse color shows without re-fetch
+              setUserHighlights(prev => {
+                const existing = prev.find(h => h.metadata?.verse === verseNum);
+                if (existing) {
+                  return prev.map(h =>
+                    h.metadata?.verse === verseNum
+                      ? { ...h, metadata: { ...h.metadata, color } }
+                      : h
+                  );
+                }
+                return [...prev, { refId, metadata: { bookId: selectedBookId, chapter: selectedChapter, verse: verseNum, versionId: selectedVersionId, color } }];
+              });
+            }
           }
         };
         processHighlights();
@@ -1455,6 +1482,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         processNotes();
       }}
       selectedVerses={selectedVerses}
+      userHighlights={userHighlights}
+      userNotes={userNotes}
       onVerseLongPress={handleVerseLongPress}
       onVerseTap={(v) => {
         if (v === 0) onVerseMenuClose();
