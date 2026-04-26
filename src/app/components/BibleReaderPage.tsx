@@ -2042,7 +2042,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         <AudioFloatingPlayer
           playerState={audioPlayerState}
           isPlaying={audioPlaying}
-          progress={getBibleContent().length > 0 ? (selectedVerse ?? 1) / getBibleContent().length : 0}
+          progress={(() => {
+              const total = getBibleContent().length;
+              if (total === 0) return 0;
+              // Only show progress if audio has started (currentReadingVerse set, or actively playing)
+              if (!audioPlaying && currentReadingVerse === null) return 0;
+              // (verse - 1) / total → verse 1 = 0%, last verse ≈ 100%
+              return Math.max(0, ((selectedVerse ?? 1) - 1) / total);
+            })()}
           onPlayPause={handleNarrationPlayPause}
           onNext={handleNext}
           onPrev={handlePrevious}

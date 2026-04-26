@@ -1,6 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, BookmarkPlus, Copy, Share2, Type, FileText, Check, List, Columns2, PenTool, ChevronLeft, Plus, RotateCcw } from 'lucide-react';
+import {
+    BookmarkPlus, FileText, Columns2, Plus, X, ChevronLeft,
+    Check, List, Type, Trash2
+} from 'lucide-react';
 
 interface VerseActionMenuProps {
     isOpen: boolean;
@@ -13,14 +16,31 @@ interface VerseActionMenuProps {
     onNote: (note: string) => void | Promise<void>;
     onCompare: () => void;
     onShare: () => void;
+    /** Currently applied highlight color id for the selected verses (if any) */
+    existingHighlightColor?: string | null;
 }
 
-const HIGHLIGHT_COLORS = [
-    { id: 'yellow', color: '#ffde59' },
-    { id: 'green', color: '#8cf97a' },
-    { id: 'blue', color: '#5ce1e6' },
-    { id: 'pink', color: '#ff7eb3' },
-    { id: 'purple', color: '#cb6ce6' },
+// Primary 5 colors shown initially
+const PRIMARY_COLORS = [
+    { id: 'yellow', color: '#FFD234', label: 'Yellow' },
+    { id: 'green',  color: '#4CD964', label: 'Green'  },
+    { id: 'blue',   color: '#34AADC', label: 'Blue'   },
+    { id: 'pink',   color: '#FF6B9D', label: 'Pink'   },
+    { id: 'purple', color: '#A66CFF', label: 'Purple' },
+];
+
+// All colors shown when expanded
+const ALL_COLORS = [
+    { id: 'yellow',  color: '#FFD234', label: 'Yellow'  },
+    { id: 'green',   color: '#4CD964', label: 'Green'   },
+    { id: 'blue',    color: '#34AADC', label: 'Blue'    },
+    { id: 'pink',    color: '#FF6B9D', label: 'Pink'    },
+    { id: 'purple',  color: '#A66CFF', label: 'Purple'  },
+    { id: 'orange',  color: '#FF9500', label: 'Orange'  },
+    { id: 'red',     color: '#FF3B30', label: 'Red'     },
+    { id: 'teal',    color: '#5AC8FA', label: 'Teal'    },
+    { id: 'lime',    color: '#A4D65E', label: 'Lime'    },
+    { id: 'rose',    color: '#FF2D55', label: 'Rose'    },
 ];
 
 const SUGGESTED_LABELS = ['Joy', 'Love', 'Pride', 'Faith', 'Hope', 'Peace'];
@@ -35,34 +55,47 @@ export default function VerseActionMenu({
     onSave,
     onNote,
     onCompare,
-    onShare
+    onShare,
+    existingHighlightColor = null,
 }: VerseActionMenuProps) {
     const [view, setView] = useState<'main' | 'save' | 'note'>('main');
+    const [highlightMode, setHighlightMode] = useState(false);
+    const [paletteExpanded, setPaletteExpanded] = useState(false);
+    const [selectedColor, setSelectedColor] = useState<string>('yellow');
 
     // Save State
     const [labelInput, setLabelInput] = useState('');
     const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
-    const [savedLabels, setSavedLabels] = useState<string[]>(['Morning Devotion', 'Favorite']); // Mock for now
+    const [savedLabels, setSavedLabels] = useState<string[]>(['Morning Devotion', 'Favorite']);
+
+    // Auto-open highlight mode if verse already has a highlight
+    useEffect(() => {
+        if (existingHighlightColor) {
+            setHighlightMode(true);
+            setSelectedColor(existingHighlightColor);
+        } else {
+            setHighlightMode(false);
+            setSelectedColor('yellow');
+        }
+        setPaletteExpanded(false);
+        setView('main');
+    }, [existingHighlightColor, isOpen]);
 
     if (!isOpen) return null;
 
-    // Format verse range text: e.g., "1:2, 5-7"
+    // Format verse range: "Genesis 1:2-5"
     const formattedVerses = () => {
         if (selectedVerses.length === 0) return '';
         const sorted = [...selectedVerses].sort((a, b) => a - b);
-        let ranges = [];
+        const ranges: string[] = [];
         let start = sorted[0];
         let end = start;
-
         for (let i = 1; i <= sorted.length; i++) {
             if (i < sorted.length && sorted[i] === end + 1) {
                 end = sorted[i];
             } else {
-                ranges.push(start === end ? `${start}` : `${start}-${end}`);
-                if (i < sorted.length) {
-                    start = sorted[i];
-                    end = start;
-                }
+                ranges.push(start === end ? `${start}` : `${start}–${end}`);
+                if (i < sorted.length) { start = sorted[i]; end = start; }
             }
         }
         return `${bookName} ${chapter}:${ranges.join(', ')}`;
@@ -79,9 +112,7 @@ export default function VerseActionMenu({
         const trimmed = labelInput.trim();
         if (trimmed && !selectedLabels.includes(trimmed)) {
             setSelectedLabels(prev => [...prev, trimmed]);
-            if (!savedLabels.includes(trimmed)) {
-                setSavedLabels(prev => [...prev, trimmed]);
-            }
+            if (!savedLabels.includes(trimmed)) setSavedLabels(prev => [...prev, trimmed]);
         }
         setLabelInput('');
     };
@@ -91,188 +122,306 @@ export default function VerseActionMenu({
         setView('main');
     };
 
+    const handleColorSelect = (colorId: string) => {
+        setSelectedColor(colorId);
+        onHighlight(colorId);
+    };
+
+    const handleRemoveHighlight = () => {
+        onHighlight('none');
+        setHighlightMode(false);
+        setSelectedColor('yellow');
+        setPaletteExpanded(false);
+    };
+
+    const displayColors = paletteExpanded ? ALL_COLORS : PRIMARY_COLORS;
+
     return (
         <motion.div
-            initial={{ opacity: 0, y: 100, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 100, scale: 0.95 }}
-            transition={{ type: 'spring', damping: 28, stiffness: 220 }}
-            className="fixed bottom-24 left-1/2 -translate-x-1/2 w-[calc(100%-32px)] max-w-lg bg-white rounded-[28px] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] border border-gray-200/50 pb-safe z-[1110] overflow-y-auto max-h-[80dvh]"
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 80 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 260 }}
+            className="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[420px] bg-white rounded-[20px] shadow-[0_8px_40px_rgba(0,0,0,0.18)] z-[1110]"
             style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
         >
-            <div className="flex flex-col items-center pt-3 pb-5 px-5 relative">
-                <div className="w-10 h-1 bg-gray-200/80 rounded-full mb-4 shrink-0" />
-
-                <AnimatePresence mode="wait">
-                    {view === 'main' && (
-                        <motion.div
-                            key="main"
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: -20 }}
-                            className="w-full flex flex-col items-center"
-                        >
-                            <p className="text-sm font-semibold text-gray-400 mb-6 uppercase tracking-[0.05em]">Selection <span className="text-slate-900 border-b-2 border-slate-900/10 ml-2">{formattedVerses()}</span></p>
-
-                            <div className="w-full flex items-center justify-between gap-2 px-1">
-                                {/* Highlight Controls */}
-                                <div className="flex-1 flex flex-col items-center justify-center p-3 rounded-2xl bg-slate-50 hover:bg-slate-100 transition-all shadow-sm group">
-                                    <div className="flex gap-2 mb-2">
-                                        {HIGHLIGHT_COLORS.slice(0, 4).map(color => (
-                                            <button key={color.id} onClick={() => onHighlight(color.id)} className="w-6 h-6 rounded-full border border-white shadow-[0_2px_4px_rgba(0,0,0,0.1)] transition-transform hover:scale-110 active:scale-90" style={{ backgroundColor: color.color }} title={`Highlight ${color.id}`} />
-                                        ))}
-                                        <button className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center transition-transform hover:scale-110 active:scale-90" onClick={() => onHighlight('none')} title="Clear highlight">
-                                            <RotateCcw className="size-3 text-slate-500" />
-                                        </button>
-                                    </div>
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Highlight</span>
-                                </div>
-
-                                {/* Actions Group */}
-                                <div className="flex gap-2">
-                                    {/* Save */}
-                                    <button onClick={() => setView('save')} className="flex flex-col items-center justify-center gap-2 w-16 h-16 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 transition-all shadow-sm text-slate-700 active:scale-95 group">
-                                        <BookmarkPlus className="size-5 text-[var(--color-primary-teal)] group-hover:scale-110 transition-transform" />
-                                        <span className="text-[9px] font-bold uppercase tracking-widest">Save</span>
-                                    </button>
-
-                                    {/* Note */}
-                                    <button onClick={() => setView('note')} className="flex flex-col items-center justify-center gap-2 w-16 h-16 rounded-2xl bg-white border border-slate-100 hover:border-slate-200 hover:bg-slate-50/50 transition-all shadow-sm text-slate-700 active:scale-95 group">
-                                        <FileText className="size-5 text-amber-500 group-hover:scale-110 transition-transform" />
-                                        <span className="text-[9px] font-bold uppercase tracking-widest">Note</span>
-                                    </button>
-
-                                    {/* More Controls (Using ... logic) */}
-                                    <div className="flex flex-col gap-1.5 h-16">
-                                        <button onClick={onCompare} className="flex-1 flex items-center gap-2 px-3 rounded-xl bg-white border border-slate-100 hover:bg-slate-50 transition-all text-xs font-bold text-slate-700 shadow-sm active:scale-95 border-l-4 border-l-[var(--color-primary-teal)]" title="Compare Versions">
-                                            <Columns2 className="size-4" />
-                                            <span>Compare</span>
-                                        </button>
-                                        <button onClick={onShare} className="flex-1 flex items-center gap-2 px-3 rounded-xl bg-white border border-slate-100 hover:bg-slate-50 transition-all text-xs font-bold text-slate-700 shadow-sm active:scale-95 border-l-4 border-l-slate-800" title="Share">
-                                            <Share2 className="size-4" />
-                                            <span>Share</span>
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {view === 'save' && (
-                        <motion.div
-                            key="save"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            className="w-full flex-1 flex flex-col items-stretch max-h-full"
-                        >
-                            <div className="flex items-center mb-4 shrink-0">
-                                <button onClick={() => setView('main')} className="p-2 -ml-2 text-gray-500 hover:text-gray-900 transition-colors">
-                                    <ChevronLeft className="size-5" />
-                                </button>
-                                <h4 className="flex-1 text-center font-bold text-[#31393a] -ml-6">Save Verses</h4>
-                            </div>
-
-                            <p className="text-sm text-gray-500 text-center mb-4 shrink-0">Saving {formattedVerses()}</p>
-
-                            <form onSubmit={handleAddLabel} className="relative mb-4 shrink-0">
-                                <input
-                                    type="text"
-                                    value={labelInput}
-                                    onChange={(e) => setLabelInput(e.target.value)}
-                                    placeholder="Enter label name..."
-                                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/40 pr-12"
-                                />
-                                <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal)]/10 rounded-lg transition-colors" disabled={!labelInput.trim()}>
-                                    <Plus className="size-5" />
-                                </button>
-                            </form>
-
-                            <div className="flex-1 overflow-y-auto min-h-0 -mx-2 px-2">
-                                <div className="space-y-4">
-                                    {/* Selected Labels row */}
-                                    {selectedLabels.length > 0 && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {selectedLabels.map(label => (
-                                                <button key={label} onClick={() => toggleLabel(label)} className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[var(--color-primary-teal)] text-white border border-[var(--color-primary-teal)] shadow-sm flex items-center gap-1">
-                                                    <Check className="size-3" /> {label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Suggested Labels */}
-                                    <div>
-                                        <h5 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Suggested</h5>
-                                        <div className="flex flex-wrap gap-2">
-                                            {SUGGESTED_LABELS.filter(l => !selectedLabels.includes(l)).map(label => (
-                                                <button key={label} onClick={() => toggleLabel(label)} className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                                    {label}
-                                                </button>
-                                            ))}
-                                        </div>
-                                    </div>
-
-                                    {/* Saved Labels */}
-                                    {savedLabels.filter(l => !selectedLabels.includes(l) && !SUGGESTED_LABELS.includes(l)).length > 0 && (
-                                        <div>
-                                            <h5 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-2">Your Labels</h5>
-                                            <div className="flex flex-wrap gap-2">
-                                                {savedLabels.filter(l => !selectedLabels.includes(l) && !SUGGESTED_LABELS.includes(l)).map(label => (
-                                                    <button key={label} onClick={() => toggleLabel(label)} className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors">
-                                                        {label}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-
-                            <div className="pt-4 mt-auto shrink-0">
-                                <button onClick={handleCommitSave} className="w-full py-3.5 bg-[var(--color-primary-teal)] text-white rounded-xl font-bold shadow-lg shadow-[var(--color-primary-teal)]/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                                    Save Selection
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-
-                    {view === 'note' && (
-                        <motion.div
-                            key="note"
-                            initial={{ opacity: 0, x: 20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            exit={{ opacity: 0, x: 20 }}
-                            className="w-full h-full flex flex-col"
-                        >
-                            <div className="flex items-center mb-4 shrink-0">
-                                <button onClick={() => setView('main')} className="p-2 -ml-2 text-gray-500 hover:text-gray-900 transition-colors">
-                                    <ChevronLeft className="size-5" />
-                                </button>
-                                <h4 className="flex-1 text-center font-bold text-[#31393a] -ml-6">Add Note</h4>
-                            </div>
-
-                            <p className="text-sm text-gray-500 text-center mb-4 shrink-0">For {formattedVerses()}</p>
-
-                            <div className="flex bg-gray-50 border border-gray-200 rounded-t-xl px-2 py-1.5 gap-1 shrink-0">
-                                <button className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-lg transition-colors"><Type className="size-4 font-bold" /></button>
-                                <button className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-lg transition-colors italic font-serif leading-none px-2.5">I</button>
-                                <button className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-lg transition-colors"><List className="size-4" /></button>
-                            </div>
-                            <textarea
-                                autoFocus
-                                placeholder="Write your thoughts..."
-                                className="w-full flex-1 min-h-[120px] bg-gray-50 border-x border-b border-gray-200 rounded-b-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-[var(--color-primary-teal)]/40 resize-none mb-4"
-                            />
-                            <div className="shrink-0">
-                                <button onClick={() => { onNote('Draft note content'); setView('main'); }} className="w-full py-3.5 bg-[var(--color-primary-teal)] text-white rounded-xl font-bold shadow-lg shadow-[var(--color-primary-teal)]/20 hover:scale-[1.02] active:scale-[0.98] transition-all">
-                                    Save Note
-                                </button>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
+            {/* Drag Handle */}
+            <div className="flex justify-center pt-2.5 pb-1">
+                <div className="w-9 h-[3.5px] bg-gray-200 rounded-full" />
             </div>
+
+            <AnimatePresence mode="wait">
+                {/* ── MAIN VIEW ─────────────────────────────────────────── */}
+                {view === 'main' && (
+                    <motion.div
+                        key="main"
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ duration: 0.15 }}
+                        className="px-4 pb-4"
+                    >
+                        {/* Verse Reference */}
+                        <p className="text-center text-[11.5px] text-gray-400 font-medium mb-3 tracking-wide">
+                            Selected:{' '}
+                            <span className="text-gray-700 font-semibold">{formattedVerses()}</span>
+                        </p>
+
+                        {/* ── Color Palette (shown when highlight mode active) ── */}
+                        <AnimatePresence>
+                            {highlightMode && (
+                                <motion.div
+                                    key="palette"
+                                    initial={{ opacity: 0, height: 0 }}
+                                    animate={{ opacity: 1, height: 'auto' }}
+                                    exit={{ opacity: 0, height: 0 }}
+                                    transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+                                    className="overflow-hidden mb-3"
+                                >
+                                    <div className="flex items-center gap-2.5 px-1">
+                                        {/* Delete/Remove box — shown when editing an existing highlight */}
+                                        {existingHighlightColor && (
+                                            <button
+                                                onClick={handleRemoveHighlight}
+                                                className="w-8 h-8 rounded-full flex items-center justify-center bg-gray-100 border-2 border-gray-300 shrink-0 active:scale-90 transition-transform"
+                                                title="Remove highlight"
+                                            >
+                                                <Trash2 className="w-3.5 h-3.5 text-gray-500" />
+                                            </button>
+                                        )}
+
+                                        {/* Color dots */}
+                                        <div className="flex items-center gap-2.5 flex-1">
+                                            {displayColors.map((c) => {
+                                                const isSelected = selectedColor === c.id;
+                                                return (
+                                                    <button
+                                                        key={c.id}
+                                                        onClick={() => handleColorSelect(c.id)}
+                                                        title={c.label}
+                                                        className="relative shrink-0 active:scale-90 transition-transform"
+                                                        style={{ width: 28, height: 28 }}
+                                                    >
+                                                        {/* Outer ring when selected */}
+                                                        {isSelected && (
+                                                            <span
+                                                                className="absolute inset-0 rounded-full border-[2.5px]"
+                                                                style={{ borderColor: c.color, transform: 'scale(1.32)' }}
+                                                            />
+                                                        )}
+                                                        <span
+                                                            className="absolute inset-0 rounded-full shadow-sm"
+                                                            style={{ backgroundColor: c.color }}
+                                                        />
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+
+                                        {/* Expand / Collapse button */}
+                                        <button
+                                            onClick={() => setPaletteExpanded(prev => !prev)}
+                                            className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center shrink-0 active:scale-90 transition-transform border border-gray-200"
+                                            title={paletteExpanded ? 'Show fewer colors' : 'Show more colors'}
+                                        >
+                                            <motion.span
+                                                animate={{ rotate: paletteExpanded ? 45 : 0 }}
+                                                transition={{ duration: 0.2 }}
+                                                className="flex items-center justify-center"
+                                            >
+                                                <Plus className="w-3.5 h-3.5 text-gray-500" />
+                                            </motion.span>
+                                        </button>
+                                    </div>
+                                </motion.div>
+                            )}
+                        </AnimatePresence>
+
+                        {/* ── 4 Action Buttons ──────────────────────────────── */}
+                        <div className="grid grid-cols-4 gap-2">
+                            {/* Highlight */}
+                            <button
+                                onClick={() => {
+                                    setHighlightMode(prev => !prev);
+                                    if (!highlightMode) {
+                                        setPaletteExpanded(false);
+                                    }
+                                }}
+                                className={`flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl transition-all active:scale-95 ${
+                                    highlightMode
+                                        ? 'bg-[#31C4BE] shadow-[0_4px_14px_rgba(49,196,190,0.35)]'
+                                        : 'bg-gray-50 hover:bg-gray-100'
+                                }`}
+                            >
+                                {/* Highlighter icon — custom SVG to match design */}
+                                <svg
+                                    width="22" height="22" viewBox="0 0 24 24" fill="none"
+                                    stroke={highlightMode ? '#fff' : '#31C4BE'}
+                                    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                                >
+                                    <path d="M9 11l-6 6v3h3l6-6" />
+                                    <path d="M22 2l-3 3-9 9 3 3 9-9 3-3-3-3z" />
+                                    <line x1="3" y1="21" x2="21" y2="21" />
+                                </svg>
+                                <span className={`text-[10px] font-semibold tracking-wide ${
+                                    highlightMode ? 'text-white' : 'text-gray-600'
+                                }`}>
+                                    Highlight
+                                </span>
+                            </button>
+
+                            {/* Save */}
+                            <button
+                                onClick={() => setView('save')}
+                                className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
+                            >
+                                <BookmarkPlus className="w-[22px] h-[22px] text-[#31C4BE]" strokeWidth={2} />
+                                <span className="text-[10px] font-semibold text-gray-600 tracking-wide">Save</span>
+                            </button>
+
+                            {/* Note */}
+                            <button
+                                onClick={() => setView('note')}
+                                className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
+                            >
+                                <FileText className="w-[22px] h-[22px] text-amber-500" strokeWidth={2} />
+                                <span className="text-[10px] font-semibold text-gray-600 tracking-wide">Note</span>
+                            </button>
+
+                            {/* Compare */}
+                            <button
+                                onClick={onCompare}
+                                className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
+                            >
+                                <Columns2 className="w-[22px] h-[22px] text-indigo-500" strokeWidth={2} />
+                                <span className="text-[10px] font-semibold text-gray-600 tracking-wide">Compare</span>
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* ── SAVE VIEW ─────────────────────────────────────────── */}
+                {view === 'save' && (
+                    <motion.div
+                        key="save"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.18 }}
+                        className="flex flex-col px-4 pb-4 max-h-[75dvh]"
+                    >
+                        {/* Header */}
+                        <div className="flex items-center mb-3 shrink-0">
+                            <button onClick={() => setView('main')} className="p-2 -ml-2 text-gray-400 hover:text-gray-700 transition-colors">
+                                <ChevronLeft className="size-5" />
+                            </button>
+                            <h4 className="flex-1 text-center text-[15px] font-bold text-gray-800 -ml-6">Save Verses</h4>
+                        </div>
+                        <p className="text-[12px] text-gray-400 text-center mb-3 shrink-0">Saving {formattedVerses()}</p>
+
+                        {/* Label input */}
+                        <form onSubmit={handleAddLabel} className="relative mb-3 shrink-0">
+                            <input
+                                type="text"
+                                value={labelInput}
+                                onChange={(e) => setLabelInput(e.target.value)}
+                                placeholder="Enter label name..."
+                                className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 pr-12"
+                            />
+                            <button
+                                type="submit"
+                                disabled={!labelInput.trim()}
+                                className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 text-[#31C4BE] hover:bg-[#31C4BE]/10 rounded-lg transition-colors disabled:opacity-40"
+                            >
+                                <Plus className="size-4" />
+                            </button>
+                        </form>
+
+                        <div className="flex-1 overflow-y-auto min-h-0 space-y-3">
+                            {selectedLabels.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                    {selectedLabels.map(label => (
+                                        <button key={label} onClick={() => toggleLabel(label)}
+                                            className="px-3 py-1.5 rounded-full text-xs font-semibold bg-[#31C4BE] text-white flex items-center gap-1">
+                                            <Check className="size-3" /> {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            )}
+                            <div>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Suggested</p>
+                                <div className="flex flex-wrap gap-2">
+                                    {SUGGESTED_LABELS.filter(l => !selectedLabels.includes(l)).map(label => (
+                                        <button key={label} onClick={() => toggleLabel(label)}
+                                            className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors">
+                                            {label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            {savedLabels.filter(l => !selectedLabels.includes(l) && !SUGGESTED_LABELS.includes(l)).length > 0 && (
+                                <div>
+                                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1.5">Your Labels</p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {savedLabels.filter(l => !selectedLabels.includes(l) && !SUGGESTED_LABELS.includes(l)).map(label => (
+                                            <button key={label} onClick={() => toggleLabel(label)}
+                                                className="px-3 py-1.5 rounded-full text-xs font-medium bg-white text-gray-600 border border-gray-200 hover:border-gray-300 hover:bg-gray-50 transition-colors">
+                                                {label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="pt-3 shrink-0">
+                            <button onClick={handleCommitSave}
+                                className="w-full py-3 bg-[#31C4BE] text-white rounded-xl text-sm font-bold shadow-[0_4px_14px_rgba(49,196,190,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all">
+                                Save Selection
+                            </button>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* ── NOTE VIEW ─────────────────────────────────────────── */}
+                {view === 'note' && (
+                    <motion.div
+                        key="note"
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ duration: 0.18 }}
+                        className="flex flex-col px-4 pb-4"
+                    >
+                        {/* Header */}
+                        <div className="flex items-center mb-3 shrink-0">
+                            <button onClick={() => setView('main')} className="p-2 -ml-2 text-gray-400 hover:text-gray-700 transition-colors">
+                                <ChevronLeft className="size-5" />
+                            </button>
+                            <h4 className="flex-1 text-center text-[15px] font-bold text-gray-800 -ml-6">Add Note</h4>
+                        </div>
+                        <p className="text-[12px] text-gray-400 text-center mb-3 shrink-0">For {formattedVerses()}</p>
+
+                        {/* Toolbar */}
+                        <div className="flex bg-gray-50 border border-gray-200 rounded-t-xl px-2 py-1.5 gap-1 shrink-0">
+                            <button className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-lg transition-colors"><Type className="size-4" /></button>
+                            <button className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-lg transition-colors italic font-serif leading-none px-2.5">I</button>
+                            <button className="p-1.5 text-gray-500 hover:bg-gray-200 rounded-lg transition-colors"><List className="size-4" /></button>
+                        </div>
+                        <textarea
+                            autoFocus
+                            placeholder="Write your thoughts..."
+                            className="w-full min-h-[110px] bg-gray-50 border-x border-b border-gray-200 rounded-b-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#31C4BE]/40 resize-none mb-3"
+                        />
+                        <button
+                            onClick={() => { onNote('Draft note content'); setView('main'); }}
+                            className="w-full py-3 bg-[#31C4BE] text-white rounded-xl text-sm font-bold shadow-[0_4px_14px_rgba(49,196,190,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0"
+                        >
+                            Save Note
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
         </motion.div>
     );
 }
