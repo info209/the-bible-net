@@ -8,28 +8,26 @@ import {
   BookOpen,
   BookText,
   CalendarDays,
-  ChevronRight,
   Trash2,
-  BookMarked,
   ArrowLeft,
   Highlighter,
   FileText,
 } from 'lucide-react';
 import { useSavedItems, SavedItemClient } from '@/lib/useSavedItems';
 import type { SavedItemType } from '@/models/SavedItem';
+import CardKebabMenu from './CardKebabMenu';
 
 type Tab = 'all' | SavedItemType;
 
-const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
-  { id: 'all', label: 'All', icon: Bookmark },
-  { id: 'bible', label: 'Bible', icon: BookOpen },
-  { id: 'journal', label: 'Journals', icon: BookText },
-  { id: 'reading_plan', label: 'Reading Plans', icon: CalendarDays },
-  { id: 'highlight', label: 'Highlights', icon: Highlighter },
-  { id: 'note', label: 'Notes', icon: FileText },
+const tabs: { id: Tab; label: string }[] = [
+  { id: 'all',          label: 'All' },
+  { id: 'bible',        label: 'Bible' },
+  { id: 'journal',      label: 'Journals' },
+  { id: 'reading_plan', label: 'Reading plans' },
 ];
 
-function BibleCard({
+/* ── Card for every saved item ──────────────────────────────────── */
+function SavedCard({
   item,
   onUnsave,
   onNavigate,
@@ -38,12 +36,25 @@ function BibleCard({
   onUnsave: () => void;
   onNavigate: () => void;
 }) {
-  const { bookName, chapter, versionName, versionId, bookId } = item.metadata;
-  const displayBook  = bookName ?? bookId ?? '—';
-  const versionLabel = versionName ?? versionId ?? '';
-  const chapterLabel = chapter != null ? `Chapter ${chapter}` : '';
-  const displayTitle = [displayBook, chapterLabel].filter(Boolean).join(' · ');
-  const displaySub = versionLabel ? `(${versionLabel})` : '';
+  const { bookName, bookId, chapter, verse, verses, versionName, versionId } = item.metadata ?? {};
+  const displayBook = (bookName ?? bookId ?? '—') as string;
+  const versionLabel = (versionName ?? versionId ?? '') as string;
+
+  // Build a clean verse string
+  const verseArr = verses as number[] | undefined;
+  const verseStr = verseArr?.length
+    ? verseArr.join(', ')
+    : verse != null
+    ? String(verse)
+    : '';
+
+  const refShort = [displayBook, chapter != null ? `${chapter}${verseStr ? ':' + verseStr : ''}` : null]
+    .filter(Boolean)
+    .join(' ');
+
+  const headerText = `You have saved ${refShort}${versionLabel ? ` (${versionLabel})` : ''}`;
+
+  const content = (item.metadata as any)?.content as string | undefined;
 
   return (
     <motion.div
@@ -52,88 +63,42 @@ function BibleCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.2 }}
-      className="flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3.5 group"
+      className="bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-4"
     >
-      {/* Icon */}
-      <div className="w-11 h-11 rounded-full bg-[#e8f6f7] flex items-center justify-center flex-shrink-0">
-        <BookOpen className="w-5 h-5 text-[#41ADB0]" strokeWidth={1.8} />
+      {/* Top row: header + kebab */}
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <p className="text-xs text-gray-500 leading-snug flex-1">{headerText}</p>
+        <CardKebabMenu
+          onRead={onNavigate}
+          onDelete={onUnsave}
+          onShare={() => {
+            if (navigator.share) {
+              navigator.share({ title: refShort, text: content ?? refShort }).catch(() => {});
+            }
+          }}
+        />
       </div>
 
-      {/* Text */}
-      <button
-        onClick={onNavigate}
-        className="flex-1 text-left overflow-hidden"
-      >
-        <p className="text-sm font-semibold text-gray-900 truncate">{displayTitle}</p>
-        <p className="text-xs text-gray-400 mt-0.5 truncate">{displaySub}</p>
-      </button>
+      {/* Middle: content preview */}
+      {content && (
+        <p className="text-sm text-gray-600 leading-relaxed line-clamp-3 mb-2">{content}</p>
+      )}
 
-      {/* Actions */}
-      <div className="flex items-center gap-1">
-        <button
-          onClick={onNavigate}
-          className="p-2 rounded-full opacity-0 group-hover:opacity-100 hover:bg-gray-100 transition-all text-gray-400 hover:text-[#41ADB0]"
-          title="Open"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </button>
-        <button
-          onClick={onUnsave}
-          className="p-2 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all text-gray-400 hover:text-red-500"
-          title="Remove"
-        >
-          <Trash2 className="w-4 h-4" />
-        </button>
-      </div>
+      {/* Bottom: verse reference */}
+      <p className="text-sm font-semibold text-[#41ADB0]">{refShort}</p>
     </motion.div>
   );
 }
 
-function GenericCard({
-  item,
-  icon: Icon,
-  onUnsave,
-}: {
-  item: SavedItemClient;
-  icon: React.ElementType;
-  onUnsave: () => void;
-}) {
-  const title = item.metadata?.title ?? item.refId;
-  return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, x: -20 }}
-      transition={{ duration: 0.2 }}
-      className="flex items-center gap-4 bg-white rounded-2xl shadow-sm border border-gray-100 px-4 py-3.5 group"
-    >
-      <div className="w-11 h-11 rounded-full bg-[#fde8ec] flex items-center justify-center flex-shrink-0">
-        <Icon className="w-5 h-5 text-[#d23952]" strokeWidth={1.8} />
-      </div>
-      <div className="flex-1 overflow-hidden">
-        <p className="text-sm font-semibold text-gray-900 truncate">{title}</p>
-        <p className="text-xs text-gray-400 mt-0.5 capitalize">{item.type.replace('_', ' ')}</p>
-      </div>
-      <button
-        onClick={onUnsave}
-        className="p-2 rounded-full opacity-0 group-hover:opacity-100 hover:bg-red-50 transition-all text-gray-400 hover:text-red-500"
-        title="Remove"
-      >
-        <Trash2 className="w-4 h-4" />
-      </button>
-    </motion.div>
-  );
-}
-
+/* ── Empty state ──────────────────────────────────────────────── */
 function EmptyState({ tab }: { tab: Tab }) {
   const messages: Record<Tab, { icon: React.ElementType; heading: string; sub: string }> = {
-    all: { icon: Bookmark, heading: 'No saved items yet', sub: 'Save Bible chapters, journals, or reading plans to find them here.' },
-    bible: { icon: BookOpen, heading: 'No Bible chapters saved', sub: 'Open the Bible reader, tap ⋮ and choose "Save Chapter".' },
-    journal: { icon: BookText, heading: 'No journals saved', sub: 'Bookmark a journal entry to see it here.' },
-    reading_plan: { icon: CalendarDays, heading: 'No reading plans saved', sub: 'Save a reading plan to access it quickly.' },
-    highlight: { icon: Highlighter, heading: 'No highlights saved', sub: 'Long press a verse to highlight it.' },
-    note: { icon: FileText, heading: 'No notes saved', sub: 'Long press a verse to add a note.' },
+    all:          { icon: Bookmark,      heading: 'No saved items yet',         sub: 'Save Bible chapters, journals, or reading plans to find them here.' },
+    bible:        { icon: BookOpen,      heading: 'No Bible chapters saved',    sub: 'Open the Bible reader, tap ⋮ and choose "Save Chapter".' },
+    journal:      { icon: BookText,      heading: 'No journals saved',          sub: 'Bookmark a journal entry to see it here.' },
+    reading_plan: { icon: CalendarDays,  heading: 'No reading plans saved',     sub: 'Save a reading plan to access it quickly.' },
+    highlight:    { icon: Highlighter,   heading: 'No highlights saved',        sub: 'Long press a verse to highlight it.' },
+    note:         { icon: FileText,      heading: 'No notes saved',             sub: 'Long press a verse to add a note.' },
   };
   const { icon: Icon, heading, sub } = messages[tab];
   return (
@@ -147,6 +112,7 @@ function EmptyState({ tab }: { tab: Tab }) {
   );
 }
 
+/* ── Main Page ────────────────────────────────────────────────── */
 export default function SavedPage() {
   const router = useRouter();
   const { savedItems, isLoading, unsaveItem } = useSavedItems();
@@ -159,7 +125,6 @@ export default function SavedPage() {
 
   const handleNavigate = (item: SavedItemClient) => {
     if (item.type === 'bible') {
-      // Navigate to the SPA Bible reader — no dynamic route exists
       router.push('/bible');
     } else if (item.type === 'journal') {
       router.push(`/journals/${item.refId}`);
@@ -170,9 +135,9 @@ export default function SavedPage() {
 
   return (
     <div className="min-h-screen bg-[#f4f8f8]">
-      {/* Header */}
-      <div className="sticky top-0 z-10 bg-white border-b border-gray-100 shadow-sm">
-        <div className="flex items-center gap-3 px-4 py-4">
+      {/* ── Header ── */}
+      <div className="sticky top-0 z-10 bg-white shadow-sm">
+        <div className="flex items-center gap-3 px-4 py-3.5">
           <button
             onClick={() => router.back()}
             className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition-colors"
@@ -180,53 +145,36 @@ export default function SavedPage() {
           >
             <ArrowLeft className="w-5 h-5 text-gray-700" />
           </button>
-          <div className="flex items-center gap-2">
-            <BookMarked className="w-5 h-5 text-[#41ADB0]" strokeWidth={1.8} />
-            <h1 className="text-lg font-bold text-gray-900">Saved</h1>
-          </div>
-          {!isLoading && (
-            <span className="ml-auto text-xs font-medium text-gray-400 bg-gray-100 px-2.5 py-1 rounded-full">
-              {savedItems.length} item{savedItems.length !== 1 ? 's' : ''}
-            </span>
-          )}
+          <h1 className="text-lg font-bold text-gray-900">Saved</h1>
         </div>
 
-        {/* Tabs */}
-        <div className="flex gap-0 px-4 pb-0 overflow-x-auto scrollbar-none">
-          {tabs.map(({ id, label, icon: Icon }) => {
+        {/* ── Pill Tabs ── */}
+        <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-none">
+          {tabs.map(({ id, label }) => {
             const isActive = activeTab === id;
-            const count = id === 'all' ? savedItems.length : savedItems.filter((i) => i.type === id).length;
             return (
               <button
                 key={id}
                 onClick={() => setActiveTab(id)}
-                className={`flex items-center gap-1.5 px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap flex-shrink-0 ${isActive
-                    ? 'border-[#41ADB0] text-[#41ADB0]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
+                className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
+                  isActive
+                    ? 'bg-[#e0f4f4] text-[#41ADB0]'
+                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                }`}
               >
-                <Icon className="w-3.5 h-3.5" strokeWidth={isActive ? 2.2 : 1.8} />
                 {label}
-                {count > 0 && (
-                  <span className={`text-xs rounded-full px-1.5 ${isActive ? 'bg-[#e8f6f7] text-[#41ADB0]' : 'bg-gray-100 text-gray-400'}`}>
-                    {count}
-                  </span>
-                )}
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* Content */}
-      <div className="px-4 py-5">
+      {/* ── Content ── */}
+      <div className="px-4 py-4 max-w-2xl mx-auto">
         {isLoading ? (
           <div className="space-y-3">
             {[1, 2, 3].map((n) => (
-              <div
-                key={n}
-                className="h-16 bg-white rounded-2xl border border-gray-100 animate-pulse"
-              />
+              <div key={n} className="h-28 bg-white rounded-2xl border border-gray-100 animate-pulse" />
             ))}
           </div>
         ) : (
@@ -241,31 +189,14 @@ export default function SavedPage() {
                 exit={{ opacity: 0 }}
                 className="space-y-3"
               >
-                {filteredItems.map((item) => {
-                  if (item.type === 'bible') {
-                    return (
-                      <BibleCard
-                        key={item._id}
-                        item={item}
-                        onUnsave={() => unsaveItem(item._id)}
-                        onNavigate={() => handleNavigate(item)}
-                      />
-                    );
-                  }
-                  let icon = CalendarDays;
-                  if (item.type === 'journal') icon = BookText;
-                  if (item.type === 'highlight') icon = Highlighter;
-                  if (item.type === 'note') icon = FileText;
-
-                  return (
-                    <GenericCard
-                      key={item._id}
-                      item={item}
-                      icon={icon}
-                      onUnsave={() => unsaveItem(item._id)}
-                    />
-                  );
-                })}
+                {filteredItems.map((item) => (
+                  <SavedCard
+                    key={item._id}
+                    item={item}
+                    onUnsave={() => unsaveItem(item._id)}
+                    onNavigate={() => handleNavigate(item)}
+                  />
+                ))}
               </motion.div>
             )}
           </AnimatePresence>

@@ -235,17 +235,17 @@ export default function FontsSettingsModal({
 
           <div className="flex gap-2 flex-wrap">
             {([
-              { id: "light",  label: "Light",  icon: Sun,      bg: "#ffffff", iconColor: "#f59e0b" },
-              { id: "sepia",  label: "Sepia",  icon: Coffee,   bg: "#f5e6c8", iconColor: "#92400e" },
-              { id: "cream",  label: "Cream",  icon: CloudSun, bg: "#f8f6f1", iconColor: "#b45309" },
-              { id: "dark",   label: "Night",  icon: Moon,     bg: "#2e2e2e", iconColor: "#c4b5fd" },
-            ] as const).map(({ id, label, icon: Icon, bg, iconColor }) => {
+              { id: "light", icon: Sun,      bg: "#ffffff", iconColor: "#f59e0b" },
+              { id: "sepia", icon: Coffee,   bg: "#f5e6c8", iconColor: "#92400e" },
+              { id: "cream", icon: CloudSun, bg: "#f8f6f1", iconColor: "#b45309" },
+              { id: "dark",  icon: Moon,     bg: "#2e2e2e", iconColor: "#c4b5fd" },
+            ] as const).map(({ id, icon: Icon, bg, iconColor }) => {
               const active = selectedTheme === id;
               return (
                 <button
                   key={id}
                   onClick={() => onThemeChange(id)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all"
+                  className="flex items-center justify-center px-3 py-1.5 rounded-full border transition-all"
                   style={{
                     background: bg,
                     borderColor: active ? "var(--color-primary-teal)" : theme.border,
@@ -253,13 +253,7 @@ export default function FontsSettingsModal({
                     boxShadow: active ? "0 0 0 1px var(--color-primary-teal)" : "none",
                   }}
                 >
-                  <Icon size={14} style={{ color: iconColor }} />
-                  <span
-                    className="text-xs font-medium"
-                    style={{ color: id === "dark" ? "#e5e7eb" : "#374151" }}
-                  >
-                    {label}
-                  </span>
+                  <Icon size={16} style={{ color: iconColor }} />
                 </button>
               );
             })}
