@@ -295,9 +295,7 @@ export default function ChapterContent({
               <div
                 key={verse.number}
                 id={`verse-${book}-${chapter}-${verse.number}`}
-                className={`relative transition-all duration-300 rounded px-2 py-1 select-none cursor-pointer hover:bg-black/[0.02] ${
-                  isSelected ? 'ring-2 ring-accent-rose/30 bg-accent-rose-lighter/50' : ''
-                }`}
+                className="relative transition-all duration-200 rounded px-2 py-1 select-none cursor-pointer hover:bg-black/[0.02]"
                 onMouseDown={(e) => handlePressStart(e, verse.number)}
                 onMouseUp={(e) => handlePressEnd(e, verse.number)}
                 onMouseLeave={handlePressCancel}
@@ -313,7 +311,15 @@ export default function ChapterContent({
                 }}
               >
                 <sup className="font-bold mr-1.5 select-none opacity-60" style={{ color: theme.verseNumber }}>{verse.number}</sup>
-                <span className={`${isReading ? 'font-medium' : 'font-normal'}`}>
+                <span
+                  className={`${isReading ? 'font-medium' : 'font-normal'}`}
+                  style={isSelected ? {
+                    textDecoration: 'underline',
+                    textDecorationStyle: 'dashed',
+                    textDecorationColor: 'var(--color-accent-rose)',
+                    textUnderlineOffset: '4px',
+                  } : undefined}
+                >
                   {verse.text}
                   {hasNote && (
                     <span className="ml-2 inline-flex items-center justify-center">
@@ -321,9 +327,6 @@ export default function ChapterContent({
                     </span>
                   )}
                 </span>
-                {isSelected && (
-                  <div className="absolute -left-1 top-0 bottom-0 w-1 bg-accent-rose rounded-full" />
-                )}
               </div>
             );
           })}

@@ -1,9 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useEffect } from "react";
 import {
-  ArrowLeft,
-  Check,
+  Moon,
+  Sun,
+  Coffee,
+  CloudSun,
   Square,
   Layers,
   FlipHorizontal,
@@ -105,16 +107,7 @@ export default function FontsSettingsModal({
       >
         {/* HEADER */}
         <div className="flex items-center justify-between mb-6">
-          <button
-            onClick={onClose}
-            className="flex items-center gap-1 text-sm"
-            style={{ color: theme.subText }}
-          >
-            <ArrowLeft size={16} />
-            Back
-          </button>
-
-          <h2 className="text-base font-semibold">Fonts & Settings</h2>
+          <h2 className="text-base font-semibold">Fonts &amp; Settings</h2>
 
           <button
             onClick={onClose}
@@ -240,37 +233,33 @@ export default function FontsSettingsModal({
             Theme
           </p>
 
-          <div className="flex gap-3">
-            {["light", "sepia", "cream", "dark"].map((t: any) => {
-              const active = selectedTheme === t;
-
+          <div className="flex gap-2 flex-wrap">
+            {([
+              { id: "light",  label: "Light",  icon: Sun,      bg: "#ffffff", iconColor: "#f59e0b" },
+              { id: "sepia",  label: "Sepia",  icon: Coffee,   bg: "#f5e6c8", iconColor: "#92400e" },
+              { id: "cream",  label: "Cream",  icon: CloudSun, bg: "#f8f6f1", iconColor: "#b45309" },
+              { id: "dark",   label: "Night",  icon: Moon,     bg: "#2e2e2e", iconColor: "#c4b5fd" },
+            ] as const).map(({ id, label, icon: Icon, bg, iconColor }) => {
+              const active = selectedTheme === id;
               return (
                 <button
-                  key={t}
-                  onClick={() => onThemeChange(t)}
-                  className="px-4 py-2 rounded-full border flex items-center justify-center transition-all"
+                  key={id}
+                  onClick={() => onThemeChange(id)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border transition-all"
                   style={{
-                    borderColor: active
-                      ? "var(--color-primary-teal)"
-                      : theme.border,
-                    background:
-                      t === "dark"
-                        ? "#2e2e2e"
-                        : t === "sepia"
-                        ? "#f5e6c8"
-                        : t === "cream"
-                        ? "#f8f6f1"
-                        : "#ffffff",
+                    background: bg,
+                    borderColor: active ? "var(--color-primary-teal)" : theme.border,
+                    borderWidth: active ? "2px" : "1px",
+                    boxShadow: active ? "0 0 0 1px var(--color-primary-teal)" : "none",
                   }}
                 >
-                  {active && (
-                    <Check
-                      size={14}
-                      style={{
-                        color: "var(--color-primary-teal)",
-                      }}
-                    />
-                  )}
+                  <Icon size={14} style={{ color: iconColor }} />
+                  <span
+                    className="text-xs font-medium"
+                    style={{ color: id === "dark" ? "#e5e7eb" : "#374151" }}
+                  >
+                    {label}
+                  </span>
                 </button>
               );
             })}

@@ -74,9 +74,10 @@ export default function AudioFloatingPlayer({
         <motion.div
           key="default-controls"
           initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0, bottom: bottomValue }}
+          animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
           transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+          style={{ bottom: bottomValue }}
           className="fixed left-0 right-0 z-50 pointer-events-none"
         >
           {/*
@@ -158,9 +159,10 @@ export default function AudioFloatingPlayer({
         <motion.div
           key="pill-minimized"
           initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0, bottom: bottomValue }}
+          animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
           transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
+          style={{ bottom: bottomValue }}
           className="fixed left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[420px]"
           onClick={onOpenPanel}
         >
