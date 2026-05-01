@@ -288,8 +288,16 @@ export default function ChapterContent({
           {apiContent.verses?.map(verse => {
             const isSelected = selectedVerses.includes(verse.number);
             const isReading = readingVerse === verse.number;
-            const highlight = highlights.find(h => h.metadata?.verse === verse.number);
-            const hasNote = notes.some(n => n.metadata?.verses?.includes(verse.number));
+            const highlight = highlights.find(h =>
+              h.metadata?.verse === verse.number &&
+              h.metadata?.chapter === chapter &&
+              (h.metadata?.bookId === book || h.metadata?.bookName === book)
+            );
+            const hasNote = notes.some(n =>
+              n.metadata?.verses?.includes(verse.number) &&
+              n.metadata?.chapter === chapter &&
+              (n.metadata?.bookId === book || n.metadata?.bookName === book)
+            );
 
             return (
               <div

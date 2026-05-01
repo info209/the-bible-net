@@ -45,7 +45,7 @@ export default function AudioFloatingPlayer({
     ? `calc(${BREATHING}px + env(safe-area-inset-bottom))`
     : `calc(${BOTTOM_NAV_HEIGHT}px + ${BREATHING}px + env(safe-area-inset-bottom))`;
 
-  const startLongPress = useCallback(() => {
+  const startLongPress = useCallback((e?: any) => {
     didLongPress.current = false;
     longPressTimer.current = setTimeout(() => {
       didLongPress.current = true;
@@ -60,9 +60,12 @@ export default function AudioFloatingPlayer({
     }
   }, []);
 
-  const handlePlayRelease = useCallback(() => {
+  const handlePlayClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    e.stopPropagation();
     cancelLongPress();
-    if (!didLongPress.current) onPlayPause();
+    if (!didLongPress.current) {
+      onPlayPause();
+    }
     didLongPress.current = false;
   }, [cancelLongPress, onPlayPause]);
 
@@ -77,8 +80,8 @@ export default function AudioFloatingPlayer({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
           transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-          style={{ bottom: bottomValue }}
-          className="fixed left-0 right-0 z-50 pointer-events-none"
+          style={{ bottom: bottomValue, transition: 'bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}
+          className="fixed left-0 right-0 z-40 pointer-events-none"
         >
           {/*
             max-w-3xl keeps buttons inside the reading content area on desktop.
@@ -113,11 +116,11 @@ export default function AudioFloatingPlayer({
               >
                 <motion.button
                   onMouseDown={startLongPress}
-                  onMouseUp={handlePlayRelease}
                   onMouseLeave={cancelLongPress}
                   onTouchStart={startLongPress}
-                  onTouchEnd={handlePlayRelease}
+                  onTouchMove={cancelLongPress}
                   onTouchCancel={cancelLongPress}
+                  onClick={handlePlayClick}
                   whileTap={{ scale: 0.9 }}
                   className="size-11 rounded-full flex items-center justify-center
                     bg-[var(--color-primary-teal)]
@@ -162,8 +165,8 @@ export default function AudioFloatingPlayer({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
           transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
-          style={{ bottom: bottomValue }}
-          className="fixed left-1/2 -translate-x-1/2 z-50 w-[92%] max-w-[420px]"
+          style={{ bottom: bottomValue, transition: 'bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}
+          className="fixed left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-[420px]"
           onClick={onOpenPanel}
         >
           <div

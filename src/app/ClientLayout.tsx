@@ -49,7 +49,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const isBiblePage = pathname === '/bible' || pathname.startsWith('/bible/');
   const isBible2Page = pathname === '/bible2' || pathname.startsWith('/bible2/');
   const isAnyBiblePage = isBiblePage || isBible2Page;
+  const isProfileSubPage = pathname.startsWith('/saved') || pathname.startsWith('/notes') || pathname.startsWith('/highlights');
   const isPublicAppPage = pathname !== '/' && !isAdminRoute && !isApiDocs && !isAuthRoute;
+  const showAppHeader = isPublicAppPage && !isAnyBiblePage && !isProfileSubPage;
 
   return (
     <>
@@ -58,7 +60,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         1. On /bible, BibleReaderPage renders its own AppHeader (internal to its design).
         2. On Home/Library/Explore, ClientLayout renders a static AppHeader.
       */}
-      {isPublicAppPage && !isAnyBiblePage && <AppHeader />}
+      {showAppHeader && <AppHeader />}
       
       {/* Heavy Bible readers mount outside main to take full height */}
       {isBiblePage && <BibleReaderPageContainer onNavigate={handleNavigate} />}
@@ -67,7 +69,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       {/* Standard BottomNav for all app pages */}
       {isPublicAppPage && <BottomNav isVisible={!hideBottomNav} onNavigate={handleNavigate} />}
 
-      <main className={isPublicAppPage ? "max-w-3xl mx-auto px-4 pt-20 pb-24" : ""}>
+      <main className={isPublicAppPage ? `max-w-3xl mx-auto px-4 pb-24 ${!isProfileSubPage ? 'pt-20' : ''}` : ""}>
         {children}
       </main>
     </>

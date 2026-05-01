@@ -145,8 +145,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [audioPlayerState, setAudioPlayerState] = useState<'default' | 'minimized'>('default');
   const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
   const [showVerseSelector, setShowVerseSelector] = useState(false);
-  const [audioCurrentTime, setAudioCurrentTime] = useState(45); // in seconds
-  const [audioDuration, setAudioDuration] = useState(216); // 3:36 in seconds
+  const [audioCurrentTime, setAudioCurrentTime] = useState(0); // in seconds
+  const [audioDuration, setAudioDuration] = useState(0); // in seconds
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
   const [showTimerMenu, setShowTimerMenu] = useState(false);
   const [ttsVolume, setTtsVolume] = useState(1.0);
@@ -2053,14 +2053,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           playerState={audioPlayerState}
           isReadingMode={isReadingMode}
           isPlaying={audioPlaying}
-          progress={(() => {
-              const total = getBibleContent().length;
-              if (total === 0) return 0;
-              // Only show progress if audio has started (currentReadingVerse set, or actively playing)
-              if (!audioPlaying && currentReadingVerse === null) return 0;
-              // (verse - 1) / total → verse 1 = 0%, last verse ≈ 100%
-              return Math.max(0, ((selectedVerse ?? 1) - 1) / total);
-            })()}
+          progress={audioPlaying && audioDuration > 0
+            ? Math.min(1, Math.max(0, audioCurrentTime / audioDuration))
+            : 0}
           onPlayPause={handleNarrationPlayPause}
           onNext={handleNext}
           onPrev={handlePrevious}

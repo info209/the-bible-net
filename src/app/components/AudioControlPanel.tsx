@@ -121,14 +121,14 @@ export default function AudioControlPanel({
 
   if (!isOpen) return null;
 
-  // Progress for the ProgressRing: current verse / total verses (clamped 0–1)
-  const ringProgress = totalVerses > 0 ? Math.min(Math.max(selectedVerse / totalVerses, 0), 1) : 0;
+  // Progress for the ProgressRing: audio progress
+  const ringProgress = audioPlaying && audioDuration > 0 ? Math.min(Math.max(audioCurrentTime / audioDuration, 0), 1) : 0;
 
   return (
     <div className="fixed inset-0 z-[100] overlay-dark" onClick={onClose}>
       <div
         ref={panelRef}
-        className="absolute bottom-0 left-0 right-0 glass-heavy rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto border-t border-white/40 max-h-[85dvh] overflow-hidden bg-white/95 backdrop-blur-xl"
+        className="absolute bottom-0 left-0 right-0 glass-heavy rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto border-t border-white/40 max-h-[35vh] flex flex-col overflow-hidden bg-white/95 backdrop-blur-xl"
         style={{
           transform: `translateY(${currentY}px)`,
           transition: isDragging ? 'none' : 'transform 0.3s ease-out'
@@ -149,7 +149,7 @@ export default function AudioControlPanel({
           </div>
 
           {/* Header: Minimize (left) + Close (right) */}
-          <div className="flex items-center justify-between px-4 pt-12 pb-2">
+          <div className="flex items-center justify-between px-4 pt-6 pb-2">
             <button
               onClick={onMinimize ?? onClose}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full
@@ -175,8 +175,8 @@ export default function AudioControlPanel({
 
         {/* ── Scrollable content ──────────────────────────────────────────────── */}
         <div
-          className="px-4 pb-8 overflow-y-auto"
-          style={{ paddingBottom: 'max(32px, env(safe-area-inset-bottom))' }}
+          className="px-4 pb-4 overflow-y-auto flex-1"
+          style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
         >
 
           {/* Progress bar */}
@@ -221,7 +221,7 @@ export default function AudioControlPanel({
           </div>
 
           {/* ── Main controls ─────────────────────────────────────────────────── */}
-          <div className="flex items-center justify-center gap-14 mb-8">
+          <div className="max-w-[400px] mx-auto flex items-center justify-between px-6 mb-8">
 
             {/* ← Chapter / Book back */}
             <button
@@ -311,10 +311,10 @@ export default function AudioControlPanel({
           </div>
 
           {/* ── Secondary controls row ────────────────────────────────────────── */}
-          <div className="flex items-center justify-center gap-8
+          <div className="flex items-center justify-center gap-6
             glass-light rounded-[var(--radius-xl)]
-            py-3 px-6 mx-auto w-fit
-            shadow-glass mb-6">
+            py-2 px-6 mx-auto w-fit
+            shadow-glass mb-4">
 
             {/* Repeat */}
             <button
