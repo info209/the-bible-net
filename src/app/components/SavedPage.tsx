@@ -136,7 +136,7 @@ export default function SavedPage() {
   return (
     <div className="min-h-screen bg-[#f4f8f8]">
       {/* ── Header ── */}
-      <div className="sticky top-0 z-50 bg-white shadow-sm pt-2">
+      <div className="sticky top-16 z-40 bg-white shadow-sm pt-2">
         <div className="flex items-center gap-3 px-4 py-3.5">
           <button
             onClick={() => router.back()}

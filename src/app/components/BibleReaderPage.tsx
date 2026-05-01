@@ -1150,9 +1150,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           return newTime;
         });
       }, 100);
-    } else if (!audioPlaying && !audioControlExpanded) {
-      // Reset to beginning when stopped (not paused)
-      setAudioCurrentTime(0);
     }
 
     return () => {
@@ -1160,19 +1157,18 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         clearInterval(progressInterval);
       }
     };
-  }, [audioPlaying, playbackSpeed, audioDuration, audioControlExpanded]);
+  }, [audioPlaying, playbackSpeed, audioDuration]);
 
   // Reset progress tracker when chapter changes
   useEffect(() => {
     console.log('[Chapter Change Effect] Book:', selectedBook, 'Chapter:', selectedChapter);
     console.log('[Chapter Change Effect] audioPlaying:', audioPlaying, 'narrationPlayingRef:', narrationPlayingRef.current, 'isAutoAdvancing:', isAutoAdvancingRef.current);
 
-    // Calculate duration based on chapter content
+    // Calculate duration based on chapter content if already loaded
     const verses = getBibleContent();
-    const estimatedSecondsPerVerse = 10; // Average time to read a verse
-    const newDuration = verses.length * estimatedSecondsPerVerse;
-
-    setAudioDuration(newDuration);
+    if (verses.length > 0) {
+      setAudioDuration(verses.length * 10);
+    }
     setAudioCurrentTime(0);
 
     // Only restart narration if this is manual navigation (not auto-advance)
@@ -1192,6 +1188,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       console.log('[Chapter Change Effect] Auto-advance detected - skipping restart, narration will continue');
     }
   }, [selectedBook, selectedChapter]);
+
+  // Sync audioDuration when verses load asynchronously
+  useEffect(() => {
+    const currentVerses = getBibleContent();
+    if (currentVerses.length > 0 && audioDuration === 0) {
+      setAudioDuration(currentVerses.length * 10);
+    }
+  }, [verses, audioDuration]);
 
   return (
     <div className="min-h-screen bg-[var(--color-bg-primary)] flex flex-col pb-20" style={{ "--header-height": "60px" } as any}>
@@ -2053,7 +2057,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           playerState={audioPlayerState}
           isReadingMode={isReadingMode}
           isPlaying={audioPlaying}
-          progress={audioPlaying && audioDuration > 0
+          progress={audioDuration > 0
             ? Math.min(1, Math.max(0, audioCurrentTime / audioDuration))
             : 0}
           onPlayPause={handleNarrationPlayPause}

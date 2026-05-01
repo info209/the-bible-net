@@ -122,13 +122,13 @@ export default function AudioControlPanel({
   if (!isOpen) return null;
 
   // Progress for the ProgressRing: audio progress
-  const ringProgress = audioPlaying && audioDuration > 0 ? Math.min(Math.max(audioCurrentTime / audioDuration, 0), 1) : 0;
+  const ringProgress = audioDuration > 0 ? Math.min(Math.max(audioCurrentTime / audioDuration, 0), 1) : 0;
 
   return (
     <div className="fixed inset-0 z-[100] overlay-dark" onClick={onClose}>
       <div
         ref={panelRef}
-        className="absolute bottom-0 left-0 right-0 glass-heavy rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto border-t border-white/40 max-h-[35vh] flex flex-col overflow-hidden bg-white/95 backdrop-blur-xl"
+        className="absolute bottom-0 left-0 right-0 glass-heavy rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto border-t border-white/40 max-h-[85dvh] flex flex-col overflow-hidden bg-white/95 backdrop-blur-xl"
         style={{
           transform: `translateY(${currentY}px)`,
           transition: isDragging ? 'none' : 'transform 0.3s ease-out'

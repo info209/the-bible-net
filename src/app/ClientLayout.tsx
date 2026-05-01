@@ -51,7 +51,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const isAnyBiblePage = isBiblePage || isBible2Page;
   const isProfileSubPage = pathname.startsWith('/saved') || pathname.startsWith('/notes') || pathname.startsWith('/highlights');
   const isPublicAppPage = pathname !== '/' && !isAdminRoute && !isApiDocs && !isAuthRoute;
-  const showAppHeader = isPublicAppPage && !isAnyBiblePage && !isProfileSubPage;
+  const showAppHeader = isPublicAppPage && !isAnyBiblePage;
 
   return (
     <>
@@ -69,7 +69,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       {/* Standard BottomNav for all app pages */}
       {isPublicAppPage && <BottomNav isVisible={!hideBottomNav} onNavigate={handleNavigate} />}
 
-      <main className={isPublicAppPage ? `max-w-3xl mx-auto px-4 pb-24 ${!isProfileSubPage ? 'pt-20' : ''}` : ""}>
+      <main className={isPublicAppPage ? (isProfileSubPage ? "pb-24 pt-16 w-full" : "max-w-3xl mx-auto px-4 pb-24 pt-20") : ""}>
         {children}
       </main>
     </>

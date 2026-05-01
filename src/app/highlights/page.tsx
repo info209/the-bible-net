@@ -55,7 +55,7 @@ export default function HighlightsPage() {
   if (status === 'loading' || (isLoading && status === 'authenticated')) {
     return (
       <div className="min-h-screen bg-[#f4f8f9]">
-        <header className="sticky top-0 z-50 bg-white shadow-sm pt-2">
+        <header className="sticky top-16 z-40 bg-white shadow-sm pt-2">
           <div className="flex items-center gap-3 px-4 py-3.5">
             <button onClick={() => router.back()} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100">
               <ChevronLeft className="size-5 text-gray-700" />
@@ -91,7 +91,7 @@ export default function HighlightsPage() {
   return (
     <div className="min-h-screen bg-[#f4f8f9] pb-24">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white shadow-sm pt-2">
+      <header className="sticky top-16 z-40 bg-white shadow-sm pt-2">
         <div className="flex items-center gap-3 px-4 py-3.5">
           <button onClick={() => router.back()} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100">
             <ChevronLeft className="size-5 text-gray-700" />
