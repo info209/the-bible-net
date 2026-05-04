@@ -36,6 +36,7 @@ interface ChapterContentProps {
     text: string;
     verseNumber: string;
   };
+  isSliderDragging?: boolean;
 }
 
 // Mock Bible content by book and chapter (English)
@@ -91,7 +92,8 @@ export default function ChapterContent({
   book, chapter, font, fontSize, version = 'NKJV', 
   scrollToVerse, readingVerse, theme, selectedVerses = [], 
   onVerseLongPress, onVerseTap,
-  highlights = [], notes = []
+  highlights = [], notes = [],
+  isSliderDragging = false
 }: ChapterContentProps) {
   const [apiContent, setApiContent] = useState<{ title: string; verses: { number: number; text: string }[] } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -235,7 +237,7 @@ export default function ChapterContent({
   const content = apiContent;
 
   useEffect(() => {
-    if (scrollToVerse && scrollToVerse >= 1 && content?.verses?.length) {
+    if (scrollToVerse && scrollToVerse >= 1 && content?.verses?.length && !isSliderDragging) {
       const timer = setTimeout(() => {
         const verseElement = document.getElementById(`verse-${book}-${chapter}-${scrollToVerse}`);
         if (verseElement) {
@@ -253,7 +255,7 @@ export default function ChapterContent({
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [scrollToVerse, book, chapter, content]);
+  }, [scrollToVerse, book, chapter, content, isSliderDragging]);
 
   if (error && !content) {
     return (

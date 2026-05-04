@@ -120,6 +120,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'sepia' | 'cream' | 'dark'>('light');
   const [ttsPlaying, setTtsPlaying] = useState(false);
   const [ttsPaused, setTtsPaused] = useState(false);
+  const [isSliderDragging, setIsSliderDragging] = useState(false);
 
   // Stable refs — avoid stale closures in utterance event handlers
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -1499,6 +1500,9 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       onShareVerses={onVerseMenuShare}
       onPlayAudio={() => startTTS(0)}
       onPauseAudio={() => pauseTTS()}
+      isSliderDragging={isSliderDragging}
+      onSliderDragStart={() => setIsSliderDragging(true)}
+      onSliderDragEnd={() => setIsSliderDragging(false)}
     />
   );
 }

@@ -19,7 +19,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-import { BiBible } from 'react-icons/bi';
+
 
 interface AppHeaderProps {
   onMenuOpen?: () => void;
@@ -76,12 +76,8 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
         
         {/* Logo Section (Left Aligned with Content) */}
         <div className="flex items-center pointer-events-none shrink-0">
-          <Link href="/home" className="flex items-center gap-3 hover:opacity-90 transition-all active:scale-95 pointer-events-auto">
-            <BiBible className="w-8 h-8 text-white" />
-            <div className="flex flex-col">
-              <h1 className="text-[17px] font-bold text-white leading-tight">Holy Bible</h1>
-              <span className="text-[11px] font-normal text-white/90">Your Daily Companion</span>
-            </div>
+          <Link href="/home" className="flex items-center hover:opacity-90 transition-all active:scale-95 pointer-events-auto">
+            <img src="/logo.svg" alt="The Bible Net" width={104} height={40} />
           </Link>
         </div>
 

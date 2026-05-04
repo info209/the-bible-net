@@ -190,7 +190,7 @@ export default function LoginPage() {
 
             <div className="text-center pt-2">
                 <p className="text-slate-500 text-sm font-medium">
-                    New to The Bible?{' '}
+                    New to The Bible Net?{' '}
                     <Link href="/auth/register" className="text-[var(--color-primary-teal)] font-extrabold hover:underline underline-offset-4">
                         Create Account
                     </Link>

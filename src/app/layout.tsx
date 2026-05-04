@@ -7,6 +7,9 @@ export const metadata: Metadata = {
   title: "The Bible Net",
   description: "Read and explore the Bible",
   manifest: "/manifest.json",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export const viewport: Viewport = {

@@ -89,6 +89,9 @@ interface BibleReaderPageProps {
   userHighlights?: any[];
   /** Notes for the current chapter from the API */
   userNotes?: any[];
+  isSliderDragging?: boolean;
+  onSliderDragStart?: () => void;
+  onSliderDragEnd?: () => void;
 }
 
 export default function BibleReaderPage(props: BibleReaderPageProps) {
@@ -120,6 +123,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     onPauseAudio,
     userHighlights = [],
     userNotes = [],
+    isSliderDragging = false,
+    onSliderDragStart,
+    onSliderDragEnd,
   } = props;
 
   const selectedBook = book;
@@ -1132,20 +1138,21 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
   }, [playbackSpeed]);
 
-  // Update audio progress while playing (only for non-narration audio)
+  // Update audio progress while playing
   useEffect(() => {
     let progressInterval: NodeJS.Timeout | null = null;
 
-    // Only use time-based progress when NOT using narration
-    // Narration updates progress in the utterance.onstart callback based on verse completion
-    if (audioPlaying && !narrationPlayingRef.current) {
+    // Run progress interval to provide smooth animation for the progress ring.
+    // For narration, utterance.onstart also snaps the progress to exactly match the current verse,
+    // which prevents the estimation from drifting too far from reality.
+    if (audioPlaying) {
       // Update progress every 100ms for smooth animation
       progressInterval = setInterval(() => {
         setAudioCurrentTime(prev => {
           const newTime = prev + (0.1 * playbackSpeed); // 100ms * playback speed
-          // Loop back to start if we exceed duration
+          // Cap at duration to prevent looping prematurely
           if (newTime >= audioDuration) {
-            return 0;
+            return audioDuration;
           }
           return newTime;
         });
@@ -1944,6 +1951,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? selectedVerse : undefined}
                   readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? currentReadingVerse : null}
                   theme={currentTheme}
+                  isSliderDragging={isSliderDragging}
                 />
               </div>
             )}
@@ -1966,6 +1974,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? selectedVerse : undefined}
                   readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? currentReadingVerse : null}
                   theme={currentTheme}
+                  isSliderDragging={isSliderDragging}
                 />
               </div>
             )}
@@ -1995,6 +2004,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   scrollToVerse={selectedVerse}
                   readingVerse={currentReadingVerse}
                   theme={currentTheme}
+                  isSliderDragging={isSliderDragging}
                   highlights={userHighlights}
                   notes={userNotes}
                 />

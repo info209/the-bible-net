@@ -1,6 +1,6 @@
 "use client";
 
-import { Heart, MessageCircle, Share2, Maximize2, Play, Pause, X, User, BookOpen, Globe } from 'lucide-react';
+import { Heart, MessageCircle, Share2, Maximize2, Play, Pause, X, User, BookOpen, Globe, ArrowLeft } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -29,6 +29,7 @@ export default function HomeView() {
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [expandedView, setExpandedView] = useState<{ type: 'verse' | 'devotion', data: any } | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -149,6 +150,10 @@ export default function HomeView() {
   };
 
   const handleExpand = (verse: any) => {
+    setExpandedView({ type: 'verse', data: verse });
+  };
+
+  const handleRouteToChapter = (verse: any) => {
     const match = verse.reference.match(/^(.+?)\s+(\d+):(\d+)/);
     if (match) {
       const book = match[1].toLowerCase().replace(/\s+/g, '-');
@@ -405,10 +410,13 @@ export default function HomeView() {
                 <span className="text-xs">Share</span>
               </button>
               <button
-                onClick={() => handleReadMore(devotion._id)}
-                className="px-4 py-2 bg-[var(--color-primary-teal)] text-white rounded-full text-sm font-medium hover:bg-[var(--color-primary-teal-dark)] transition-colors shadow-md"
+                onClick={() => setExpandedView({ type: 'devotion', data: devotion })}
+                className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
               >
-                Read More
+                <div className="bg-white p-2 rounded-full shadow-sm">
+                  <Maximize2 className="size-4" />
+                </div>
+                <span className="text-xs">Expand</span>
               </button>
             </div>
           </div>
@@ -544,6 +552,89 @@ export default function HomeView() {
           View All Prayers
         </button>
       </div>
+
+      {/* Expanded View Overlay */}
+      <AnimatePresence>
+        {expandedView && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            className={`fixed inset-0 z-[100] flex flex-col bg-gradient-to-br ${
+              expandedView.type === 'verse'
+                ? (expandedView.data.bgColor || 'from-cyan-400 to-teal-500')
+                : 'from-pink-100 via-rose-100 to-pink-200'
+            }`}
+          >
+            {/* Header */}
+            <div className="flex items-center p-4">
+              <button
+                onClick={() => setExpandedView(null)}
+                className={`p-2 rounded-full shadow-sm transition-colors ${
+                  expandedView.type === 'verse'
+                    ? 'bg-white/20 hover:bg-white/30 text-white'
+                    : 'bg-white/50 hover:bg-white/80 text-gray-800'
+                }`}
+              >
+                <ArrowLeft className="size-6" />
+              </button>
+              <div className="flex-1" />
+            </div>
+
+            {/* Content */}
+            <ScrollArea className="flex-1 px-6 pb-6">
+              <div className="max-w-2xl mx-auto flex flex-col min-h-full">
+                {expandedView.type === 'verse' ? (
+                  <div className="flex flex-col flex-1 py-8">
+                    <p className="text-white/80 text-sm mb-1 uppercase tracking-wider font-semibold">Daily Verse</p>
+                    <h3 className="text-white text-3xl font-bold mb-2">{expandedView.data.reference}</h3>
+                    <p className="text-white/90 text-sm mb-12">{expandedView.data.version}</p>
+                    
+                    <div className="flex-1 flex items-center justify-center">
+                      <p className="text-white text-2xl sm:text-3xl leading-relaxed font-serif italic text-justify">
+                        "{expandedView.data.text}"
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => handleRouteToChapter(expandedView.data)}
+                      className="mt-12 w-full py-4 bg-white text-[var(--color-primary-teal)] rounded-xl font-bold text-lg hover:bg-gray-50 transition-colors shadow-lg"
+                    >
+                      Read Chapter
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-col flex-1 py-8">
+                    <p className="text-gray-500 text-sm mb-1 uppercase tracking-wider font-semibold">Daily Devotional</p>
+                    <h3 className="text-gray-900 text-3xl font-bold mb-2">{expandedView.data.title}</h3>
+                    <p className="text-gray-600 text-sm mb-8">{expandedView.data.reference}</p>
+                    
+                    {expandedView.data.highlightQuote && (
+                      <div className="bg-white/80 backdrop-blur-sm p-6 rounded-xl border-l-4 border-[var(--color-accent-rose)] mb-8 shadow-sm">
+                        <p className="text-gray-800 text-lg italic font-serif">
+                          "{expandedView.data.highlightQuote}"
+                        </p>
+                      </div>
+                    )}
+                    
+                    <p className="text-gray-800 text-lg leading-loose text-justify whitespace-pre-wrap">
+                      {expandedView.data.text}
+                    </p>
+
+                    <button
+                      onClick={() => handleReadMore(expandedView.data._id)}
+                      className="mt-12 w-full py-4 bg-[var(--color-primary-teal)] text-white rounded-xl font-bold text-lg hover:bg-[var(--color-primary-teal-dark)] transition-colors shadow-lg"
+                    >
+                      Read Full Devotional
+                    </button>
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Comment Modal - Preserved */}
       <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
