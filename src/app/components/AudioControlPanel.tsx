@@ -14,6 +14,8 @@ interface AudioControlPanelProps {
   playbackSpeed: number;
   onVerseChange: (verse: number) => void;
   onTimeChange: (time: number) => void;
+  onSliderDragStart?: () => void;
+  onSliderDragEnd?: () => void;
   onPlayPauseToggle: () => void;
   onSpeedChange: (speed: number) => void;
   onTimerClick: () => void;
@@ -40,6 +42,8 @@ export default function AudioControlPanel({
   playbackSpeed,
   onVerseChange,
   onTimeChange,
+  onSliderDragStart,
+  onSliderDragEnd,
   onPlayPauseToggle,
   onSpeedChange,
   onTimerClick,
@@ -210,6 +214,10 @@ export default function AudioControlPanel({
                 max={Math.max(totalVerses, 1)}
                 value={selectedVerse}
                 onChange={(e) => onVerseChange(Number(e.target.value))}
+                onMouseDown={onSliderDragStart}
+                onTouchStart={onSliderDragStart}
+                onMouseUp={onSliderDragEnd}
+                onTouchEnd={onSliderDragEnd}
                 className="absolute inset-0 w-full opacity-0 cursor-pointer"
               />
             </div>

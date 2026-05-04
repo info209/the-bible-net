@@ -305,7 +305,7 @@ export default function ChapterContent({
               <div
                 key={verse.number}
                 id={`verse-${book}-${chapter}-${verse.number}`}
-                className="relative transition-all duration-200 rounded px-2 py-1 select-none cursor-pointer hover:bg-black/[0.02]"
+                className="relative transition-all duration-200 rounded px-2 py-1 select-none cursor-pointer hover:bg-black/[0.02] scroll-mt-[120px]"
                 onMouseDown={(e) => handlePressStart(e, verse.number)}
                 onMouseUp={(e) => handlePressEnd(e, verse.number)}
                 onMouseLeave={handlePressCancel}

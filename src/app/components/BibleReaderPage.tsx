@@ -231,6 +231,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const narrationVerseIndexRef = useRef(0);
   const narrationPlayingRef = useRef(false);
   const isAutoAdvancingRef = useRef(false);
+  const isUserInteractingRef = useRef(false);
 
   // Timer state for time-based narration
   const narrationTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -297,16 +298,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
     // Scroll to the verse after a short delay to allow state to update
     setTimeout(() => {
+      if (isUserInteractingRef.current) return;
       const verseElement = document.getElementById(`verse-${book}-${chapter}-${verse}`);
       if (verseElement) {
-        const elementTop = verseElement.getBoundingClientRect().top;
-        const currentScroll = window.scrollY;
-        const targetScroll = currentScroll + elementTop - 180;
-
-        window.scrollTo({
-          top: targetScroll,
-          behavior: 'smooth'
-        });
+        verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 300);
   };
@@ -745,16 +740,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
         // Scroll to the verse being read
         setTimeout(() => {
+          if (isUserInteractingRef.current) return;
           const verseElement = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verseNumber}`);
           if (verseElement) {
-            const elementTop = verseElement.getBoundingClientRect().top;
-            const currentScroll = window.scrollY;
-            const targetScroll = currentScroll + elementTop - 180;
-
-            window.scrollTo({
-              top: targetScroll,
-              behavior: 'smooth'
-            });
+            verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
           }
         }, 100);
 
@@ -939,16 +928,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
     // Scroll to the verse being read
     setTimeout(() => {
+      if (isUserInteractingRef.current) return;
       const verseElement = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verseNumber}`);
       if (verseElement) {
-        const elementTop = verseElement.getBoundingClientRect().top;
-        const currentScroll = window.scrollY;
-        const targetScroll = currentScroll + elementTop - 180;
-
-        window.scrollTo({
-          top: targetScroll,
-          behavior: 'smooth'
-        });
+        verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 100);
 
@@ -1722,11 +1705,21 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         }}
         selectedVerse={narrationPlayingRef.current ? (currentReadingVerse ?? 1) : (selectedVerse ?? 1)}
         totalVerses={getBibleContent().length}
-        audioCurrentTime={narrationPlayingRef.current ? (currentReadingVerse ?? 1) : audioCurrentTime}
+        audioCurrentTime={audioCurrentTime}
         audioDuration={audioDuration}
         audioPlaying={audioPlaying}
         playbackSpeed={playbackSpeed}
         onVerseChange={setSelectedVerse}
+        onSliderDragStart={() => {
+          isUserInteractingRef.current = true;
+          onSliderDragStart?.();
+        }}
+        onSliderDragEnd={() => {
+          setTimeout(() => {
+            isUserInteractingRef.current = false;
+          }, 150);
+          onSliderDragEnd?.();
+        }}
         onTimeChange={setAudioCurrentTime}
         onPlayPauseToggle={handleNarrationPlayPause}
         onSpeedChange={setPlaybackSpeed}
