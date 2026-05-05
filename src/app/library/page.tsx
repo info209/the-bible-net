@@ -1,5 +1,5 @@
-import { BiblePlansLibrary } from "@/components/library";
+import LibraryPage from "../components/LibraryPage";
 
 export default function Page() {
-  return <BiblePlansLibrary />;
+  return <LibraryPage />;
 }

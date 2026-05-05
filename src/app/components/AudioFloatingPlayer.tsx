@@ -8,7 +8,7 @@ import ProgressRing from "./ui/ProgressRing";
 // Sits above BottomNav (64px) with 12px breathing room + safe-area
 const BOTTOM_NAV_HEIGHT = 64; // px
 const BREATHING = 12; // px gap above nav
-const LONG_PRESS_DURATION = 500; // ms
+const LONG_PRESS_DURATION = 2000; // ms
 
 interface Props {
   playerState: "default" | "minimized";
@@ -116,9 +116,11 @@ export default function AudioFloatingPlayer({
               >
                 <motion.button
                   onMouseDown={startLongPress}
+                  onMouseUp={cancelLongPress}
                   onMouseLeave={cancelLongPress}
                   onTouchStart={startLongPress}
                   onTouchMove={cancelLongPress}
+                  onTouchEnd={cancelLongPress}
                   onTouchCancel={cancelLongPress}
                   onClick={handlePlayClick}
                   whileTap={{ scale: 0.9 }}

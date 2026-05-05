@@ -86,7 +86,7 @@ export default function RegisterStep1() {
                     <div className="space-y-1.5">
                         <label className="text-sm font-bold text-slate-700 ml-1">First Name</label>
                         <div className="relative group">
-                            <IdCard className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
                             <input
                                 type="text"
                                 required
@@ -100,7 +100,7 @@ export default function RegisterStep1() {
                     <div className="space-y-1.5">
                         <label className="text-sm font-bold text-slate-700 ml-1">Last Name</label>
                         <div className="relative group">
-                            <Contact className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
+                            <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
                             <input
                                 type="text"
                                 required

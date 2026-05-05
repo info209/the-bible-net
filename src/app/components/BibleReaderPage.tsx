@@ -1207,7 +1207,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   setShowChapterSelector(false);
                   setShowVersionSelector(false);
                 }}
-                className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
+                className="flex items-center space-x-1 hover:text-[var(--color-accent-rose)] transition-colors"
               >
                 <span className="text-sm font-bold">{selectedBook}</span>
                 <ChevronDown className="size-3" />
@@ -1219,7 +1219,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   setShowBookSelector(false);
                   setShowVersionSelector(false);
                 }}
-                className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
+                className="flex items-center space-x-1 hover:text-[var(--color-accent-rose)] transition-colors"
               >
                 <span className="text-sm font-bold">{selectedChapter}</span>
                 <ChevronDown className="size-3" />
@@ -1236,7 +1236,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     setShowBookSelector(false);
                     setShowChapterSelector(false);
                   }}
-                  className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
+                  className="flex items-center space-x-1 hover:text-[var(--color-accent-rose)] transition-colors"
                 >
                   <span className="text-sm font-bold">{selectedVersion}</span>
                   <ChevronDown className="size-3" />
@@ -1265,19 +1265,19 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 onClick={() => setShowMusicSelector(true)}
                 className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
               >
-                <Music className="size-5 text-[var(--color-gray-900)]" />
+                <Music className="size-5" />
               </button>
               <button
                 onClick={() => setShowSearch(true)}
                 className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
               >
-                <FiSearch className="size-5 text-[var(--color-gray-900)]" />
+                <FiSearch className="size-5" />
               </button>
               <button
                 onClick={() => setShowMoreMenu(true)}
                 className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
               >
-                <MoreVertical className="size-5 text-[var(--color-gray-900)]" />
+                <MoreVertical className="size-5" />
               </button>
             </div>
           </div>
