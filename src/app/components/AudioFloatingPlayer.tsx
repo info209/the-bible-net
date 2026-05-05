@@ -37,37 +37,92 @@ export default function AudioFloatingPlayer({
   isReadingMode = false,
 }: Props) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const didLongPress = useRef(false);
+  // Tracks whether the current press crossed the 2-second threshold
+  const isLongPressRef = useRef(false);
+  // Prevents mouse-event handlers from firing after a touch event (synthetic events)
+  const isTouchActiveRef = useRef(false);
 
-  // When footer is hidden, float just above the safe-area inset.
-  // When footer is visible, float above the 64px nav bar.
   const bottomValue = isReadingMode
     ? `calc(${BREATHING}px + env(safe-area-inset-bottom))`
     : `calc(${BOTTOM_NAV_HEIGHT}px + ${BREATHING}px + env(safe-area-inset-bottom))`;
 
-  const startLongPress = useCallback((e?: any) => {
-    didLongPress.current = false;
+  /** Start the 2-second long-press timer. Called on pointer-down. */
+  const startPressTimer = useCallback(() => {
+    isLongPressRef.current = false;
     longPressTimer.current = setTimeout(() => {
-      didLongPress.current = true;
+      isLongPressRef.current = true;
       onOpenPanel();
     }, LONG_PRESS_DURATION);
   }, [onOpenPanel]);
 
-  const cancelLongPress = useCallback(() => {
+  /** Cancel the long-press timer without triggering any action. */
+  const cancelPressTimer = useCallback(() => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
   }, []);
 
-  const handlePlayClick = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+  // ── Touch handlers ──────────────────────────────────────────────────────────
+  // Touch events are always handled first; we suppress the synthetic mouse
+  // events that follow by gating on isTouchActiveRef.
+
+  const handleTouchStart = useCallback((e: React.TouchEvent) => {
     e.stopPropagation();
-    cancelLongPress();
-    if (!didLongPress.current) {
+    isTouchActiveRef.current = true;
+    startPressTimer();
+  }, [startPressTimer]);
+
+  /**
+   * onTouchMove fires when the finger moves — treat as a scroll intent.
+   * Cancel the timer but do NOT trigger play (user is scrolling, not tapping).
+   */
+  const handleTouchMove = useCallback(() => {
+    cancelPressTimer();
+    // Don't clear isLongPress here — if 2s already elapsed, keep it true
+  }, [cancelPressTimer]);
+
+  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
+    e.stopPropagation();
+    cancelPressTimer();
+    // Quick tap → play/pause. Long press already opened the sheet.
+    if (!isLongPressRef.current) {
       onPlayPause();
     }
-    didLongPress.current = false;
-  }, [cancelLongPress, onPlayPause]);
+    isLongPressRef.current = false;
+    // Suppress the synthetic mouse-up / click that the browser fires ~300ms later
+    setTimeout(() => { isTouchActiveRef.current = false; }, 400);
+  }, [cancelPressTimer, onPlayPause]);
+
+  const handleTouchCancel = useCallback(() => {
+    cancelPressTimer();
+    isLongPressRef.current = false;
+    setTimeout(() => { isTouchActiveRef.current = false; }, 400);
+  }, [cancelPressTimer]);
+
+  // ── Mouse handlers (desktop) — skip if a touch event already handled this ──
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (isTouchActiveRef.current) return;
+    e.stopPropagation();
+    startPressTimer();
+  }, [startPressTimer]);
+
+  const handleMouseUp = useCallback((e: React.MouseEvent) => {
+    if (isTouchActiveRef.current) return;
+    e.stopPropagation();
+    cancelPressTimer();
+    if (!isLongPressRef.current) {
+      onPlayPause();
+    }
+    isLongPressRef.current = false;
+  }, [cancelPressTimer, onPlayPause]);
+
+  /** Pointer leaves the button — cancel timer, do NOT trigger play. */
+  const handleMouseLeave = useCallback(() => {
+    cancelPressTimer();
+    isLongPressRef.current = false;
+  }, [cancelPressTimer]);
 
   return (
     <AnimatePresence mode="wait">
@@ -81,13 +136,8 @@ export default function AudioFloatingPlayer({
           exit={{ opacity: 0, y: 16 }}
           transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
           style={{ bottom: bottomValue, transition: 'bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}
-          className="fixed left-0 right-0 z-40 pointer-events-none"
+          className="fixed left-0 right-0 z-[1200] pointer-events-none"
         >
-          {/*
-            max-w-3xl keeps buttons inside the reading content area on desktop.
-            px-5 gives a bit of breathing room from the content edge.
-            pointer-events-none on the row so only buttons receive clicks.
-          */}
           <div className="max-w-3xl mx-auto px-5 flex items-center justify-between pointer-events-none">
 
             {/* ← Prev */}
@@ -105,24 +155,31 @@ export default function AudioFloatingPlayer({
               <ChevronLeft className="size-[18px] text-[var(--color-text-secondary)]" strokeWidth={2.5} />
             </motion.button>
 
-            {/* ▶ Play / Pause — center, with ProgressRing + long-press */}
+            {/* ▶ Play / Pause — center, with ProgressRing + long-press ──────── */}
+            {/*
+              Progress is frozen at 0 when not playing so the ring doesn't
+              show fake progress before speech synthesis actually starts.
+            */}
             <div className="pointer-events-auto">
               <ProgressRing
-                progress={progress}
+                progress={isPlaying ? progress : 0}
                 size={58}
                 strokeWidth={2.5}
                 trackColor="var(--color-bg-tertiary)"
                 color="var(--color-accent-rose)"
               >
                 <motion.button
-                  onMouseDown={startLongPress}
-                  onMouseUp={cancelLongPress}
-                  onMouseLeave={cancelLongPress}
-                  onTouchStart={startLongPress}
-                  onTouchMove={cancelLongPress}
-                  onTouchEnd={cancelLongPress}
-                  onTouchCancel={cancelLongPress}
-                  onClick={handlePlayClick}
+                  // Touch events — handled first; suppress synthetic mouse events
+                  onTouchStart={handleTouchStart}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
+                  onTouchCancel={handleTouchCancel}
+                  // Mouse events — only fire on desktop (gated by isTouchActiveRef)
+                  onMouseDown={handleMouseDown}
+                  onMouseUp={handleMouseUp}
+                  onMouseLeave={handleMouseLeave}
+                  // No onClick — play/pause is handled in onTouchEnd / onMouseUp
+                  // to avoid the double-fire issue on touch devices.
                   whileTap={{ scale: 0.9 }}
                   className="size-11 rounded-full flex items-center justify-center
                     bg-[var(--color-primary-teal)]
@@ -168,7 +225,7 @@ export default function AudioFloatingPlayer({
           exit={{ opacity: 0, y: 16 }}
           transition={{ duration: 0.35, ease: [0.4, 0, 0.2, 1] }}
           style={{ bottom: bottomValue, transition: 'bottom 0.35s cubic-bezier(0.4, 0, 0.2, 1)' }}
-          className="fixed left-1/2 -translate-x-1/2 z-40 w-[92%] max-w-[420px]"
+          className="fixed left-1/2 -translate-x-1/2 z-[1200] w-[92%] max-w-[420px]"
           onClick={onOpenPanel}
         >
           <div
@@ -180,7 +237,7 @@ export default function AudioFloatingPlayer({
           >
             {/* Progress ring + play */}
             <ProgressRing
-              progress={progress}
+              progress={isPlaying ? progress : 0}
               size={40}
               strokeWidth={2.5}
               trackColor="var(--color-bg-tertiary)"

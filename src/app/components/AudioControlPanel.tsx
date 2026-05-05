@@ -61,6 +61,9 @@ export default function AudioControlPanel({
   const [startY, setStartY] = useState(0);
   const [currentY, setCurrentY] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
+  // Tracks whether the verse slider is actively being dragged
+  // Used to freeze the progress ring and suppress auto-scroll
+  const isDraggingSliderRef = useRef(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -125,8 +128,11 @@ export default function AudioControlPanel({
 
   if (!isOpen) return null;
 
-  // Progress for the ProgressRing: audio progress
-  const ringProgress = audioDuration > 0 ? Math.min(Math.max(audioCurrentTime / audioDuration, 0), 1) : 0;
+  // Progress for the ProgressRing: frozen at 0 while slider is being dragged
+  // so the ring doesn’t fight the user’s drag gesture
+  const ringProgress = isDraggingSliderRef.current
+    ? 0
+    : (audioDuration > 0 ? Math.min(Math.max(audioCurrentTime / audioDuration, 0), 1) : 0);
 
   return (
     <div className="fixed inset-0 z-[100] overlay-dark" onClick={onClose}>
@@ -214,10 +220,38 @@ export default function AudioControlPanel({
                 max={Math.max(totalVerses, 1)}
                 value={selectedVerse}
                 onChange={(e) => onVerseChange(Number(e.target.value))}
-                onMouseDown={onSliderDragStart}
-                onTouchStart={onSliderDragStart}
-                onMouseUp={onSliderDragEnd}
-                onTouchEnd={onSliderDragEnd}
+                onMouseDown={() => {
+                  isDraggingSliderRef.current = true;
+                  onSliderDragStart?.();
+                }}
+                onTouchStart={() => {
+                  isDraggingSliderRef.current = true;
+                  onSliderDragStart?.();
+                }}
+                onMouseUp={(e) => {
+                  isDraggingSliderRef.current = false;
+                  onSliderDragEnd?.();
+                  // Smooth scroll to selected verse on release using the ChapterContent element ID
+                  const verse = Number((e.target as HTMLInputElement).value);
+                  const verseEl = document.getElementById(
+                    `verse-${selectedBook}-${selectedChapter}-${verse}`
+                  );
+                  if (verseEl) {
+                    verseEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }}
+                onTouchEnd={(e) => {
+                  isDraggingSliderRef.current = false;
+                  onSliderDragEnd?.();
+                  // Smooth scroll to selected verse on release using the ChapterContent element ID
+                  const verse = Number((e.target as HTMLInputElement).value);
+                  const verseEl = document.getElementById(
+                    `verse-${selectedBook}-${selectedChapter}-${verse}`
+                  );
+                  if (verseEl) {
+                    verseEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                  }
+                }}
                 className="absolute inset-0 w-full opacity-0 cursor-pointer"
               />
             </div>

@@ -232,6 +232,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const narrationPlayingRef = useRef(false);
   const isAutoAdvancingRef = useRef(false);
   const isUserInteractingRef = useRef(false);
+  // Drag mode — suppresses auto-scroll while the verse slider is being dragged
+  const isDraggingRef = useRef(false);
 
   // Timer state for time-based narration
   const narrationTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -738,9 +740,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
         setSelectedVerse(verseNumber);
 
-        // Scroll to the verse being read
+        // Scroll to the verse being read — suppressed while slider is being dragged
         setTimeout(() => {
-          if (isUserInteractingRef.current) return;
+          if (isUserInteractingRef.current || isDraggingRef.current) return;
           const verseElement = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verseNumber}`);
           if (verseElement) {
             verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -926,9 +928,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
     setSelectedVerse(verseNumber);
 
-    // Scroll to the verse being read
+    // Scroll to the verse being read — suppressed while slider is being dragged
     setTimeout(() => {
-      if (isUserInteractingRef.current) return;
+      if (isUserInteractingRef.current || isDraggingRef.current) return;
       const verseElement = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verseNumber}`);
       if (verseElement) {
         verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -1087,11 +1089,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     console.log('handleNarrationPlayPause clicked. audioPlaying:', audioPlaying, 'selectedVerse:', selectedVerse, 'currentReadingVerse:', currentReadingVerse);
     if (audioPlaying) {
       console.log('Pausing narration');
+      // ACTION first — cancel speech synthesis immediately
       pauseNarration();
+      // THEN update UI state
       setAudioPlaying(false);
     } else {
       console.log('Resuming/starting narration');
+      // ACTION first — start speech synthesis immediately (no dependency on state updates)
       resumeNarration();
+      // THEN update UI state so progress ring and icons reflect playing
       setAudioPlaying(true);
     }
   };
@@ -2063,7 +2069,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           playerState={audioPlayerState}
           isReadingMode={isReadingMode}
           isPlaying={audioPlaying}
-          progress={audioDuration > 0
+          // Progress is 0 when not playing — prevents fake ring fill before speech starts
+          progress={audioPlaying && audioDuration > 0
             ? Math.min(1, Math.max(0, audioCurrentTime / audioDuration))
             : 0}
           onPlayPause={handleNarrationPlayPause}

@@ -124,7 +124,16 @@ export default function VerseActionMenu({
 
     const handleColorSelect = (colorId: string) => {
         setSelectedColor(colorId);
-        // Highlight is applied + sheet is closed when user taps "Apply"
+    };
+
+    // Tap the last visible color → expand palette
+    const handleColorTap = (colorId: string, index: number, total: number) => {
+        const isLast = index === total - 1;
+        if (isLast && !paletteExpanded) {
+            setPaletteExpanded(true);
+        } else {
+            handleColorSelect(colorId);
+        }
     };
 
     const handleApplyHighlight = () => {
@@ -140,7 +149,6 @@ export default function VerseActionMenu({
     const handleToggleHighlightMode = () => {
         setHighlightMode(prev => {
             if (prev) {
-                // Closing highlight mode — reset palette
                 setPaletteExpanded(false);
             }
             return !prev;
@@ -160,99 +168,87 @@ export default function VerseActionMenu({
 
             {/* ── Bottom Sheet ── */}
             <motion.div
-                initial={{ opacity: 0, y: 80 }}
+                initial={{ opacity: 0, y: 60 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 80 }}
-                transition={{ type: 'spring', damping: 30, stiffness: 260 }}
-                className="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-[calc(100%-24px)] max-w-[420px] bg-white rounded-[20px] shadow-[0_8px_40px_rgba(0,0,0,0.18)] z-[1110]"
+                exit={{ opacity: 0, y: 60 }}
+                transition={{ type: 'spring', damping: 32, stiffness: 280 }}
+                className="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-[calc(100%-20px)] max-w-[430px] bg-white rounded-[18px] shadow-[0_4px_24px_rgba(0,0,0,0.10)] z-[1110]"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-                // Prevent backdrop click from propagating through the sheet
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* Drag Handle + Close button row */}
-                <div className="flex items-center justify-between px-3 pt-2.5 pb-1">
-                    <div className="w-6" /> {/* spacer */}
-                    <div className="w-9 h-[3.5px] bg-gray-200 rounded-full" />
-                    <button
-                        onClick={onClose}
-                        className="w-6 h-6 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors rounded-full hover:bg-gray-100"
-                        aria-label="Close"
-                    >
-                        <X className="w-4 h-4" />
-                    </button>
+                {/* ── Drag Handle ── */}
+                <div className="flex items-center justify-center pt-2.5 pb-0">
+                    <div className="w-8 h-[3px] bg-gray-200 rounded-full" />
                 </div>
 
                 <AnimatePresence mode="wait">
-                    {/* ── MAIN VIEW ─────────────────────────────────────────── */}
+                    {/* ── MAIN VIEW ── */}
                     {view === 'main' && (
                         <motion.div
                             key="main"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            transition={{ duration: 0.12 }}
-                            className="px-4 pb-4"
+                            transition={{ duration: 0.1 }}
+                            className="px-4 pt-2 pb-3"
                         >
                             {/* Verse Reference */}
-                            <p className="text-center text-[11.5px] text-gray-400 font-medium mb-3 tracking-wide">
+                            <p className="text-center text-[11px] text-gray-400 font-normal mb-2.5 tracking-wide">
                                 Selected:{' '}
-                                <span className="text-gray-700 font-semibold">{formattedVerses()}</span>
+                                <span className="text-gray-600 font-medium">{formattedVerses()}</span>
                             </p>
 
-                            {/* ── Color Palette ───────────────────────────────────
-                                NOTE: py-2 gives the ring overflow room so it never clips.
-                                We do NOT use overflow-hidden here.
-                            ── */}
+                            {/* ── Inline Color Palette (visible when highlight mode is on) ── */}
                             <AnimatePresence>
                                 {highlightMode && (
                                     <motion.div
                                         key="palette"
-                                        initial={{ opacity: 0, scaleY: 0.7, originY: 0 }}
-                                        animate={{ opacity: 1, scaleY: 1 }}
-                                        exit={{ opacity: 0, scaleY: 0.7 }}
-                                        transition={{ type: 'spring', damping: 26, stiffness: 320 }}
-                                        className="mb-1"
+                                        initial={{ opacity: 0, height: 0 }}
+                                        animate={{ opacity: 1, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                                        className="overflow-hidden"
                                     >
-                                        {/* Color row — py gives room for the selection ring */}
-                                        <div className="flex items-center gap-0 px-1 py-2">
-                                            {/* Trash icon — only when editing existing highlight */}
+                                        <div className="flex items-center mb-2.5 px-0.5">
+                                            {/* Trash — only when editing existing highlight */}
                                             {existingHighlightColor && (
                                                 <button
                                                     onClick={handleRemoveHighlight}
-                                                    className="w-8 h-8 mr-2 rounded-full flex items-center justify-center bg-red-50 border border-red-200 shrink-0 active:scale-90 transition-transform"
+                                                    className="w-7 h-7 mr-2 rounded-full flex items-center justify-center bg-red-50 border border-red-200 shrink-0 active:scale-90 transition-transform"
                                                     title="Remove highlight"
                                                 >
                                                     <Trash2 className="w-3.5 h-3.5 text-red-400" />
                                                 </button>
                                             )}
 
-                                            {/* Color dots */}
-                                            <div className="flex items-center gap-3 flex-1 flex-wrap">
-                                                {displayColors.map((c) => {
+                                            {/* Color dots row */}
+                                            <div className="flex items-center gap-2.5 flex-1 flex-wrap py-1">
+                                                {displayColors.map((c, i) => {
                                                     const isSelected = selectedColor === c.id;
+                                                    const isLastVisible = i === displayColors.length - 1;
                                                     return (
                                                         <button
                                                             key={c.id}
-                                                            onClick={() => handleColorSelect(c.id)}
+                                                            onClick={() => handleColorTap(c.id, i, displayColors.length)}
                                                             title={c.label}
                                                             aria-label={`Select ${c.label} highlight`}
                                                             className="relative flex items-center justify-center active:scale-90 transition-transform shrink-0"
-                                                            style={{ width: 32, height: 32 }}
+                                                            style={{ width: 26, height: 26 }}
                                                         >
-                                                            {/* Selection ring — drawn outside, won't clip */}
+                                                            {/* Selection ring */}
                                                             {isSelected && (
                                                                 <span
                                                                     className="absolute rounded-full"
                                                                     style={{
-                                                                        inset: -4,
-                                                                        border: `2.5px solid ${c.color}`,
+                                                                        inset: -3,
+                                                                        border: `2px solid ${c.color}`,
                                                                         borderRadius: '50%',
                                                                     }}
                                                                 />
                                                             )}
-                                                            {/* Color circle */}
+                                                            {/* Color fill */}
                                                             <span
-                                                                className="absolute inset-0 rounded-full shadow-sm"
+                                                                className="absolute inset-0 rounded-full"
                                                                 style={{ backgroundColor: c.color }}
                                                             />
                                                         </button>
@@ -260,26 +256,26 @@ export default function VerseActionMenu({
                                                 })}
                                             </div>
 
-                                            {/* Expand / Collapse */}
+                                            {/* Expand / Collapse toggle */}
                                             <button
                                                 onClick={() => setPaletteExpanded(prev => !prev)}
-                                                className="w-8 h-8 ml-1 rounded-full bg-gray-100 flex items-center justify-center shrink-0 active:scale-90 transition-transform border border-gray-200"
+                                                className="w-7 h-7 ml-1.5 rounded-full bg-gray-100 flex items-center justify-center shrink-0 active:scale-90 transition-transform border border-gray-200"
                                                 title={paletteExpanded ? 'Fewer colors' : 'More colors'}
                                             >
                                                 <motion.span
                                                     animate={{ rotate: paletteExpanded ? 45 : 0 }}
-                                                    transition={{ duration: 0.2 }}
+                                                    transition={{ duration: 0.18 }}
                                                     className="flex items-center justify-center"
                                                 >
-                                                    <Plus className="w-3.5 h-3.5 text-gray-500" />
+                                                    <Plus className="w-3 h-3 text-gray-500" />
                                                 </motion.span>
                                             </button>
                                         </div>
 
-                                        {/* Apply button */}
+                                        {/* Apply button — compact */}
                                         <button
                                             onClick={handleApplyHighlight}
-                                            className="w-full mt-1 mb-2 py-2.5 rounded-xl bg-[#31C4BE] text-white text-[13px] font-bold shadow-[0_3px_10px_rgba(49,196,190,0.35)] active:scale-[0.98] transition-all"
+                                            className="w-full mb-2 py-2 rounded-xl bg-[#31C4BE] text-white text-[12.5px] font-semibold shadow-[0_2px_8px_rgba(49,196,190,0.30)] active:scale-[0.98] transition-all"
                                         >
                                             Apply Highlight
                                         </button>
@@ -287,24 +283,24 @@ export default function VerseActionMenu({
                                 )}
                             </AnimatePresence>
 
-                            {/* ── 4 Action Buttons ───────────────────────────────── */}
-                            <div className="grid grid-cols-4 gap-2">
+                            {/* ── 4 Action Buttons in one row ── */}
+                            <div className="flex items-center justify-between gap-2">
                                 {/* Highlight */}
                                 <button
                                     onClick={handleToggleHighlightMode}
-                                    className={`flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl transition-all active:scale-95 ${
+                                    className={`flex flex-col items-center justify-center gap-1 py-2.5 flex-1 rounded-[14px] transition-all active:scale-95 ${
                                         highlightMode
-                                            ? 'bg-[#31C4BE] shadow-[0_4px_14px_rgba(49,196,190,0.35)]'
+                                            ? 'bg-[#31C4BE]/10 border border-[#31C4BE]/30'
                                             : 'bg-gray-50 hover:bg-gray-100'
                                     }`}
                                 >
                                     <PenTool
-                                    className="w-[22px] h-[22px]"
-                                    style={{ color: highlightMode ? '#fff' : '#31C4BE' }}
-                                    strokeWidth={2}
-                                />
-                                    <span className={`text-[10px] font-semibold tracking-wide ${
-                                        highlightMode ? 'text-white' : 'text-gray-600'
+                                        className="w-[19px] h-[19px]"
+                                        style={{ color: highlightMode ? '#31C4BE' : '#31C4BE' }}
+                                        strokeWidth={2}
+                                    />
+                                    <span className={`text-[10px] font-medium tracking-wide ${
+                                        highlightMode ? 'text-[#31C4BE]' : 'text-gray-500'
                                     }`}>
                                         Highlight
                                     </span>
@@ -313,34 +309,34 @@ export default function VerseActionMenu({
                                 {/* Save */}
                                 <button
                                     onClick={() => setView('save')}
-                                    className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
+                                    className="flex flex-col items-center justify-center gap-1 py-2.5 flex-1 rounded-[14px] bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
                                 >
-                                    <BookmarkPlus className="w-[22px] h-[22px] text-[#31C4BE]" strokeWidth={2} />
-                                    <span className="text-[10px] font-semibold text-gray-600 tracking-wide">Save</span>
+                                    <BookmarkPlus className="w-[19px] h-[19px] text-[#31C4BE]" strokeWidth={2} />
+                                    <span className="text-[10px] font-medium text-gray-500 tracking-wide">Save</span>
                                 </button>
 
                                 {/* Note */}
                                 <button
                                     onClick={() => setView('note')}
-                                    className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
+                                    className="flex flex-col items-center justify-center gap-1 py-2.5 flex-1 rounded-[14px] bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
                                 >
-                                    <FileText className="w-[22px] h-[22px] text-amber-500" strokeWidth={2} />
-                                    <span className="text-[10px] font-semibold text-gray-600 tracking-wide">Note</span>
+                                    <FileText className="w-[19px] h-[19px] text-amber-500" strokeWidth={2} />
+                                    <span className="text-[10px] font-medium text-gray-500 tracking-wide">Note</span>
                                 </button>
 
                                 {/* Compare */}
                                 <button
                                     onClick={() => { onCompare(); onClose(); }}
-                                    className="flex flex-col items-center justify-center gap-1.5 py-3 rounded-2xl bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
+                                    className="flex flex-col items-center justify-center gap-1 py-2.5 flex-1 rounded-[14px] bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
                                 >
-                                    <Columns2 className="w-[22px] h-[22px] text-indigo-500" strokeWidth={2} />
-                                    <span className="text-[10px] font-semibold text-gray-600 tracking-wide">Compare</span>
+                                    <Columns2 className="w-[19px] h-[19px] text-indigo-500" strokeWidth={2} />
+                                    <span className="text-[10px] font-medium text-gray-500 tracking-wide">Compare</span>
                                 </button>
                             </div>
                         </motion.div>
                     )}
 
-                    {/* ── SAVE VIEW ─────────────────────────────────────────── */}
+                    {/* ── SAVE VIEW ── */}
                     {view === 'save' && (
                         <motion.div
                             key="save"
@@ -423,7 +419,7 @@ export default function VerseActionMenu({
                         </motion.div>
                     )}
 
-                    {/* ── NOTE VIEW ─────────────────────────────────────────── */}
+                    {/* ── NOTE VIEW ── */}
                     {view === 'note' && (
                         <motion.div
                             key="note"
