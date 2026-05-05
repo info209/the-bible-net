@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { ChevronDown, Home, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity } from 'lucide-react';
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
-import { MdOutlineLibraryBooks } from 'react-icons/md';
+import { MdCompareArrows } from 'react-icons/md';
 import { BiBible } from 'react-icons/bi';
 import { LuLibraryBig } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -1193,7 +1193,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       <AppHeader className="!static" />
 
       {/* Sub Navigation Bar - BECOMES STICKY */}
-      <div className="sticky top-0 left-0 right-0 z-40 glass-light border-b border-white/20 shadow-[var(--shadow-xs)]">
+      <div 
+        className="sticky top-0 left-0 right-0 z-40 border-b border-white/20 shadow-[var(--shadow-xs)] transition-colors duration-300"
+        style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }}
+      >
         <div className="max-w-3xl mx-auto px-3 sm:px-8 py-1">
           <div className="flex items-center justify-between">
             {/* Book/Chapter/Version selectors */}
@@ -1206,7 +1209,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 }}
                 className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
               >
-                <span className="text-sm font-medium">{selectedBook}</span>
+                <span className="text-sm font-bold">{selectedBook}</span>
                 <ChevronDown className="size-3" />
               </button>
 
@@ -1218,12 +1221,12 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 }}
                 className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
               >
-                <span className="text-sm font-medium">{selectedChapter}</span>
+                <span className="text-sm font-bold">{selectedChapter}</span>
                 <ChevronDown className="size-3" />
               </button>
 
               {compareMode.isActive ? (
-                <span className="text-sm font-medium text-[var(--color-text-primary)] opacity-70">
+                <span className="text-sm font-bold opacity-70">
                   Comparing
                 </span>
               ) : (
@@ -1235,7 +1238,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   }}
                   className="flex items-center space-x-1 text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)] transition-colors"
                 >
-                  <span className="text-sm font-medium">{selectedVersion}</span>
+                  <span className="text-sm font-bold">{selectedVersion}</span>
                   <ChevronDown className="size-3" />
                 </button>
               )}
@@ -1253,8 +1256,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 }}
                 className="p-2 rounded-full transition-all hover:bg-gray-100/50"
               >
-                <MdOutlineLibraryBooks
-                  className={`size-5 transition-colors ${compareMode.isActive ? 'text-[#E23744]' : 'text-[var(--color-gray-900)]'
+                <MdCompareArrows
+                  className={`size-5 transition-colors ${compareMode.isActive ? 'text-[#E23744]' : 'opacity-80'
                     }`}
                 />
               </button>

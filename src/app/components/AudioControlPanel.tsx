@@ -245,7 +245,7 @@ export default function AudioControlPanel({
                 hover:scale-105 active:scale-95 transition-transform"
               aria-label="Previous chapter"
             >
-              <ChevronLeft className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+              <ChevronLeft className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
             </button>
 
             {/* Center group: Verse- / Play / Verse+ */}
@@ -254,7 +254,7 @@ export default function AudioControlPanel({
               {/* V- */}
               <button
                 onClick={() => onVerseChange(Math.max(1, selectedVerse - 1))}
-                className="size-8 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                className="size-9 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
                 aria-label="Previous verse"
               >
                 <div className="relative flex items-center justify-center">
@@ -290,7 +290,7 @@ export default function AudioControlPanel({
               {/* V+ */}
               <button
                 onClick={() => onVerseChange(Math.min(totalVerses, selectedVerse + 1))}
-                className="size-8 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                className="size-9 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
                 aria-label="Next verse"
               >
                 <div className="relative flex items-center justify-center">
@@ -314,7 +314,7 @@ export default function AudioControlPanel({
                 hover:scale-105 active:scale-95 transition-transform"
               aria-label="Next chapter"
             >
-              <ChevronRight className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+              <ChevronRight className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
             </button>
           </div>
 
@@ -362,11 +362,16 @@ export default function AudioControlPanel({
             {/* Timer */}
             <button
               onClick={onTimerClick}
-              className="size-7 flex items-center justify-center
+              className="relative flex flex-col items-center justify-center gap-3
                 hover:scale-110 active:scale-95 transition-transform"
               aria-label="Set sleep timer"
             >
-              <Timer className="size-[22px] text-[var(--color-text-tertiary)]" strokeWidth={2.2} />
+              <div className="size-7 flex items-center justify-center">
+                <Timer className="size-[22px] text-[var(--color-text-tertiary)]" strokeWidth={2.2} />
+              </div>
+              <span className="text-[8px] font-bold text-[var(--color-text-tertiary)] uppercase whitespace-nowrap leading-none">
+                Timer
+              </span>
             </button>
           </div>
 
