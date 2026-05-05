@@ -1,3 +1,5 @@
+'use client';
+
 import { BookOpen, Heart, Calendar, FolderOpen, Plus, Edit3, Music } from 'lucide-react';
 import { useState } from 'react';
 import SongsLibrary from './songs/SongsLibrary';
