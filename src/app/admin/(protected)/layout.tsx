@@ -31,7 +31,9 @@ export default async function AdminLayout({
                     <nav className="space-y-2 flex-1">
                         <SidebarLink href="/admin/dashboard" label="Dashboard" icon="📊" />
                         <SidebarLink href="/admin/content" label="Content" icon="📝" />
+                        <SidebarLink href="/admin/legal" label="Legal CMS" icon="⚖️" />
                         <SidebarLink href="/admin/users" label="Users" icon="👥" />
+
                         <SidebarLink href="/admin/sub-admins" label="Sub Admins" icon="🛡️" />
                         <SidebarLink href="/admin/settings" label="Settings" icon="⚙️" />
                     </nav>

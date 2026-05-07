@@ -62,6 +62,7 @@ export default function VerseActionMenu({
     const [highlightMode, setHighlightMode] = useState(false);
     const [paletteExpanded, setPaletteExpanded] = useState(false);
     const [selectedColor, setSelectedColor] = useState<string>('yellow');
+    const [noteInput, setNoteInput] = useState('');
 
     // Save State
     const [labelInput, setLabelInput] = useState('');
@@ -446,11 +447,13 @@ export default function VerseActionMenu({
                             </div>
                             <textarea
                                 autoFocus
+                                value={noteInput}
+                                onChange={(e) => setNoteInput(e.target.value)}
                                 placeholder="Write your thoughts..."
                                 className="w-full min-h-[110px] bg-gray-50 border-x border-b border-gray-200 rounded-b-xl p-3 text-sm focus:outline-none focus:ring-1 focus:ring-[#31C4BE]/40 resize-none mb-3"
                             />
                             <button
-                                onClick={() => { onNote('Draft note content'); onClose(); }}
+                                onClick={() => { onNote(noteInput); onClose(); }}
                                 className="w-full py-3 bg-[#31C4BE] text-white rounded-xl text-sm font-bold shadow-[0_4px_14px_rgba(49,196,190,0.35)] hover:scale-[1.02] active:scale-[0.98] transition-all shrink-0"
                             >
                                 Save Note

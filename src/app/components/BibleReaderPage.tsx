@@ -441,6 +441,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     if (gestureDetected.current === 'horizontal') {
       if (!isDragging) {
         setIsDragging(true);
+        isDraggingRef.current = true;
       }
 
       // Limit drag to prevent going forward from last chapter or backward from first
@@ -489,6 +490,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
     // Reset drag state
     setIsDragging(false);
+    isDraggingRef.current = false;
     setDragOffset(0);
     gestureDetected.current = 'none';
   };
@@ -1135,8 +1137,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     // For narration, utterance.onstart also snaps the progress to exactly match the current verse,
     // which prevents the estimation from drifting too far from reality.
     if (audioPlaying) {
-      // Update progress every 100ms for smooth animation
       progressInterval = setInterval(() => {
+        // Skip updating time if user is dragging (either slider or swipe) 
+        // to prevent competing re-renders during high-frequency gestures.
+        if (isDraggingRef.current || isUserInteractingRef.current) return;
+
         setAudioCurrentTime(prev => {
           const newTime = prev + (0.1 * playbackSpeed); // 100ms * playback speed
           // Cap at duration to prevent looping prematurely
@@ -2152,6 +2157,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             chapter={selectedChapter}
             selectedVerses={selectedVerses}
             onClose={() => onVerseTap?.(0)} // container handles clearing
+            existingHighlightColor={userHighlights.find(h => h.metadata?.verse === selectedVerses[0])?.metadata?.color}
             onHighlight={(color) => onSaveHighlight?.(selectedVerses, color)}
             onSave={(labels) => onSaveVerses?.(labels)}
             onNote={(note) => onSaveNote?.(selectedVerses, note)}

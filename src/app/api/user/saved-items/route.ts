@@ -27,13 +27,18 @@ export async function GET(req: NextRequest) {
         ? (typeParam as SavedItemType)
         : undefined;
 
+    const bookId = searchParams.get('bookId');
+    const chapterParam = searchParams.get('chapter');
+    const chapter = chapterParam ? parseInt(chapterParam) : undefined;
+
     await connectDB();
 
     const result = await SavedItemRepository.getSavedItems(
       session.user.id as string,
       type,
       page,
-      limit
+      limit,
+      { bookId: bookId || undefined, chapter }
     );
 
     return NextResponse.json({

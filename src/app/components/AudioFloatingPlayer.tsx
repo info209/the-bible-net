@@ -8,7 +8,7 @@ import ProgressRing from "./ui/ProgressRing";
 // Sits above BottomNav (64px) with 12px breathing room + safe-area
 const BOTTOM_NAV_HEIGHT = 64; // px
 const BREATHING = 12; // px gap above nav
-const LONG_PRESS_DURATION = 2000; // ms
+const LONG_PRESS_DURATION = 1000; // ms
 
 interface Props {
   playerState: "default" | "minimized";

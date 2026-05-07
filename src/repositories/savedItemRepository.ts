@@ -25,11 +25,15 @@ export class SavedItemRepository {
         refId,
       },
       {
+        $set: {
+          metadata,
+          updatedAt: new Date(),
+        },
         $setOnInsert: {
           userId: new mongoose.Types.ObjectId(userId),
           type,
           refId,
-          metadata,
+          createdAt: new Date(),
         },
       },
       { upsert: true, new: true }
@@ -75,12 +79,15 @@ export class SavedItemRepository {
     userId: string,
     type?: SavedItemType,
     page = 1,
-    limit = 20
+    limit = 20,
+    filters: { bookId?: string; chapter?: number } = {}
   ): Promise<{ items: ISavedItem[]; total: number; hasMore: boolean }> {
     const filter: Record<string, unknown> = {
       userId: new mongoose.Types.ObjectId(userId),
     };
     if (type) filter.type = type;
+    if (filters.bookId) filter['metadata.bookId'] = filters.bookId;
+    if (filters.chapter) filter['metadata.chapter'] = filters.chapter;
 
     const skip = (page - 1) * limit;
 

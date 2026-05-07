@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef, PointerEvent } from 'react';
+import { useEffect, useState, useRef, PointerEvent, memo } from 'react';
 import { motion } from 'framer-motion';
 import BibleSkeleton from './BibleSkeleton';
 import { teluguBible, hindiBible } from './BibleData';
@@ -88,7 +88,7 @@ const defaultContent = {
   ]
 };
 
-export default function ChapterContent({ 
+function ChapterContent({ 
   book, chapter, font, fontSize, version = 'NKJV', 
   scrollToVerse, readingVerse, theme, selectedVerses = [], 
   onVerseLongPress, onVerseTap,
@@ -345,3 +345,5 @@ export default function ChapterContent({
     </motion.div>
   );
 }
+
+export default memo(ChapterContent);

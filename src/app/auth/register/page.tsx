@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { User, Mail, Lock, AlertCircle, ArrowRight, ChevronLeft, IdCard, Contact, Eye, EyeOff } from 'lucide-react';
+import { LegalModal } from '@/components/LegalModal';
+
 
 export default function RegisterStep1() {
     const router = useRouter();
@@ -18,6 +20,11 @@ export default function RegisterStep1() {
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'terms' | 'privacy' }>({
+        isOpen: false,
+        type: 'terms',
+    });
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -163,8 +170,9 @@ export default function RegisterStep1() {
                         />
                     </div>
                     <label htmlFor="tnc" className="text-sm text-slate-600 font-medium cursor-pointer leading-relaxed">
-                        I agree to the <Link href="/terms" className="text-[var(--color-primary-teal)] font-bold hover:underline">Terms & Conditions</Link>.
+                        I agree to the <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'terms' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Terms & Conditions</button>.
                     </label>
+
                 </div>
 
                 <button
@@ -190,6 +198,13 @@ export default function RegisterStep1() {
                     </Link>
                 </p>
             </div>
+
+            <LegalModal 
+                isOpen={legalModal.isOpen} 
+                onClose={() => setLegalModal({ ...legalModal, isOpen: false })} 
+                type={legalModal.type} 
+            />
         </motion.div>
+
     );
 }

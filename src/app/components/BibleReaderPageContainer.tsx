@@ -98,7 +98,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const { updateProgress, latestProgress } = useReadingProgress();
   const { data: session } = useSession();
   const router = useRouter();
-  const { isSaved, getSavedItem, toggleSave, saveItem } = useSavedItems();
+  const { isSaved, getSavedItem, toggleSave, saveItem, unsaveItem } = useSavedItems();
 
   // determine whether we are on bible page; if not, render only nav bar
   const pathname = usePathname();
@@ -206,19 +206,27 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
     for (const verseNum of selectedVerses) {
       const refId = `${selectedBookId}_${selectedChapter}_${verseNum}_${selectedVersionId}`;
-      await saveItem({
-        type: 'bible',
-        refId,
-        metadata: {
-          bookId: selectedBookId || undefined,
-          bookName: displayBookName || undefined,
-          chapter: selectedChapter,
-          verse: verseNum,
-          versionId: selectedVersionId || undefined,
-          versionName: displayVersionName || undefined,
-          labels
+      if (labels.length === 0) {
+        // If no labels, check if we should unsave
+        const existing = getSavedItem('bible', refId);
+        if (existing) {
+          await unsaveItem(existing._id);
         }
-      });
+      } else {
+        await saveItem({
+          type: 'bible',
+          refId,
+          metadata: {
+            bookId: selectedBookId || undefined,
+            bookName: displayBookName || undefined,
+            chapter: selectedChapter,
+            verse: verseNum,
+            versionId: selectedVersionId || undefined,
+            versionName: displayVersionName || undefined,
+            labels
+          }
+        });
+      }
     }
     setSelectedVerses([]);
   };
@@ -1423,17 +1431,10 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
             const refId = `${selectedBookId}_${selectedChapter}_${verseNum}_${selectedVersionId}`;
             if (color === 'none') {
               // Remove highlight
-              await saveItem({
-                type: 'highlight',
-                refId,
-                metadata: {
-                  bookId: selectedBookId || undefined,
-                  chapter: selectedChapter,
-                  verse: verseNum,
-                  versionId: selectedVersionId || undefined,
-                  color
-                }
-              });
+              const existing = userHighlights.find(h => h.metadata?.verse === verseNum);
+              if (existing && existing._id) {
+                await unsaveItem(existing._id);
+              }
               // Remove from local state immediately
               setUserHighlights(prev => prev.filter(h => h.metadata?.verse !== verseNum));
             } else {
@@ -1471,19 +1472,35 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         if (!session?.user || verses.length === 0) return;
         const processNotes = async () => {
           const refId = `${selectedBookId}_${selectedChapter}_${verses.join('-')}_${selectedVersionId}`;
-          await saveItem({
-            type: 'note',
-            refId,
-            metadata: {
-              bookId: selectedBookId || undefined,
-              bookName: displayBookName || undefined,
-              chapter: selectedChapter,
-              verses: verses,
-              versionId: selectedVersionId || undefined,
-              versionName: displayVersionName || undefined,
-              content: note
+          if (!note.trim()) {
+            const existing = userNotes.find(n => n.refId === refId);
+            if (existing && existing._id) {
+              await unsaveItem(existing._id);
+              setUserNotes(prev => prev.filter(n => n._id !== existing._id));
             }
-          });
+          } else {
+            await saveItem({
+              type: 'note',
+              refId,
+              metadata: {
+                bookId: selectedBookId || undefined,
+                bookName: displayBookName || undefined,
+                chapter: selectedChapter,
+                verses: verses,
+                versionId: selectedVersionId || undefined,
+                versionName: displayVersionName || undefined,
+                content: note
+              }
+            });
+            // Update local state
+            setUserNotes(prev => {
+              const existing = prev.find(n => n.refId === refId);
+              if (existing) {
+                return prev.map(n => n.refId === refId ? { ...n, metadata: { ...n.metadata, content: note } } : n);
+              }
+              return [...prev, { refId, metadata: { bookId: selectedBookId, bookName: displayBookName, chapter: selectedChapter, verses, versionId: selectedVersionId, versionName: displayVersionName, content: note } }];
+            });
+          }
         };
         processNotes();
       }}
