@@ -2270,7 +2270,6 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           onHighlight={onVerseMenuHighlight}
           onSave={onVerseMenuSave}
           onNote={onVerseMenuNote}
-          onCompare={onVerseMenuCompare}
           onShare={onVerseMenuShare}
         />
       )}

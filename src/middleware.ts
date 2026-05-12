@@ -19,6 +19,11 @@ export default async function middleware(req: NextRequest) {
     const { nextUrl } = req;
     const pathname = nextUrl.pathname;
 
+    // 0. ROOT REDIRECT
+    if (pathname === '/') {
+        return NextResponse.redirect(new URL('/home', nextUrl));
+    }
+
     // 1. ADMIN FLOW ISOLATION
     if (pathname.startsWith('/admin') || pathname.startsWith('/api/v1/admin')) {
         const token = await getToken({ req, secret, cookieName: 'admin_session' }) || 
