@@ -61,13 +61,12 @@ export default function RegisterStep1() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="w-full max-w-md glass-ios border-none p-8 space-y-8 relative overflow-hidden shadow-2xl"
         >
-            {/* Back Button */}
             <motion.button
                 whileHover={{ x: -2, scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                onClick={() => router.push('/home')}
+                onClick={() => router.back()}
                 className="absolute left-6 top-6 p-2 rounded-full bg-white/10 text-slate-500 hover:text-[var(--color-primary-teal)] hover:bg-white/20 transition-all outline-none backdrop-blur-sm"
-                title="Back to Home"
+                title="Go Back"
             >
                 <ChevronLeft className="w-5 h-5" />
             </motion.button>

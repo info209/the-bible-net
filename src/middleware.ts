@@ -6,7 +6,7 @@ const secret = process.env.NEXTAUTH_SECRET || process.env.AUTH_SECRET;
 
 // Route Categories
 const adminProtectedRoutes = ['/admin', '/api/v1/admin'];
-const userProtectedPageRoutes = ['/profile', '/library', '/auth/profile-setup'];
+const userProtectedPageRoutes = ['/profile', '/auth/profile-setup'];
 const authPageRoutes = [
     '/auth/login', '/auth/register', '/auth/verify-otp', 
     '/auth/forgot-password', '/auth/reset-password', 

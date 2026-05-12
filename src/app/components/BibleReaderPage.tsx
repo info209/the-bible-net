@@ -2068,14 +2068,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         )}
       </div>
 
-      {/* Audio Controls Floating Button — hidden when bottom sheet is open */}
-      {showAudioControls && !showAudioControlPanel && (
+      {/* Audio Controls Floating Button — hidden when bottom sheet is open or settings is open */}
+      {showAudioControls && !showAudioControlPanel && !showSettingsMenu && (
         <AudioFloatingPlayer
           playerState={audioPlayerState}
           isReadingMode={isReadingMode}
+          isVerseActionMenuOpen={selectedVerses.length > 0}
           isPlaying={audioPlaying}
-          // Progress is 0 when not playing — prevents fake ring fill before speech starts
-          progress={audioPlaying && audioDuration > 0
+          progress={audioDuration > 0
             ? Math.min(1, Math.max(0, audioCurrentTime / audioDuration))
             : 0}
           onPlayPause={handleNarrationPlayPause}
@@ -2161,7 +2161,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             onHighlight={(color) => onSaveHighlight?.(selectedVerses, color)}
             onSave={(labels) => onSaveVerses?.(labels)}
             onNote={(note) => onSaveNote?.(selectedVerses, note)}
-            onCompare={() => onCompareVerses?.()}
             onShare={() => onShareVerses?.()}
           />
         )}

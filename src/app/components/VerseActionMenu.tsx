@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    BookmarkPlus, FileText, Columns2, Plus, X, ChevronLeft,
+    BookmarkPlus, FileText, Plus, X, ChevronLeft,
     Check, List, Type, Trash2, PenTool
 } from 'lucide-react';
 
@@ -14,7 +14,6 @@ interface VerseActionMenuProps {
     onHighlight: (color: string) => void | Promise<void>;
     onSave: (labels: string[]) => void | Promise<void>;
     onNote: (note: string) => void | Promise<void>;
-    onCompare: () => void;
     onShare: () => void;
     /** Currently applied highlight color id for the selected verses (if any) */
     existingHighlightColor?: string | null;
@@ -54,7 +53,6 @@ export default function VerseActionMenu({
     onHighlight,
     onSave,
     onNote,
-    onCompare,
     onShare,
     existingHighlightColor = null,
 }: VerseActionMenuProps) {
@@ -323,15 +321,6 @@ export default function VerseActionMenu({
                                 >
                                     <FileText className="w-[19px] h-[19px] text-amber-500" strokeWidth={2} />
                                     <span className="text-[10px] font-medium text-gray-500 tracking-wide">Note</span>
-                                </button>
-
-                                {/* Compare */}
-                                <button
-                                    onClick={() => { onCompare(); onClose(); }}
-                                    className="flex flex-col items-center justify-center gap-1 py-2.5 flex-1 rounded-[14px] bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
-                                >
-                                    <Columns2 className="w-[19px] h-[19px] text-indigo-500" strokeWidth={2} />
-                                    <span className="text-[10px] font-medium text-gray-500 tracking-wide">Compare</span>
                                 </button>
                             </div>
                         </motion.div>

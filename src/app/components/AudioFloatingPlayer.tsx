@@ -8,7 +8,7 @@ import ProgressRing from "./ui/ProgressRing";
 // Sits above BottomNav (64px) with 12px breathing room + safe-area
 const BOTTOM_NAV_HEIGHT = 64; // px
 const BREATHING = 12; // px gap above nav
-const LONG_PRESS_DURATION = 1000; // ms
+const LONG_PRESS_DURATION = 500; // ms
 
 interface Props {
   playerState: "default" | "minimized";
@@ -22,6 +22,8 @@ interface Props {
   onOpenPanel: () => void;
   /** When true the bottom nav is hidden — shift buttons down to sit at safe-area-inset */
   isReadingMode?: boolean;
+  /** When true the verse selection menu is open — shift buttons UP to stay visible above it */
+  isVerseActionMenuOpen?: boolean;
 }
 
 export default function AudioFloatingPlayer({
@@ -35,6 +37,7 @@ export default function AudioFloatingPlayer({
   subtitle,
   onOpenPanel,
   isReadingMode = false,
+  isVerseActionMenuOpen = false,
 }: Props) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks whether the current press crossed the 2-second threshold
@@ -42,9 +45,11 @@ export default function AudioFloatingPlayer({
   // Prevents mouse-event handlers from firing after a touch event (synthetic events)
   const isTouchActiveRef = useRef(false);
 
-  const bottomValue = isReadingMode
-    ? `calc(${BREATHING}px + env(safe-area-inset-bottom))`
-    : `calc(${BOTTOM_NAV_HEIGHT}px + ${BREATHING}px + env(safe-area-inset-bottom))`;
+  const bottomValue = isVerseActionMenuOpen
+    ? `calc(320px + env(safe-area-inset-bottom))`
+    : isReadingMode
+      ? `calc(${BREATHING}px + env(safe-area-inset-bottom))`
+      : `calc(${BOTTOM_NAV_HEIGHT}px + ${BREATHING}px + env(safe-area-inset-bottom))`;
 
   /** Start the 2-second long-press timer. Called on pointer-down. */
   const startPressTimer = useCallback(() => {
@@ -155,14 +160,9 @@ export default function AudioFloatingPlayer({
               <ChevronLeft className="size-[18px] text-[var(--color-text-secondary)]" strokeWidth={2.5} />
             </motion.button>
 
-            {/* ▶ Play / Pause — center, with ProgressRing + long-press ──────── */}
-            {/*
-              Progress is frozen at 0 when not playing so the ring doesn't
-              show fake progress before speech synthesis actually starts.
-            */}
             <div className="pointer-events-auto">
               <ProgressRing
-                progress={isPlaying ? progress : 0}
+                progress={progress}
                 size={58}
                 strokeWidth={2.5}
                 trackColor="var(--color-bg-tertiary)"
@@ -237,7 +237,7 @@ export default function AudioFloatingPlayer({
           >
             {/* Progress ring + play */}
             <ProgressRing
-              progress={isPlaying ? progress : 0}
+              progress={progress}
               size={40}
               strokeWidth={2.5}
               trackColor="var(--color-bg-tertiary)"
