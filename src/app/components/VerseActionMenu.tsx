@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import Link from 'next/link';
 import {
     BookmarkPlus, FileText, Plus, X, ChevronLeft,
     Check, List, Type, Trash2, PenTool
@@ -17,6 +18,7 @@ interface VerseActionMenuProps {
     onShare: () => void;
     /** Currently applied highlight color id for the selected verses (if any) */
     existingHighlightColor?: string | null;
+    isLoggedIn?: boolean;
 }
 
 // Primary 5 colors shown initially
@@ -55,6 +57,7 @@ export default function VerseActionMenu({
     onNote,
     onShare,
     existingHighlightColor = null,
+    isLoggedIn = false,
 }: VerseActionMenuProps) {
     const [view, setView] = useState<'main' | 'save' | 'note'>('main');
     const [highlightMode, setHighlightMode] = useState(false);
@@ -174,6 +177,7 @@ export default function VerseActionMenu({
                 className="fixed bottom-[72px] left-1/2 -translate-x-1/2 w-[calc(100%-20px)] max-w-[430px] bg-white rounded-[18px] shadow-[0_4px_24px_rgba(0,0,0,0.10)] z-[1110]"
                 style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
                 onClick={(e) => e.stopPropagation()}
+                data-bottom-sheet="true"
             >
                 {/* ── Drag Handle ── */}
                 <div className="flex items-center justify-center pt-2.5 pb-0">
@@ -197,132 +201,161 @@ export default function VerseActionMenu({
                                 <span className="text-gray-600 font-medium">{formattedVerses()}</span>
                             </p>
 
-                            {/* ── Inline Color Palette (visible when highlight mode is on) ── */}
-                            <AnimatePresence>
-                                {highlightMode && (
-                                    <motion.div
-                                        key="palette"
-                                        initial={{ opacity: 0, height: 0 }}
-                                        animate={{ opacity: 1, height: 'auto' }}
-                                        exit={{ opacity: 0, height: 0 }}
-                                        transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
-                                        className="overflow-hidden"
-                                    >
-                                        <div className="flex items-center mb-2.5 px-0.5">
-                                            {/* Trash — only when editing existing highlight */}
-                                            {existingHighlightColor && (
-                                                <button
-                                                    onClick={handleRemoveHighlight}
-                                                    className="w-7 h-7 mr-2 rounded-full flex items-center justify-center bg-red-50 border border-red-200 shrink-0 active:scale-90 transition-transform"
-                                                    title="Remove highlight"
-                                                >
-                                                    <Trash2 className="w-3.5 h-3.5 text-red-400" />
-                                                </button>
-                                            )}
-
-                                            {/* Color dots row */}
-                                            <div className="flex items-center gap-2.5 flex-1 flex-wrap py-1">
-                                                {displayColors.map((c, i) => {
-                                                    const isSelected = selectedColor === c.id;
-                                                    const isLastVisible = i === displayColors.length - 1;
-                                                    return (
-                                                        <button
-                                                            key={c.id}
-                                                            onClick={() => handleColorTap(c.id, i, displayColors.length)}
-                                                            title={c.label}
-                                                            aria-label={`Select ${c.label} highlight`}
-                                                            className="relative flex items-center justify-center active:scale-90 transition-transform shrink-0"
-                                                            style={{ width: 26, height: 26 }}
-                                                        >
-                                                            {/* Selection ring */}
-                                                            {isSelected && (
-                                                                <span
-                                                                    className="absolute rounded-full"
-                                                                    style={{
-                                                                        inset: -3,
-                                                                        border: `2px solid ${c.color}`,
-                                                                        borderRadius: '50%',
-                                                                    }}
-                                                                />
-                                                            )}
-                                                            {/* Color fill */}
-                                                            <span
-                                                                className="absolute inset-0 rounded-full"
-                                                                style={{ backgroundColor: c.color }}
-                                                            />
-                                                        </button>
-                                                    );
-                                                })}
-                                            </div>
-
-                                            {/* Expand / Collapse toggle */}
-                                            <button
-                                                onClick={() => setPaletteExpanded(prev => !prev)}
-                                                className="w-7 h-7 ml-1.5 rounded-full bg-gray-100 flex items-center justify-center shrink-0 active:scale-90 transition-transform border border-gray-200"
-                                                title={paletteExpanded ? 'Fewer colors' : 'More colors'}
-                                            >
-                                                <motion.span
-                                                    animate={{ rotate: paletteExpanded ? 45 : 0 }}
-                                                    transition={{ duration: 0.18 }}
-                                                    className="flex items-center justify-center"
-                                                >
-                                                    <Plus className="w-3 h-3 text-gray-500" />
-                                                </motion.span>
-                                            </button>
+                            {!isLoggedIn ? (
+                                <div className="bg-gray-50 rounded-[16px] p-4 border border-dashed border-gray-200">
+                                    <div className="flex flex-col items-center text-center">
+                                        <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
+                                            <BookmarkPlus className="w-5 h-5 text-[#31C4BE]" />
                                         </div>
+                                        <h3 className="text-[14px] font-bold text-gray-800 mb-1">Login to Save & Highlight</h3>
+                                        <p className="text-[11px] text-gray-500 mb-4 leading-relaxed">
+                                            Sign in to your account to highlight, save verses and take personal notes.
+                                        </p>
+                                        <div className="flex gap-2 w-full">
+                                            <Link 
+                                                href="/auth/login"
+                                                className="flex-1 py-2.5 bg-[#31C4BE] text-white text-[12px] font-bold rounded-xl shadow-[0_2px_8px_rgba(49,196,190,0.25)] active:scale-95 transition-all text-center"
+                                            >
+                                                Login
+                                            </Link>
+                                            <Link 
+                                                href="/auth/register"
+                                                className="flex-1 py-2.5 bg-white text-gray-700 border border-gray-200 text-[12px] font-bold rounded-xl active:scale-95 transition-all text-center"
+                                            >
+                                                Register
+                                            </Link>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* ── Inline Color Palette (visible when highlight mode is on) ── */}
+                                    <AnimatePresence>
+                                        {highlightMode && (
+                                            <motion.div
+                                                key="palette"
+                                                initial={{ opacity: 0, height: 0 }}
+                                                animate={{ opacity: 1, height: 'auto' }}
+                                                exit={{ opacity: 0, height: 0 }}
+                                                transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                                                className="overflow-hidden"
+                                            >
+                                                <div className="flex items-center mb-2.5 px-0.5">
+                                                    {/* Trash — only when editing existing highlight */}
+                                                    {existingHighlightColor && (
+                                                        <button
+                                                            onClick={handleRemoveHighlight}
+                                                            className="w-7 h-7 mr-2 rounded-full flex items-center justify-center bg-red-50 border border-red-200 shrink-0 active:scale-90 transition-transform"
+                                                            title="Remove highlight"
+                                                        >
+                                                            <Trash2 className="w-3.5 h-3.5 text-red-400" />
+                                                        </button>
+                                                    )}
 
-                                        {/* Apply button — compact */}
+                                                    {/* Color dots row */}
+                                                    <div className="flex items-center gap-2.5 flex-1 flex-wrap py-1">
+                                                        {displayColors.map((c, i) => {
+                                                            const isSelected = selectedColor === c.id;
+                                                            return (
+                                                                <button
+                                                                    key={c.id}
+                                                                    onClick={() => handleColorTap(c.id, i, displayColors.length)}
+                                                                    title={c.label}
+                                                                    aria-label={`Select ${c.label} highlight`}
+                                                                    className="relative flex items-center justify-center active:scale-90 transition-transform shrink-0"
+                                                                    style={{ width: 26, height: 26 }}
+                                                                >
+                                                                    {/* Selection ring */}
+                                                                    {isSelected && (
+                                                                        <span
+                                                                            className="absolute rounded-full"
+                                                                            style={{
+                                                                                inset: -3,
+                                                                                border: `2px solid ${c.color}`,
+                                                                                borderRadius: '50%',
+                                                                            }}
+                                                                        />
+                                                                    )}
+                                                                    {/* Color fill */}
+                                                                    <span
+                                                                        className="absolute inset-0 rounded-full"
+                                                                        style={{ backgroundColor: c.color }}
+                                                                    />
+                                                                </button>
+                                                            );
+                                                        })}
+                                                    </div>
+
+                                                    {/* Expand / Collapse toggle */}
+                                                    <button
+                                                        onClick={() => setPaletteExpanded(prev => !prev)}
+                                                        className="w-7 h-7 ml-1.5 rounded-full bg-gray-100 flex items-center justify-center shrink-0 active:scale-90 transition-transform border border-gray-200"
+                                                        title={paletteExpanded ? 'Fewer colors' : 'More colors'}
+                                                    >
+                                                        <motion.span
+                                                            animate={{ rotate: paletteExpanded ? 45 : 0 }}
+                                                            transition={{ duration: 0.18 }}
+                                                            className="flex items-center justify-center"
+                                                        >
+                                                            <Plus className="w-3 h-3 text-gray-500" />
+                                                        </motion.span>
+                                                    </button>
+                                                </div>
+
+                                                {/* Apply button — compact */}
+                                                <button
+                                                    onClick={handleApplyHighlight}
+                                                    className="w-full mb-2 py-2 rounded-xl bg-[#31C4BE] text-white text-[12.5px] font-semibold shadow-[0_2px_8px_rgba(49,196,190,0.30)] active:scale-[0.98] transition-all"
+                                                >
+                                                    Apply Highlight
+                                                </button>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    {/* ── 4 Action Buttons in one row ── */}
+                                    <div className="flex items-center justify-between gap-2">
+                                        {/* Highlight */}
                                         <button
-                                            onClick={handleApplyHighlight}
-                                            className="w-full mb-2 py-2 rounded-xl bg-[#31C4BE] text-white text-[12.5px] font-semibold shadow-[0_2px_8px_rgba(49,196,190,0.30)] active:scale-[0.98] transition-all"
+                                            onClick={handleToggleHighlightMode}
+                                            className={`flex flex-col items-center justify-center gap-1 py-2.5 flex-1 rounded-[14px] transition-all active:scale-95 ${
+                                                highlightMode
+                                                    ? 'bg-[#31C4BE]/10 border border-[#31C4BE]/30'
+                                                    : 'bg-gray-50 hover:bg-gray-100'
+                                            }`}
                                         >
-                                            Apply Highlight
+                                            <PenTool
+                                                className="w-[19px] h-[19px]"
+                                                style={{ color: highlightMode ? '#31C4BE' : '#31C4BE' }}
+                                                strokeWidth={2}
+                                            />
+                                            <span className={`text-[10px] font-medium tracking-wide ${
+                                                highlightMode ? 'text-[#31C4BE]' : 'text-gray-500'
+                                            }`}>
+                                                Highlight
+                                            </span>
                                         </button>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
 
-                            {/* ── 4 Action Buttons in one row ── */}
-                            <div className="flex items-center justify-between gap-2">
-                                {/* Highlight */}
-                                <button
-                                    onClick={handleToggleHighlightMode}
-                                    className={`flex flex-col items-center justify-center gap-1 py-2.5 flex-1 rounded-[14px] transition-all active:scale-95 ${
-                                        highlightMode
-                                            ? 'bg-[#31C4BE]/10 border border-[#31C4BE]/30'
-                                            : 'bg-gray-50 hover:bg-gray-100'
-                                    }`}
-                                >
-                                    <PenTool
-                                        className="w-[19px] h-[19px]"
-                                        style={{ color: highlightMode ? '#31C4BE' : '#31C4BE' }}
-                                        strokeWidth={2}
-                                    />
-                                    <span className={`text-[10px] font-medium tracking-wide ${
-                                        highlightMode ? 'text-[#31C4BE]' : 'text-gray-500'
-                                    }`}>
-                                        Highlight
-                                    </span>
-                                </button>
+                                        {/* Save */}
+                                        <button
+                                            onClick={() => setView('save')}
+                                            className="flex flex-col items-center justify-center gap-1 py-2.5 flex-1 rounded-[14px] bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
+                                        >
+                                            <BookmarkPlus className="w-[19px] h-[19px] text-[#31C4BE]" strokeWidth={2} />
+                                            <span className="text-[10px] font-medium text-gray-500 tracking-wide">Save</span>
+                                        </button>
 
-                                {/* Save */}
-                                <button
-                                    onClick={() => setView('save')}
-                                    className="flex flex-col items-center justify-center gap-1 py-2.5 flex-1 rounded-[14px] bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
-                                >
-                                    <BookmarkPlus className="w-[19px] h-[19px] text-[#31C4BE]" strokeWidth={2} />
-                                    <span className="text-[10px] font-medium text-gray-500 tracking-wide">Save</span>
-                                </button>
-
-                                {/* Note */}
-                                <button
-                                    onClick={() => setView('note')}
-                                    className="flex flex-col items-center justify-center gap-1 py-2.5 flex-1 rounded-[14px] bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
-                                >
-                                    <FileText className="w-[19px] h-[19px] text-amber-500" strokeWidth={2} />
-                                    <span className="text-[10px] font-medium text-gray-500 tracking-wide">Note</span>
-                                </button>
-                            </div>
+                                        {/* Note */}
+                                        <button
+                                            onClick={() => setView('note')}
+                                            className="flex flex-col items-center justify-center gap-1 py-2.5 flex-1 rounded-[14px] bg-gray-50 hover:bg-gray-100 transition-all active:scale-95"
+                                        >
+                                            <FileText className="w-[19px] h-[19px] text-amber-500" strokeWidth={2} />
+                                            <span className="text-[10px] font-medium text-gray-500 tracking-wide">Note</span>
+                                        </button>
+                                    </div>
+                                </>
+                            )}
                         </motion.div>
                     )}
 

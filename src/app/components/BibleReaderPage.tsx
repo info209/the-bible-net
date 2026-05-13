@@ -92,6 +92,7 @@ interface BibleReaderPageProps {
   isSliderDragging?: boolean;
   onSliderDragStart?: () => void;
   onSliderDragEnd?: () => void;
+  isLoggedIn?: boolean;
 }
 
 export default function BibleReaderPage(props: BibleReaderPageProps) {
@@ -126,6 +127,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     isSliderDragging = false,
     onSliderDragStart,
     onSliderDragEnd,
+    isLoggedIn = false,
   } = props;
 
   const selectedBook = book;
@@ -2073,7 +2075,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         <AudioFloatingPlayer
           playerState={audioPlayerState}
           isReadingMode={isReadingMode}
-          isVerseActionMenuOpen={selectedVerses.length > 0}
           isPlaying={audioPlaying}
           progress={audioDuration > 0
             ? Math.min(1, Math.max(0, audioCurrentTime / audioDuration))
@@ -2162,6 +2163,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             onSave={(labels) => onSaveVerses?.(labels)}
             onNote={(note) => onSaveNote?.(selectedVerses, note)}
             onShare={() => onShareVerses?.()}
+            isLoggedIn={isLoggedIn}
           />
         )}
       </AnimatePresence>

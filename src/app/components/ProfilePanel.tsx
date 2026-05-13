@@ -38,15 +38,15 @@ interface ProfilePanelProps {
 }
 
 const gridItems = [
-  { icon: Bookmark,       label: 'Saved',              route: '/saved' },
-  { icon: FileText,       label: 'Notes',               route: '/notes' },
-  { icon: Highlighter,    label: 'Highlights',          route: '/highlights' },
-  { icon: Heart,          label: 'Likes',               route: '/likes' },
-  { icon: MessageCircle,  label: 'Comment',             route: '/comments' },
-  { icon: BookMarked,     label: 'Journals\n& Prayers', route: '/journals' },
-  { icon: Zap,            label: 'Streaks',             route: '/streaks' },
-  { icon: Share2,         label: 'Share',               route: '/share' },
-  { icon: HandHeart,      label: 'Support',             route: '/support' },
+  { icon: Bookmark, label: 'Saved', route: '/saved' },
+  { icon: FileText, label: 'Notes', route: '/notes' },
+  { icon: Highlighter, label: 'Highlights', route: '/highlights' },
+  { icon: Heart, label: 'Likes', route: '/likes' },
+  { icon: MessageCircle, label: 'Comment', route: '/comments' },
+  { icon: BookMarked, label: 'Journals\n& Prayers', route: '/journals' },
+  { icon: Zap, label: 'Streaks', route: '/streaks' },
+  { icon: Share2, label: 'Share', route: '/share' },
+  { icon: HandHeart, label: 'Support', route: '/support' },
 ];
 
 function getInitials(name?: string | null, email?: string | null): string {
@@ -63,8 +63,8 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
   const router = useRouter();
   const user = session?.user;
 
-  const initials  = getInitials(user?.name, user?.email);
-  const fullName  = user?.name ?? user?.email ?? 'User';
+  const initials = getInitials(user?.name, user?.email);
+  const fullName = user?.name ?? user?.email ?? 'User';
 
   const handleLogout = async () => {
     onClose();
@@ -127,7 +127,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
             <button
               className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white border border-gray-200 shadow flex items-center justify-center hover:bg-gray-50 transition-colors"
               title="Change photo"
-              onClick={() => {/* future: open image picker */}}
+              onClick={() => {/* future: open image picker */ }}
             >
               <Camera className="w-3.5 h-3.5 text-gray-600" />
             </button>
@@ -185,7 +185,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
               </button>
 
               <button
-                onClick={() => {/* future: open language modal */}}
+                onClick={() => {/* future: open language modal */ }}
                 className="flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all duration-150"
               >
                 <Globe className="w-4.5 h-4.5 text-gray-500" strokeWidth={1.8} />

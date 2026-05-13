@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useCallback } from "react";
+import { useRef, useCallback, useEffect, useState } from "react";
 import { Play, Pause, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProgressRing from "./ui/ProgressRing";
@@ -22,8 +22,6 @@ interface Props {
   onOpenPanel: () => void;
   /** When true the bottom nav is hidden — shift buttons down to sit at safe-area-inset */
   isReadingMode?: boolean;
-  /** When true the verse selection menu is open — shift buttons UP to stay visible above it */
-  isVerseActionMenuOpen?: boolean;
 }
 
 export default function AudioFloatingPlayer({
@@ -37,7 +35,6 @@ export default function AudioFloatingPlayer({
   subtitle,
   onOpenPanel,
   isReadingMode = false,
-  isVerseActionMenuOpen = false,
 }: Props) {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Tracks whether the current press crossed the 2-second threshold
@@ -45,11 +42,77 @@ export default function AudioFloatingPlayer({
   // Prevents mouse-event handlers from firing after a touch event (synthetic events)
   const isTouchActiveRef = useRef(false);
 
-  const bottomValue = isVerseActionMenuOpen
-    ? `calc(320px + env(safe-area-inset-bottom))`
-    : isReadingMode
-      ? `calc(${BREATHING}px + env(safe-area-inset-bottom))`
-      : `calc(${BOTTOM_NAV_HEIGHT}px + ${BREATHING}px + env(safe-area-inset-bottom))`;
+  const [sheetOffset, setSheetOffset] = useState(0);
+
+  useEffect(() => {
+    // We want to observe any active bottom sheets.
+    const updateHeight = () => {
+      const sheets = Array.from(document.querySelectorAll('[data-bottom-sheet="true"]'));
+      if (sheets.length === 0) {
+        setSheetOffset(0);
+        return;
+      }
+      
+      let maxOffset = 0;
+      sheets.forEach(sheet => {
+        const el = sheet as HTMLElement;
+        const rect = el.getBoundingClientRect();
+        // Ignore hidden sheets
+        if (rect.height === 0) return;
+        
+        // Find the resting bottom distance. 
+        // We can use the offsetHeight + any CSS bottom value (like 72px)
+        const computed = window.getComputedStyle(el);
+        let bottomVal = parseFloat(computed.bottom);
+        if (isNaN(bottomVal)) bottomVal = 0;
+        
+        // If the element has a transform (like y: 60 during animation), we want the final resting height,
+        // which is height + bottomVal.
+        const totalRestingOffset = el.offsetHeight + bottomVal;
+        if (totalRestingOffset > maxOffset) {
+          maxOffset = totalRestingOffset;
+        }
+      });
+      
+      setSheetOffset(maxOffset);
+    };
+
+    // Initial check
+    updateHeight();
+
+    // Resize observer to watch the sheets' heights changing (e.g. expanding notes)
+    const resizeObserver = new ResizeObserver(() => {
+      updateHeight();
+    });
+
+    // Mutation observer to watch for new sheets being added/removed
+    const mutationObserver = new MutationObserver(() => {
+      updateHeight();
+      resizeObserver.disconnect();
+      document.querySelectorAll('[data-bottom-sheet="true"]').forEach(sheet => {
+        resizeObserver.observe(sheet);
+      });
+    });
+
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+    document.querySelectorAll('[data-bottom-sheet="true"]').forEach(sheet => {
+      resizeObserver.observe(sheet);
+    });
+
+    return () => {
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  const baselineBottom = isReadingMode
+    ? BREATHING
+    : BOTTOM_NAV_HEIGHT + BREATHING;
+
+  // If a sheet is active, float 20px above its top edge. Otherwise use baseline.
+  const finalOffset = sheetOffset > 0 ? sheetOffset + 20 : baselineBottom;
+  const bottomValue = `calc(${finalOffset}px + env(safe-area-inset-bottom))`;
 
   /** Start the 2-second long-press timer. Called on pointer-down. */
   const startPressTimer = useCallback(() => {

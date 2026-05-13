@@ -26,10 +26,10 @@ export default async function AdminContentPage() {
                         href="/admin/content/bible"
                     />
                     <ContentCard
-                        title="Daily Reflections"
-                        description="Edit and schedule daily devotionals"
-                        icon="💡"
-                        href="/admin/content/reflections"
+                        title="Daily Content Schedule"
+                        description="Schedule verses, devotionals, and prayers by date"
+                        icon="📅"
+                        href="/admin/content/daily-content"
                     />
                     <ContentCard
                         title="Articles"

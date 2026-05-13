@@ -2,7 +2,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface ILike extends Document {
     contentId: mongoose.Types.ObjectId;
-    contentType: 'verse' | 'devotion';
+    contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion';
     userId?: mongoose.Types.ObjectId;
     guestIdentifier?: string; // cookie, fingerprint, or session id
     createdAt: Date;
@@ -13,12 +13,12 @@ const LikeSchema = new Schema<ILike>(
     {
         contentId: {
             type: Schema.Types.ObjectId,
-            ref: 'Content',
             required: true,
+            // ref is omitted because it can refer to Content or DailyContent
         },
         contentType: {
             type: String,
-            enum: ['verse', 'devotion'],
+            enum: ['verse', 'devotion', 'daily-verse', 'daily-devotion'],
             required: true,
         },
         userId: {

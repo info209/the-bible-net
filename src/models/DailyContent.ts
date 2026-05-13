@@ -2,8 +2,14 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IDailyContent extends Document {
     date: string; // ISO format: YYYY-MM-DD (UTC)
-    verseId: mongoose.Types.ObjectId;
-    devotionId: mongoose.Types.ObjectId;
+    verse: string;
+    verseReference: string;
+    devotionalTitle?: string;
+    devotionalContent?: string;
+    prayerTitle?: string;
+    prayerContent?: string;
+    backgroundImage?: string;
+    isPublished: boolean;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -16,15 +22,30 @@ const DailyContentSchema = new Schema<IDailyContent>(
             unique: true,
             index: true,
         },
-        verseId: {
-            type: Schema.Types.ObjectId,
-            ref: 'Content',
-            required: true,
+        verse: {
+            type: String,
         },
-        devotionId: {
-            type: Schema.Types.ObjectId,
-            ref: 'Content',
-            required: true,
+        verseReference: {
+            type: String,
+        },
+        devotionalTitle: {
+            type: String,
+        },
+        devotionalContent: {
+            type: String,
+        },
+        prayerTitle: {
+            type: String,
+        },
+        prayerContent: {
+            type: String,
+        },
+        backgroundImage: {
+            type: String,
+        },
+        isPublished: {
+            type: Boolean,
+            default: true,
         },
     },
     {

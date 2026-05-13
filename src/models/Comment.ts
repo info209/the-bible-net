@@ -3,7 +3,7 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 export interface IComment extends Document {
     userId: mongoose.Types.ObjectId;
     contentId: mongoose.Types.ObjectId;
-    contentType: 'verse' | 'devotion';
+    contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion';
     commentText: string;
     createdAt: Date;
     updatedAt: Date;
@@ -18,12 +18,12 @@ const CommentSchema = new Schema<IComment>(
         },
         contentId: {
             type: Schema.Types.ObjectId,
-            ref: 'Content',
             required: true,
+            // ref is omitted because it can refer to Content or DailyContent
         },
         contentType: {
             type: String,
-            enum: ['verse', 'devotion'],
+            enum: ['verse', 'devotion', 'daily-verse', 'daily-devotion'],
             required: true,
         },
         commentText: {

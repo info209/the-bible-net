@@ -5,31 +5,59 @@ import { ContentType, IContent } from '@/models/Content';
 
 export class DailyContentService {
     /**
-     * Retrieves daily content (verse or devotion) for the current UTC date.
-     * If doesn't exist, selects and stores it.
+     * Retrieves daily content for the last 7 days.
+     * Ensures today's content exists (rotates if not).
      */
-    static async getDailyContent(type: ContentType): Promise<IContent | null> {
-        const todayStr = new Date().toISOString().split('T')[0]; // Current UTC date in YYYY-MM-DD
+    static async getRecentDailyContent(days: number = 7): Promise<IDailyContent[]> {
+        const todayStr = new Date().toISOString().split('T')[0];
+
+        // Ensure today's content exists
+        let todayContent = await DailyContentRepository.findByDate(todayStr);
+        if (!todayContent) {
+            todayContent = await this.rotateDailyContent(todayStr);
+        }
+
+        return await DailyContentRepository.findLastNDays(todayStr, days);
+    }
+
+    /**
+     * Legacy method for fetching a specific type (used by older APIs)
+     */
+    static async getDailyContent(type: ContentType): Promise<any | null> {
+        const todayStr = new Date().toISOString().split('T')[0];
 
         let dailySelection = await DailyContentRepository.findByDate(todayStr);
 
         if (!dailySelection) {
-            // Rotate and create for today
             dailySelection = await this.rotateDailyContent(todayStr);
         }
 
         if (!dailySelection) return null;
 
         if (type === 'verse') {
-            return dailySelection.verseId as unknown as IContent;
+            return {
+                _id: dailySelection._id,
+                type: 'daily-verse',
+                reference: dailySelection.verseReference,
+                text: dailySelection.verse,
+                likeCount: 0,
+                commentCount: 0
+            };
         } else {
-            return dailySelection.devotionId as unknown as IContent;
+            return {
+                _id: dailySelection._id,
+                type: 'daily-devotion',
+                title: dailySelection.devotionalTitle,
+                text: dailySelection.devotionalContent,
+                likeCount: 0,
+                commentCount: 0
+            };
         }
     }
 
     /**
      * Rotates daily content by selecting one random verse and one random devotion for the date.
-     * This handles the 00:00 UTC rotation logic automatically on the first request of the day.
+     * Maps the Content fields to the new DailyContent flat structure.
      */
     private static async rotateDailyContent(date: string): Promise<IDailyContent | null> {
         const [verse, devotion] = await Promise.all([
@@ -38,20 +66,19 @@ export class DailyContentService {
         ]);
 
         if (!verse || !devotion) {
-            // Fallback or log: cannot rotate if both aren't available
             return null;
         }
 
         try {
-            // Attempt to create daily selection. Use try-catch because of potential race conditions 
-            // leading to duplicate key error (if multiple users request simultaneously).
             return await DailyContentRepository.create({
                 date,
-                verseId: verse._id as any,
-                devotionId: devotion._id as any
+                verse: verse.text,
+                verseReference: verse.reference || '',
+                devotionalTitle: devotion.title || '',
+                devotionalContent: devotion.text,
+                isPublished: true,
             });
         } catch (error: any) {
-            // Handle race condition: check if already created by another request
             if (error.code === 11000) {
                 return await DailyContentRepository.findByDate(date);
             }

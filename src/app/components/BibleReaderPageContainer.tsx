@@ -1520,6 +1520,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       isSliderDragging={isSliderDragging}
       onSliderDragStart={() => setIsSliderDragging(true)}
       onSliderDragEnd={() => setIsSliderDragging(false)}
+      isLoggedIn={!!session?.user}
     />
   );
 }

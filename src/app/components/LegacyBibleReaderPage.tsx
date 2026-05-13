@@ -2271,6 +2271,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           onSave={onVerseMenuSave}
           onNote={onVerseMenuNote}
           onShare={onVerseMenuShare}
+          isLoggedIn={!!session?.user}
         />
       )}
 
