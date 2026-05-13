@@ -1,9 +1,10 @@
 import { Comment, IComment } from '@/models/Comment';
 import { Content } from '@/models/Content';
+import { DailyContent } from '@/models/DailyContent';
 import mongoose from 'mongoose';
 
 export class CommentRepository {
-    static async addComment(contentId: string, contentType: 'verse' | 'devotion', userId: string, commentText: string): Promise<IComment> {
+    static async addComment(contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion', userId: string, commentText: string): Promise<IComment> {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
@@ -15,11 +16,13 @@ export class CommentRepository {
             });
             const savedComment = await comment.save({ session });
 
-            await Content.findByIdAndUpdate(
-                contentId,
-                { $inc: { commentCount: 1 } },
-                { session }
-            );
+            if (contentType === 'daily-verse') {
+                await DailyContent.findByIdAndUpdate(contentId, { $inc: { verseCommentCount: 1 } }, { session });
+            } else if (contentType === 'daily-devotion') {
+                await DailyContent.findByIdAndUpdate(contentId, { $inc: { devotionCommentCount: 1 } }, { session });
+            } else {
+                await Content.findByIdAndUpdate(contentId, { $inc: { commentCount: 1 } }, { session });
+            }
 
             await session.commitTransaction();
             return savedComment;
@@ -31,7 +34,7 @@ export class CommentRepository {
         }
     }
 
-    static async getComments(contentId: string, contentType: 'verse' | 'devotion'): Promise<IComment[]> {
+    static async getComments(contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion'): Promise<IComment[]> {
         return await Comment.find({ contentId, contentType })
             .populate('userId', 'name image') // Assuming User model has name and image
             .sort({ createdAt: -1 });
@@ -49,11 +52,13 @@ export class CommentRepository {
 
             await Comment.deleteOne({ _id: commentId }, { session });
 
-            await Content.findByIdAndUpdate(
-                comment.contentId,
-                { $inc: { commentCount: -1 } },
-                { session }
-            );
+            if (comment.contentType === 'daily-verse') {
+                await DailyContent.findByIdAndUpdate(comment.contentId, { $inc: { verseCommentCount: -1 } }, { session });
+            } else if (comment.contentType === 'daily-devotion') {
+                await DailyContent.findByIdAndUpdate(comment.contentId, { $inc: { devotionCommentCount: -1 } }, { session });
+            } else {
+                await Content.findByIdAndUpdate(comment.contentId, { $inc: { commentCount: -1 } }, { session });
+            }
 
             await session.commitTransaction();
             return true;

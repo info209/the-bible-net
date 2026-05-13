@@ -17,7 +17,27 @@ export class DailyContentService {
             todayContent = await this.rotateDailyContent(todayStr);
         }
 
-        return await DailyContentRepository.findLastNDays(todayStr, days);
+        // Backfill missing days to ensure we always have the requested number
+        const existingContent = await DailyContentRepository.findLastNDays(todayStr, days);
+        const existingDates = new Set(existingContent.map(c => c.date));
+        
+        let backfilled = false;
+        for (let i = 0; i < days; i++) {
+            const d = new Date(todayStr);
+            d.setDate(d.getDate() - i);
+            const targetDate = d.toISOString().split('T')[0];
+            
+            if (!existingDates.has(targetDate)) {
+                await this.rotateDailyContent(targetDate);
+                backfilled = true;
+            }
+        }
+
+        if (backfilled) {
+            return await DailyContentRepository.findLastNDays(todayStr, days);
+        }
+
+        return existingContent;
     }
 
     /**

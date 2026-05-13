@@ -17,8 +17,18 @@ export default function HomeView() {
   const { latestProgress, allProgress, isLoading: progressLoading } = useReadingProgress();
   const [audioPlaying, setAudioPlaying] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const [currentSlide, setCurrentSlide] = useState(0);
-  const carouselRef = useRef<HTMLDivElement>(null);
+  
+  const [currentVerseSlide, setCurrentVerseSlide] = useState(0);
+  const verseCarouselRef = useRef<HTMLDivElement>(null);
+  
+  const [currentDevotionSlide, setCurrentDevotionSlide] = useState(0);
+  const devotionCarouselRef = useRef<HTMLDivElement>(null);
+
+  const [showCommentModal, setShowCommentModal] = useState(false);
+  const [activeContent, setActiveContent] = useState<{ id: string, type: 'daily-verse' | 'daily-devotion' } | null>(null);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState('');
+  const [submittingComment, setSubmittingComment] = useState(false);
 
   const [dailyContents, setDailyContents] = useState<any[]>([]);
   const [prayers, setPrayers] = useState<any[]>([]);
@@ -66,19 +76,132 @@ export default function HomeView() {
     setIsDetailModalOpen(true);
   };
 
-  const handleScroll = () => {
-    if (carouselRef.current) {
-      const scrollLeft = carouselRef.current.scrollLeft;
-      const width = carouselRef.current.clientWidth;
-      const slide = Math.round(scrollLeft / width);
-      setCurrentSlide(slide);
+  const handleVerseScroll = () => {
+    if (verseCarouselRef.current) {
+      const scrollLeft = verseCarouselRef.current.scrollLeft;
+      const width = verseCarouselRef.current.clientWidth;
+      setCurrentVerseSlide(Math.round(scrollLeft / width));
     }
   };
 
-  const scrollToSlide = (index: number) => {
-    if (carouselRef.current) {
-      const width = carouselRef.current.clientWidth;
-      carouselRef.current.scrollTo({ left: width * index, behavior: 'smooth' });
+  const handleDevotionScroll = () => {
+    if (devotionCarouselRef.current) {
+      const scrollLeft = devotionCarouselRef.current.scrollLeft;
+      const width = devotionCarouselRef.current.clientWidth;
+      setCurrentDevotionSlide(Math.round(scrollLeft / width));
+    }
+  };
+
+  const scrollToVerseSlide = (index: number) => {
+    if (verseCarouselRef.current) {
+      const width = verseCarouselRef.current.clientWidth;
+      verseCarouselRef.current.scrollTo({ left: width * index, behavior: 'smooth' });
+    }
+  };
+
+  const scrollToDevotionSlide = (index: number) => {
+    if (devotionCarouselRef.current) {
+      const width = devotionCarouselRef.current.clientWidth;
+      devotionCarouselRef.current.scrollTo({ left: width * index, behavior: 'smooth' });
+    }
+  };
+
+  const handleLike = async (contentId: string, type: 'daily-verse' | 'daily-devotion') => {
+    try {
+      const res = await fetch('/api/interactions/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contentId, type })
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setDailyContents(prev => prev.map(content => {
+          if (content._id === contentId) {
+             return {
+                ...content,
+                [type === 'daily-verse' ? 'verseLikeCount' : 'devotionLikeCount']: data.likeCount
+             };
+          }
+          return content;
+        }));
+      }
+    } catch (error) {
+      console.error('Like error:', error);
+    }
+  };
+
+  const handleCommentClick = (contentId: string, type: 'daily-verse' | 'daily-devotion') => {
+    if (!session) {
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`);
+      return;
+    }
+    setActiveContent({ id: contentId, type });
+    setShowCommentModal(true);
+    fetchComments(contentId, type);
+  };
+
+  const fetchComments = async (contentId: string, type: 'daily-verse' | 'daily-devotion') => {
+    try {
+      const res = await fetch(`/api/interactions/comment?contentId=${contentId}&type=${type}`);
+      if (res.ok) {
+        setComments(await res.json());
+      }
+    } catch (error) {
+      console.error('Fetch comments error:', error);
+    }
+  };
+
+  const handleAddComment = async () => {
+    if (!newComment.trim() || !activeContent) return;
+    setSubmittingComment(true);
+    try {
+      const res = await fetch('/api/interactions/comment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contentId: activeContent.id,
+          type: activeContent.type,
+          comment: newComment
+        })
+      });
+
+      if (res.ok) {
+        setNewComment('');
+        fetchComments(activeContent.id, activeContent.type);
+        setDailyContents(prev => prev.map(content => {
+          if (content._id === activeContent.id) {
+             const countField = activeContent.type === 'daily-verse' ? 'verseCommentCount' : 'devotionCommentCount';
+             return {
+                ...content,
+                [countField]: (content[countField] || 0) + 1
+             };
+          }
+          return content;
+        }));
+      }
+    } catch (error) {
+      console.error('Add comment error:', error);
+    } finally {
+      setSubmittingComment(false);
+    }
+  };
+
+  const handleShare = async (content: any, type: 'daily-verse' | 'daily-devotion') => {
+    const url = `${window.location.origin}/share/${type.replace('daily-', '')}/${content._id}`;
+    const text = type === 'daily-verse'
+      ? `Check out this verse: ${content.verseReference} - "${content.verse}"`
+      : `Check out this devotional: "${content.devotionalTitle}"`;
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'The Bible Net', text, url });
+      } catch (error) {
+        console.log('Share failed', error);
+      }
+    } else {
+      navigator.clipboard.writeText(`${text} ${url}`);
+      alert('Link copied to clipboard!');
     }
   };
 
@@ -188,17 +311,15 @@ export default function HomeView() {
         </div>
       )}
 
-      {/* Daily Content Carousel (7-Day History) */}
-      <div className="relative overflow-hidden mb-6">
+      {/* Daily Verse Carousel (7-Day History) */}
+      <div className="relative overflow-hidden mb-8">
         <div 
-          ref={carouselRef}
-          onScroll={handleScroll}
+          ref={verseCarouselRef}
+          onScroll={handleVerseScroll}
           className="flex overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
         >
           {dailyContents.map((content, index) => (
-            <div key={content._id || index} className="w-full flex-shrink-0 snap-center">
-              <div className="space-y-6">
-                
+            <div key={content._id || index} className="w-full flex-shrink-0 snap-center px-2">
                 {/* Daily Verse Card - Figma Design */}
                 <div 
                   className={`bg-gradient-to-br ${content.bgColor || 'from-cyan-400 to-teal-500'} rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex flex-col`}
@@ -235,25 +356,25 @@ export default function HomeView() {
                     {/* Actions */}
                     <div className="flex items-center justify-between pt-4 border-t border-white/20">
                       <button
-                        onClick={() => openDetailModal(index, 'verse')}
+                        onClick={() => handleLike(content._id, 'daily-verse')}
                         className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Heart className="size-4" />
+                          <Heart className={`size-4 ${content.verseLikeCount > 0 ? 'fill-white' : ''}`} />
                         </div>
-                        <span className="text-xs">Like</span>
+                        <span className="text-xs">{content.verseLikeCount || 'Like'}</span>
                       </button>
                       <button
-                        onClick={() => openDetailModal(index, 'verse')}
+                        onClick={() => handleCommentClick(content._id, 'daily-verse')}
                         className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                           <MessageCircle className="size-4" />
                         </div>
-                        <span className="text-xs">Comment</span>
+                        <span className="text-xs">{content.verseCommentCount || 'Comment'}</span>
                       </button>
                       <button
-                        onClick={() => openDetailModal(index, 'verse')}
+                        onClick={() => handleShare(content, 'daily-verse')}
                         className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
@@ -273,7 +394,42 @@ export default function HomeView() {
                     </div>
                   </div>
                 </div>
+            </div>
+          ))}
+          
+          {dailyContents.length === 0 && (
+            <div className="w-full flex-shrink-0 px-2">
+              <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex items-center justify-center text-white">
+                <p>No content available yet.</p>
+              </div>
+            </div>
+          )}
+        </div>
 
+        {/* Slide indicators */}
+        {dailyContents.length > 1 && (
+          <div className="flex justify-center space-x-2 mt-2">
+            {dailyContents.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => scrollToVerseSlide(index)}
+                className={`h-2 rounded-full transition-all ${currentVerseSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Daily Devotional Carousel (7-Day History) */}
+      <div className="relative overflow-hidden mb-6">
+        <div 
+          ref={devotionCarouselRef}
+          onScroll={handleDevotionScroll}
+          className="flex overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+        >
+          {dailyContents.map((content, index) => (
+            <div key={content._id || index} className="w-full flex-shrink-0 snap-center px-2">
                 {/* Daily Devotional Card - Figma Design */}
                 {content.devotionalTitle ? (
                   <div className="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[320px] flex flex-col">
@@ -306,25 +462,25 @@ export default function HomeView() {
                       {/* Actions */}
                       <div className="flex items-center justify-between pt-4 border-t border-rose-200">
                         <button
-                          onClick={() => openDetailModal(index, 'devotional')}
+                          onClick={() => handleLike(content._id, 'daily-devotion')}
                           className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
                         >
                           <div className="bg-white p-2 rounded-full shadow-sm">
-                            <Heart className="size-4" />
+                            <Heart className={`size-4 ${content.devotionLikeCount > 0 ? 'fill-[var(--color-accent-rose)] text-[var(--color-accent-rose)]' : ''}`} />
                           </div>
-                          <span className="text-xs">Like</span>
+                          <span className="text-xs">{content.devotionLikeCount || 'Like'}</span>
                         </button>
                         <button
-                          onClick={() => openDetailModal(index, 'devotional')}
+                          onClick={() => handleCommentClick(content._id, 'daily-devotion')}
                           className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
                         >
                           <div className="bg-white p-2 rounded-full shadow-sm">
                             <MessageCircle className="size-4" />
                           </div>
-                          <span className="text-xs">Comment</span>
+                          <span className="text-xs">{content.devotionCommentCount || 'Comment'}</span>
                         </button>
                         <button
-                          onClick={() => openDetailModal(index, 'devotional')}
+                          onClick={() => handleShare(content, 'daily-devotion')}
                           className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
                         >
                           <div className="bg-white p-2 rounded-full shadow-sm">
@@ -344,18 +500,13 @@ export default function HomeView() {
                       </div>
                     </div>
                   </div>
-                ) : null}
-              </div>
+                ) : (
+                  <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-6 shadow-xl min-h-[320px] flex items-center justify-center text-gray-500">
+                    <p>Devotion not available.</p>
+                  </div>
+                )}
             </div>
           ))}
-          
-          {dailyContents.length === 0 && (
-            <div className="w-full flex-shrink-0">
-              <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex items-center justify-center text-white">
-                <p>No content available yet.</p>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Slide indicators */}
@@ -364,8 +515,8 @@ export default function HomeView() {
             {dailyContents.map((_, index) => (
               <button
                 key={index}
-                onClick={() => scrollToSlide(index)}
-                className={`h-2 rounded-full transition-all ${currentSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
+                onClick={() => scrollToDevotionSlide(index)}
+                className={`h-2 rounded-full transition-all ${currentDevotionSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
                 aria-label={`Go to slide ${index + 1}`}
               />
             ))}

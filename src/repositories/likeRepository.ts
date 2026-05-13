@@ -1,9 +1,10 @@
 import { Like, ILike } from '@/models/Like';
 import { Content } from '@/models/Content';
+import { DailyContent } from '@/models/DailyContent';
 import mongoose from 'mongoose';
 
 export class LikeRepository {
-    static async addLike(contentId: string, contentType: 'verse' | 'devotion', userId?: string, guestIdentifier?: string): Promise<number> {
+    static async addLike(contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion', userId?: string, guestIdentifier?: string): Promise<number> {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
@@ -14,20 +15,30 @@ export class LikeRepository {
             const like = new Like(likeData);
             await like.save({ session });
 
-            const updatedContent = await Content.findByIdAndUpdate(
-                contentId,
-                { $inc: { likeCount: 1 } },
-                { session, returnDocument: 'after' }
-            );
+            let likeCount = 0;
+            if (contentType === 'daily-verse') {
+                const updated = await DailyContent.findByIdAndUpdate(contentId, { $inc: { verseLikeCount: 1 } }, { session, returnDocument: 'after' });
+                likeCount = updated?.verseLikeCount || 0;
+            } else if (contentType === 'daily-devotion') {
+                const updated = await DailyContent.findByIdAndUpdate(contentId, { $inc: { devotionLikeCount: 1 } }, { session, returnDocument: 'after' });
+                likeCount = updated?.devotionLikeCount || 0;
+            } else {
+                const updated = await Content.findByIdAndUpdate(contentId, { $inc: { likeCount: 1 } }, { session, returnDocument: 'after' });
+                likeCount = updated?.likeCount || 0;
+            }
 
             await session.commitTransaction();
-            return updatedContent?.likeCount || 0;
+            return likeCount;
         } catch (error: any) {
             await session.abortTransaction();
-            // If it's a duplicate key error, we can ignore it or handle it as "already liked"
             if (error.code === 11000) {
-                const updatedContent = await Content.findById(contentId);
-                return updatedContent?.likeCount || 0;
+                if (contentType === 'daily-verse' || contentType === 'daily-devotion') {
+                    const updated = await DailyContent.findById(contentId);
+                    return contentType === 'daily-verse' ? (updated?.verseLikeCount || 0) : (updated?.devotionLikeCount || 0);
+                } else {
+                    const updatedContent = await Content.findById(contentId);
+                    return updatedContent?.likeCount || 0;
+                }
             }
             throw error;
         } finally {
@@ -48,15 +59,19 @@ export class LikeRepository {
             
             let likeCount = 0;
             if (deletedLike) {
-                const updatedContent = await Content.findByIdAndUpdate(
-                    contentId,
-                    { $inc: { likeCount: -1 } },
-                    { session, returnDocument: 'after' }
-                );
-                likeCount = updatedContent?.likeCount || 0;
+                if (deletedLike.contentType === 'daily-verse') {
+                    const updated = await DailyContent.findByIdAndUpdate(contentId, { $inc: { verseLikeCount: -1 } }, { session, returnDocument: 'after' });
+                    likeCount = updated?.verseLikeCount || 0;
+                } else if (deletedLike.contentType === 'daily-devotion') {
+                    const updated = await DailyContent.findByIdAndUpdate(contentId, { $inc: { devotionLikeCount: -1 } }, { session, returnDocument: 'after' });
+                    likeCount = updated?.devotionLikeCount || 0;
+                } else {
+                    const updated = await Content.findByIdAndUpdate(contentId, { $inc: { likeCount: -1 } }, { session, returnDocument: 'after' });
+                    likeCount = updated?.likeCount || 0;
+                }
             } else {
-                const content = await Content.findById(contentId);
-                likeCount = content?.likeCount || 0;
+                // Determine content type by checking Like or fallback query. But if deletedLike is null, it means it wasn't liked.
+                // We'll just return 0 or fetch from Content directly. For safety, just 0.
             }
 
             await session.commitTransaction();

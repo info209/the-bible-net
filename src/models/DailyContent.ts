@@ -10,6 +10,10 @@ export interface IDailyContent extends Document {
     prayerContent?: string;
     backgroundImage?: string;
     isPublished: boolean;
+    verseLikeCount: number;
+    verseCommentCount: number;
+    devotionLikeCount: number;
+    devotionCommentCount: number;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -46,6 +50,22 @@ const DailyContentSchema = new Schema<IDailyContent>(
         isPublished: {
             type: Boolean,
             default: true,
+        },
+        verseLikeCount: {
+            type: Number,
+            default: 0,
+        },
+        verseCommentCount: {
+            type: Number,
+            default: 0,
+        },
+        devotionLikeCount: {
+            type: Number,
+            default: 0,
+        },
+        devotionCommentCount: {
+            type: Number,
+            default: 0,
         },
     },
     {
