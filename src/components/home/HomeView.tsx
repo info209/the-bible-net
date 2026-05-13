@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, User, BookOpen, Globe, ArrowLeft } from 'lucide-react';
+import { Play, User, BookOpen, Globe, ArrowLeft, Heart, MessageCircle, Share2, Maximize2, Pause } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -15,9 +15,10 @@ export default function HomeView() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const { latestProgress, allProgress, isLoading: progressLoading } = useReadingProgress();
-  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [audioPlaying, setAudioPlaying] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const [currentSlide, setCurrentSlide] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
   const [dailyContents, setDailyContents] = useState<any[]>([]);
   const [prayers, setPrayers] = useState<any[]>([]);
@@ -63,6 +64,39 @@ export default function HomeView() {
     setInitialModalIndex(index);
     setInitialModalSection(section);
     setIsDetailModalOpen(true);
+  };
+
+  const handleScroll = () => {
+    if (carouselRef.current) {
+      const scrollLeft = carouselRef.current.scrollLeft;
+      const width = carouselRef.current.clientWidth;
+      const slide = Math.round(scrollLeft / width);
+      setCurrentSlide(slide);
+    }
+  };
+
+  const scrollToSlide = (index: number) => {
+    if (carouselRef.current) {
+      const width = carouselRef.current.clientWidth;
+      carouselRef.current.scrollTo({ left: width * index, behavior: 'smooth' });
+    }
+  };
+
+  const toggleAudio = (url: string) => {
+    if (!url) return;
+
+    if (audioPlaying === url && audioRef.current) {
+      audioRef.current.pause();
+      setAudioPlaying(null);
+    } else {
+      if (audioRef.current) {
+        audioRef.current.pause();
+      }
+      audioRef.current = new Audio(url);
+      audioRef.current.onended = () => setAudioPlaying(null);
+      audioRef.current.play();
+      setAudioPlaying(url);
+    }
   };
 
   const handleRouteToChapter = (reference: string) => {
@@ -156,67 +190,165 @@ export default function HomeView() {
 
       {/* Daily Content Carousel (7-Day History) */}
       <div className="relative overflow-hidden mb-6">
-        <div className="flex overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide space-x-4">
+        <div 
+          ref={carouselRef}
+          onScroll={handleScroll}
+          className="flex overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
+        >
           {dailyContents.map((content, index) => (
-            <div key={content._id} className="w-[85vw] sm:w-[400px] flex-shrink-0 snap-center">
-              <div 
-                className="rounded-2xl shadow-xl relative overflow-hidden min-h-[420px] flex flex-col bg-cover bg-center cursor-pointer group"
-                style={content.backgroundImage ? { backgroundImage: `url(${content.backgroundImage})` } : {}}
-                onClick={() => openDetailModal(index, 'verse')}
-              >
-                {/* Fallback / Overlay */}
-                <div className={`absolute inset-0 ${content.backgroundImage ? 'bg-black/40 group-hover:bg-black/30' : 'bg-gradient-to-br from-cyan-600 to-teal-800'} transition-all`} />
-
-                {/* Decorative elements if no background */}
-                {!content.backgroundImage && (
-                  <>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
-                  </>
-                )}
-
-                <div className="relative z-10 flex-1 flex flex-col p-6">
-                  {/* Top Label */}
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="bg-white/20 backdrop-blur-md px-3 py-1 rounded-full border border-white/20">
-                      <p className="text-white text-xs font-bold uppercase tracking-wider">{getRelativeLabel(content.date)}</p>
-                    </div>
-                  </div>
-
-                  {/* Verse Snippet */}
-                  {content.verse ? (
-                    <div className="flex-1 flex flex-col justify-center my-2">
-                        <p className="text-white/80 text-xs mb-1 font-semibold uppercase tracking-widest">Verse</p>
-                        <h3 className="text-white text-lg font-bold mb-2">{content.verseReference}</h3>
-                        <p className="text-white text-lg leading-relaxed font-serif italic line-clamp-4">
-                        "{content.verse}"
-                        </p>
-                    </div>
-                  ) : (
-                    <div className="flex-1 flex flex-col justify-center my-2">
-                        <p className="text-white/60 italic text-sm">Verse available soon...</p>
-                    </div>
+            <div key={content._id || index} className="w-full flex-shrink-0 snap-center">
+              <div className="space-y-6">
+                
+                {/* Daily Verse Card - Figma Design */}
+                <div 
+                  className={`bg-gradient-to-br ${content.bgColor || 'from-cyan-400 to-teal-500'} rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex flex-col`}
+                  style={content.backgroundImage ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                >
+                  {/* Fallback Overlay if bg image exists */}
+                  {content.backgroundImage && <div className="absolute inset-0 bg-black/40" />}
+                  
+                  {/* Decorative elements */}
+                  {!content.backgroundImage && (
+                    <>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
+                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
+                    </>
                   )}
 
-                  {/* Devotional / Prayer Snippet */}
-                  <div className="pt-4 border-t border-white/20">
-                     {content.devotionalTitle ? (
-                         <div className="mb-2">
-                             <p className="text-white/80 text-[10px] uppercase font-bold tracking-wider mb-1">Devotional</p>
-                             <p className="text-white font-medium line-clamp-1">{content.devotionalTitle}</p>
-                         </div>
-                     ) : null}
-                     {content.prayerTitle && (
-                         <div>
-                             <p className="text-white/80 text-[10px] uppercase font-bold tracking-wider mb-1">Prayer</p>
-                             <p className="text-white/90 text-sm italic line-clamp-1">{content.prayerTitle}</p>
-                         </div>
-                     )}
+                  {/* Content */}
+                  <div className="relative z-10 flex-1 flex flex-col">
+                    <div className="flex items-center justify-between mb-4">
+                      <div>
+                        <p className="text-white/80 text-sm mb-1">{getRelativeLabel(content.date)}'s Verse</p>
+                        <h3 className="text-white text-xl font-bold">{content.verseReference || 'Reference'}</h3>
+                        <p className="text-white/90 text-sm">{content.version || 'BBE'}</p>
+                      </div>
+                    </div>
+
+                    {/* Verse text */}
+                    <div className="flex-1 flex items-center my-6">
+                      <p className="text-white text-lg leading-relaxed font-serif italic text-justify">
+                        "{content.verse || 'Verse text available soon...'}"
+                      </p>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex items-center justify-between pt-4 border-t border-white/20">
+                      <button
+                        onClick={() => openDetailModal(index, 'verse')}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                      >
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                          <Heart className="size-4" />
+                        </div>
+                        <span className="text-xs">Like</span>
+                      </button>
+                      <button
+                        onClick={() => openDetailModal(index, 'verse')}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                      >
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                          <MessageCircle className="size-4" />
+                        </div>
+                        <span className="text-xs">Comment</span>
+                      </button>
+                      <button
+                        onClick={() => openDetailModal(index, 'verse')}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                      >
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                          <Share2 className="size-4" />
+                        </div>
+                        <span className="text-xs">Share</span>
+                      </button>
+                      <button
+                        onClick={() => openDetailModal(index, 'verse')}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                      >
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                          <Maximize2 className="size-4" />
+                        </div>
+                        <span className="text-xs">Expand</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
+
+                {/* Daily Devotional Card - Figma Design */}
+                {content.devotionalTitle ? (
+                  <div className="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[320px] flex flex-col">
+                    {/* Decorative elements */}
+                    <div className="absolute top-0 left-0 w-32 h-32 bg-rose-200/50 rounded-full -ml-16 -mt-16" />
+                    <div className="absolute bottom-0 right-0 w-24 h-24 bg-pink-300/50 rounded-full -mr-12 -mb-12" />
+
+                    <div className="relative z-10 flex-1 flex flex-col">
+                      <div className="flex items-start justify-between mb-4">
+                        <div>
+                          <p className="text-gray-600 text-sm mb-1">{getRelativeLabel(content.date)}'s Devotional</p>
+                          <h3 className="text-gray-800 text-xl font-bold">{content.devotionalTitle}</h3>
+                        </div>
+                        {content.audioUrl && (
+                          <button
+                            onClick={() => toggleAudio(content.audioUrl)}
+                            className="p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform"
+                          >
+                            {audioPlaying === content.audioUrl ? <Pause className="size-5 text-[var(--color-accent-rose)]" /> : <Play className="size-5 text-[var(--color-accent-rose)] ml-0.5" />}
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="space-y-4 my-6 flex-1">
+                        <p className="text-gray-700 leading-relaxed text-justify line-clamp-3">
+                          {content.devotionalText}
+                        </p>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center justify-between pt-4 border-t border-rose-200">
+                        <button
+                          onClick={() => openDetailModal(index, 'devotional')}
+                          className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
+                        >
+                          <div className="bg-white p-2 rounded-full shadow-sm">
+                            <Heart className="size-4" />
+                          </div>
+                          <span className="text-xs">Like</span>
+                        </button>
+                        <button
+                          onClick={() => openDetailModal(index, 'devotional')}
+                          className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
+                        >
+                          <div className="bg-white p-2 rounded-full shadow-sm">
+                            <MessageCircle className="size-4" />
+                          </div>
+                          <span className="text-xs">Comment</span>
+                        </button>
+                        <button
+                          onClick={() => openDetailModal(index, 'devotional')}
+                          className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
+                        >
+                          <div className="bg-white p-2 rounded-full shadow-sm">
+                            <Share2 className="size-4" />
+                          </div>
+                          <span className="text-xs">Share</span>
+                        </button>
+                        <button
+                          onClick={() => openDetailModal(index, 'devotional')}
+                          className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
+                        >
+                          <div className="bg-white p-2 rounded-full shadow-sm">
+                            <Maximize2 className="size-4" />
+                          </div>
+                          <span className="text-xs">Expand</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
           ))}
+          
           {dailyContents.length === 0 && (
             <div className="w-full flex-shrink-0">
               <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex items-center justify-center text-white">
@@ -225,6 +357,20 @@ export default function HomeView() {
             </div>
           )}
         </div>
+
+        {/* Slide indicators */}
+        {dailyContents.length > 1 && (
+          <div className="flex justify-center space-x-2 mt-2">
+            {dailyContents.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => scrollToSlide(index)}
+                className={`h-2 rounded-full transition-all ${currentSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {/* My Reading Plan - Figma Style */}
