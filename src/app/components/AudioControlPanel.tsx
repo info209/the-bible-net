@@ -64,6 +64,8 @@ export default function AudioControlPanel({
   // Tracks whether the verse slider is actively being dragged
   // Used to freeze the progress ring and suppress auto-scroll
   const isDraggingSliderRef = useRef(false);
+  // Preview verse shown on thumb/tooltip during drag — committed on release
+  const [dragVersePreview, setDragVersePreview] = useState<number | null>(null);
 
   useEffect(() => {
     if (!isOpen) {
@@ -129,10 +131,15 @@ export default function AudioControlPanel({
   if (!isOpen) return null;
 
   // Progress for the ProgressRing: frozen at 0 while slider is being dragged
-  // so the ring doesn’t fight the user’s drag gesture
+  // so the ring doesn't fight the user's drag gesture
   const ringProgress = isDraggingSliderRef.current
     ? 0
     : (audioDuration > 0 ? Math.min(Math.max(audioCurrentTime / audioDuration, 0), 1) : 0);
+
+  // Displayed verse: use preview during drag, committed value otherwise
+  const displayVerse = (isDraggingSliderRef.current && dragVersePreview !== null)
+    ? dragVersePreview
+    : selectedVerse;
 
   return (
     <div className="fixed inset-0 z-[100] overlay-dark" onClick={onClose}>
@@ -194,20 +201,20 @@ export default function AudioControlPanel({
             <div className="relative h-5 mb-1">
               {/* Background track */}
               <div className="absolute top-[8px] w-full h-[4px] bg-[var(--color-bg-tertiary)] rounded-sm" />
-              {/* Progress track */}
+              {/* Progress track — uses preview verse during drag */}
               <div
                 className="absolute top-[8px] h-[4px] bg-[var(--color-accent-rose)] rounded-sm"
-                style={{ width: `${totalVerses > 0 ? (selectedVerse / totalVerses) * 100 : 0}%` }}
+                style={{ width: `${totalVerses > 0 ? (displayVerse / totalVerses) * 100 : 0}%` }}
               />
-              {/* Thumb + tooltip */}
+              {/* Thumb + tooltip — uses preview verse during drag */}
               <div
                 className="absolute top-0 w-5 h-5 bg-[var(--color-accent-rose)] border-4 border-[var(--color-accent-rose-light)] rounded-full -ml-2.5 pointer-events-none"
-                style={{ left: `${totalVerses > 0 ? (selectedVerse / totalVerses) * 100 : 0}%` }}
+                style={{ left: `${totalVerses > 0 ? (displayVerse / totalVerses) * 100 : 0}%` }}
               >
                 <div className="absolute -top-11 left-1/2 -translate-x-1/2 flex flex-col items-center">
                   <div className="bg-[var(--color-accent-rose-lighter)] rounded-[var(--radius-xs)] px-2 py-0.5 flex flex-col items-center min-w-[40px] shadow-sm">
                     <p className="text-[8px] leading-3 text-[var(--color-accent-rose)]">Verse</p>
-                    <p className="text-[12px] leading-4 text-[var(--color-accent-rose)] font-bold">{selectedVerse}</p>
+                    <p className="text-[12px] leading-4 text-[var(--color-accent-rose)] font-bold">{displayVerse}</p>
                   </div>
                   <svg width="8" height="6" viewBox="0 0 12 8" fill="none" className="mx-auto block">
                     <path d="M6 8L0 0H12L6 8Z" fill="var(--color-accent-rose-lighter)" />
@@ -218,46 +225,44 @@ export default function AudioControlPanel({
                 type="range"
                 min="1"
                 max={Math.max(totalVerses, 1)}
-                value={selectedVerse}
-                onChange={(e) => onVerseChange(Number(e.target.value))}
-                onMouseDown={() => {
+                value={displayVerse}
+                onChange={(e) => {
+                  // During drag: only update the visual preview — do NOT commit to parent yet
+                  setDragVersePreview(Number(e.target.value));
+                }}
+                onMouseDown={(e) => {
                   isDraggingSliderRef.current = true;
+                  // Seed the preview with the current committed verse
+                  setDragVersePreview(Number((e.target as HTMLInputElement).value));
                   onSliderDragStart?.();
                 }}
-                onTouchStart={() => {
+                onTouchStart={(e) => {
                   isDraggingSliderRef.current = true;
+                  setDragVersePreview(Number((e.target as HTMLInputElement).value));
                   onSliderDragStart?.();
                 }}
                 onMouseUp={(e) => {
                   isDraggingSliderRef.current = false;
-                  onSliderDragEnd?.();
-                  // Smooth scroll to selected verse on release using the ChapterContent element ID
                   const verse = Number((e.target as HTMLInputElement).value);
-                  const verseEl = document.getElementById(
-                    `verse-${selectedBook}-${selectedChapter}-${verse}`
-                  );
-                  if (verseEl) {
-                    verseEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }
+                  // Commit: call parent ONCE on release
+                  onVerseChange(verse);
+                  setDragVersePreview(null);
+                  onSliderDragEnd?.();
                 }}
                 onTouchEnd={(e) => {
                   isDraggingSliderRef.current = false;
-                  onSliderDragEnd?.();
-                  // Smooth scroll to selected verse on release using the ChapterContent element ID
                   const verse = Number((e.target as HTMLInputElement).value);
-                  const verseEl = document.getElementById(
-                    `verse-${selectedBook}-${selectedChapter}-${verse}`
-                  );
-                  if (verseEl) {
-                    verseEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                  }
+                  // Commit: call parent ONCE on release
+                  onVerseChange(verse);
+                  setDragVersePreview(null);
+                  onSliderDragEnd?.();
                 }}
                 className="absolute inset-0 w-full opacity-0 cursor-pointer"
               />
             </div>
-            {/* Verse counter */}
+            {/* Verse counter — uses preview during drag */}
             <div className="flex justify-between text-[11px] text-[var(--color-text-secondary)] font-medium">
-              <span>Verse {selectedVerse}</span>
+              <span>Verse {displayVerse}</span>
               <span>Total {totalVerses}</span>
             </div>
           </div>

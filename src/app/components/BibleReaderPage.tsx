@@ -236,6 +236,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const isUserInteractingRef = useRef(false);
   // Drag mode — suppresses auto-scroll while the verse slider is being dragged
   const isDraggingRef = useRef(false);
+  // Seeking mode — true while the verse slider is actively being dragged.
+  // Guards the selectedVerse useEffect so it cannot fire cancel/restart loops every frame.
+  const isSeekingRef = useRef(false);
+  // Stores whether audio was playing when a drag started so we can auto-resume on release.
+  const wasPlayingBeforeDragRef = useRef(false);
 
   // Timer state for time-based narration
   const narrationTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -585,8 +590,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     setSelectedVerse(null);
   }, [selectedBook, selectedChapter]);
 
-  // Handle verse navigation during narration
+  // Handle verse navigation during narration.
+  // NOTE: This effect is intentionally skipped during slider drag (isSeekingRef.current === true).
+  // Seeking is handled atomically by handleSeekToVerse() which is called once on drag release.
   useEffect(() => {
+    // Do nothing while the user is dragging the slider — handleSeekToVerse() owns that flow.
+    if (isSeekingRef.current) return;
+
     if (narrationPlayingRef.current && selectedVerse && selectedVerse > 0) {
       console.log('[Verse Navigation] User changed verse to:', selectedVerse, 'during narration');
       // Stop current narration and restart from the selected verse
@@ -645,6 +655,64 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   const getBibleContent = () => {
     return verses;
+  };
+
+  /**
+   * handleSeekToVerse — production-grade seek handler.
+   *
+   * Called ONCE when the user releases the verse slider (mouseUp / touchEnd).
+   * Performs a clean, atomic seek:
+   *   1. Cancels any in-flight speech utterance
+   *   2. Commits the new verse to state
+   *   3. Scrolls to the verse exactly once (single smooth transition)
+   *   4. Auto-resumes playback if audio was active before the drag started
+   *   5. Clears all seeking/dragging guard refs
+   */
+  const handleSeekToVerse = (verse: number) => {
+    console.log('[Seek] handleSeekToVerse called with verse:', verse, '| wasPlaying:', wasPlayingBeforeDragRef.current);
+
+    // 1. Cancel any in-flight utterance (safe even if nothing is speaking)
+    window.speechSynthesis.cancel();
+    narrationPlayingRef.current = false;
+
+    // 2. Commit the verse to React state.
+    //    Both selectedVerse and currentReadingVerse must agree so resumeNarration picks up correctly.
+    setSelectedVerse(verse);
+    setCurrentReadingVerse(verse);
+    narrationVerseIndexRef.current = verse - 1;
+
+    // 3. Scroll to verse exactly once using requestAnimationFrame so the DOM has settled.
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verse}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+
+    // 4. Clear all drag/seek guard refs first
+    isSeekingRef.current = false;
+    isDraggingRef.current = false;
+    // Small delay before re-enabling progress interval to avoid a race on the first tick
+    setTimeout(() => { isUserInteractingRef.current = false; }, 150);
+
+    // 5. Auto-resume if audio was playing before drag
+    if (wasPlayingBeforeDragRef.current) {
+      console.log('[Seek] Auto-resuming playback from verse:', verse);
+      const allVerses = getBibleContent();
+      if (allVerses.length === 0) return;
+
+      narrationVerseIndexRef.current = verse - 1;
+      setNarrationPlaying(true);
+      narrationPlayingRef.current = true;
+      // setAudioPlaying is already true — no state change needed, avoids UI flicker.
+      // Small delay gives speechSynthesis.cancel() time to fully settle.
+      setTimeout(() => {
+        readNextVerse(allVerses, verse - 1);
+      }, 80);
+    }
+
+    // Reset drag-state tracking
+    wasPlayingBeforeDragRef.current = false;
   };
 
   const startNarration = (fromVerse: number = 1) => {
@@ -1057,8 +1125,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       }
     }
 
-    // Resume from where we left off (currentReadingVerse) or start fresh
-    const resumeFrom = currentReadingVerse || selectedVerse || 1;
+    // Resume from where we left off.
+    // IMPORTANT: prefer selectedVerse first — this is the user's explicitly dragged-to position.
+    // currentReadingVerse is the verse narration was ON before pause, which may differ after a seek.
+    const resumeFrom = selectedVerse || currentReadingVerse || 1;
     console.log('Resuming from verse:', resumeFrom);
 
     // Don't call startNarration as it would reset the timer
@@ -1725,15 +1795,27 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         audioDuration={audioDuration}
         audioPlaying={audioPlaying}
         playbackSpeed={playbackSpeed}
-        onVerseChange={setSelectedVerse}
+        onVerseChange={handleSeekToVerse}
         onSliderDragStart={() => {
+          // Mark seeking — suppresses the selectedVerse useEffect cancel/restart loop
+          isSeekingRef.current = true;
+          // Suppress auto-scroll from readNextVerse
+          isDraggingRef.current = true;
+          // Suppress the progress interval from competing with UI
           isUserInteractingRef.current = true;
+          // Remember playback state so we can auto-resume on release
+          wasPlayingBeforeDragRef.current = audioPlaying;
+          // If playing, silently cancel speech so there's no overlapping utterance
+          // (we do NOT call setAudioPlaying(false) here — that would flicker the UI)
+          if (audioPlaying) {
+            window.speechSynthesis.cancel();
+            narrationPlayingRef.current = false;
+          }
           onSliderDragStart?.();
         }}
         onSliderDragEnd={() => {
-          setTimeout(() => {
-            isUserInteractingRef.current = false;
-          }, 150);
+          // Note: handleSeekToVerse() called by AudioControlPanel clears all seek refs.
+          // This callback is a secondary safety net.
           onSliderDragEnd?.();
         }}
         onTimeChange={setAudioCurrentTime}
