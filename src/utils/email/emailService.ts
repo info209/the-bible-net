@@ -1,15 +1,22 @@
 import nodemailer from 'nodemailer';
 
 export class EmailService {
-  private static transporter = nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT || '587'),
-    secure: process.env.EMAIL_SECURE === 'true',
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-  });
+  private static _transporter: nodemailer.Transporter | null = null;
+
+  private static get transporter(): nodemailer.Transporter {
+    if (!this._transporter) {
+      this._transporter = nodemailer.createTransport({
+        host: process.env.EMAIL_HOST,
+        port: parseInt(process.env.EMAIL_PORT || '587'),
+        secure: process.env.EMAIL_SECURE === 'true',
+        auth: {
+          user: process.env.EMAIL_USER,
+          pass: process.env.EMAIL_PASS,
+        },
+      });
+    }
+    return this._transporter;
+  }
 
   private static async executeWithRetry(mailOptions: any, retries = 3): Promise<void> {
     for (let attempt = 1; attempt <= retries; attempt++) {

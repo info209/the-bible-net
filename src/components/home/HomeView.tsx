@@ -43,8 +43,10 @@ export default function HomeView() {
   useEffect(() => {
     const fetchData = async () => {
       try {
+        // Pass the user's preferred Bible version so verse text resolves correctly
+        const preferredVersion = (session?.user as any)?.preferredBibleVersion || 'KJV';
         const [dailyRes, prayersRes] = await Promise.all([
-          fetch('/api/daily?days=7'),
+          fetch(`/api/daily?days=7&version=${encodeURIComponent(preferredVersion)}`),
           fetch('/api/prayers?limit=3')
         ]);
 
@@ -60,7 +62,7 @@ export default function HomeView() {
       }
     };
     fetchData();
-  }, []);
+  }, [(session?.user as any)?.preferredBibleVersion]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();

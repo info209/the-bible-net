@@ -715,6 +715,43 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     wasPlayingBeforeDragRef.current = false;
   };
 
+  /**
+   * handleVerseStep — used by V+ / V- buttons.
+   * Unlike handleSeekToVerse (which is for slider drag-release), this does NOT
+   * treat the action as a drag. It simply cancels the current utterance, commits
+   * the new verse, and immediately resumes if audio was already playing.
+   */
+  const handleVerseStep = (verse: number) => {
+    // 1. Cancel any in-flight utterance
+    window.speechSynthesis.cancel();
+    narrationPlayingRef.current = false;
+
+    // 2. Commit verse to state
+    setSelectedVerse(verse);
+    setCurrentReadingVerse(verse);
+    narrationVerseIndexRef.current = verse - 1;
+
+    // 3. Scroll to new verse
+    requestAnimationFrame(() => {
+      const el = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verse}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+
+    // 4. Resume immediately if audio was playing (audioPlaying stays true throughout)
+    if (audioPlaying) {
+      const allVerses = getBibleContent();
+      if (allVerses.length === 0) return;
+      narrationVerseIndexRef.current = verse - 1;
+      setNarrationPlaying(true);
+      narrationPlayingRef.current = true;
+      setTimeout(() => {
+        readNextVerse(allVerses, verse - 1);
+      }, 80);
+    }
+  };
+
   const startNarration = (fromVerse: number = 1) => {
     console.log('startNarration called with fromVerse:', fromVerse);
     if (!('speechSynthesis' in window)) {
@@ -1190,12 +1227,20 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   // Update playback speed when it changes
   useEffect(() => {
     if (utteranceRef.current && window.speechSynthesis.speaking) {
-      // Cancel and restart with new speed
-      const currentVerseIndex = narrationVerseIndexRef.current;
-      stopNarration();
+      // Cancel speech directly — do NOT call stopNarration() as it resets audioPlaying=false
+      // which causes the play/pause icon to flicker to Paused even though we're about to resume.
+      window.speechSynthesis.cancel();
+      narrationPlayingRef.current = false;
+
       if (audioPlaying) {
         setTimeout(() => {
-          startNarration(selectedVerse ?? undefined);
+          // Restart from the current verse with the new speed
+          const allVerses = getBibleContent();
+          if (allVerses.length === 0) return;
+          const fromVerse = narrationVerseIndexRef.current;
+          setNarrationPlaying(true);
+          narrationPlayingRef.current = true;
+          readNextVerse(allVerses, fromVerse);
         }, 100);
       }
     }
@@ -1796,6 +1841,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         audioPlaying={audioPlaying}
         playbackSpeed={playbackSpeed}
         onVerseChange={handleSeekToVerse}
+        onVerseStep={handleVerseStep}
         onSliderDragStart={() => {
           // Mark seeking — suppresses the selectedVerse useEffect cancel/restart loop
           isSeekingRef.current = true;
@@ -2152,8 +2198,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         )}
       </div>
 
-      {/* Audio Controls Floating Button — hidden when bottom sheet is open or settings is open */}
-      {showAudioControls && !showAudioControlPanel && !showSettingsMenu && (
+      {/* Audio Controls Floating Button — hidden when any popup or selector is open */}
+      {showAudioControls && !isAnyPopupOpen && !showAudioControlPanel && !showSettingsMenu && (
         <AudioFloatingPlayer
           playerState={audioPlayerState}
           isReadingMode={isReadingMode}

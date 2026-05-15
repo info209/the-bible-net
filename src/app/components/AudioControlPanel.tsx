@@ -13,6 +13,7 @@ interface AudioControlPanelProps {
   audioPlaying: boolean;
   playbackSpeed: number;
   onVerseChange: (verse: number) => void;
+  onVerseStep?: (verse: number) => void;  // Direct V+/V- step — does NOT cancel narration
   onTimeChange: (time: number) => void;
   onSliderDragStart?: () => void;
   onSliderDragEnd?: () => void;
@@ -41,6 +42,7 @@ export default function AudioControlPanel({
   audioPlaying,
   playbackSpeed,
   onVerseChange,
+  onVerseStep,
   onTimeChange,
   onSliderDragStart,
   onSliderDragEnd,
@@ -198,7 +200,7 @@ export default function AudioControlPanel({
 
           {/* Progress bar */}
           <div className="mb-4 px-11">
-            <div className="relative h-5 mb-1">
+            <div className="relative h-5 mb-1" style={{ overflow: 'visible' }}>
               {/* Background track */}
               <div className="absolute top-[8px] w-full h-[4px] bg-[var(--color-bg-tertiary)] rounded-sm" />
               {/* Progress track — uses preview verse during drag */}
@@ -211,15 +213,18 @@ export default function AudioControlPanel({
                 className="absolute top-0 w-5 h-5 bg-[var(--color-accent-rose)] border-4 border-[var(--color-accent-rose-light)] rounded-full -ml-2.5 pointer-events-none"
                 style={{ left: `${totalVerses > 0 ? (displayVerse / totalVerses) * 100 : 0}%` }}
               >
-                <div className="absolute -top-11 left-1/2 -translate-x-1/2 flex flex-col items-center">
-                  <div className="bg-[var(--color-accent-rose-lighter)] rounded-[var(--radius-xs)] px-2 py-0.5 flex flex-col items-center min-w-[40px] shadow-sm">
-                    <p className="text-[8px] leading-3 text-[var(--color-accent-rose)]">Verse</p>
-                    <p className="text-[12px] leading-4 text-[var(--color-accent-rose)] font-bold">{displayVerse}</p>
+                {/* Only show tooltip while actively dragging */}
+                {isDraggingSliderRef.current && dragVersePreview !== null && (
+                  <div className="absolute -top-11 left-1/2 -translate-x-1/2 flex flex-col items-center" style={{ zIndex: 10 }}>
+                    <div className="bg-[var(--color-accent-rose)] rounded-[var(--radius-xs)] px-2 py-0.5 flex flex-col items-center min-w-[40px] shadow-sm">
+                      <p className="text-[8px] leading-3 text-white">Verse</p>
+                      <p className="text-[12px] leading-4 text-white font-bold">{displayVerse}</p>
+                    </div>
+                    <svg width="8" height="6" viewBox="0 0 12 8" fill="none" className="mx-auto block">
+                      <path d="M6 8L0 0H12L6 8Z" fill="var(--color-accent-rose)" />
+                    </svg>
                   </div>
-                  <svg width="8" height="6" viewBox="0 0 12 8" fill="none" className="mx-auto block">
-                    <path d="M6 8L0 0H12L6 8Z" fill="var(--color-accent-rose-lighter)" />
-                  </svg>
-                </div>
+                )}
               </div>
               <input
                 type="range"
@@ -292,7 +297,7 @@ export default function AudioControlPanel({
 
               {/* V- */}
               <button
-                onClick={() => onVerseChange(Math.max(1, selectedVerse - 1))}
+                onClick={() => (onVerseStep ?? onVerseChange)(Math.max(1, selectedVerse - 1))}
                 className="size-9 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
                 aria-label="Previous verse"
               >
@@ -328,7 +333,7 @@ export default function AudioControlPanel({
 
               {/* V+ */}
               <button
-                onClick={() => onVerseChange(Math.min(totalVerses, selectedVerse + 1))}
+                onClick={() => (onVerseStep ?? onVerseChange)(Math.min(totalVerses, selectedVerse + 1))}
                 className="size-9 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
                 aria-label="Next verse"
               >

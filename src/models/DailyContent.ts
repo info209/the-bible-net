@@ -1,14 +1,24 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IDailyContent extends Document {
-    date: string; // ISO format: YYYY-MM-DD (UTC)
-    verse: string;
-    verseReference: string;
-    devotionalTitle?: string;
-    devotionalContent?: string;
-    prayerTitle?: string;
-    prayerContent?: string;
+    date: string;             // ISO format: YYYY-MM-DD (UTC)
+    contentYear: number;      // Extracted from date for year-based uniqueness queries
+
+    // Structured verse reference — text is resolved at runtime per user's Bible version
+    verseBook: string;        // e.g. "Psalms"
+    verseChapter: number;     // e.g. 23
+    verseNumber: number;      // e.g. 1
+    verseReference: string;   // Human-readable label: "Psalms 23:1"
+
+    // Daily devotional
+    devotionalTitle: string;
+    devotionalContent: string;
+    devotionalVerseRef: string;         // Required: e.g. "Romans 8:28"
+    devotionalBackgroundImage?: string; // Separate background for devotionals
+
+    // Verse card background
     backgroundImage?: string;
+
     isPublished: boolean;
     verseLikeCount: number;
     verseCommentCount: number;
@@ -21,27 +31,50 @@ export interface IDailyContent extends Document {
 const DailyContentSchema = new Schema<IDailyContent>(
     {
         date: {
-            type: String, // String for easier matching (YYYY-MM-DD)
+            type: String,
             required: [true, 'Date is required in YYYY-MM-DD format'],
             unique: true,
             index: true,
         },
-        verse: {
+        contentYear: {
+            type: Number,
+            required: true,
+            index: true,
+        },
+        verseBook: {
             type: String,
+            required: [true, 'Verse book is required'],
+            trim: true,
+        },
+        verseChapter: {
+            type: Number,
+            required: [true, 'Verse chapter is required'],
+            min: 1,
+        },
+        verseNumber: {
+            type: Number,
+            required: [true, 'Verse number is required'],
+            min: 1,
         },
         verseReference: {
             type: String,
+            required: [true, 'Verse reference is required'],
+            trim: true,
         },
         devotionalTitle: {
             type: String,
+            default: '',
         },
         devotionalContent: {
             type: String,
+            default: '',
         },
-        prayerTitle: {
+        devotionalVerseRef: {
             type: String,
+            required: [true, 'Devotional verse reference is required'],
+            trim: true,
         },
-        prayerContent: {
+        devotionalBackgroundImage: {
             type: String,
         },
         backgroundImage: {
@@ -71,6 +104,12 @@ const DailyContentSchema = new Schema<IDailyContent>(
     {
         timestamps: true,
     }
+);
+
+// Enforce year-based verse uniqueness: same verse can't appear twice in a calendar year
+DailyContentSchema.index(
+    { verseBook: 1, verseChapter: 1, verseNumber: 1, contentYear: 1 },
+    { unique: true, name: 'unique_verse_per_year' }
 );
 
 export const DailyContent: Model<IDailyContent> =
