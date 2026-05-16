@@ -9,6 +9,8 @@ import {
   Square,
   Layers,
   FlipHorizontal,
+  MoveVertical,
+  Check,
 } from "lucide-react";
 
 export type ThemeType = "light" | "sepia" | "cream" | "dark";
@@ -24,9 +26,10 @@ const FONTS = [
 ];
 
 const TRANSITIONS = [
-  { id: "slide", label: "Slide", icon: Square },
   { id: "fade", label: "Fade", icon: Layers },
-  { id: "flip", label: "Flip", icon: FlipHorizontal },
+  { id: "slide", label: "Slide", icon: Square },
+  { id: "curl", label: "Curl", icon: FlipHorizontal },
+  { id: "scroll", label: "Scroll", icon: MoveVertical },
 ];
 
 export default function FontsSettingsModal({
@@ -229,31 +232,60 @@ export default function FontsSettingsModal({
 
         {/* THEME */}
         <div className="mb-6">
-          <p className="text-xs mb-3" style={{ color: theme.subText }}>
-            Theme
+          <p className="text-xs mb-3 font-medium uppercase tracking-wider opacity-60" style={{ color: theme.subText }}>
+            Theme Selection
           </p>
 
-          <div className="flex gap-2 flex-wrap">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {([
-              { id: "light", icon: Sun,      bg: "#ffffff", iconColor: "#f59e0b" },
-              { id: "sepia", icon: Coffee,   bg: "#f5e6c8", iconColor: "#92400e" },
-              { id: "cream", icon: CloudSun, bg: "#f8f6f1", iconColor: "#b45309" },
-              { id: "dark",  icon: Moon,     bg: "#2e2e2e", iconColor: "#c4b5fd" },
-            ] as const).map(({ id, icon: Icon, bg, iconColor }) => {
+              { id: "light", icon: Sun,      bg: "#ffffff", iconColor: "#f59e0b", label: "Light" },
+              { id: "sepia", icon: Coffee,   bg: "#f5e6c8", iconColor: "#92400e", label: "Sepia" },
+              { id: "cream", icon: CloudSun, bg: "#f8f6f1", iconColor: "#b45309", label: "Cream" },
+              { id: "dark",  icon: Moon,     bg: "#2e2e2e", iconColor: "#c4b5fd", label: "Dark" },
+            ] as const).map(({ id, icon: Icon, bg, iconColor, label }) => {
               const active = selectedTheme === id;
               return (
                 <button
                   key={id}
                   onClick={() => onThemeChange(id)}
-                  className="flex items-center justify-center px-3 py-1.5 rounded-full border transition-all"
+                  className="relative flex flex-col items-center justify-center py-5 rounded-2xl border transition-all duration-300 active:scale-95 group overflow-hidden"
                   style={{
                     background: bg,
                     borderColor: active ? "var(--color-primary-teal)" : theme.border,
                     borderWidth: active ? "2px" : "1px",
-                    boxShadow: active ? "0 0 0 1px var(--color-primary-teal)" : "none",
+                    boxShadow: active ? "0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)" : "none",
+                    transform: active ? "translateY(-2px)" : "translateY(0)",
                   }}
                 >
-                  <Icon size={16} style={{ color: iconColor }} />
+                  {/* Subtle Background Glow for Active Theme */}
+                  {active && (
+                    <div 
+                      className="absolute inset-0 opacity-[0.08] animate-pulse"
+                      style={{ background: "var(--color-primary-teal)" }}
+                    />
+                  )}
+
+                  <div className={`p-2.5 rounded-full mb-1.5 transition-all duration-300 ${active ? 'scale-110 shadow-sm' : 'group-hover:scale-110 group-hover:-translate-y-0.5'}`}
+                       style={{ 
+                         background: active ? 'rgba(0,0,0,0.03)' : 'transparent',
+                       }}>
+                    <Icon size={24} style={{ color: iconColor }} />
+                  </div>
+                  
+                  <span className="text-[11px] font-bold uppercase tracking-wide transition-colors duration-300"
+                        style={{ color: active ? "var(--color-primary-teal)" : theme.text }}>
+                    {label}
+                  </span>
+
+                  {/* Active Indicator Badge */}
+                  {active && (
+                    <div className="absolute top-2 right-2 bg-[var(--color-primary-teal)] text-white p-0.5 rounded-full shadow-lg scale-110">
+                      <Check size={10} strokeWidth={4} />
+                    </div>
+                  )}
+
+                  {/* Hover Effect Layer */}
+                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/[0.02] transition-colors pointer-events-none" />
                 </button>
               );
             })}
@@ -262,11 +294,11 @@ export default function FontsSettingsModal({
 
         {/* TRANSITIONS */}
         <div>
-          <p className="text-xs mb-3" style={{ color: theme.subText }}>
-            Page transitions
+          <p className="text-xs mb-3 font-medium uppercase tracking-wider opacity-60" style={{ color: theme.subText }}>
+            Page Transitions
           </p>
 
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-4 gap-2.5">
             {TRANSITIONS.map((t) => {
               const active = pageTransition === t.id;
               const Icon = t.icon;
@@ -275,18 +307,31 @@ export default function FontsSettingsModal({
                 <button
                   key={t.id}
                   onClick={() => onPageTransitionChange(t.id)}
-                  className="rounded-xl p-3 flex flex-col items-center gap-1 transition-all"
+                  className="relative rounded-2xl py-4 flex flex-col items-center justify-center gap-1.5 transition-all duration-300 active:scale-95 group overflow-hidden border"
                   style={{
-                    border: `1px solid ${
-                      active ? theme.accent : theme.border
-                    }`,
+                    borderColor: active ? "var(--color-primary-teal)" : theme.border,
+                    borderWidth: active ? "2px" : "1px",
                     background: active
-                      ? "rgba(210,57,82,0.08)"
+                      ? "rgba(210,57,82,0.05)"
                       : theme.card,
+                    boxShadow: active ? "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05)" : "none",
+                    transform: active ? "translateY(-2px)" : "translateY(0)",
                   }}
                 >
-                  <Icon size={18} />
-                  <span className="text-xs">{t.label}</span>
+                  <div className={`p-2 rounded-full transition-all duration-300 ${active ? 'scale-110' : 'group-hover:scale-110 group-hover:-translate-y-0.5'}`}
+                       style={{ background: active ? 'rgba(0,0,0,0.03)' : 'transparent' }}>
+                    <Icon size={20} style={{ color: active ? "var(--color-primary-teal)" : theme.text }} />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-tight"
+                        style={{ color: active ? "var(--color-primary-teal)" : theme.text }}>
+                    {t.label}
+                  </span>
+
+                  {active && (
+                    <div className="absolute top-1.5 right-1.5 bg-[var(--color-primary-teal)] text-white p-0.5 rounded-full shadow-sm">
+                      <Check size={8} strokeWidth={4} />
+                    </div>
+                  )}
                 </button>
               );
             })}
