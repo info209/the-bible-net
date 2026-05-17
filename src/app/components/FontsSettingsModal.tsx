@@ -290,7 +290,7 @@ export default function FontsSettingsModal({
                 <button
                   key={t.id}
                   onClick={() => onPageTransitionChange(t.id)}
-                  className="relative rounded-2xl py-4 flex flex-col items-center justify-center gap-1.5 transition-all duration-300 active:scale-95 group overflow-hidden border"
+                  className="relative rounded-2xl aspect-square p-2 flex flex-col items-center justify-center gap-1.5 transition-all duration-300 active:scale-95 group overflow-hidden border"
                   style={{
                     borderColor: active ? "var(--color-primary-teal)" : theme.border,
                     borderWidth: active ? "2px" : "1px",

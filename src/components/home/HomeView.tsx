@@ -18,10 +18,10 @@ export default function HomeView() {
   const { latestProgress, allProgress, isLoading: progressLoading } = useReadingProgress();
   const [audioPlaying, setAudioPlaying] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
+
   const [currentVerseSlide, setCurrentVerseSlide] = useState(0);
   const verseCarouselRef = useRef<HTMLDivElement>(null);
-  
+
   const [currentDevotionSlide, setCurrentDevotionSlide] = useState(0);
   const devotionCarouselRef = useRef<HTMLDivElement>(null);
 
@@ -34,7 +34,7 @@ export default function HomeView() {
   const [dailyContents, setDailyContents] = useState<any[]>([]);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Modal states
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [initialModalIndex, setInitialModalIndex] = useState(0);
@@ -51,8 +51,8 @@ export default function HomeView() {
         ]);
 
         if (dailyRes.ok) {
-            const data = await dailyRes.json();
-            setDailyContents(data.data || []);
+          const data = await dailyRes.json();
+          setDailyContents(data.data || []);
         }
         if (prayersRes.ok) setPrayers(await prayersRes.json());
       } catch (error) {
@@ -64,12 +64,7 @@ export default function HomeView() {
     fetchData();
   }, [(session?.user as any)?.preferredBibleVersion]);
 
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour >= 5 && hour < 12) return "Good morning";
-    if (hour >= 12 && hour < 17) return "Good afternoon";
-    return "Good evening";
-  };
+
 
 
 
@@ -121,10 +116,10 @@ export default function HomeView() {
       if (res.ok) {
         setDailyContents(prev => prev.map(content => {
           if (content._id === contentId) {
-             return {
-                ...content,
-                [type === 'daily-verse' ? 'verseLikeCount' : 'devotionLikeCount']: data.likeCount
-             };
+            return {
+              ...content,
+              [type === 'daily-verse' ? 'verseLikeCount' : 'devotionLikeCount']: data.likeCount
+            };
           }
           return content;
         }));
@@ -174,11 +169,11 @@ export default function HomeView() {
         fetchComments(activeContent.id, activeContent.type);
         setDailyContents(prev => prev.map(content => {
           if (content._id === activeContent.id) {
-             const countField = activeContent.type === 'daily-verse' ? 'verseCommentCount' : 'devotionCommentCount';
-             return {
-                ...content,
-                [countField]: (content[countField] || 0) + 1
-             };
+            const countField = activeContent.type === 'daily-verse' ? 'verseCommentCount' : 'devotionCommentCount';
+            return {
+              ...content,
+              [countField]: (content[countField] || 0) + 1
+            };
           }
           return content;
         }));
@@ -264,18 +259,18 @@ export default function HomeView() {
   const getRelativeLabel = (dateStr: string) => {
     const todayStr = new Date().toISOString().split('T')[0];
     if (dateStr === todayStr) return 'Today';
-    
+
     const contentDate = new Date(dateStr);
     const today = new Date(todayStr);
     const diffTime = Math.abs(today.getTime() - contentDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 1) return 'Yesterday';
     return `${diffDays} Days Ago`;
   };
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
@@ -287,9 +282,12 @@ export default function HomeView() {
           {(session?.user as any)?.firstName?.[0] || session?.user?.name?.[0] || 'G'}
         </div>
         <div>
-          <p className="text-gray-600 text-sm">{getGreeting()},</p>
+          <div className="flex items-center space-x-1.5 text-gray-600 text-sm">
+            <span className="text-black text-xs font-bold leading-none mt-0.5">✝</span>
+            <p>Shalom,</p>
+          </div>
           <h2 className="text-xl font-bold text-gray-800">
-            {(session?.user as any)?.firstName || session?.user?.name || 'Guest'}
+            {(session?.user as any)?.firstName || session?.user?.name || 'Believer'}
           </h2>
         </div>
       </div>
@@ -316,90 +314,90 @@ export default function HomeView() {
 
       {/* Daily Verse Carousel (7-Day History) */}
       <div className="relative overflow-hidden mb-8">
-        <div 
+        <div
           ref={verseCarouselRef}
           onScroll={handleVerseScroll}
           className="flex overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
         >
           {dailyContents.map((content, index) => (
             <div key={content._id || index} className="w-full flex-shrink-0 snap-center px-2">
-                {/* Daily Verse Card - Figma Design */}
-                <div 
-                  className={`bg-gradient-to-br ${content.bgColor || 'from-cyan-400 to-teal-500'} rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex flex-col`}
-                  style={content.backgroundImage ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-                >
-                  {/* Fallback Overlay if bg image exists */}
-                  {content.backgroundImage && <div className="absolute inset-0 bg-black/40" />}
-                  
-                  {/* Decorative elements */}
-                  {!content.backgroundImage && (
-                    <>
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
-                    </>
-                  )}
+              {/* Daily Verse Card - Figma Design */}
+              <div
+                className={`bg-gradient-to-br ${content.bgColor || 'from-cyan-400 to-teal-500'} rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex flex-col`}
+                style={content.backgroundImage ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+              >
+                {/* Fallback Overlay if bg image exists */}
+                {content.backgroundImage && <div className="absolute inset-0 bg-black/40" />}
 
-                  {/* Content */}
-                  <div className="relative z-10 flex-1 flex flex-col">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <p className="text-white/80 text-sm mb-1">{getRelativeLabel(content.date)}'s Verse</p>
-                        <h3 className="text-white text-xl font-bold">{content.verseReference || 'Reference'}</h3>
-                        <p className="text-white/90 text-sm">{content.version || 'BBE'}</p>
-                      </div>
-                    </div>
+                {/* Decorative elements */}
+                {!content.backgroundImage && (
+                  <>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
+                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
+                  </>
+                )}
 
-                    {/* Verse text */}
-                    <div className="flex-1 flex items-center my-6">
-                      <p className="text-white text-lg leading-relaxed font-serif italic text-justify">
-                        "{content.verse || 'Verse text available soon...'}"
-                      </p>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="flex items-center justify-between pt-4 border-t border-white/20">
-                      <button
-                        onClick={() => handleLike(content._id, 'daily-verse')}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                      >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Heart className={`size-4 ${content.verseLikeCount > 0 ? 'fill-white' : ''}`} />
-                        </div>
-                        <span className="text-xs">{content.verseLikeCount || 'Like'}</span>
-                      </button>
-                      <button
-                        onClick={() => handleCommentClick(content._id, 'daily-verse')}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                      >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <MessageCircle className="size-4" />
-                        </div>
-                        <span className="text-xs">{content.verseCommentCount || 'Comment'}</span>
-                      </button>
-                      <button
-                        onClick={() => handleShare(content, 'daily-verse')}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                      >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Share2 className="size-4" />
-                        </div>
-                        <span className="text-xs">Share</span>
-                      </button>
-                      <button
-                        onClick={() => openDetailModal(index, 'verse')}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                      >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Maximize2 className="size-4" />
-                        </div>
-                        <span className="text-xs">Expand</span>
-                      </button>
+                {/* Content */}
+                <div className="relative z-10 flex-1 flex flex-col">
+                  <div className="flex items-center justify-between mb-4">
+                    <div>
+                      <p className="text-white/80 text-sm mb-1">{getRelativeLabel(content.date)}'s Verse</p>
+                      <h3 className="text-white text-xl font-bold">{content.verseReference || 'Reference'}</h3>
+                      <p className="text-white/90 text-sm">{content.version || 'BBE'}</p>
                     </div>
                   </div>
+
+                  {/* Verse text */}
+                  <div className="flex-1 flex items-center my-6">
+                    <p className="text-white text-lg leading-relaxed font-serif italic text-justify">
+                      "{content.verse || 'Verse text available soon...'}"
+                    </p>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex items-center justify-between pt-4 border-t border-white/20">
+                    <button
+                      onClick={() => handleLike(content._id, 'daily-verse')}
+                      className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                    >
+                      <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                        <Heart className={`size-4 ${content.verseLikeCount > 0 ? 'fill-white' : ''}`} />
+                      </div>
+                      <span className="text-xs">{content.verseLikeCount || 'Like'}</span>
+                    </button>
+                    <button
+                      onClick={() => handleCommentClick(content._id, 'daily-verse')}
+                      className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                    >
+                      <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                        <MessageCircle className="size-4" />
+                      </div>
+                      <span className="text-xs">{content.verseCommentCount || 'Comment'}</span>
+                    </button>
+                    <button
+                      onClick={() => handleShare(content, 'daily-verse')}
+                      className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                    >
+                      <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                        <Share2 className="size-4" />
+                      </div>
+                      <span className="text-xs">Share</span>
+                    </button>
+                    <button
+                      onClick={() => openDetailModal(index, 'verse')}
+                      className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                    >
+                      <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                        <Maximize2 className="size-4" />
+                      </div>
+                      <span className="text-xs">Expand</span>
+                    </button>
+                  </div>
                 </div>
+              </div>
             </div>
           ))}
-          
+
           {dailyContents.length === 0 && (
             <div className="w-full flex-shrink-0 px-2">
               <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex items-center justify-center text-white">
@@ -426,100 +424,100 @@ export default function HomeView() {
 
       {/* Daily Devotional Carousel (7-Day History) */}
       <div className="relative overflow-hidden mb-6">
-        <div 
+        <div
           ref={devotionCarouselRef}
           onScroll={handleDevotionScroll}
           className="flex overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
         >
           {dailyContents.map((content, index) => (
             <div key={content._id || index} className="w-full flex-shrink-0 snap-center px-2">
-                {/* Daily Devotional Card - Figma Design */}
-                {content.devotionalTitle ? (
-                  <div 
-                    className="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[320px] flex flex-col"
-                    style={content.devotionalBackgroundImage ? { backgroundImage: `url(${content.devotionalBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-                  >
-                    {/* Fallback Overlay if bg image exists */}
-                    {content.devotionalBackgroundImage ? (
-                      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
-                    ) : (
-                      <>
-                        <div className="absolute top-0 left-0 w-32 h-32 bg-rose-200/50 rounded-full -ml-16 -mt-16" />
-                        <div className="absolute bottom-0 right-0 w-24 h-24 bg-pink-300/50 rounded-full -mr-12 -mb-12" />
-                      </>
-                    )}
+              {/* Daily Devotional Card - Figma Design */}
+              {content.devotionalTitle ? (
+                <div
+                  className="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[320px] flex flex-col"
+                  style={content.devotionalBackgroundImage ? { backgroundImage: `url(${content.devotionalBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                >
+                  {/* Fallback Overlay if bg image exists */}
+                  {content.devotionalBackgroundImage ? (
+                    <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+                  ) : (
+                    <>
+                      <div className="absolute top-0 left-0 w-32 h-32 bg-rose-200/50 rounded-full -ml-16 -mt-16" />
+                      <div className="absolute bottom-0 right-0 w-24 h-24 bg-pink-300/50 rounded-full -mr-12 -mb-12" />
+                    </>
+                  )}
 
-                    <div className="relative z-10 flex-1 flex flex-col">
-                      <div className="flex items-start justify-between mb-4">
-                        <div>
-                          <p className={`text-sm mb-1 ${content.devotionalBackgroundImage ? 'text-white/80' : 'text-gray-600'}`}>{getRelativeLabel(content.date)}'s Devotional</p>
-                          <h3 className={`text-xl font-bold ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-800'}`}>{content.devotionalTitle}</h3>
-                          {content.devotionalVerseRef && (
-                            <p className={`text-sm mt-1 font-medium ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-rose-600'}`}>{content.devotionalVerseRef}</p>
-                          )}
-                        </div>
-                        {content.audioUrl && (
-                          <button
-                            onClick={() => toggleAudio(content.audioUrl)}
-                            className="p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform"
-                          >
-                            {audioPlaying === content.audioUrl ? <Pause className="size-5 text-[var(--color-accent-rose)]" /> : <Play className="size-5 text-[var(--color-accent-rose)] ml-0.5" />}
-                          </button>
+                  <div className="relative z-10 flex-1 flex flex-col">
+                    <div className="flex items-start justify-between mb-4">
+                      <div>
+                        <p className={`text-sm mb-1 ${content.devotionalBackgroundImage ? 'text-white/80' : 'text-gray-600'}`}>{getRelativeLabel(content.date)}'s Devotional</p>
+                        <h3 className={`text-xl font-bold ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-800'}`}>{content.devotionalTitle}</h3>
+                        {content.devotionalVerseRef && (
+                          <p className={`text-sm mt-1 font-medium ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-rose-600'}`}>{content.devotionalVerseRef}</p>
                         )}
                       </div>
+                      {content.audioUrl && (
+                        <button
+                          onClick={() => toggleAudio(content.audioUrl)}
+                          className="p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform"
+                        >
+                          {audioPlaying === content.audioUrl ? <Pause className="size-5 text-[var(--color-accent-rose)]" /> : <Play className="size-5 text-[var(--color-accent-rose)] ml-0.5" />}
+                        </button>
+                      )}
+                    </div>
 
-                      <div className="space-y-4 my-6 flex-1">
-                        <p className={`leading-relaxed text-justify line-clamp-3 ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-gray-700'}`}>
-                          {content.devotionalContent}
-                        </p>
-                      </div>
+                    <div className="space-y-4 my-6 flex-1">
+                      <p className={`leading-relaxed text-justify line-clamp-3 ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-gray-700'}`}>
+                        {content.devotionalContent}
+                      </p>
+                    </div>
 
-                      {/* Actions */}
-                      <div className={`flex items-center justify-between pt-4 border-t ${content.devotionalBackgroundImage ? 'border-white/20' : 'border-rose-200'}`}>
-                        <button
-                          onClick={() => handleLike(content._id, 'daily-devotion')}
-                          className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
-                        >
-                          <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
-                            <Heart className={`size-4 ${content.devotionLikeCount > 0 ? (content.devotionalBackgroundImage ? 'fill-white' : 'fill-[var(--color-accent-rose)] text-[var(--color-accent-rose)]') : ''}`} />
-                          </div>
-                          <span className="text-xs">{content.devotionLikeCount || 'Like'}</span>
-                        </button>
-                        <button
-                          onClick={() => handleCommentClick(content._id, 'daily-devotion')}
-                          className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
-                        >
-                          <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
-                            <MessageCircle className="size-4" />
-                          </div>
-                          <span className="text-xs">{content.devotionCommentCount || 'Comment'}</span>
-                        </button>
-                        <button
-                          onClick={() => handleShare(content, 'daily-devotion')}
-                          className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
-                        >
-                          <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
-                            <Share2 className="size-4" />
-                          </div>
-                          <span className="text-xs">Share</span>
-                        </button>
-                        <button
-                          onClick={() => openDetailModal(index, 'devotional')}
-                          className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
-                        >
-                          <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
-                            <Maximize2 className="size-4" />
-                          </div>
-                          <span className="text-xs">Expand</span>
-                        </button>
-                      </div>
+                    {/* Actions */}
+                    <div className={`flex items-center justify-between pt-4 border-t ${content.devotionalBackgroundImage ? 'border-white/20' : 'border-rose-200'}`}>
+                      <button
+                        onClick={() => handleLike(content._id, 'daily-devotion')}
+                        className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
+                      >
+                        <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
+                          <Heart className={`size-4 ${content.devotionLikeCount > 0 ? (content.devotionalBackgroundImage ? 'fill-white' : 'fill-[var(--color-accent-rose)] text-[var(--color-accent-rose)]') : ''}`} />
+                        </div>
+                        <span className="text-xs">{content.devotionLikeCount || 'Like'}</span>
+                      </button>
+                      <button
+                        onClick={() => handleCommentClick(content._id, 'daily-devotion')}
+                        className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
+                      >
+                        <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
+                          <MessageCircle className="size-4" />
+                        </div>
+                        <span className="text-xs">{content.devotionCommentCount || 'Comment'}</span>
+                      </button>
+                      <button
+                        onClick={() => handleShare(content, 'daily-devotion')}
+                        className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
+                      >
+                        <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
+                          <Share2 className="size-4" />
+                        </div>
+                        <span className="text-xs">Share</span>
+                      </button>
+                      <button
+                        onClick={() => openDetailModal(index, 'devotional')}
+                        className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
+                      >
+                        <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
+                          <Maximize2 className="size-4" />
+                        </div>
+                        <span className="text-xs">Expand</span>
+                      </button>
                     </div>
                   </div>
-                ) : (
-                  <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-6 shadow-xl min-h-[320px] flex items-center justify-center text-gray-500">
-                    <p>Devotion not available.</p>
-                  </div>
-                )}
+                </div>
+              ) : (
+                <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-6 shadow-xl min-h-[320px] flex items-center justify-center text-gray-500">
+                  <p>Devotion not available.</p>
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -543,7 +541,7 @@ export default function HomeView() {
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-gray-800">My Reading Plan</h3>
-          <button 
+          <button
             onClick={() => router.push('/bible')}
             className="text-[var(--color-primary-teal)] text-sm font-medium hover:underline"
           >
@@ -553,38 +551,38 @@ export default function HomeView() {
 
         {latestProgress ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-             {/* Latest Progress Card */}
-             <div className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow border border-gray-100 flex flex-col justify-between">
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h4 className="font-bold text-gray-800 mb-1">Continue Reading</h4>
-                    <p className="text-sm text-gray-700 font-medium">
-                      {latestProgress.bookName || latestProgress.bookId} {latestProgress.chapter} ({latestProgress.versionName || latestProgress.versionId})
-                    </p>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Last read: {getRelativeTime(latestProgress.lastReadAt)}
-                    </p>
-                  </div>
-                  <div className="size-12 rounded-full bg-gradient-to-br from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] flex items-center justify-center text-white font-bold text-sm">
-                    {latestProgress.completed ? '100%' : (latestProgress.progressPercent ? `${Math.round(latestProgress.progressPercent)}%` : '---')}
-                  </div>
+            {/* Latest Progress Card */}
+            <div className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow border border-gray-100 flex flex-col justify-between">
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <h4 className="font-bold text-gray-800 mb-1">Continue Reading</h4>
+                  <p className="text-sm text-gray-700 font-medium">
+                    {latestProgress.bookName || latestProgress.bookId} {latestProgress.chapter} ({latestProgress.versionName || latestProgress.versionId})
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Last read: {getRelativeTime(latestProgress.lastReadAt)}
+                  </p>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                    <div
-                      className="bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] h-2 rounded-full transition-all"
-                      style={{ width: `${latestProgress.completed ? 100 : (latestProgress.progressPercent || 0)}%` }}
-                    />
+                <div className="size-12 rounded-full bg-gradient-to-br from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] flex items-center justify-center text-white font-bold text-sm">
+                  {latestProgress.completed ? '100%' : (latestProgress.progressPercent ? `${Math.round(latestProgress.progressPercent)}%` : '---')}
                 </div>
-                <button 
-                  onClick={() => router.push(`/bible/${latestProgress.versionId}/${latestProgress.bookId}/${latestProgress.chapter}`)}
-                  className="w-full py-2 bg-[#e6f0f1] text-[var(--color-primary-teal)] rounded-lg text-sm font-medium hover:bg-[#d0e5e7] transition-colors mt-2"
-                >
-                  Continue
-                </button>
-             </div>
-             
-             {allProgress.length > 1 && (
-                <div className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow border border-gray-100 flex flex-col justify-between hidden sm:flex">
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+                <div
+                  className="bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] h-2 rounded-full transition-all"
+                  style={{ width: `${latestProgress.completed ? 100 : (latestProgress.progressPercent || 0)}%` }}
+                />
+              </div>
+              <button
+                onClick={() => router.push(`/bible/${latestProgress.versionId}/${latestProgress.bookId}/${latestProgress.chapter}`)}
+                className="w-full py-2 bg-[#e6f0f1] text-[var(--color-primary-teal)] rounded-lg text-sm font-medium hover:bg-[#d0e5e7] transition-colors mt-2"
+              >
+                Continue
+              </button>
+            </div>
+
+            {allProgress.length > 1 && (
+              <div className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow border border-gray-100 flex flex-col justify-between hidden sm:flex">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
                     <h4 className="font-bold text-gray-800 mb-1">Previous Chapter</h4>
@@ -593,27 +591,27 @@ export default function HomeView() {
                     </p>
                   </div>
                 </div>
-                <button 
+                <button
                   onClick={() => router.push(`/bible/${allProgress[1].versionId}/${allProgress[1].bookId}/${allProgress[1].chapter}`)}
                   className="w-full py-2 bg-gray-50 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors mt-2"
                 >
                   Read Again
                 </button>
-             </div>
-             )}
+              </div>
+            )}
           </div>
         ) : (
           <div className="bg-white rounded-xl p-8 shadow-md border border-gray-100 text-center space-y-4">
-             <div className="bg-teal-50 size-16 rounded-full flex items-center justify-center mx-auto">
-                <BookOpen className="size-8 text-[var(--color-primary-teal)]" />
-             </div>
-             <p className="text-gray-600">You haven't started any reading plan yet.</p>
-             <button 
-                onClick={() => router.push('/bible')}
-                className="px-8 py-2 bg-[var(--color-primary-teal)] text-white rounded-lg font-medium shadow-md hover:shadow-lg hover:bg-[#328e91] transition-all"
-             >
-                Start Reading →
-             </button>
+            <div className="bg-teal-50 size-16 rounded-full flex items-center justify-center mx-auto">
+              <BookOpen className="size-8 text-[var(--color-primary-teal)]" />
+            </div>
+            <p className="text-gray-600">You haven't started any reading plan yet.</p>
+            <button
+              onClick={() => router.push('/bible')}
+              className="px-8 py-2 bg-[var(--color-primary-teal)] text-white rounded-lg font-medium shadow-md hover:shadow-lg hover:bg-[#328e91] transition-all"
+            >
+              Start Reading →
+            </button>
           </div>
         )}
       </div>
@@ -641,13 +639,12 @@ export default function HomeView() {
                       <span className="text-xs text-gray-500">{getRelativeTime(request.createdAt)}</span>
                     </div>
                     <p className="text-sm text-gray-600 line-clamp-2">{request.text}</p>
-                    <button 
+                    <button
                       onClick={() => handleIntercede(request._id)}
-                      className={`text-xs font-medium mt-2 hover:underline flex items-center gap-1.5 ${
-                        request.intercessors?.includes((session?.user as any)?.id) 
-                        ? 'text-orange-600' 
-                        : 'text-[var(--color-primary-teal)]'
-                      }`}
+                      className={`text-xs font-medium mt-2 hover:underline flex items-center gap-1.5 ${request.intercessors?.includes((session?.user as any)?.id)
+                          ? 'text-orange-600'
+                          : 'text-[var(--color-primary-teal)]'
+                        }`}
                     >
                       <span>🙏</span> {request.intercessionCount > 0 ? `${request.intercessionCount} praying` : 'Pray for this'}
                     </button>
@@ -657,7 +654,7 @@ export default function HomeView() {
             ))
           )}
         </div>
-        <button 
+        <button
           onClick={() => router.push('/community/prayers')}
           className="w-full mt-4 py-3 bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] text-white rounded-xl font-medium hover:shadow-lg transition-all"
         >
@@ -665,7 +662,7 @@ export default function HomeView() {
         </button>
       </div>
 
-      <DailyDetailModal 
+      <DailyDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
         contents={dailyContents}

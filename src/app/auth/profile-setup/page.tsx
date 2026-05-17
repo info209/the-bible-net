@@ -20,6 +20,7 @@ function ProfileSetupContent() {
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [bibleVersions, setBibleVersions] = useState<string[]>(['NKJV', 'KJV', 'NIV', 'ESV']); // Default fallback
 
     useEffect(() => {
         if (session?.user) {
@@ -34,6 +35,25 @@ function ProfileSetupContent() {
             }));
         }
     }, [session]);
+
+    useEffect(() => {
+        // Fetch dynamic bible versions
+        const fetchVersions = async () => {
+            try {
+                const res = await fetch('/api/v1/bible/versions');
+                const json = await res.json();
+                if (json.success && json.data) {
+                    const versionsArray = Array.isArray(json.data) ? json.data : json.data.versions;
+                    if (versionsArray && versionsArray.length > 0) {
+                        setBibleVersions(versionsArray.map((v: any) => v.abbreviation));
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch Bible versions', err);
+            }
+        };
+        fetchVersions();
+    }, []);
 
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
@@ -202,10 +222,9 @@ function ProfileSetupContent() {
                             onChange={(e) => setFormData({ ...formData, preferredBibleVersion: e.target.value })}
                             className="w-full bg-gray-100/50 border-none rounded-2xl py-3.5 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 transition-all appearance-none font-bold text-slate-700"
                         >
-                            <option>NKJV</option>
-                            <option>KJV</option>
-                            <option>NIV</option>
-                            <option>ESV</option>
+                            {bibleVersions.map((v) => (
+                                <option key={v} value={v}>{v}</option>
+                            ))}
                         </select>
                     </div>
                 </div>
@@ -221,7 +240,7 @@ function ProfileSetupContent() {
                         <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                         <>
-                            Get Started <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                            {(session?.user as any)?.onboardingCompleted ? 'Update Changes' : 'Get Started'} <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
                         </>
                     )}
                 </button>
