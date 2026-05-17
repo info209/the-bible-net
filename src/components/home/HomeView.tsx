@@ -435,16 +435,28 @@ export default function HomeView() {
             <div key={content._id || index} className="w-full flex-shrink-0 snap-center px-2">
                 {/* Daily Devotional Card - Figma Design */}
                 {content.devotionalTitle ? (
-                  <div className="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[320px] flex flex-col">
-                    {/* Decorative elements */}
-                    <div className="absolute top-0 left-0 w-32 h-32 bg-rose-200/50 rounded-full -ml-16 -mt-16" />
-                    <div className="absolute bottom-0 right-0 w-24 h-24 bg-pink-300/50 rounded-full -mr-12 -mb-12" />
+                  <div 
+                    className="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[320px] flex flex-col"
+                    style={content.devotionalBackgroundImage ? { backgroundImage: `url(${content.devotionalBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                  >
+                    {/* Fallback Overlay if bg image exists */}
+                    {content.devotionalBackgroundImage ? (
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
+                    ) : (
+                      <>
+                        <div className="absolute top-0 left-0 w-32 h-32 bg-rose-200/50 rounded-full -ml-16 -mt-16" />
+                        <div className="absolute bottom-0 right-0 w-24 h-24 bg-pink-300/50 rounded-full -mr-12 -mb-12" />
+                      </>
+                    )}
 
                     <div className="relative z-10 flex-1 flex flex-col">
                       <div className="flex items-start justify-between mb-4">
                         <div>
-                          <p className="text-gray-600 text-sm mb-1">{getRelativeLabel(content.date)}'s Devotional</p>
-                          <h3 className="text-gray-800 text-xl font-bold">{content.devotionalTitle}</h3>
+                          <p className={`text-sm mb-1 ${content.devotionalBackgroundImage ? 'text-white/80' : 'text-gray-600'}`}>{getRelativeLabel(content.date)}'s Devotional</p>
+                          <h3 className={`text-xl font-bold ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-800'}`}>{content.devotionalTitle}</h3>
+                          {content.devotionalVerseRef && (
+                            <p className={`text-sm mt-1 font-medium ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-rose-600'}`}>{content.devotionalVerseRef}</p>
+                          )}
                         </div>
                         {content.audioUrl && (
                           <button
@@ -457,45 +469,45 @@ export default function HomeView() {
                       </div>
 
                       <div className="space-y-4 my-6 flex-1">
-                        <p className="text-gray-700 leading-relaxed text-justify line-clamp-3">
-                          {content.devotionalText}
+                        <p className={`leading-relaxed text-justify line-clamp-3 ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-gray-700'}`}>
+                          {content.devotionalContent}
                         </p>
                       </div>
 
                       {/* Actions */}
-                      <div className="flex items-center justify-between pt-4 border-t border-rose-200">
+                      <div className={`flex items-center justify-between pt-4 border-t ${content.devotionalBackgroundImage ? 'border-white/20' : 'border-rose-200'}`}>
                         <button
                           onClick={() => handleLike(content._id, 'daily-devotion')}
-                          className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
+                          className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
                         >
-                          <div className="bg-white p-2 rounded-full shadow-sm">
-                            <Heart className={`size-4 ${content.devotionLikeCount > 0 ? 'fill-[var(--color-accent-rose)] text-[var(--color-accent-rose)]' : ''}`} />
+                          <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
+                            <Heart className={`size-4 ${content.devotionLikeCount > 0 ? (content.devotionalBackgroundImage ? 'fill-white' : 'fill-[var(--color-accent-rose)] text-[var(--color-accent-rose)]') : ''}`} />
                           </div>
                           <span className="text-xs">{content.devotionLikeCount || 'Like'}</span>
                         </button>
                         <button
                           onClick={() => handleCommentClick(content._id, 'daily-devotion')}
-                          className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
+                          className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
                         >
-                          <div className="bg-white p-2 rounded-full shadow-sm">
+                          <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
                             <MessageCircle className="size-4" />
                           </div>
                           <span className="text-xs">{content.devotionCommentCount || 'Comment'}</span>
                         </button>
                         <button
                           onClick={() => handleShare(content, 'daily-devotion')}
-                          className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
+                          className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
                         >
-                          <div className="bg-white p-2 rounded-full shadow-sm">
+                          <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
                             <Share2 className="size-4" />
                           </div>
                           <span className="text-xs">Share</span>
                         </button>
                         <button
                           onClick={() => openDetailModal(index, 'devotional')}
-                          className="flex flex-col items-center space-y-1 text-gray-600 hover:text-[var(--color-accent-rose)] transition-colors"
+                          className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
                         >
-                          <div className="bg-white p-2 rounded-full shadow-sm">
+                          <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
                             <Maximize2 className="size-4" />
                           </div>
                           <span className="text-xs">Expand</span>

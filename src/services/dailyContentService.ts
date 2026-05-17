@@ -81,6 +81,7 @@ export class DailyContentService {
             devotionalTitle: content.devotionalTitle,
             devotionalContent: content.devotionalContent,
             devotionalVerseRef: content.devotionalVerseRef,
+            devotionalVerseText: content.devotionalVerseRef ? await this.resolveReferenceText(content.devotionalVerseRef, version) : '',
             backgroundImage: content.backgroundImage,
             devotionalBackgroundImage: content.devotionalBackgroundImage,
             isPublished: content.isPublished,
@@ -152,6 +153,82 @@ export class DailyContentService {
         } catch (error) {
             console.error('resolveVerseText error:', error);
             return `[${bookName} ${chapter}:${verseNum}]`;
+        }
+    }
+
+    /**
+     * Parses a reference string like "John 3:16", "Psalm 91:1-4", or "1 John 1:9"
+     */
+    static parseReference(reference: string): { bookName: string, chapter: number, startVerse: number, endVerse?: number } | null {
+        // Matches references like "1 John 3:16-18", "Song of Solomon 1:1"
+        const match = reference.match(/^(.+?)\s+(\d+):(\d+)(?:-(\d+))?$/);
+        if (!match) return null;
+        return {
+            bookName: match[1].trim(),
+            chapter: parseInt(match[2], 10),
+            startVerse: parseInt(match[3], 10),
+            endVerse: match[4] ? parseInt(match[4], 10) : undefined
+        };
+    }
+
+    /**
+     * Resolves a full reference string dynamically fetching the exact scripture.
+     */
+    static async resolveReferenceText(reference: string, versionAbbr: string): Promise<string> {
+        const parsed = this.parseReference(reference);
+        if (!parsed) return `[${reference}]`;
+
+        const { bookName, chapter, startVerse, endVerse } = parsed;
+
+        try {
+            await connectDB();
+            let bibleVersion = await BibleVersion.findOne({
+                abbreviation: versionAbbr.toUpperCase(),
+                isActive: true
+            }).lean();
+
+            if (!bibleVersion) {
+                bibleVersion = await BibleVersion.findOne({ isActive: true }).lean();
+            }
+            if (!bibleVersion) return `[${reference}]`;
+
+            // Find book
+            let bookDoc = await Book.findOne({
+                version: bibleVersion._id,
+                name: { $regex: new RegExp(`^${bookName}$`, 'i') }
+            }).lean();
+
+            if (!bookDoc) {
+                const anyBook = await Book.findOne({
+                    name: { $regex: new RegExp(`^${bookName}$`, 'i') }
+                }).lean();
+                if (!anyBook) return `[${reference}]`;
+
+                bookDoc = await Book.findOne({
+                    version: bibleVersion._id,
+                    order: anyBook.order
+                }).lean();
+                
+                if (!bookDoc) return `[${reference}]`;
+            }
+
+            const chapterDoc = await Chapter.findOne({ book: bookDoc._id, number: chapter }).lean();
+            if (!chapterDoc) return `[${reference}]`;
+
+            const query: any = { chapter: chapterDoc._id };
+            if (endVerse) {
+                query.number = { $gte: startVerse, $lte: endVerse };
+            } else {
+                query.number = startVerse;
+            }
+
+            const verses = await Verse.find(query).sort({ number: 1 }).lean();
+            if (!verses || verses.length === 0) return `[${reference}]`;
+
+            return verses.map(v => v.text).join(' ');
+        } catch (error) {
+            console.error('resolveReferenceText error:', error);
+            return `[${reference}]`;
         }
     }
 }

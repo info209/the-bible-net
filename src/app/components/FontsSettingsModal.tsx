@@ -236,7 +236,7 @@ export default function FontsSettingsModal({
             Theme Selection
           </p>
 
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="flex justify-between items-center w-full px-2">
             {([
               { id: "light", icon: Sun,      bg: "#ffffff", iconColor: "#f59e0b", label: "Light" },
               { id: "sepia", icon: Coffee,   bg: "#f5e6c8", iconColor: "#92400e", label: "Sepia" },
@@ -245,48 +245,31 @@ export default function FontsSettingsModal({
             ] as const).map(({ id, icon: Icon, bg, iconColor, label }) => {
               const active = selectedTheme === id;
               return (
-                <button
-                  key={id}
-                  onClick={() => onThemeChange(id)}
-                  className="relative flex flex-col items-center justify-center py-5 rounded-2xl border transition-all duration-300 active:scale-95 group overflow-hidden"
-                  style={{
-                    background: bg,
-                    borderColor: active ? "var(--color-primary-teal)" : theme.border,
-                    borderWidth: active ? "2px" : "1px",
-                    boxShadow: active ? "0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.1)" : "none",
-                    transform: active ? "translateY(-2px)" : "translateY(0)",
-                  }}
-                >
-                  {/* Subtle Background Glow for Active Theme */}
-                  {active && (
-                    <div 
-                      className="absolute inset-0 opacity-[0.08] animate-pulse"
-                      style={{ background: "var(--color-primary-teal)" }}
-                    />
-                  )}
-
-                  <div className={`p-2.5 rounded-full mb-1.5 transition-all duration-300 ${active ? 'scale-110 shadow-sm' : 'group-hover:scale-110 group-hover:-translate-y-0.5'}`}
-                       style={{ 
-                         background: active ? 'rgba(0,0,0,0.03)' : 'transparent',
-                       }}>
-                    <Icon size={24} style={{ color: iconColor }} />
-                  </div>
-                  
-                  <span className="text-[11px] font-bold uppercase tracking-wide transition-colors duration-300"
-                        style={{ color: active ? "var(--color-primary-teal)" : theme.text }}>
+                <div key={id} className="flex flex-col items-center gap-2">
+                  <button
+                    onClick={() => onThemeChange(id)}
+                    className="relative flex items-center justify-center size-12 rounded-full transition-all duration-300 shadow-sm active:scale-95 group"
+                    style={{
+                      background: bg,
+                      borderColor: active ? "var(--color-primary-teal)" : theme.border,
+                      borderWidth: active ? "2px" : "1px",
+                    }}
+                    aria-label={`Select ${label} theme`}
+                  >
+                    <Icon size={20} style={{ color: iconColor }} className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`} />
+                    
+                    {/* Active Indicator Badge */}
+                    {active && (
+                      <div className="absolute -top-1 -right-1 bg-[var(--color-primary-teal)] text-white p-0.5 rounded-full shadow-md z-10 scale-90">
+                        <Check size={12} strokeWidth={3} />
+                      </div>
+                    )}
+                  </button>
+                  <span className="text-[10px] font-bold uppercase tracking-wide transition-colors duration-300"
+                        style={{ color: active ? "var(--color-primary-teal)" : theme.subText }}>
                     {label}
                   </span>
-
-                  {/* Active Indicator Badge */}
-                  {active && (
-                    <div className="absolute top-2 right-2 bg-[var(--color-primary-teal)] text-white p-0.5 rounded-full shadow-lg scale-110">
-                      <Check size={10} strokeWidth={4} />
-                    </div>
-                  )}
-
-                  {/* Hover Effect Layer */}
-                  <div className="absolute inset-0 bg-black/0 group-hover:bg-black/[0.02] transition-colors pointer-events-none" />
-                </button>
+                </div>
               );
             })}
           </div>

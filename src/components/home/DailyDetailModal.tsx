@@ -10,9 +10,12 @@ interface IDailyContent {
     verseReference: string;
     devotionalTitle?: string;
     devotionalContent?: string;
+    devotionalVerseRef?: string;
+    devotionalVerseText?: string;
     prayerTitle?: string;
     prayerContent?: string;
     backgroundImage?: string;
+    devotionalBackgroundImage?: string;
 }
 
 interface DailyDetailModalProps {
@@ -73,13 +76,18 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                 className="fixed inset-0 z-[100] flex flex-col bg-slate-900"
             >
                 {/* Dynamic Background Image */}
-                {currentContent.backgroundImage ? (
+                {currentContent.devotionalBackgroundImage ? (
+                    <div 
+                        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700"
+                        style={{ backgroundImage: `url(${currentContent.devotionalBackgroundImage})` }}
+                    />
+                ) : currentContent.backgroundImage ? (
                     <div 
                         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700"
                         style={{ backgroundImage: `url(${currentContent.backgroundImage})` }}
                     />
                 ) : (
-                    <div className="absolute inset-0 z-0 bg-gradient-to-br from-cyan-900/60 to-teal-900/80 transition-all duration-700" />
+                    <div className="absolute inset-0 z-0 bg-gradient-to-br from-pink-900/60 to-rose-900/80 transition-all duration-700" />
                 )}
 
                 {/* Header */}
@@ -146,7 +154,25 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                         <div className="h-px bg-white/20 flex-1" />
                                     </div>
                                     <h3 className="text-white text-3xl font-bold mb-8 text-center">{currentContent.devotionalTitle}</h3>
+
+                                    {/* Scripture Section */}
+                                    <div className="mb-10 text-center">
+                                        {currentContent.devotionalVerseText ? (
+                                            <>
+                                                <p className="text-white/80 text-sm font-semibold uppercase tracking-wide mb-2">{currentContent.devotionalVerseRef}</p>
+                                                <p className="text-white text-2xl leading-relaxed font-serif italic drop-shadow-md">
+                                                    "{currentContent.devotionalVerseText}"
+                                                </p>
+                                            </>
+                                        ) : (
+                                            <div className="py-4 opacity-70 border border-white/20 rounded-xl bg-white/5">
+                                                <p className="text-white/80 text-sm font-semibold uppercase tracking-wide mb-1">{currentContent.devotionalVerseRef}</p>
+                                                <p className="text-white text-lg italic">Verse unavailable.</p>
+                                            </div>
+                                        )}
+                                    </div>
                                     
+                                    {/* Devotional Content Section */}
                                     <p className="text-white/90 text-lg leading-loose text-justify whitespace-pre-wrap drop-shadow-sm font-medium">
                                         {currentContent.devotionalContent}
                                     </p>
