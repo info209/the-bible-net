@@ -278,12 +278,11 @@ export default function HomeView() {
     >
       {/* Greeting - Figma Style */}
       <div className="flex items-center space-x-3 animate-fade-in">
-        <div className="size-10 rounded-full bg-gradient-to-br from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] flex items-center justify-center text-white font-bold text-lg uppercase shadow-sm">
-          {(session?.user as any)?.firstName?.[0] || session?.user?.name?.[0] || 'G'}
+        <div className="flex items-center justify-center text-gray-800 text-2xl font-bold px-1">
+          ✝
         </div>
         <div>
           <div className="flex items-center space-x-1.5 text-gray-600 text-sm">
-            <span className="text-black text-xs font-bold leading-none mt-0.5">✝</span>
             <p>Shalom,</p>
           </div>
           <h2 className="text-xl font-bold text-gray-800">

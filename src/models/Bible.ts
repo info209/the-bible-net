@@ -12,6 +12,12 @@ export interface IBibleVersion extends Document {
     isActive: boolean; // Simplified active/inactive state
     createdAt?: Date;
     updatedAt?: Date;
+
+    // Enhanced fields added in place
+    licenseType?: 'public-domain' | 'licensed' | 'proprietary' | 'unknown';
+    embeddingsGenerated?: boolean;
+    embeddingsGeneratedAt?: Date;
+    versesCount?: number;
 }
 
 
@@ -21,12 +27,19 @@ export interface IBook extends Document {
     testament: 'OT' | 'NT';
     version: mongoose.Types.ObjectId;
     order: number;       // For sorting
+
+    // Enhanced fields added in place
+    chaptersCount?: number;
+    versesCount?: number;
 }
 
 export interface IChapter extends Document {
     number: number;
     book: mongoose.Types.ObjectId;
     version: mongoose.Types.ObjectId; // Denormalized for easier querying
+
+    // Enhanced fields added in place
+    versesCount?: number;
 }
 
 export interface IVerse extends Document {
@@ -35,6 +48,36 @@ export interface IVerse extends Document {
     chapter: mongoose.Types.ObjectId;
     book: mongoose.Types.ObjectId;    // Denormalized
     version: mongoose.Types.ObjectId; // Denormalized
+
+    // Enhanced denormalized metadata (optional for safety with existing documents)
+    versionCode?: string;      // e.g., "KJV"
+    versionName?: string;      // e.g., "King James Version"
+    bookName?: string;         // e.g., "Psalms"
+    bookAbbr?: string;         // e.g., "PSA"
+    testamentName?: 'OT' | 'NT';
+    chapterNumber?: number;
+
+    // Derived reference
+    reference?: string;        // e.g., "Psalms 23:4"
+
+    // Text variations
+    normalizedText?: string;   // lowercase, minimal punctuation
+
+    // Enrichment fields
+    themes?: string[];         // e.g., ["comfort", "protection", "faith"]
+    emotions?: string[];       // e.g., ["fear", "hope", "peace"]
+    keywords?: string[];       // extracted important nouns/concepts
+
+    // Composite search field
+    searchText?: string;       // concatenation of reference, text, themes, emotions, keywords
+
+    // Vector embedding (for semantic search)
+    embedding?: number[];      // e.g., float array for search
+
+    // Scoring and model metadata
+    popularityScore?: number;  // 0-100, for boost in ranking
+    embeddingModel?: string;   // e.g., "all-MiniLM-L6-v2"
+    embeddingGeneratedAt?: Date;
 }
 
 // --- Schemas ---
@@ -79,6 +122,24 @@ const BibleVersionSchema = new Schema<IBibleVersion>({
         min: 0,
         max: 100
     },
+    // Enhanced fields
+    licenseType: {
+        type: String,
+        enum: ['public-domain', 'licensed', 'proprietary', 'unknown'],
+        default: 'unknown'
+    },
+    embeddingsGenerated: {
+        type: Boolean,
+        default: false
+    },
+    embeddingsGeneratedAt: {
+        type: Date,
+        sparse: true
+    },
+    versesCount: {
+        type: Number,
+        default: 0
+    }
 }, { timestamps: true });
 
 
@@ -98,21 +159,33 @@ const BookSchema = new Schema<IBook>({
     testament: { type: String, enum: ['OT', 'NT'], required: true },
     version: { type: Schema.Types.ObjectId, ref: 'BibleVersion', required: true },
     order: { type: Number, required: true, min: 1 },
+    // Enhanced fields
+    chaptersCount: {
+        type: Number,
+        default: 0
+    },
+    versesCount: {
+        type: Number,
+        default: 0
+    }
 });
 // Index for fast lookup of books in a version
 BookSchema.index({ version: 1, order: 1 });
 BookSchema.index({ version: 1, abbreviation: 1 });
+BookSchema.index({ name: 1, version: 1 });
 
 const ChapterSchema = new Schema<IChapter>({
     number: { type: Number, required: true, min: [1, 'Chapter must be at least 1'] },
     book: { type: Schema.Types.ObjectId, ref: 'Book', required: true },
     version: { type: Schema.Types.ObjectId, ref: 'BibleVersion', required: true },
+    // Enhanced fields
+    versesCount: {
+        type: Number,
+        default: 0
+    }
 });
-ChapterSchema.index({ book: 1, number: 1 }, { unique: true }); // A book can't have two chapter 1s (in the same version - wait, book is unique to version? No, book model should be unique per version properly). 
-// Correction: If Book is generic "Genesis" shared across versions, that's one design.
-// If Book is "Genesis (KJV)", that's another.
-// My design: Book has schema ref to Version. So "Genesis KJV" is a document, "Genesis NIV" is another.
-// So { book: 1, number: 1 } unique is correct.
+ChapterSchema.index({ book: 1, number: 1 }, { unique: true });
+ChapterSchema.index({ version: 1, book: 1 });
 
 const VerseSchema = new Schema<IVerse>({
     number: { type: Number, required: true, min: [1, 'Verse must be at least 1'] },
@@ -125,10 +198,108 @@ const VerseSchema = new Schema<IVerse>({
     chapter: { type: Schema.Types.ObjectId, ref: 'Chapter', required: true },
     book: { type: Schema.Types.ObjectId, ref: 'Book', required: true },
     version: { type: Schema.Types.ObjectId, ref: 'BibleVersion', required: true },
-});
+    
+    // Enhanced denormalized metadata (optional for compatibility)
+    versionCode: {
+        type: String,
+        maxlength: 10,
+        uppercase: true,
+        index: true
+    },
+    versionName: {
+        type: String,
+        maxlength: 100
+    },
+    bookName: {
+        type: String,
+        maxlength: 50,
+        index: true
+    },
+    bookAbbr: {
+        type: String,
+        maxlength: 10,
+        uppercase: true,
+        index: true
+    },
+    testamentName: {
+        type: String,
+        enum: ['OT', 'NT'],
+        index: true
+    },
+    chapterNumber: {
+        type: Number,
+        index: true
+    },
+
+    // Derived reference
+    reference: {
+        type: String,
+        maxlength: 50,
+        index: true
+    },
+
+    // Text variations
+    normalizedText: {
+        type: String,
+        maxlength: 3000
+    },
+
+    // Enrichment fields
+    themes: {
+        type: [String],
+        default: [],
+        index: true
+    },
+    emotions: {
+        type: [String],
+        default: [],
+        index: true
+    },
+    keywords: {
+        type: [String],
+        default: []
+    },
+
+    // Composite search field
+    searchText: {
+        type: String,
+        maxlength: 5000
+    },
+
+    // Vector embedding
+    embedding: {
+        type: [Number],
+        sparse: true
+    },
+
+    // Scoring and model metadata
+    popularityScore: {
+        type: Number,
+        default: 50,
+        min: 0,
+        max: 100
+    },
+    embeddingModel: {
+        type: String,
+        default: 'all-MiniLM-L6-v2',
+        maxlength: 100
+    },
+    embeddingGeneratedAt: {
+        type: Date,
+        sparse: true
+    }
+}, { timestamps: true });
+
 VerseSchema.index({ chapter: 1, number: 1 }, { unique: true });
 VerseSchema.index({ version: 1, book: 1, chapter: 1, number: 1 });
-VerseSchema.index({ text: 'text' }); // Full-text search index
+VerseSchema.index({ versionCode: 1, bookName: 1, chapterNumber: 1, number: 1 });
+VerseSchema.index({ reference: 1, versionCode: 1 });
+
+// Text index for keyword search on composite search field
+VerseSchema.index({ searchText: 'text' });
+
+// Extra indexes for fast vector filtering
+VerseSchema.index({ embeddingModel: 1 });
 
 // --- Models ---
 // Prevent overwriting models in dev hot-reload
