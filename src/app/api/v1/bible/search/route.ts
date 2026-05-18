@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const q = searchParams.get('q');
         const versionIdParam = searchParams.get('versionId');
+        const modeParam = searchParams.get('mode') as 'auto' | 'exact' | 'keyword' | 'semantic' | null;
         const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
 
         if (!q || q.trim().length < 2) {
@@ -46,70 +47,80 @@ export async function GET(req: NextRequest) {
         }
 
         // Dynamically detect if database has been enriched with semantic search metadata
-        const isEnriched = Boolean(await Verse.exists({ searchText: { $ne: null } }));
+        let isEnriched = false;
+        try {
+            isEnriched = Boolean(await Verse.exists({ searchText: { $ne: null } }));
+        } catch (e: any) {
+            console.warn("Failed to check database enrichment status, defaulting to legacy search fallback:", e.message);
+        }
 
         if (isEnriched) {
-            // --- Unified Semantic/Hybrid Search Path ---
-            
-            // Resolve out-of-band version code/abbreviation from versionIdParam
-            let resolvedVersionCode: string | undefined = undefined;
-            if (versionIdParam) {
-                if (versionIdParam.match(/^[0-9a-fA-F]{24}$/)) {
-                    const versionDoc = await BibleVersion.findById(versionIdParam).select('abbreviation');
-                    if (versionDoc) {
-                        resolvedVersionCode = versionDoc.abbreviation;
+            try {
+                // --- Unified Semantic/Hybrid Search Path ---
+                
+                // Resolve out-of-band version code/abbreviation from versionIdParam
+                let resolvedVersionCode: string | undefined = undefined;
+                if (versionIdParam) {
+                    if (versionIdParam.match(/^[0-9a-fA-F]{24}$/)) {
+                        const versionDoc = await BibleVersion.findById(versionIdParam).select('abbreviation');
+                        if (versionDoc) {
+                            resolvedVersionCode = versionDoc.abbreviation;
+                        }
+                    } else {
+                        resolvedVersionCode = versionIdParam.toUpperCase();
                     }
-                } else {
-                    resolvedVersionCode = versionIdParam.toUpperCase();
                 }
-            }
 
-            // Initialize search service components
-            const embeddingProvider = getEmbeddingProvider();
-            const rerankerService = getReranker();
-            const searchService = createBibleSearchService(embeddingProvider, rerankerService);
+                // Initialize search service components
+                const embeddingProvider = getEmbeddingProvider();
+                const rerankerService = getReranker();
+                const searchService = createBibleSearchService(embeddingProvider, rerankerService);
 
-            // Execute unified search
-            const searchResponse = await searchService.search(q, {
-                limit,
-                versionCode: resolvedVersionCode
-            });
-
-            if (searchResponse.success) {
-                // Map result list to match the original API schema expected by the React frontend
-                const results = searchResponse.results.map((r: any) => ({
-                    verseId: r.verseId,
-                    number: r.verse,
-                    text: r.text,
-                    book: {
-                        id: r.book.name,
-                        name: r.book.name,
-                        abbreviation: r.book.abbreviation
-                    },
-                    chapter: {
-                        id: `${r.book.name}-${r.chapter}`,
-                        number: r.chapter
-                    },
-                    version: {
-                        id: r.version.code,
-                        abbreviation: r.version.code,
-                        name: r.version.name
-                    },
-                    themes: r.themes,
-                    emotions: r.emotions,
-                    score: r.score
-                }));
-
-                return NextResponse.json({
-                    success: true,
-                    data: {
-                        results,
-                        total: results.length,
-                        query: q,
-                        mode: searchResponse.mode,
-                        processingTimeMs: searchResponse.processingTimeMs
-                    }
+                // Execute unified search
+                const searchResponse = await searchService.search(q, {
+                    limit,
+                    versionCode: resolvedVersionCode,
+                    mode: modeParam || undefined
                 });
+
+                if (searchResponse.success) {
+                    // Map result list to match the original API schema expected by the React frontend
+                    const results = searchResponse.results.map((r: any) => ({
+                        verseId: r.verseId,
+                        number: r.verse,
+                        text: r.text,
+                        book: {
+                            id: r.book.name,
+                            name: r.book.name,
+                            abbreviation: r.book.abbreviation
+                        },
+                        chapter: {
+                            id: `${r.book.name}-${r.chapter}`,
+                            number: r.chapter
+                        },
+                        version: {
+                            id: r.version.code,
+                            abbreviation: r.version.code,
+                            name: r.version.name
+                        },
+                        themes: r.themes,
+                        emotions: r.emotions,
+                        score: r.score
+                    }));
+
+                    return NextResponse.json({
+                        success: true,
+                        data: {
+                            results,
+                            total: results.length,
+                            query: q,
+                            mode: searchResponse.mode,
+                            processingTimeMs: searchResponse.processingTimeMs
+                        }
+                    });
+                }
+            } catch (searchError: any) {
+                console.warn("Enhanced search pipeline failed, falling back to legacy regex search:", searchError.message);
             }
         }
 
