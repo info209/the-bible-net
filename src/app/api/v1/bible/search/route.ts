@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Verse, Book, Chapter, BibleVersion } from '@/models/Bible';
+import { getEmbeddingProvider } from '@/lib/search/embeddingProvider';
+import { getReranker } from '@/lib/search/reranker';
+import { createBibleSearchService } from '@/lib/search/bibleSearchService';
 
 export const dynamic = 'force-dynamic';
 
@@ -9,7 +12,7 @@ export const dynamic = 'force-dynamic';
  * /api/v1/bible/search:
  *   get:
  *     summary: Search for verses across the entire Bible
- *     description: Perform a full-text search for verses matching a query within a specific version.
+ *     description: Perform a full-text search (hybrid/semantic or legacy fallback) for verses matching a query.
  *     tags: [Bible]
  *     parameters:
  *       - in: query
@@ -19,7 +22,7 @@ export const dynamic = 'force-dynamic';
  *         description: Search query (minimum 2 characters)
  *       - in: query
  *         name: versionId
- *         required: true
+ *         required: false
  *         schema: { type: string }
  *         description: Bible version ID or abbreviation (e.g., KJV)
  *       - in: query
@@ -29,37 +32,6 @@ export const dynamic = 'force-dynamic';
  *     responses:
  *       200:
  *         description: Search results retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success: { type: boolean, example: true }
- *                 data:
- *                   type: object
- *                   properties:
- *                     results:
- *                       type: array
- *                       items:
- *                         type: object
- *                         properties:
- *                           verseId: { type: string }
- *                           number: { type: number }
- *                           text: { type: string }
- *                           book: { type: object, properties: { id: { type: string }, name: { type: string } } }
- *                           chapter: { type: object, properties: { number: { type: number } } }
- *                     total: { type: number }
- *                     query: { type: string }
- *       400:
- *         description: Invalid query or missing parameters
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
  */
 export async function GET(req: NextRequest) {
     try {
@@ -73,33 +45,100 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Query must be at least 2 characters' }, { status: 400 });
         }
 
-        const query: any = {
+        // Dynamically detect if database has been enriched with semantic search metadata
+        const isEnriched = Boolean(await Verse.exists({ searchText: { $ne: null } }));
+
+        if (isEnriched) {
+            // --- Unified Semantic/Hybrid Search Path ---
+            
+            // Resolve out-of-band version code/abbreviation from versionIdParam
+            let resolvedVersionCode: string | undefined = undefined;
+            if (versionIdParam) {
+                if (versionIdParam.match(/^[0-9a-fA-F]{24}$/)) {
+                    const versionDoc = await BibleVersion.findById(versionIdParam).select('abbreviation');
+                    if (versionDoc) {
+                        resolvedVersionCode = versionDoc.abbreviation;
+                    }
+                } else {
+                    resolvedVersionCode = versionIdParam.toUpperCase();
+                }
+            }
+
+            // Initialize search service components
+            const embeddingProvider = getEmbeddingProvider();
+            const rerankerService = getReranker();
+            const searchService = createBibleSearchService(embeddingProvider, rerankerService);
+
+            // Execute unified search
+            const searchResponse = await searchService.search(q, {
+                limit,
+                versionCode: resolvedVersionCode
+            });
+
+            if (searchResponse.success) {
+                // Map result list to match the original API schema expected by the React frontend
+                const results = searchResponse.results.map((r: any) => ({
+                    verseId: r.verseId,
+                    number: r.verse,
+                    text: r.text,
+                    book: {
+                        id: r.book.name,
+                        name: r.book.name,
+                        abbreviation: r.book.abbreviation
+                    },
+                    chapter: {
+                        id: `${r.book.name}-${r.chapter}`,
+                        number: r.chapter
+                    },
+                    version: {
+                        id: r.version.code,
+                        abbreviation: r.version.code,
+                        name: r.version.name
+                    },
+                    themes: r.themes,
+                    emotions: r.emotions,
+                    score: r.score
+                }));
+
+                return NextResponse.json({
+                    success: true,
+                    data: {
+                        results,
+                        total: results.length,
+                        query: q,
+                        mode: searchResponse.mode,
+                        processingTimeMs: searchResponse.processingTimeMs
+                    }
+                });
+            }
+        }
+
+        // --- Legacy Regex Search Path (Fallback/Unpopulated) ---
+
+        const legacyQuery: any = {
             text: { $regex: q.trim(), $options: 'i' }
         };
 
-        // Handle version filtering
+        // Handle version filtering for legacy path
         if (versionIdParam) {
-            // Check if it's a valid Mongo ID, otherwise treat as abbreviation
             if (versionIdParam.match(/^[0-9a-fA-F]{24}$/)) {
-                query.version = versionIdParam;
+                legacyQuery.version = versionIdParam;
             } else {
                 const versionDoc = await BibleVersion.findOne({ abbreviation: versionIdParam.toUpperCase() }).select('_id');
                 if (versionDoc) {
-                    query.version = versionDoc._id;
+                    legacyQuery.version = versionDoc._id;
                 } else {
                     return NextResponse.json({ success: false, error: `Version not found: ${versionIdParam}` }, { status: 404 });
                 }
             }
         } else {
-            // Optional: You might want to only search 'active' versions
             const activeVersions = await BibleVersion.find({ isActive: true }).select('_id');
             if (activeVersions.length > 0) {
-                query.version = { $in: activeVersions.map(v => v._id) };
+                legacyQuery.version = { $in: activeVersions.map(v => v._id) };
             }
         }
 
-        // Perform search with population for efficiency
-        const verses = await Verse.find(query)
+        const verses = await Verse.find(legacyQuery)
             .populate({
                 path: 'book',
                 select: 'name abbreviation'
@@ -140,7 +179,8 @@ export async function GET(req: NextRequest) {
             data: {
                 results,
                 total: results.length,
-                query: q
+                query: q,
+                mode: 'legacy'
             }
         });
     } catch (error: any) {

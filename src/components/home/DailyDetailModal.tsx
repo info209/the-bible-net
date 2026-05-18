@@ -126,67 +126,71 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                     <div className="max-w-2xl mx-auto flex flex-col space-y-16 py-8">
                         
                         {/* Section 1: Daily Verse */}
-                        <div id="section-verse" className="flex flex-col">
-                            {currentContent.verse ? (
-                                <>
-                                    <p className="text-white/70 text-sm mb-2 uppercase tracking-widest font-semibold text-center">Daily Verse</p>
-                                    <h3 className="text-white text-2xl font-bold mb-8 text-center">{currentContent.verseReference}</h3>
-                                    
-                                    <p className="text-white text-3xl leading-relaxed font-serif italic text-center drop-shadow-md">
-                                        "{currentContent.verse}"
-                                    </p>
-                                </>
-                            ) : (
-                                <div className="text-center py-10 opacity-70">
-                                    <p className="text-white/70 text-sm mb-2 uppercase tracking-widest font-semibold">Daily Verse</p>
-                                    <p className="text-white text-lg">Today's verse will be available soon.</p>
-                                </div>
-                            )}
-                        </div>
+                        {(!initialSection || initialSection === 'verse') && (
+                            <div id="section-verse" className="flex flex-col">
+                                {currentContent.verse ? (
+                                    <>
+                                        <p className="text-white/70 text-sm mb-2 uppercase tracking-widest font-semibold text-center">Daily Verse</p>
+                                        <h3 className="text-white text-2xl font-bold mb-8 text-center">{currentContent.verseReference}</h3>
+                                        
+                                        <p className="text-white text-3xl leading-relaxed font-serif italic text-center drop-shadow-md">
+                                            "{currentContent.verse}"
+                                        </p>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-10 opacity-70">
+                                        <p className="text-white/70 text-sm mb-2 uppercase tracking-widest font-semibold">Daily Verse</p>
+                                        <p className="text-white text-lg">Today's verse will be available soon.</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Section 2: Daily Devotional */}
-                        <div id="section-devotional" className="flex flex-col">
-                            {currentContent.devotionalContent ? (
-                                <>
-                                    <div className="flex items-center justify-center mb-6">
-                                        <div className="h-px bg-white/20 flex-1" />
-                                        <p className="text-white/70 text-sm px-4 uppercase tracking-widest font-semibold">Daily Devotional</p>
-                                        <div className="h-px bg-white/20 flex-1" />
-                                    </div>
-                                    <h3 className="text-white text-3xl font-bold mb-8 text-center">{currentContent.devotionalTitle}</h3>
+                        {(!initialSection || initialSection === 'devotional') && (
+                            <div id="section-devotional" className="flex flex-col">
+                                {currentContent.devotionalContent ? (
+                                    <>
+                                        <div className="flex items-center justify-center mb-6">
+                                            <div className="h-px bg-white/20 flex-1" />
+                                            <p className="text-white/70 text-sm px-4 uppercase tracking-widest font-semibold">Daily Devotional</p>
+                                            <div className="h-px bg-white/20 flex-1" />
+                                        </div>
+                                        <h3 className="text-white text-3xl font-bold mb-8 text-center">{currentContent.devotionalTitle}</h3>
 
-                                    {/* Scripture Section */}
-                                    <div className="mb-10 text-center">
-                                        {currentContent.devotionalVerseText ? (
-                                            <>
-                                                <p className="text-white/80 text-sm font-semibold uppercase tracking-wide mb-2">{currentContent.devotionalVerseRef}</p>
-                                                <p className="text-white text-2xl leading-relaxed font-serif italic drop-shadow-md">
-                                                    "{currentContent.devotionalVerseText}"
-                                                </p>
-                                            </>
-                                        ) : (
-                                            <div className="py-4 opacity-70 border border-white/20 rounded-xl bg-white/5">
-                                                <p className="text-white/80 text-sm font-semibold uppercase tracking-wide mb-1">{currentContent.devotionalVerseRef}</p>
-                                                <p className="text-white text-lg italic">Verse unavailable.</p>
-                                            </div>
-                                        )}
+                                        {/* Scripture Section */}
+                                        <div className="mb-10 text-center">
+                                            {currentContent.devotionalVerseText ? (
+                                                <>
+                                                    <p className="text-white/80 text-sm font-semibold uppercase tracking-wide mb-2">{currentContent.devotionalVerseRef}</p>
+                                                    <p className="text-white text-2xl leading-relaxed font-serif italic drop-shadow-md">
+                                                        "{currentContent.devotionalVerseText}"
+                                                    </p>
+                                                </>
+                                            ) : (
+                                                <div className="py-4 opacity-70 border border-white/20 rounded-xl bg-white/5">
+                                                    <p className="text-white/80 text-sm font-semibold uppercase tracking-wide mb-1">{currentContent.devotionalVerseRef}</p>
+                                                    <p className="text-white text-lg italic">Verse unavailable.</p>
+                                                </div>
+                                            )}
+                                        </div>
+                                        
+                                        {/* Devotional Content Section */}
+                                        <p className="text-white/90 text-lg leading-loose text-justify whitespace-pre-wrap drop-shadow-sm font-medium">
+                                            {currentContent.devotionalContent}
+                                        </p>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-10 bg-white/5 rounded-2xl border border-white/10">
+                                        <p className="text-white/70 text-sm uppercase tracking-widest font-semibold">Daily Devotional</p>
+                                        <p className="text-white/50 text-sm mt-2">Not available for this day.</p>
                                     </div>
-                                    
-                                    {/* Devotional Content Section */}
-                                    <p className="text-white/90 text-lg leading-loose text-justify whitespace-pre-wrap drop-shadow-sm font-medium">
-                                        {currentContent.devotionalContent}
-                                    </p>
-                                </>
-                            ) : (
-                                <div className="text-center py-10 bg-white/5 rounded-2xl border border-white/10">
-                                    <p className="text-white/70 text-sm uppercase tracking-widest font-semibold">Daily Devotional</p>
-                                    <p className="text-white/50 text-sm mt-2">Not available for this day.</p>
-                                </div>
-                            )}
-                        </div>
+                                )}
+                            </div>
+                        )}
 
                         {/* Section 3: Prayer */}
-                        {currentContent.prayerContent && (
+                        {currentContent.prayerContent && (!initialSection || initialSection === 'devotional' || initialSection === 'prayer') && (
                             <div id="section-prayer" className="flex flex-col">
                                 <div className="flex items-center justify-center mb-6">
                                     <div className="h-px bg-white/20 flex-1" />
