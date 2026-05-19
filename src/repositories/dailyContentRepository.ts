@@ -22,13 +22,15 @@ export class DailyContentRepository {
 
     static async findExistingVerseRefsForYear(year: number): Promise<Set<string>> {
         const records = await DailyContent.find(
-            { contentYear: year },
+            { contentYear: year, verseBook: { $exists: true } },
             { verseBook: 1, verseChapter: 1, verseNumber: 1 }
         ).lean();
 
         const set = new Set<string>();
         for (const r of records) {
-            set.add(`${r.verseBook.toLowerCase()}:${r.verseChapter}:${r.verseNumber}`);
+            if (r.verseBook) {
+                set.add(`${r.verseBook.toLowerCase()}:${r.verseChapter}:${r.verseNumber}`);
+            }
         }
         return set;
     }
