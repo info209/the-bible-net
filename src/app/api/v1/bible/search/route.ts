@@ -45,8 +45,8 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Query must be at least 2 characters' }, { status: 400 });
         }
 
-        // Dynamically detect if database has been enriched with semantic search metadata
-        const isEnriched = Boolean(await Verse.exists({ searchText: { $ne: null } }));
+        // All Bible verses are optimized and indexed for the vectorless hybrid search pipeline
+        const isEnriched = true;
 
         if (isEnriched) {
             // --- Unified Semantic/Hybrid Search Path ---

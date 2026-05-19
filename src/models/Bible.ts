@@ -51,10 +51,7 @@ export interface IVerse extends Document {
 
     // Enhanced denormalized metadata (optional for safety with existing documents)
     versionCode?: string;      // e.g., "KJV"
-    versionName?: string;      // e.g., "King James Version"
     bookName?: string;         // e.g., "Psalms"
-    bookAbbr?: string;         // e.g., "PSA"
-    testamentName?: 'OT' | 'NT';
     chapterNumber?: number;
 
     // Derived reference
@@ -68,16 +65,8 @@ export interface IVerse extends Document {
     emotions?: string[];       // e.g., ["fear", "hope", "peace"]
     keywords?: string[];       // extracted important nouns/concepts
 
-    // Composite search field
-    searchText?: string;       // concatenation of reference, text, themes, emotions, keywords
-
-    // Vector embedding (for semantic search)
-    embedding?: number[];      // e.g., float array for search
-
     // Scoring and model metadata
     popularityScore?: number;  // 0-100, for boost in ranking
-    embeddingModel?: string;   // e.g., "all-MiniLM-L6-v2"
-    embeddingGeneratedAt?: Date;
 }
 
 // --- Schemas ---
@@ -192,50 +181,31 @@ const VerseSchema = new Schema<IVerse>({
     text: {
         type: String,
         required: true,
-        maxlength: [3000, 'Verse text too long (checking sanity limit)'], // Some verses are long, but 3000 is safe upper bound
+        maxlength: [3000, 'Verse text too long (checking sanity limit)'],
         trim: true
     },
     chapter: { type: Schema.Types.ObjectId, ref: 'Chapter', required: true },
     book: { type: Schema.Types.ObjectId, ref: 'Book', required: true },
     version: { type: Schema.Types.ObjectId, ref: 'BibleVersion', required: true },
     
-    // Enhanced denormalized metadata (optional for compatibility)
+    // Enhanced denormalized metadata
     versionCode: {
         type: String,
         maxlength: 10,
-        uppercase: true,
-        index: true
-    },
-    versionName: {
-        type: String,
-        maxlength: 100
+        uppercase: true
     },
     bookName: {
         type: String,
-        maxlength: 50,
-        index: true
-    },
-    bookAbbr: {
-        type: String,
-        maxlength: 10,
-        uppercase: true,
-        index: true
-    },
-    testamentName: {
-        type: String,
-        enum: ['OT', 'NT'],
-        index: true
+        maxlength: 50
     },
     chapterNumber: {
-        type: Number,
-        index: true
+        type: Number
     },
 
     // Derived reference
     reference: {
         type: String,
-        maxlength: 50,
-        index: true
+        maxlength: 50
     },
 
     // Text variations
@@ -247,29 +217,15 @@ const VerseSchema = new Schema<IVerse>({
     // Enrichment fields
     themes: {
         type: [String],
-        default: [],
-        index: true
+        default: []
     },
     emotions: {
         type: [String],
-        default: [],
-        index: true
+        default: []
     },
     keywords: {
         type: [String],
         default: []
-    },
-
-    // Composite search field
-    searchText: {
-        type: String,
-        maxlength: 5000
-    },
-
-    // Vector embedding
-    embedding: {
-        type: [Number],
-        sparse: true
     },
 
     // Scoring and model metadata
@@ -278,28 +234,13 @@ const VerseSchema = new Schema<IVerse>({
         default: 50,
         min: 0,
         max: 100
-    },
-    embeddingModel: {
-        type: String,
-        default: 'all-MiniLM-L6-v2',
-        maxlength: 100
-    },
-    embeddingGeneratedAt: {
-        type: Date,
-        sparse: true
     }
 }, { timestamps: true });
 
-VerseSchema.index({ chapter: 1, number: 1 }, { unique: true });
-VerseSchema.index({ version: 1, book: 1, chapter: 1, number: 1 });
+// Define EXACTLY 3 indexes as required for optimized production performance on free tier
 VerseSchema.index({ versionCode: 1, bookName: 1, chapterNumber: 1, number: 1 });
-VerseSchema.index({ reference: 1, versionCode: 1 });
-
-// Text index for keyword search on composite search field
-VerseSchema.index({ searchText: 'text' });
-
-// Extra indexes for fast vector filtering
-VerseSchema.index({ embeddingModel: 1 });
+VerseSchema.index({ normalizedText: 'text', keywords: 'text', emotions: 'text', themes: 'text' });
+VerseSchema.index({ reference: 1 });
 
 // --- Models ---
 // Prevent overwriting models in dev hot-reload
