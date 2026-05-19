@@ -3,6 +3,10 @@ import { IDailyContent } from '@/models/DailyContent';
 import { Book, Chapter, Verse, BibleVersion } from '@/models/Bible';
 import connectDB from '@/lib/db';
 
+// Static caches for dynamic scripture text resolutions
+const verseTextCache = new Map<string, string>();
+const referenceTextCache = new Map<string, string>();
+
 export class DailyContentService {
     /**
      * Retrieves daily content for the last N days, with verse text resolved
@@ -30,16 +34,18 @@ export class DailyContentService {
         if (!dailySelection) return null;
 
         if (type === 'verse') {
-            const resolvedText = await this.resolveVerseText(
-                dailySelection.verseBook,
-                dailySelection.verseChapter,
-                dailySelection.verseNumber,
-                version
-            );
+            const resolvedText = dailySelection.verseBook && dailySelection.verseBook !== 'Unknown'
+                ? await this.resolveVerseText(
+                    dailySelection.verseBook,
+                    dailySelection.verseChapter!,
+                    dailySelection.verseNumber!,
+                    version
+                )
+                : '';
             return {
                 _id: dailySelection._id,
                 type: 'daily-verse',
-                reference: dailySelection.verseReference,
+                reference: dailySelection.verseReference || '',
                 text: resolvedText,
                 version,
                 likeCount: dailySelection.verseLikeCount || 0,
@@ -49,9 +55,9 @@ export class DailyContentService {
             return {
                 _id: dailySelection._id,
                 type: 'daily-devotion',
-                title: dailySelection.devotionalTitle,
-                text: dailySelection.devotionalContent,
-                verseRef: dailySelection.devotionalVerseRef,
+                title: dailySelection.devotionalTitle || '',
+                text: dailySelection.devotionalContent || '',
+                verseRef: dailySelection.devotionalVerseRef || '',
                 likeCount: dailySelection.devotionLikeCount || 0,
                 commentCount: dailySelection.devotionCommentCount || 0,
             };
@@ -62,28 +68,33 @@ export class DailyContentService {
      * Enriches a DailyContent record with version-resolved verse text.
      */
     static async enrichWithVerseText(content: IDailyContent, version: string): Promise<any> {
-        const resolvedText = await this.resolveVerseText(
-            content.verseBook,
-            content.verseChapter,
-            content.verseNumber,
-            version
-        );
+        const hasVerse = content.verseBook && content.verseBook !== 'Unknown';
+        const resolvedText = hasVerse
+            ? await this.resolveVerseText(
+                content.verseBook!,
+                content.verseChapter!,
+                content.verseNumber!,
+                version
+            )
+            : '';
 
         return {
             _id: content._id,
             date: content.date,
-            verseReference: content.verseReference,
-            verseBook: content.verseBook,
-            verseChapter: content.verseChapter,
-            verseNumber: content.verseNumber,
+            verseReference: content.verseReference || '',
+            verseBook: content.verseBook || '',
+            verseChapter: content.verseChapter || null,
+            verseNumber: content.verseNumber || null,
             verse: resolvedText,
             version,
-            devotionalTitle: content.devotionalTitle,
-            devotionalContent: content.devotionalContent,
-            devotionalVerseRef: content.devotionalVerseRef,
+            devotionalTitle: content.devotionalTitle || '',
+            devotionalContent: content.devotionalContent || '',
+            devotionalVerseRef: content.devotionalVerseRef || '',
             devotionalVerseText: content.devotionalVerseRef ? await this.resolveReferenceText(content.devotionalVerseRef, version) : '',
-            backgroundImage: content.backgroundImage,
-            devotionalBackgroundImage: content.devotionalBackgroundImage,
+            backgroundImage: content.backgroundImage || '',
+            devotionalBackgroundImage: content.devotionalBackgroundImage || '',
+            prayerTitle: (content as any).prayerTitle || '',
+            prayerContent: (content as any).prayerContent || '',
             isPublished: content.isPublished,
             verseLikeCount: content.verseLikeCount || 0,
             verseCommentCount: content.verseCommentCount || 0,
@@ -102,58 +113,69 @@ export class DailyContentService {
         verseNum: number,
         versionAbbr: string
     ): Promise<string> {
-        try {
-            await connectDB();
+        const cacheKey = `${bookName.toLowerCase()}:${chapter}:${verseNum}:${versionAbbr.toUpperCase()}`;
+        if (verseTextCache.has(cacheKey)) {
+            return verseTextCache.get(cacheKey)!;
+        }
 
-            // Find the requested version
-            let bibleVersion = await BibleVersion.findOne({
-                abbreviation: versionAbbr.toUpperCase(),
-                isActive: true
-            }).lean();
+        const resolve = async (): Promise<string> => {
+            try {
+                await connectDB();
 
-            // Fallback: any active version
-            if (!bibleVersion) {
-                bibleVersion = await BibleVersion.findOne({ isActive: true }).lean();
-            }
+                // Find the requested version
+                let bibleVersion = await BibleVersion.findOne({
+                    abbreviation: versionAbbr.toUpperCase(),
+                    isActive: true
+                }).lean();
 
-            if (!bibleVersion) return `[${bookName} ${chapter}:${verseNum}]`;
+                // Fallback: any active version
+                if (!bibleVersion) {
+                    bibleVersion = await BibleVersion.findOne({ isActive: true }).lean();
+                }
 
-            // Find the book in this version
-            const bookDoc = await Book.findOne({
-                version: bibleVersion._id,
-                name: { $regex: new RegExp(`^${bookName}$`, 'i') }
-            }).lean();
+                if (!bibleVersion) return `[${bookName} ${chapter}:${verseNum}]`;
 
-            if (!bookDoc) {
-                // Try by order across versions
-                const anyBook = await Book.findOne({
+                // Find the book in this version
+                const bookDoc = await Book.findOne({
+                    version: bibleVersion._id,
                     name: { $regex: new RegExp(`^${bookName}$`, 'i') }
                 }).lean();
-                if (!anyBook) return `[${bookName} ${chapter}:${verseNum}]`;
 
-                // Find same order book in target version
-                const sameOrderBook = await Book.findOne({
-                    version: bibleVersion._id,
-                    order: anyBook.order
-                }).lean();
-                if (!sameOrderBook) return `[${bookName} ${chapter}:${verseNum}]`;
+                if (!bookDoc) {
+                    // Try by order across versions
+                    const anyBook = await Book.findOne({
+                        name: { $regex: new RegExp(`^${bookName}$`, 'i') }
+                    }).lean();
+                    if (!anyBook) return `[${bookName} ${chapter}:${verseNum}]`;
 
-                const chapterDoc = await Chapter.findOne({ book: sameOrderBook._id, number: chapter }).lean();
+                    // Find same order book in target version
+                    const sameOrderBook = await Book.findOne({
+                        version: bibleVersion._id,
+                        order: anyBook.order
+                    }).lean();
+                    if (!sameOrderBook) return `[${bookName} ${chapter}:${verseNum}]`;
+
+                    const chapterDoc = await Chapter.findOne({ book: sameOrderBook._id, number: chapter }).lean();
+                    if (!chapterDoc) return `[${bookName} ${chapter}:${verseNum}]`;
+
+                    const verseDoc = await Verse.findOne({ chapter: chapterDoc._id, number: verseNum }).lean();
+                    return verseDoc?.text || `[${bookName} ${chapter}:${verseNum}]`;
+                }
+
+                const chapterDoc = await Chapter.findOne({ book: bookDoc._id, number: chapter }).lean();
                 if (!chapterDoc) return `[${bookName} ${chapter}:${verseNum}]`;
 
                 const verseDoc = await Verse.findOne({ chapter: chapterDoc._id, number: verseNum }).lean();
                 return verseDoc?.text || `[${bookName} ${chapter}:${verseNum}]`;
+            } catch (error) {
+                console.error('resolveVerseText error:', error);
+                return `[${bookName} ${chapter}:${verseNum}]`;
             }
+        };
 
-            const chapterDoc = await Chapter.findOne({ book: bookDoc._id, number: chapter }).lean();
-            if (!chapterDoc) return `[${bookName} ${chapter}:${verseNum}]`;
-
-            const verseDoc = await Verse.findOne({ chapter: chapterDoc._id, number: verseNum }).lean();
-            return verseDoc?.text || `[${bookName} ${chapter}:${verseNum}]`;
-        } catch (error) {
-            console.error('resolveVerseText error:', error);
-            return `[${bookName} ${chapter}:${verseNum}]`;
-        }
+        const result = await resolve();
+        verseTextCache.set(cacheKey, result);
+        return result;
     }
 
     /**
@@ -175,60 +197,71 @@ export class DailyContentService {
      * Resolves a full reference string dynamically fetching the exact scripture.
      */
     static async resolveReferenceText(reference: string, versionAbbr: string): Promise<string> {
-        const parsed = this.parseReference(reference);
-        if (!parsed) return `[${reference}]`;
+        const cacheKey = `${reference.toLowerCase()}:${versionAbbr.toUpperCase()}`;
+        if (referenceTextCache.has(cacheKey)) {
+            return referenceTextCache.get(cacheKey)!;
+        }
 
-        const { bookName, chapter, startVerse, endVerse } = parsed;
+        const resolve = async (): Promise<string> => {
+            const parsed = this.parseReference(reference);
+            if (!parsed) return `[${reference}]`;
 
-        try {
-            await connectDB();
-            let bibleVersion = await BibleVersion.findOne({
-                abbreviation: versionAbbr.toUpperCase(),
-                isActive: true
-            }).lean();
+            const { bookName, chapter, startVerse, endVerse } = parsed;
 
-            if (!bibleVersion) {
-                bibleVersion = await BibleVersion.findOne({ isActive: true }).lean();
-            }
-            if (!bibleVersion) return `[${reference}]`;
+            try {
+                await connectDB();
+                let bibleVersion = await BibleVersion.findOne({
+                    abbreviation: versionAbbr.toUpperCase(),
+                    isActive: true
+                }).lean();
 
-            // Find book
-            let bookDoc = await Book.findOne({
-                version: bibleVersion._id,
-                name: { $regex: new RegExp(`^${bookName}$`, 'i') }
-            }).lean();
+                if (!bibleVersion) {
+                    bibleVersion = await BibleVersion.findOne({ isActive: true }).lean();
+                }
+                if (!bibleVersion) return `[${reference}]`;
 
-            if (!bookDoc) {
-                const anyBook = await Book.findOne({
+                // Find book
+                let bookDoc = await Book.findOne({
+                    version: bibleVersion._id,
                     name: { $regex: new RegExp(`^${bookName}$`, 'i') }
                 }).lean();
-                if (!anyBook) return `[${reference}]`;
 
-                bookDoc = await Book.findOne({
-                    version: bibleVersion._id,
-                    order: anyBook.order
-                }).lean();
-                
-                if (!bookDoc) return `[${reference}]`;
+                if (!bookDoc) {
+                    const anyBook = await Book.findOne({
+                        name: { $regex: new RegExp(`^${bookName}$`, 'i') }
+                    }).lean();
+                    if (!anyBook) return `[${reference}]`;
+
+                    bookDoc = await Book.findOne({
+                        version: bibleVersion._id,
+                        order: anyBook.order
+                    }).lean();
+                    
+                    if (!bookDoc) return `[${reference}]`;
+                }
+
+                const chapterDoc = await Chapter.findOne({ book: bookDoc._id, number: chapter }).lean();
+                if (!chapterDoc) return `[${reference}]`;
+
+                const query: any = { chapter: chapterDoc._id };
+                if (endVerse) {
+                    query.number = { $gte: startVerse, $lte: endVerse };
+                } else {
+                    query.number = startVerse;
+                }
+
+                const verses = await Verse.find(query).sort({ number: 1 }).lean();
+                if (!verses || verses.length === 0) return `[${reference}]`;
+
+                return verses.map(v => v.text).join(' ');
+            } catch (error) {
+                console.error('resolveReferenceText error:', error);
+                return `[${reference}]`;
             }
+        };
 
-            const chapterDoc = await Chapter.findOne({ book: bookDoc._id, number: chapter }).lean();
-            if (!chapterDoc) return `[${reference}]`;
-
-            const query: any = { chapter: chapterDoc._id };
-            if (endVerse) {
-                query.number = { $gte: startVerse, $lte: endVerse };
-            } else {
-                query.number = startVerse;
-            }
-
-            const verses = await Verse.find(query).sort({ number: 1 }).lean();
-            if (!verses || verses.length === 0) return `[${reference}]`;
-
-            return verses.map(v => v.text).join(' ');
-        } catch (error) {
-            console.error('resolveReferenceText error:', error);
-            return `[${reference}]`;
-        }
+        const result = await resolve();
+        referenceTextCache.set(cacheKey, result);
+        return result;
     }
 }

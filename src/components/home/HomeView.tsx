@@ -4,7 +4,7 @@ import { Play, User, BookOpen, Globe, ArrowLeft, Heart, MessageCircle, Share2, M
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useReadingProgress } from '@/lib/useReadingProgress';
@@ -19,11 +19,9 @@ export default function HomeView() {
   const [audioPlaying, setAudioPlaying] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
+  // Independent slide tracking for each carousel
   const [currentVerseSlide, setCurrentVerseSlide] = useState(0);
-  const verseCarouselRef = useRef<HTMLDivElement>(null);
-
   const [currentDevotionSlide, setCurrentDevotionSlide] = useState(0);
-  const devotionCarouselRef = useRef<HTMLDivElement>(null);
 
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [activeContent, setActiveContent] = useState<{ id: string, type: 'daily-verse' | 'daily-devotion' } | null>(null);
@@ -31,7 +29,10 @@ export default function HomeView() {
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
+  // Decoupled daily content states
   const [dailyContents, setDailyContents] = useState<any[]>([]);
+  const [dailyVerses, setDailyVerses] = useState<any[]>([]);
+  const [dailyDevotions, setDailyDevotions] = useState<any[]>([]);
   const [prayers, setPrayers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -39,11 +40,11 @@ export default function HomeView() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [initialModalIndex, setInitialModalIndex] = useState(0);
   const [initialModalSection, setInitialModalSection] = useState<'verse' | 'devotional' | 'prayer' | undefined>();
+  const [modalContents, setModalContents] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Pass the user's preferred Bible version so verse text resolves correctly
         const preferredVersion = (session?.user as any)?.preferredBibleVersion || 'KJV';
         const [dailyRes, prayersRes] = await Promise.all([
           fetch(`/api/daily?days=7&version=${encodeURIComponent(preferredVersion)}`),
@@ -52,7 +53,15 @@ export default function HomeView() {
 
         if (dailyRes.ok) {
           const data = await dailyRes.json();
-          setDailyContents(data.data || []);
+          const items = data.data || [];
+          setDailyContents(items);
+          
+          // Separate daily verses and daily devotionals
+          const verses = items.filter((item: any) => item.verseBook && item.verseBook !== 'Unknown');
+          const devotions = items.filter((item: any) => item.devotionalTitle && item.devotionalContent);
+          
+          setDailyVerses(verses);
+          setDailyDevotions(devotions);
         }
         if (prayersRes.ok) setPrayers(await prayersRes.json());
       } catch (error) {
@@ -64,44 +73,15 @@ export default function HomeView() {
     fetchData();
   }, [(session?.user as any)?.preferredBibleVersion]);
 
-
-
-
-
   const openDetailModal = (index: number, section: 'verse' | 'devotional' | 'prayer') => {
+    if (section === 'verse') {
+      setModalContents(dailyVerses);
+    } else {
+      setModalContents(dailyDevotions);
+    }
     setInitialModalIndex(index);
     setInitialModalSection(section);
     setIsDetailModalOpen(true);
-  };
-
-  const handleVerseScroll = () => {
-    if (verseCarouselRef.current) {
-      const scrollLeft = verseCarouselRef.current.scrollLeft;
-      const width = verseCarouselRef.current.clientWidth;
-      setCurrentVerseSlide(Math.round(scrollLeft / width));
-    }
-  };
-
-  const handleDevotionScroll = () => {
-    if (devotionCarouselRef.current) {
-      const scrollLeft = devotionCarouselRef.current.scrollLeft;
-      const width = devotionCarouselRef.current.clientWidth;
-      setCurrentDevotionSlide(Math.round(scrollLeft / width));
-    }
-  };
-
-  const scrollToVerseSlide = (index: number) => {
-    if (verseCarouselRef.current) {
-      const width = verseCarouselRef.current.clientWidth;
-      verseCarouselRef.current.scrollTo({ left: width * index, behavior: 'smooth' });
-    }
-  };
-
-  const scrollToDevotionSlide = (index: number) => {
-    if (devotionCarouselRef.current) {
-      const width = devotionCarouselRef.current.clientWidth;
-      devotionCarouselRef.current.scrollTo({ left: width * index, behavior: 'smooth' });
-    }
   };
 
   const handleLike = async (contentId: string, type: 'daily-verse' | 'daily-devotion') => {
@@ -114,7 +94,8 @@ export default function HomeView() {
 
       const data = await res.json();
       if (res.ok) {
-        setDailyContents(prev => prev.map(content => {
+        // Update general contents, verses, and devotions
+        const updateCounts = (prev: any[]) => prev.map(content => {
           if (content._id === contentId) {
             return {
               ...content,
@@ -122,7 +103,11 @@ export default function HomeView() {
             };
           }
           return content;
-        }));
+        });
+
+        setDailyContents(updateCounts);
+        setDailyVerses(updateCounts);
+        setDailyDevotions(updateCounts);
       }
     } catch (error) {
       console.error('Like error:', error);
@@ -167,7 +152,8 @@ export default function HomeView() {
       if (res.ok) {
         setNewComment('');
         fetchComments(activeContent.id, activeContent.type);
-        setDailyContents(prev => prev.map(content => {
+        
+        const updateCommentCounts = (prev: any[]) => prev.map(content => {
           if (content._id === activeContent.id) {
             const countField = activeContent.type === 'daily-verse' ? 'verseCommentCount' : 'devotionCommentCount';
             return {
@@ -176,7 +162,11 @@ export default function HomeView() {
             };
           }
           return content;
-        }));
+        });
+
+        setDailyContents(updateCommentCounts);
+        setDailyVerses(updateCommentCounts);
+        setDailyDevotions(updateCommentCounts);
       }
     } catch (error) {
       console.error('Add comment error:', error);
@@ -220,20 +210,6 @@ export default function HomeView() {
     }
   };
 
-  const handleRouteToChapter = (reference: string) => {
-    const match = reference.match(/^(.+?)\s+(\d+):(\d+)/);
-    if (match) {
-      const book = match[1].toLowerCase().replace(/\s+/g, '-');
-      const chapter = match[2];
-      const startVerse = match[3];
-      router.push(`/bible/${book}/${chapter}?verse=${startVerse}`);
-    } else {
-      router.push('/bible');
-    }
-  };
-
-
-
   const handleIntercede = async (prayerId: string) => {
     if (!session) {
       router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`);
@@ -274,7 +250,7 @@ export default function HomeView() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="space-y-6 pt-10 pb-6 bg-transparent min-h-full px-4"
+      className="space-y-6 pt-10 pb-6 bg-transparent min-h-full px-4 overflow-hidden"
     >
       {/* Greeting - Figma Style */}
       <div className="flex items-center space-x-3 animate-fade-in">
@@ -312,107 +288,126 @@ export default function HomeView() {
       )}
 
       {/* Daily Verse Carousel (7-Day History) */}
-      <div className="relative overflow-hidden mb-8">
-        <div
-          ref={verseCarouselRef}
-          onScroll={handleVerseScroll}
-          className="flex overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
-        >
-          {dailyContents.map((content, index) => (
-            <div key={content._id || index} className="w-full flex-shrink-0 snap-center px-2">
-              {/* Daily Verse Card - Figma Design */}
-              <div
-                className={`bg-gradient-to-br ${content.bgColor || 'from-cyan-400 to-teal-500'} rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex flex-col`}
-                style={content.backgroundImage ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
-              >
-                {/* Fallback Overlay if bg image exists */}
-                {content.backgroundImage && <div className="absolute inset-0 bg-black/40" />}
+      <div className="relative overflow-hidden mb-8 w-full">
+        <div className="overflow-hidden w-full rounded-2xl">
+          <motion.div
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.25}
+            onDragEnd={(e, info) => {
+              const swipeThreshold = 50;
+              const swipeVelocity = 500;
+              const offset = info.offset.x;
+              const velocity = info.velocity.x;
 
-                {/* Decorative elements */}
-                {!content.backgroundImage && (
-                  <>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-                    <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
-                  </>
-                )}
+              if (offset < -swipeThreshold || velocity < -swipeVelocity) {
+                if (currentVerseSlide < dailyVerses.length - 1) {
+                  setCurrentVerseSlide(prev => prev + 1);
+                }
+              } else if (offset > swipeThreshold || velocity > swipeVelocity) {
+                if (currentVerseSlide > 0) {
+                  setCurrentVerseSlide(prev => prev - 1);
+                }
+              }
+            }}
+            animate={{ x: `-${currentVerseSlide * 100}%` }}
+            transition={{ type: "spring", stiffness: 260, damping: 28 }}
+            className="flex w-full"
+          >
+            {dailyVerses.map((content, index) => (
+              <div key={content._id || index} className="w-full flex-shrink-0 px-2 select-none">
+                {/* Daily Verse Card - Figma Design - FIXED HEIGHT */}
+                <div
+                  className={`bg-gradient-to-br ${content.bgColor || 'from-cyan-400 to-teal-500'} rounded-2xl p-6 shadow-xl relative overflow-hidden h-[395px] flex flex-col`}
+                  style={content.backgroundImage ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                >
+                  {/* Fallback Overlay if bg image exists */}
+                  {content.backgroundImage && <div className="absolute inset-0 bg-black/40" />}
 
-                {/* Content */}
-                <div className="relative z-10 flex-1 flex flex-col">
-                  <div className="flex items-center justify-between mb-4">
+                  {/* Decorative elements */}
+                  {!content.backgroundImage && (
+                    <>
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
+                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
+                    </>
+                  )}
+
+                  {/* Content */}
+                  <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
                     <div>
-                      <p className="text-white/80 text-sm mb-1">{getRelativeLabel(content.date)}'s Verse</p>
-                      <h3 className="text-white text-xl font-bold">{content.verseReference || 'Reference'}</h3>
-                      <p className="text-white/90 text-sm">{content.version || 'BBE'}</p>
+                      <p className="text-white/80 text-xs mb-1 uppercase tracking-wider">{getRelativeLabel(content.date)}'s Verse</p>
+                      <h3 className="text-white text-xl font-bold truncate">{content.verseReference || 'Reference'}</h3>
+                      <p className="text-white/90 text-xs">{content.version || 'KJV'}</p>
                     </div>
-                  </div>
 
-                  {/* Verse text */}
-                  <div className="flex-1 flex items-center my-6">
-                    <p className="text-white text-lg leading-relaxed font-serif italic text-justify">
-                      "{content.verse || 'Verse text available soon...'}"
-                    </p>
-                  </div>
+                    {/* Verse text - line clamped to prevent vertical growth */}
+                    <div className="flex-1 flex items-center justify-center my-4 overflow-hidden">
+                      <p className="text-white text-[16px] md:text-[18px] leading-relaxed font-serif italic text-justify line-clamp-5 overflow-hidden text-ellipsis w-full">
+                        "{content.verse || 'Verse text available soon...'}"
+                      </p>
+                    </div>
 
-                  {/* Actions */}
-                  <div className="flex items-center justify-between pt-4 border-t border-white/20">
-                    <button
-                      onClick={() => handleLike(content._id, 'daily-verse')}
-                      className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                    >
-                      <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                        <Heart className={`size-4 ${content.verseLikeCount > 0 ? 'fill-white' : ''}`} />
-                      </div>
-                      <span className="text-xs">{content.verseLikeCount || 'Like'}</span>
-                    </button>
-                    <button
-                      onClick={() => handleCommentClick(content._id, 'daily-verse')}
-                      className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                    >
-                      <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                        <MessageCircle className="size-4" />
-                      </div>
-                      <span className="text-xs">{content.verseCommentCount || 'Comment'}</span>
-                    </button>
-                    <button
-                      onClick={() => handleShare(content, 'daily-verse')}
-                      className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                    >
-                      <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                        <Share2 className="size-4" />
-                      </div>
-                      <span className="text-xs">Share</span>
-                    </button>
-                    <button
-                      onClick={() => openDetailModal(index, 'verse')}
-                      className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                    >
-                      <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                        <Maximize2 className="size-4" />
-                      </div>
-                      <span className="text-xs">Expand</span>
-                    </button>
+                    {/* Actions */}
+                    <div className="flex items-center justify-between pt-3 border-t border-white/20">
+                      <button
+                        onClick={() => handleLike(content._id, 'daily-verse')}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                      >
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                          <Heart className={`size-4 ${content.verseLikeCount > 0 ? 'fill-white' : ''}`} />
+                        </div>
+                        <span className="text-xs">{content.verseLikeCount || 'Like'}</span>
+                      </button>
+                      <button
+                        onClick={() => handleCommentClick(content._id, 'daily-verse')}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                      >
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                          <MessageCircle className="size-4" />
+                        </div>
+                        <span className="text-xs">{content.verseCommentCount || 'Comment'}</span>
+                      </button>
+                      <button
+                        onClick={() => handleShare(content, 'daily-verse')}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                      >
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                          <Share2 className="size-4" />
+                        </div>
+                        <span className="text-xs">Share</span>
+                      </button>
+                      <button
+                        onClick={() => openDetailModal(index, 'verse')}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                      >
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                          <Maximize2 className="size-4" />
+                        </div>
+                        <span className="text-xs">Expand</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
 
-          {dailyContents.length === 0 && (
-            <div className="w-full flex-shrink-0 px-2">
-              <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[360px] flex items-center justify-center text-white">
-                <p>No content available yet.</p>
+            {dailyVerses.length === 0 && (
+              <div className="w-full flex-shrink-0 px-2 select-none">
+                <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-2xl p-6 shadow-xl relative overflow-hidden h-[395px] flex items-center justify-center text-white">
+                  <p>No daily verses available yet.</p>
+                </div>
               </div>
-            </div>
-          )}
+            )}
+          </motion.div>
         </div>
 
         {/* Slide indicators */}
-        {dailyContents.length > 1 && (
-          <div className="flex justify-center space-x-2 mt-2">
-            {dailyContents.map((_, index) => (
+        {dailyVerses.length > 1 && (
+          <div className="flex justify-center space-x-2 mt-3">
+            {dailyVerses.map((_, index) => (
               <button
                 key={index}
-                onClick={() => scrollToVerseSlide(index)}
+                onClick={() => setCurrentVerseSlide(index)}
                 className={`h-2 rounded-full transition-all ${currentVerseSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
                 aria-label={`Go to slide ${index + 1}`}
               />
@@ -422,18 +417,37 @@ export default function HomeView() {
       </div>
 
       {/* Daily Devotional Carousel (7-Day History) */}
-      <div className="relative overflow-hidden mb-6">
-        <div
-          ref={devotionCarouselRef}
-          onScroll={handleDevotionScroll}
-          className="flex overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide"
-        >
-          {dailyContents.map((content, index) => (
-            <div key={content._id || index} className="w-full flex-shrink-0 snap-center px-2">
-              {/* Daily Devotional Card - Figma Design */}
-              {content.devotionalTitle ? (
+      <div className="relative overflow-hidden mb-6 w-full">
+        <div className="overflow-hidden w-full rounded-2xl">
+          <motion.div
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.25}
+            onDragEnd={(e, info) => {
+              const swipeThreshold = 50;
+              const swipeVelocity = 500;
+              const offset = info.offset.x;
+              const velocity = info.velocity.x;
+
+              if (offset < -swipeThreshold || velocity < -swipeVelocity) {
+                if (currentDevotionSlide < dailyDevotions.length - 1) {
+                  setCurrentDevotionSlide(prev => prev + 1);
+                }
+              } else if (offset > swipeThreshold || velocity > swipeVelocity) {
+                if (currentDevotionSlide > 0) {
+                  setCurrentDevotionSlide(prev => prev - 1);
+                }
+              }
+            }}
+            animate={{ x: `-${currentDevotionSlide * 100}%` }}
+            transition={{ type: "spring", stiffness: 260, damping: 28 }}
+            className="flex w-full"
+          >
+            {dailyDevotions.map((content, index) => (
+              <div key={content._id || index} className="w-full flex-shrink-0 px-2 select-none">
+                {/* Daily Devotional Card - Figma Design - FIXED HEIGHT */}
                 <div
-                  className="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 rounded-2xl p-6 shadow-xl relative overflow-hidden min-h-[320px] flex flex-col"
+                  className="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 rounded-2xl p-6 shadow-xl relative overflow-hidden h-[360px] flex flex-col justify-between"
                   style={content.devotionalBackgroundImage ? { backgroundImage: `url(${content.devotionalBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                 >
                   {/* Fallback Overlay if bg image exists */}
@@ -446,33 +460,40 @@ export default function HomeView() {
                     </>
                   )}
 
-                  <div className="relative z-10 flex-1 flex flex-col">
-                    <div className="flex items-start justify-between mb-4">
-                      <div>
-                        <p className={`text-sm mb-1 ${content.devotionalBackgroundImage ? 'text-white/80' : 'text-gray-600'}`}>{getRelativeLabel(content.date)}'s Devotional</p>
-                        <h3 className={`text-xl font-bold ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-800'}`}>{content.devotionalTitle}</h3>
+                  <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <p className={`text-xs mb-1 uppercase tracking-wider ${content.devotionalBackgroundImage ? 'text-white/80' : 'text-gray-600'}`}>
+                          {getRelativeLabel(content.date)}'s Devotional
+                        </p>
+                        <h3 className={`text-xl font-bold truncate ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-800'}`}>
+                          {content.devotionalTitle}
+                        </h3>
                         {content.devotionalVerseRef && (
-                          <p className={`text-sm mt-1 font-medium ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-rose-600'}`}>{content.devotionalVerseRef}</p>
+                          <p className={`text-xs mt-1 font-bold ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-rose-600'} truncate`}>
+                            {content.devotionalVerseRef}
+                          </p>
                         )}
                       </div>
                       {content.audioUrl && (
                         <button
                           onClick={() => toggleAudio(content.audioUrl)}
-                          className="p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform"
+                          className="p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform shrink-0"
                         >
                           {audioPlaying === content.audioUrl ? <Pause className="size-5 text-[var(--color-accent-rose)]" /> : <Play className="size-5 text-[var(--color-accent-rose)] ml-0.5" />}
                         </button>
                       )}
                     </div>
 
-                    <div className="space-y-4 my-6 flex-1">
-                      <p className={`leading-relaxed text-justify line-clamp-3 ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-gray-700'}`}>
+                    {/* Devotional content - clamped to exactly 3 lines to maintain uniform height */}
+                    <div className="flex-1 flex items-center my-4 overflow-hidden">
+                      <p className={`leading-relaxed text-justify line-clamp-3 ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-gray-700'} text-sm md:text-base w-full`}>
                         {content.devotionalContent}
                       </p>
                     </div>
 
                     {/* Actions */}
-                    <div className={`flex items-center justify-between pt-4 border-t ${content.devotionalBackgroundImage ? 'border-white/20' : 'border-rose-200'}`}>
+                    <div className={`flex items-center justify-between pt-3 border-t ${content.devotionalBackgroundImage ? 'border-white/20' : 'border-rose-200'}`}>
                       <button
                         onClick={() => handleLike(content._id, 'daily-devotion')}
                         className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
@@ -512,22 +533,26 @@ export default function HomeView() {
                     </div>
                   </div>
                 </div>
-              ) : (
-                <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-6 shadow-xl min-h-[320px] flex items-center justify-center text-gray-500">
-                  <p>Devotion not available.</p>
+              </div>
+            ))}
+
+            {dailyDevotions.length === 0 && (
+              <div className="w-full flex-shrink-0 px-2 select-none">
+                <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-6 shadow-xl h-[360px] flex items-center justify-center text-gray-500">
+                  <p>No daily devotionals available yet.</p>
                 </div>
-              )}
-            </div>
-          ))}
+              </div>
+            )}
+          </motion.div>
         </div>
 
         {/* Slide indicators */}
-        {dailyContents.length > 1 && (
-          <div className="flex justify-center space-x-2 mt-2">
-            {dailyContents.map((_, index) => (
+        {dailyDevotions.length > 1 && (
+          <div className="flex justify-center space-x-2 mt-3">
+            {dailyDevotions.map((_, index) => (
               <button
                 key={index}
-                onClick={() => scrollToDevotionSlide(index)}
+                onClick={() => setCurrentDevotionSlide(index)}
                 className={`h-2 rounded-full transition-all ${currentDevotionSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
                 aria-label={`Go to slide ${index + 1}`}
               />
@@ -624,7 +649,7 @@ export default function HomeView() {
               No public prayer requests yet.
             </div>
           ) : (
-            prayers.map((request, i) => (
+            prayers.map((request) => (
               <div key={request._id} className="bg-white/80 backdrop-blur-sm rounded-lg p-4 hover:bg-white transition-colors">
                 <div className="flex items-start space-x-3">
                   <div className="size-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold uppercase">
@@ -664,7 +689,7 @@ export default function HomeView() {
       <DailyDetailModal
         isOpen={isDetailModalOpen}
         onClose={() => setIsDetailModalOpen(false)}
-        contents={dailyContents}
+        contents={modalContents}
         initialIndex={initialModalIndex}
         initialSection={initialModalSection}
       />

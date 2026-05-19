@@ -251,7 +251,6 @@ export async function importVerses(validRows: VerseImportRow[]): Promise<{ upser
         verseChapter: row.chapter,
         verseNumber: row.verse,
         verseReference: `${row.book} ${row.chapter}:${row.verse}`,
-        devotionalVerseRef: `${row.book} ${row.chapter}:${row.verse}`, // default same as verse
         backgroundImage: row.backgroundImage,
         isPublished: true,
     }));
@@ -337,11 +336,6 @@ export async function importDevotionals(validRows: DevotionalImportRow[]): Promi
         devotionalContent: row.body,
         devotionalVerseRef: row.verseRef,
         devotionalBackgroundImage: row.backgroundImage,
-        // Provide defaults for required verse fields if not yet set
-        verseBook: 'Unknown',
-        verseChapter: 1,
-        verseNumber: 1,
-        verseReference: row.verseRef,
         isPublished: true,
     }));
 

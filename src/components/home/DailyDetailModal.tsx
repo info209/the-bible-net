@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Play, Pause } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface IDailyContent {
@@ -30,19 +30,16 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
     const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
     const scrollRef = useRef<HTMLDivElement>(null);
     
-    // Auto-scroll logic could go here based on initialSection, but for now we rely on the user viewing it
-    
     useEffect(() => {
         if (isOpen) {
             setCurrentIndex(initialIndex);
             
-            // Allow DOM to render, then scroll to section
+            // Allow DOM to render, then scroll to top cleanly
             setTimeout(() => {
-                if (initialSection && scrollRef.current) {
-                    const sectionId = `section-${initialSection}`;
-                    const el = document.getElementById(sectionId);
-                    if (el) {
-                        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                if (scrollRef.current) {
+                    const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
+                    if (scrollContainer) {
+                        scrollContainer.scrollTo({ top: 0, behavior: 'smooth' });
                     }
                 }
             }, 300);
@@ -73,7 +70,7 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 50 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="fixed inset-0 z-[100] flex flex-col bg-slate-900"
+                className="fixed inset-0 z-[100] flex flex-col bg-slate-900 overflow-hidden"
             >
                 {/* Dynamic Background Image */}
                 {currentContent.devotionalBackgroundImage ? (
@@ -123,88 +120,98 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
 
                 {/* Content Sections */}
                 <ScrollArea className="relative z-10 flex-1 px-4 sm:px-8 pb-12 mt-4" ref={scrollRef}>
-                    <div className="max-w-2xl mx-auto flex flex-col space-y-16 py-8">
+                    <div className="max-w-2xl mx-auto flex flex-col space-y-12 py-8">
                         
                         {/* Section 1: Daily Verse */}
-                        {(!initialSection || initialSection === 'verse') && (
-                            <div id="section-verse" className="flex flex-col">
+                        {initialSection === 'verse' && (
+                            <div id="section-verse" className="flex flex-col space-y-6">
                                 {currentContent.verse ? (
                                     <>
-                                        <p className="text-white/70 text-sm mb-2 uppercase tracking-widest font-semibold text-center">Daily Verse</p>
-                                        <h3 className="text-white text-2xl font-bold mb-8 text-center">{currentContent.verseReference}</h3>
+                                        <p className="text-white/70 text-xs mb-2 uppercase tracking-widest font-bold text-center">Daily Verse</p>
+                                        <h3 className="text-white text-2xl md:text-3xl font-extrabold mb-4 text-center">{currentContent.verseReference}</h3>
                                         
-                                        <p className="text-white text-3xl leading-relaxed font-serif italic text-center drop-shadow-md">
+                                        <p className="text-white text-2xl md:text-3xl leading-relaxed font-serif italic text-center drop-shadow-md max-w-xl mx-auto">
                                             "{currentContent.verse}"
                                         </p>
                                     </>
                                 ) : (
                                     <div className="text-center py-10 opacity-70">
-                                        <p className="text-white/70 text-sm mb-2 uppercase tracking-widest font-semibold">Daily Verse</p>
+                                        <p className="text-white/70 text-xs mb-2 uppercase tracking-widest font-bold">Daily Verse</p>
                                         <p className="text-white text-lg">Today's verse will be available soon.</p>
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Section 2: Daily Devotional */}
-                        {(!initialSection || initialSection === 'devotional') && (
-                            <div id="section-devotional" className="flex flex-col">
+                        {/* Section 2: Daily Devotional - Decoupled & Restructured Layout */}
+                        {initialSection === 'devotional' && (
+                            <div id="section-devotional" className="flex flex-col space-y-12">
                                 {currentContent.devotionalContent ? (
                                     <>
-                                        <div className="flex items-center justify-center mb-6">
-                                            <div className="h-px bg-white/20 flex-1" />
-                                            <p className="text-white/70 text-sm px-4 uppercase tracking-widest font-semibold">Daily Devotional</p>
-                                            <div className="h-px bg-white/20 flex-1" />
-                                        </div>
-                                        <h3 className="text-white text-3xl font-bold mb-8 text-center">{currentContent.devotionalTitle}</h3>
-
-                                        {/* Scripture Section */}
-                                        <div className="mb-10 text-center">
+                                        {/* A. Devotional Scripture Reference Section */}
+                                        <div className="flex flex-col items-center text-center">
+                                            <p className="text-white/70 text-xs uppercase tracking-widest font-bold mb-4">Devotional Verse</p>
+                                            <h3 className="text-white text-2xl font-bold mb-4">{currentContent.devotionalVerseRef}</h3>
+                                            
                                             {currentContent.devotionalVerseText ? (
-                                                <>
-                                                    <p className="text-white/80 text-sm font-semibold uppercase tracking-wide mb-2">{currentContent.devotionalVerseRef}</p>
-                                                    <p className="text-white text-2xl leading-relaxed font-serif italic drop-shadow-md">
-                                                        "{currentContent.devotionalVerseText}"
-                                                    </p>
-                                                </>
+                                                <p className="text-white text-xl md:text-2xl leading-relaxed font-serif italic max-w-xl mx-auto drop-shadow-md">
+                                                    “{currentContent.devotionalVerseText}”
+                                                </p>
                                             ) : (
-                                                <div className="py-4 opacity-70 border border-white/20 rounded-xl bg-white/5">
-                                                    <p className="text-white/80 text-sm font-semibold uppercase tracking-wide mb-1">{currentContent.devotionalVerseRef}</p>
-                                                    <p className="text-white text-lg italic">Verse unavailable.</p>
+                                                <div className="py-4 px-6 opacity-70 border border-white/20 rounded-2xl bg-white/5 max-w-md">
+                                                    <p className="text-white/80 text-sm italic">Verse content resolution pending...</p>
                                                 </div>
                                             )}
                                         </div>
-                                        
-                                        {/* Devotional Content Section */}
-                                        <p className="text-white/90 text-lg leading-loose text-justify whitespace-pre-wrap drop-shadow-sm font-medium">
-                                            {currentContent.devotionalContent}
-                                        </p>
+
+                                        {/* Premium Divider */}
+                                        <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent w-full" />
+
+                                        {/* B. Devotional Content (Title & Body) */}
+                                        <div className="flex flex-col space-y-6">
+                                            <p className="text-white/70 text-xs uppercase tracking-widest font-bold text-center">Devotional Reading</p>
+                                            <h3 className="text-white text-3xl font-extrabold text-center tracking-tight leading-tight">{currentContent.devotionalTitle}</h3>
+                                            <p className="text-white/90 text-lg leading-loose text-justify whitespace-pre-wrap drop-shadow-sm font-medium font-sans">
+                                                {currentContent.devotionalContent}
+                                            </p>
+                                        </div>
+
+                                        {/* C. Optional Prayer Section - Only Renders and Takes Spacing If Exists */}
+                                        {currentContent.prayerContent && (
+                                            <>
+                                                {/* Premium Divider */}
+                                                <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent w-full" />
+
+                                                <div id="section-prayer" className="flex flex-col space-y-6">
+                                                    <p className="text-white/70 text-xs uppercase tracking-widest font-bold text-center">Daily Prayer</p>
+                                                    {currentContent.prayerTitle && (
+                                                        <h4 className="text-white text-2xl font-extrabold text-center tracking-tight">{currentContent.prayerTitle}</h4>
+                                                    )}
+                                                    <div className="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/25 shadow-2xl max-w-xl mx-auto">
+                                                        <p className="text-white text-xl leading-relaxed font-serif italic text-center">
+                                                            {currentContent.prayerContent}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </>
+                                        )}
+
+                                        {/* D. Complete Button Placement Placeholder */}
+                                        <div className="pt-8 pb-16 flex justify-center w-full">
+                                            <button
+                                                onClick={() => console.log('Devotional marked as complete')}
+                                                className="w-full max-w-md py-4 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] focus:ring-2 focus:ring-teal-400/40 text-white font-extrabold rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none"
+                                            >
+                                                Complete Devotional
+                                            </button>
+                                        </div>
                                     </>
                                 ) : (
-                                    <div className="text-center py-10 bg-white/5 rounded-2xl border border-white/10">
+                                    <div className="text-center py-12 bg-white/5 rounded-3xl border border-white/10">
                                         <p className="text-white/70 text-sm uppercase tracking-widest font-semibold">Daily Devotional</p>
                                         <p className="text-white/50 text-sm mt-2">Not available for this day.</p>
                                     </div>
                                 )}
-                            </div>
-                        )}
-
-                        {/* Section 3: Prayer */}
-                        {currentContent.prayerContent && (!initialSection || initialSection === 'devotional' || initialSection === 'prayer') && (
-                            <div id="section-prayer" className="flex flex-col">
-                                <div className="flex items-center justify-center mb-6">
-                                    <div className="h-px bg-white/20 flex-1" />
-                                    <p className="text-white/70 text-sm px-4 uppercase tracking-widest font-semibold">Prayer</p>
-                                    <div className="h-px bg-white/20 flex-1" />
-                                </div>
-                                {currentContent.prayerTitle && (
-                                    <h3 className="text-white text-2xl font-bold mb-6 text-center">{currentContent.prayerTitle}</h3>
-                                )}
-                                <div className="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 shadow-xl">
-                                    <p className="text-white text-xl leading-relaxed font-serif italic text-center">
-                                        {currentContent.prayerContent}
-                                    </p>
-                                </div>
                             </div>
                         )}
                         
