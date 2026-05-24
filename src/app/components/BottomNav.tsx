@@ -10,9 +10,11 @@ interface BottomNavProps {
   onNavigate?: (page: 'home' | 'bible' | 'library' | 'explore') => void;
 }
 
+const isBibleReadingRoute = (path?: string | null) => path === '/bible' || path?.startsWith('/bible/') || false;
+
 export default function BottomNav({ isVisible = true, onNavigate }: BottomNavProps) {
   const pathname = usePathname();
-  const isBiblePage = pathname?.startsWith('/bible') || pathname?.startsWith('/bible2') || false;
+  const isBiblePage = isBibleReadingRoute(pathname);
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home, path: '/home' },

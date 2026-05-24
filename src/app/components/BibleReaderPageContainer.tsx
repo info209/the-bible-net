@@ -42,6 +42,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Separator as RadixSeparator } from '@radix-ui/react-separator';
+import BibleReaderPage from './BibleReaderPage';
 
 const bibleBooks = {
   'Old Testament': [
@@ -91,7 +92,7 @@ interface BibleReaderPageProps {
   onNavigate?: (page: 'home' | 'bible' | 'library' | 'explore') => void;
 }
 
-import BibleReaderPage from './BibleReaderPage';
+const isBibleReadingRoute = (path?: string | null) => path === '/bible' || path?.startsWith('/bible/') || false;
 
 export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPageProps) {
   const { currentVerse, setCurrentVerse, setCurrentChapter: setStoreChapter } = useMediaStore();
@@ -102,7 +103,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
   // determine whether we are on bible page; if not, render only nav bar
   const pathname = usePathname();
-  const isBiblePage = pathname?.startsWith('/bible') || false;
+  const isBiblePage = isBibleReadingRoute(pathname);
 
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const [displayBookName, setDisplayBookName] = useState<string>('Genesis');
@@ -168,8 +169,12 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
   const handleVerseTap = useCallback((verseNum: number, e?: React.MouseEvent | React.TouchEvent) => {
     if (e) e.stopPropagation();
+    if (verseNum === 0) {
+      setSelectedVerses([]);
+      return;
+    }
     setSelectedVerses(prev => {
-      // Allow single tap to start selection/open popup
+      if (prev.length === 0) return prev;
       if (prev.includes(verseNum)) {
         return prev.filter(v => v !== verseNum);
       } else {
@@ -345,7 +350,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
   // Parse URL to set initial state or handle navigation
   useEffect(() => {
-    if (!pathname || !pathname.startsWith('/bible')) return;
+    if (!isBibleReadingRoute(pathname)) return;
 
     // Pattern: /bible/{version}/{book}/{chapter} or just /bible
     const segments = pathname.split('/').filter(Boolean); // e.g., ["bible", "kjv", "genesis", "1"]
@@ -1401,7 +1406,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   return (
     <BibleReaderPage
       isReadingMode={isReadingMode}
-      showAudioControls={showAudioControls}
+      showAudioControls={isBiblePage && showAudioControls}
       apiVersions={bibleVersions}
       books={bibleBooksState}
       onNavigate={onNavigate}

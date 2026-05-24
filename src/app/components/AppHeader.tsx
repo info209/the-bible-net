@@ -1,7 +1,7 @@
 "use client";
 
-import { Globe, Menu, User, Settings, LogIn, UserPlus } from 'lucide-react';
-import { useSession, signOut } from 'next-auth/react';
+import { Globe, Menu, User, LogIn, UserPlus } from 'lucide-react';
+import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
@@ -54,13 +54,6 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
     setCurrentLocale(code);
     setIsLangOpen(false);
     router.refresh();
-  };
-
-  const handleLogout = async () => {
-    await signOut({
-      callbackUrl: `${window.location.origin}/home`,
-      redirect: true
-    });
   };
 
   const navigateTo = (path: string) => {

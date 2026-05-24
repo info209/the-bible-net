@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { signOut } from 'next-auth/react';
 import {
@@ -62,6 +62,7 @@ function getInitials(name?: string | null, email?: string | null): string {
 export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: ProfilePanelProps) {
   const router = useRouter();
   const user = session?.user;
+  const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   const initials = getInitials(user?.name, user?.email);
   const fullName = user?.name ?? user?.email ?? 'User';
@@ -75,6 +76,14 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
     onClose();
     router.push(route);
   }, [onClose, router]);
+
+  const handleSettingsClick = () => {
+    setShowSettingsMenu(prev => !prev);
+  };
+
+  useEffect(() => {
+    if (!isOpen) setShowSettingsMenu(false);
+  }, [isOpen]);
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
@@ -98,14 +107,6 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
             <span className="text-sm font-medium">← Back</span>
           </button>
 
-          {/* Logout */}
-          <button
-            onClick={handleLogout}
-            className="absolute top-4 right-4 flex items-center gap-1.5 text-white/90 hover:text-white transition-colors"
-          >
-            <span className="text-sm font-medium">Logout</span>
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
 
         {/* ─── Avatar (overlaps hero) ─── */}
@@ -174,10 +175,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
             {/* Settings & Language row */}
             <div className="grid grid-cols-2 gap-3">
               <button
-                onClick={() => {
-                  onClose();
-                  onMenuOpen?.();
-                }}
+                onClick={handleSettingsClick}
                 className="flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all duration-150"
               >
                 <Settings className="w-4.5 h-4.5 text-gray-500" strokeWidth={1.8} />
@@ -192,6 +190,30 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
                 <span className="text-sm font-medium text-gray-700">Language</span>
               </button>
             </div>
+
+            {showSettingsMenu && (
+              <div className="rounded-2xl bg-gray-50 border border-gray-100 p-2">
+                {onMenuOpen && (
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onMenuOpen();
+                    }}
+                    className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-gray-700 hover:bg-white active:scale-[0.98] transition-all duration-150"
+                  >
+                    <span className="text-sm font-semibold">App Settings</span>
+                    <Settings className="w-4 h-4 text-gray-500" />
+                  </button>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 active:scale-[0.98] transition-all duration-150"
+                >
+                  <span className="text-sm font-semibold">Logout</span>
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </div>
+            )}
           </div>
         </ScrollArea>
       </SheetContent>

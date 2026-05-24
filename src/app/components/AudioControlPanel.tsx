@@ -142,6 +142,7 @@ export default function AudioControlPanel({
   const displayVerse = (isDraggingSliderRef.current && dragVersePreview !== null)
     ? dragVersePreview
     : selectedVerse;
+  const panelTitle = `${selectedBook || 'Bible'} ${selectedChapter}:${displayVerse}`;
 
   return (
     <div className="fixed inset-0 z-[100] overlay-dark" onClick={onClose}>
@@ -167,11 +168,11 @@ export default function AudioControlPanel({
             <div className="w-[var(--drag-handle-width)] h-[var(--drag-handle-height)] bg-[var(--drag-handle-color)] rounded-full mt-3" />
           </div>
 
-          {/* Header: Minimize (left) + Close (right) */}
-          <div className="flex items-center justify-between px-4 pt-6 pb-2">
+          {/* Header: Minimize (left) + reference (center) + Close (right) */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 pt-6 pb-3">
             <button
               onClick={onMinimize ?? onClose}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full
+              className="justify-self-start flex items-center gap-1.5 px-3 py-1.5 rounded-full
                 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)]
                 transition-colors"
               aria-label="Minimize player"
@@ -180,9 +181,13 @@ export default function AudioControlPanel({
               <span className="text-xs font-medium text-[var(--color-text-secondary)]">Minimize</span>
             </button>
 
+            <h2 className="min-w-0 max-w-[150px] sm:max-w-[240px] truncate text-center text-base font-semibold text-[var(--color-text-primary)]">
+              {panelTitle}
+            </h2>
+
             <button
               onClick={onClose}
-              className="size-8 rounded-full flex items-center justify-center
+              className="justify-self-end size-8 rounded-full flex items-center justify-center
                 bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)]
                 transition-colors"
               aria-label="Close player"

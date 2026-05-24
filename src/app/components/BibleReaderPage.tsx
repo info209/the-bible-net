@@ -19,6 +19,9 @@ import BibleSearch from './BibleSearch';
 
 import FontsSettingsModal, { ThemeType, TransitionType } from './FontsSettingsModal';
 import AudioFloatingPlayer from './AudioFloatingPlayer';
+
+const VERSE_ACTION_MENU_OPEN_DELAY = 800;
+
 const bibleBooks = {
   'Old Testament': [
     'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
@@ -160,6 +163,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [ttsVolume, setTtsVolume] = useState(1.0);
   const [repeatMode, setRepeatMode] = useState<'none' | 'chapter' | 'verse'>('none');
 
+  useEffect(() => {
+    if (!showAudioControls) {
+      setShowAudioControlPanel(false);
+      setAudioPlayerState('default');
+    }
+  }, [showAudioControls]);
+
   const handleRepeatModeToggle = () => {
     const modes: Array<'none' | 'chapter' | 'verse'> = ['none', 'chapter', 'verse'];
     const currentIndex = modes.indexOf(repeatMode);
@@ -167,6 +177,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   };
   const [selectedTimer, setSelectedTimer] = useState<'stop' | 'end-chapter' | '10-mins' | '15-mins' | '30-mins' | '1-hr' | '2-hrs'>('stop');
   const [showSearch, setShowSearch] = useState(false);
+  const [showVerseActionMenu, setShowVerseActionMenu] = useState(false);
 
   // Compare mode state
   const [compareMode, setCompareMode] = useState<{
@@ -227,6 +238,20 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       document.body.style.overflow = 'unset';
     };
   }, [isAnyPopupOpen]);
+
+  useEffect(() => {
+    if (selectedVerses.length === 0) {
+      setShowVerseActionMenu(false);
+      return;
+    }
+
+    setShowVerseActionMenu(false);
+    const timer = window.setTimeout(() => {
+      setShowVerseActionMenu(true);
+    }, VERSE_ACTION_MENU_OPEN_DELAY);
+
+    return () => window.clearTimeout(timer);
+  }, [selectedVerses]);
 
   // Audio narration state
   const [narrationPlaying, setNarrationPlaying] = useState(false);
@@ -1852,7 +1877,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       {/* Audio Control Panel */}
       <AudioControlPanel
-        isOpen={showAudioControlPanel}
+        isOpen={showAudioControls && showAudioControlPanel}
         onClose={() => {
           setShowAudioControlPanel(false);
           setAudioPlayerState('default');
@@ -2306,7 +2331,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         onExitCompare={handleExitCompare}
       />
       <AnimatePresence>
-        {selectedVerses.length > 0 && (
+        {showVerseActionMenu && selectedVerses.length > 0 && (
           <VerseActionMenu
             isOpen={true}
             bookName={selectedBook}

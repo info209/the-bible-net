@@ -6,6 +6,8 @@ import AppHeader from "./components/AppHeader";
 import BibleReaderPageContainer from "./components/BibleReaderPageContainer";
 import BottomNav from "./components/BottomNav";
 
+const isBibleReadingRoute = (path: string) => path === '/bible' || path.startsWith('/bible/');
+
 export default function ClientLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -22,7 +24,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   // Reset reading mode when leaving Bible page
   useEffect(() => {
-    if (!pathname.startsWith('/bible')) {
+    if (!isBibleReadingRoute(pathname)) {
       setHideBottomNav(false);
     }
   }, [pathname]);
@@ -46,12 +48,10 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const isAdminRoute = pathname.startsWith('/admin');
   const isApiDocs = pathname.startsWith('/api-docs');
   const isAuthRoute = pathname.startsWith('/auth');
-  const isBiblePage = pathname === '/bible' || pathname.startsWith('/bible/');
-  const isBible2Page = pathname === '/bible2' || pathname.startsWith('/bible2/');
-  const isAnyBiblePage = isBiblePage || isBible2Page;
+  const isBiblePage = isBibleReadingRoute(pathname);
   const isProfileSubPage = pathname.startsWith('/saved') || pathname.startsWith('/notes') || pathname.startsWith('/highlights');
   const isPublicAppPage = pathname !== '/' && !isAdminRoute && !isApiDocs && !isAuthRoute;
-  const showAppHeader = isPublicAppPage && !isAnyBiblePage;
+  const showAppHeader = isPublicAppPage && !isBiblePage;
 
   return (
     <>
@@ -64,7 +64,6 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       
       {/* Heavy Bible readers mount outside main to take full height */}
       {isBiblePage && <BibleReaderPageContainer onNavigate={handleNavigate} />}
-      {isBible2Page && <BibleReaderPageContainer onNavigate={handleNavigate} />}
       
       {/* Standard BottomNav for all app pages */}
       {isPublicAppPage && <BottomNav isVisible={!hideBottomNav} onNavigate={handleNavigate} />}

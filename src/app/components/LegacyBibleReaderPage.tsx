@@ -43,6 +43,8 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Separator as RadixSeparator } from '@radix-ui/react-separator';
 
+const VERSE_ACTION_MENU_OPEN_DELAY = 800;
+
 const bibleBooks = {
   'Old Testament': [
     'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
@@ -165,8 +167,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
   const handleVerseTap = useCallback((verseNum: number, e?: React.MouseEvent | React.TouchEvent) => {
     if (e) e.stopPropagation();
+    if (verseNum === 0) {
+      setSelectedVerses([]);
+      return;
+    }
     setSelectedVerses(prev => {
-      // Allow single tap to start selection/open popup
+      if (prev.length === 0) return prev;
       if (prev.includes(verseNum)) {
         return prev.filter(v => v !== verseNum);
       } else {
@@ -283,6 +289,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [comparisonVersionIds, setComparisonVersionIds] = useState<string[]>([]);
   const [showCompareSelector, setShowCompareSelector] = useState(false);
   const [tempComparisonIds, setTempComparisonIds] = useState<string[]>([]);
+  const [showVerseActionMenu, setShowVerseActionMenu] = useState(false);
 
   // Compare mode handlers
   const handleToggleCompareVersion = (vId: string) => {
@@ -404,6 +411,20 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       if (scrollContainerRef.current) scrollContainerRef.current.style.overflow = '';
     }
   }, [isAnyPopupOpen]);
+
+  useEffect(() => {
+    if (selectedVerses.length === 0) {
+      setShowVerseActionMenu(false);
+      return;
+    }
+
+    setShowVerseActionMenu(false);
+    const timer = window.setTimeout(() => {
+      setShowVerseActionMenu(true);
+    }, VERSE_ACTION_MENU_OPEN_DELAY);
+
+    return () => window.clearTimeout(timer);
+  }, [selectedVerses]);
 
   // Debounced Bible search
   useEffect(() => {
@@ -2260,7 +2281,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       />
 
       {/* Verse Action Menu (Selection) */}
-      {selectedVerses.length > 0 && (
+      {showVerseActionMenu && selectedVerses.length > 0 && (
         <VerseActionMenu
           isOpen={selectedVerses.length > 0}
           bookName={displayBookName}
@@ -2294,6 +2315,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         onVolumeChange={setTtsVolume}
         repeatMode={repeatMode}
         onRepeatModeToggle={() => setRepeatMode(prev => prev === 'none' ? 'chapter' : prev === 'chapter' ? 'verse' : 'none')}
+        selectedChapter={selectedChapter}
+        selectedBook={displayBookName}
       />
     </div>
   );
