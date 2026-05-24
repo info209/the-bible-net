@@ -89,7 +89,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <SheetContent
         side="right"
-        className="w-full max-w-sm p-0 border-none [&>[data-slot=sheet-close]]:hidden"
+        className="w-full max-w-none sm:max-w-sm p-0 border-none [&>[data-slot=sheet-close]]:hidden"
       >
         {/* Visually hidden title for accessibility */}
         <SheetHeader className="sr-only">
@@ -98,16 +98,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
         </SheetHeader>
 
         {/* ─── Hero Banner ─── */}
-        <div className="relative h-44 bg-gradient-to-br from-[#41ADB0] via-[#319ea1] to-[#1d7e82] flex-shrink-0">
-          {/* Back */}
-          <button
-            onClick={onClose}
-            className="absolute top-4 left-4 flex items-center gap-1.5 text-white/90 hover:text-white transition-colors"
-          >
-            <span className="text-sm font-medium">← Back</span>
-          </button>
-
-        </div>
+        <div className="relative h-44 bg-gradient-to-br from-[#41ADB0] via-[#319ea1] to-[#1d7e82] flex-shrink-0" />
 
         {/* ─── Avatar (overlaps hero) ─── */}
         <div className="flex flex-col items-center -mt-10 px-4 pb-2 flex-shrink-0">
@@ -175,7 +166,9 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
             {/* Settings & Language row */}
             <div className="grid grid-cols-2 gap-3">
               <button
+                type="button"
                 onClick={handleSettingsClick}
+                aria-expanded={showSettingsMenu}
                 className="flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all duration-150"
               >
                 <Settings className="w-4.5 h-4.5 text-gray-500" strokeWidth={1.8} />
@@ -183,6 +176,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
               </button>
 
               <button
+                type="button"
                 onClick={() => {/* future: open language modal */ }}
                 className="flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all duration-150"
               >
@@ -192,9 +186,10 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
             </div>
 
             {showSettingsMenu && (
-              <div className="rounded-2xl bg-gray-50 border border-gray-100 p-2">
+              <div className="rounded-2xl bg-gray-50 border border-gray-100 p-2 shadow-sm">
                 {onMenuOpen && (
                   <button
+                    type="button"
                     onClick={() => {
                       onClose();
                       onMenuOpen();
@@ -206,6 +201,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
                   </button>
                 )}
                 <button
+                  type="button"
                   onClick={handleLogout}
                   className="w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl text-red-600 hover:bg-red-50 active:scale-[0.98] transition-all duration-150"
                 >

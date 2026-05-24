@@ -218,6 +218,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const lastScrollY = useRef(0);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // Prevent scroll handler from interfering with clicks
   const isUserInteracting = useRef(false);
@@ -227,9 +228,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     showSettingsMenu || showAudioControlPanel || showVerseSelector ||
     showTimerMenu || showSearch || showCompareSelector || showCompareMenu ||
     selectedVerses.length > 0;
+  const shouldLockBodyScroll = showBookSelector || showChapterSelector ||
+    showVersionSelector || showMusicSelector ||
+    showSettingsMenu || showAudioControlPanel || showVerseSelector ||
+    showTimerMenu || showSearch || showCompareSelector || showCompareMenu ||
+    selectedVerses.length > 0;
 
   useEffect(() => {
-    if (isAnyPopupOpen) {
+    if (shouldLockBodyScroll) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -237,7 +243,23 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isAnyPopupOpen]);
+  }, [shouldLockBodyScroll]);
+
+  useEffect(() => {
+    if (!showMoreMenu) return;
+
+    const handleClickOutside = (event: MouseEvent | TouchEvent) => {
+      if (moreMenuRef.current?.contains(event.target as Node)) return;
+      setShowMoreMenu(false);
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('touchstart', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showMoreMenu]);
 
   useEffect(() => {
     if (selectedVerses.length === 0) {
@@ -1453,12 +1475,53 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               >
                 <FiSearch className="size-5" />
               </button>
-              <button
-                onClick={() => setShowMoreMenu(true)}
-                className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
-              >
-                <MoreVertical className="size-5" />
-              </button>
+              <div ref={moreMenuRef} className="relative">
+                <button
+                  onClick={() => setShowMoreMenu(prev => !prev)}
+                  className="p-2 hover:bg-gray-100/50 rounded-full transition-colors"
+                  aria-haspopup="menu"
+                  aria-expanded={showMoreMenu}
+                >
+                  <MoreVertical className="size-5" />
+                </button>
+
+                {showMoreMenu && (
+                  <div
+                    className="absolute right-0 top-full mt-2 z-[60] w-56 overflow-hidden rounded-xl border border-white/40 bg-white/95 shadow-lg backdrop-blur-xl backdrop-saturate-[180%]"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <div className="py-2">
+                      <button
+                        onClick={() => {
+                          setShowMoreMenu(false);
+                          setShowSettingsMenu(true);
+                        }}
+                        className="w-full px-4 py-3 text-left text-sm font-medium text-[#31393a] hover:bg-gray-100/70 transition-colors"
+                      >
+                        Fonts & Settings
+                      </button>
+
+                      <div className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-gray-100/70 transition-colors">
+                        <span className="text-sm font-medium text-[#31393a]">Hide footnotes</span>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setHideFootnotes(!hideFootnotes);
+                          }}
+                          className={`relative h-6 w-11 rounded-full transition-colors ${hideFootnotes ? 'bg-[var(--color-primary-teal)]' : 'bg-gray-300'
+                            }`}
+                          aria-pressed={hideFootnotes}
+                        >
+                          <div
+                            className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-white transition-transform ${hideFootnotes ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
@@ -2052,44 +2115,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     ? 'bg-[#E23744] border-[#E23744]'
                     : 'border-gray-300'
                     }`} />
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* More Menu (Three Dots) - Simple menu with options */}
-      {showMoreMenu && (
-        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowMoreMenu(false)}>
-          <div className="absolute top-20 right-4 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[280px] overflow-hidden" onClick={(e) => e.stopPropagation()}>
-            <div className="py-2">
-              {/* Fonts & Settings Option */}
-              <button
-                onClick={() => {
-                  setShowMoreMenu(false);
-                  setShowSettingsMenu(true);
-                }}
-                className="w-full px-4 py-3 text-left text-base text-[#31393a] hover:bg-gray-100/50 transition-colors"
-              >
-                Fonts & Settings
-              </button>
-
-              {/* Hide Footnotes Toggle */}
-              <div className="flex items-center justify-between px-4 py-3 hover:bg-gray-100/50 transition-colors">
-                <span className="text-base text-[#31393a]">Hide footnotes</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setHideFootnotes(!hideFootnotes);
-                  }}
-                  className={`relative w-11 h-6 rounded-full transition-colors ${hideFootnotes ? 'bg-[var(--color-primary-teal)]' : 'bg-gray-300'
-                    }`}
-                >
-                  <div
-                    className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${hideFootnotes ? 'translate-x-5' : 'translate-x-0'
-                      }`}
-                  />
                 </button>
               </div>
             </div>
