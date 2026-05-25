@@ -96,6 +96,8 @@ interface BibleReaderPageProps {
   onSliderDragStart?: () => void;
   onSliderDragEnd?: () => void;
   isLoggedIn?: boolean;
+  /** Labels the first selected verse is already saved under (enables saved-state UI) */
+  existingSaveLabels?: string[] | null;
 }
 
 export default function BibleReaderPage(props: BibleReaderPageProps) {
@@ -131,6 +133,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     onSliderDragStart,
     onSliderDragEnd,
     isLoggedIn = false,
+    existingSaveLabels = null,
   } = props;
 
   const selectedBook = book;
@@ -162,6 +165,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [showTimerMenu, setShowTimerMenu] = useState(false);
   const [ttsVolume, setTtsVolume] = useState(1.0);
   const [repeatMode, setRepeatMode] = useState<'none' | 'chapter' | 'verse'>('none');
+  // Stable ref so utterance.onend callbacks always read the live repeatMode
+  // without suffering from stale-closure issues (the bug: repeating next verse instead of current).
+  const repeatModeRef = useRef<'none' | 'chapter' | 'verse'>(repeatMode);
+  useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
 
   useEffect(() => {
     if (!showAudioControls) {
@@ -171,9 +178,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   }, [showAudioControls]);
 
   const handleRepeatModeToggle = () => {
-    const modes: Array<'none' | 'chapter' | 'verse'> = ['none', 'chapter', 'verse'];
-    const currentIndex = modes.indexOf(repeatMode);
-    setRepeatMode(modes[(currentIndex + 1) % modes.length]);
+    // Functional update avoids stale-closure on rapid taps.
+    setRepeatMode(prev => {
+      const modes: Array<'none' | 'chapter' | 'verse'> = ['none', 'chapter', 'verse'];
+      return modes[(modes.indexOf(prev) + 1) % modes.length];
+    });
   };
   const [selectedTimer, setSelectedTimer] = useState<'stop' | 'end-chapter' | '10-mins' | '15-mins' | '30-mins' | '1-hr' | '2-hrs'>('stop');
   const [showSearch, setShowSearch] = useState(false);
@@ -198,6 +207,35 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [fontSize, setFontSize] = useState(18); // Standard book reading size (18px)
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'sepia' | 'cream' | 'dark'>('light');
   const [pageTransition, setPageTransition] = useState<'slide' | 'curl' | 'fade' | 'scroll'>('slide'); // Changed to 'slide' as default
+
+  // Load font size from localStorage on mount
+  useEffect(() => {
+    const savedSize = localStorage.getItem('bible-reader-font-size');
+    if (savedSize) {
+      const parsedSize = parseInt(savedSize, 10);
+      if ([14, 16, 18, 22].includes(parsedSize)) {
+        setFontSize(parsedSize);
+      } else {
+        // Handle legacy or invalid values by mapping to closest step
+        if (parsedSize < 15) {
+          setFontSize(14);
+        } else if (parsedSize < 17) {
+          setFontSize(16);
+        } else if (parsedSize < 20) {
+          setFontSize(18);
+        } else {
+          setFontSize(22);
+        }
+      }
+    }
+  }, []);
+
+  // Save font size to localStorage on change
+  useEffect(() => {
+    if ([14, 16, 18, 22].includes(fontSize)) {
+      localStorage.setItem('bible-reader-font-size', fontSize.toString());
+    }
+  }, [fontSize]);
 
   // Page transition state
   const [transitionDirection, setTransitionDirection] = useState<'next' | 'prev' | null>(null);
@@ -294,6 +332,20 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   // Timer state for time-based narration
   const narrationTimerRef = useRef<NodeJS.Timeout | null>(null);
   const narrationStartTimeRef = useRef<number | null>(null);
+
+  // Centralized absolute sleep timer reference
+  const sleepEndTimeRef = useRef<number | null>(null);
+
+  const getTimerMinutes = (timerVal: typeof selectedTimer): number => {
+    switch (timerVal) {
+      case '10-mins': return 10;
+      case '15-mins': return 15;
+      case '30-mins': return 30;
+      case '1-hr': return 60;
+      case '2-hrs': return 120;
+      default: return 0;
+    }
+  };
 
   // Music tracks
   const musicTracks = [
@@ -650,7 +702,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       verseNumber: '#E23744'
     },
     dark: {
-      bg: '#2e3737',
+      bg: '#000000',
       text: '#e5e7e7',
       verseNumber: '#FF4757'
     }
@@ -826,6 +878,12 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
   };
 
+  const handleTimerExpired = () => {
+    console.log('[Timer] Sleep timer expired!');
+    stopNarration();
+    setSelectedTimer('stop');
+  };
+
   const startNarration = (fromVerse: number = 1) => {
     console.log('startNarration called with fromVerse:', fromVerse);
     if (!('speechSynthesis' in window)) {
@@ -841,29 +899,20 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       clearTimeout(narrationTimerRef.current);
       narrationTimerRef.current = null;
     }
+    narrationStartTimeRef.current = null;
 
-    // Start timer if time-based option is selected
-    narrationStartTimeRef.current = Date.now();
-    if (selectedTimer === '10-mins') {
-      narrationTimerRef.current = setTimeout(() => {
-        stopNarration();
-      }, 10 * 60 * 1000); // 10 minutes
-    } else if (selectedTimer === '15-mins') {
-      narrationTimerRef.current = setTimeout(() => {
-        stopNarration();
-      }, 15 * 60 * 1000); // 15 minutes
-    } else if (selectedTimer === '30-mins') {
-      narrationTimerRef.current = setTimeout(() => {
-        stopNarration();
-      }, 30 * 60 * 1000); // 30 minutes
-    } else if (selectedTimer === '1-hr') {
-      narrationTimerRef.current = setTimeout(() => {
-        stopNarration();
-      }, 60 * 60 * 1000); // 1 hour
-    } else if (selectedTimer === '2-hrs') {
-      narrationTimerRef.current = setTimeout(() => {
-        stopNarration();
-      }, 2 * 60 * 60 * 1000); // 2 hours
+    // Centralized absolute sleep timer setup
+    if (selectedTimer !== 'stop' && selectedTimer !== 'end-chapter') {
+      const minutes = getTimerMinutes(selectedTimer);
+      // Initialize absolute end time if not already set or if already expired
+      if (!sleepEndTimeRef.current || sleepEndTimeRef.current <= Date.now()) {
+        sleepEndTimeRef.current = Date.now() + minutes * 60 * 1000;
+        console.log(`[Timer] Initialized sleepEndTimeRef for ${minutes} mins (expires at: ${new Date(sleepEndTimeRef.current).toLocaleTimeString()})`);
+      } else {
+        console.log('[Timer] Preserving active sleep timer (expires at:', new Date(sleepEndTimeRef.current).toLocaleTimeString(), ')');
+      }
+    } else {
+      sleepEndTimeRef.current = null;
     }
 
     const verses = getBibleContent();
@@ -981,18 +1030,19 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
     if (index >= verses.length) {
       // Finished reading all verses in current chapter
-      console.log('Finished chapter. Repeat mode:', repeatMode);
+      // Use repeatModeRef.current (not state) to read the live value — avoids stale closures.
+      console.log('Finished chapter. Repeat mode:', repeatModeRef.current);
 
       // Handle repeat/loop modes
-      if (repeatMode === 'verse') {
-        // Not applicable here as verse repeat is handled when playing a verse
-        // Just continue to next chapter or stop
+      if (repeatModeRef.current === 'verse') {
+        // Verse repeat is handled in utterance.onend; reaching here means all verses exhausted.
+        // Stop cleanly — user can re-play manually.
         setNarrationPlaying(false);
         narrationPlayingRef.current = false;
         setCurrentReadingVerse(null);
         setAudioPlaying(false);
         return;
-      } else if (repeatMode === 'chapter') {
+      } else if (repeatModeRef.current === 'chapter') {
         // Repeat the chapter - go back to the beginning
         console.log('Chapter repeat: restarting from verse 1');
         narrationVerseIndexRef.current = 0;
@@ -1011,8 +1061,19 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         return;
       }
 
+      // Check sleep timer expiration if active
+      if (selectedTimer !== 'stop') {
+        if (sleepEndTimeRef.current !== null) {
+          const remainingMs = sleepEndTimeRef.current - Date.now();
+          if (remainingMs <= 0) {
+            console.log('[Timer] Sleep timer expired at chapter transition, stopping cleanly');
+            handleTimerExpired();
+            return;
+          }
+        }
+      }
+
       // For 'stop' (default) or time-based timers (10-mins, 15-mins, 30-mins, 1-hr, 2-hrs), continue to next chapter
-      // Time-based timers will be stopped by the setTimeout in startNarration
       const totalChapters = bookChapters[selectedBook] || 50;
       const currentBookIndex = allBooks.indexOf(selectedBook);
 
@@ -1099,8 +1160,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           console.log('[Auto-Advance] Resetting isAutoAdvancingRef flag');
           console.log('[Auto-Advance] Final states - audioPlaying:', audioPlaying, 'narrationPlaying:', narrationPlayingRef.current);
           isAutoAdvancingRef.current = false;
-        }, 1000); // Increased to 1000ms to ensure chapter announcement completes
-      }, 1000); // 1 second delay between chapters
+        }, 300);
+      }, 150); // 150ms delay between chapters (mobile-safe)
 
       return;
     }
@@ -1145,22 +1206,23 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       console.log('Progress updated: verse', index + 1, 'of', totalVerses, '- time:', verseProgress, 'of', audioDuration);
     };
 
-    // When verse finishes, read the next one (keep highlight until next verse starts)
+    // When verse finishes, read the next one (keep highlight until next verse starts).
+    // IMPORTANT: Read repeatModeRef.current (NOT the repeatMode state) to avoid the stale-closure
+    // bug where the onend callback captures the initial repeatMode value and ignores later changes.
     utterance.onend = () => {
-      console.log('Speech ended for verse:', verseNumber, 'narrationPlayingRef:', narrationPlayingRef.current, 'repeatMode:', repeatMode);
+      console.log('Speech ended for verse:', verseNumber, 'narrationPlayingRef:', narrationPlayingRef.current, 'repeatMode (live):', repeatModeRef.current);
       if (narrationPlayingRef.current) {
-        if (repeatMode === 'verse') {
-          // Repeat the same verse
-          console.log('Verse repeat: replaying verse', verseNumber);
+        if (repeatModeRef.current === 'verse') {
+          // Repeat the SAME verse — re-call with the identical index so the verse pointer never moves.
+          console.log('Verse repeat: replaying verse', verseNumber, 'at index', index);
           readNextVerse(verses, index);
         } else {
-          // Move to next verse
+          // Advance to the next verse
           narrationVerseIndexRef.current = index + 1;
-          // Immediately read next verse (its highlight will replace this one)
           readNextVerse(verses, index + 1);
         }
       }
-      // Don't clear currentReadingVerse when paused - keep the highlight for resume
+      // Don't clear currentReadingVerse when paused — keep the highlight for resume
     };
 
     utterance.onerror = (event: any) => {
@@ -1211,28 +1273,21 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const resumeNarration = () => {
     console.log('resumeNarration called. currentReadingVerse:', currentReadingVerse, 'selectedVerse:', selectedVerse);
 
-    // If there was a timer active, calculate remaining time and restart it
-    if (narrationStartTimeRef.current && (selectedTimer === '10-mins' || selectedTimer === '15-mins' || selectedTimer === '30-mins' || selectedTimer === '1-hr' || selectedTimer === '2-hrs')) {
-      const elapsed = Date.now() - narrationStartTimeRef.current;
-      let totalDuration = 0;
-
-      if (selectedTimer === '10-mins') totalDuration = 10 * 60 * 1000;
-      else if (selectedTimer === '15-mins') totalDuration = 15 * 60 * 1000;
-      else if (selectedTimer === '30-mins') totalDuration = 30 * 60 * 1000;
-      else if (selectedTimer === '1-hr') totalDuration = 60 * 60 * 1000;
-      else if (selectedTimer === '2-hrs') totalDuration = 2 * 60 * 60 * 1000;
-
-      const remaining = totalDuration - elapsed;
-
-      if (remaining > 0) {
-        // Restart timer with remaining time
-        narrationTimerRef.current = setTimeout(() => {
-          stopNarration();
-        }, remaining);
+    // If there was a sleep timer active, check if it has already expired
+    if (selectedTimer !== 'stop' && selectedTimer !== 'end-chapter') {
+      if (sleepEndTimeRef.current !== null) {
+        const remaining = sleepEndTimeRef.current - Date.now();
+        if (remaining <= 0) {
+          console.log('[Timer] Sleep timer already expired on resume, not resuming');
+          handleTimerExpired();
+          return;
+        }
+        console.log(`[Timer] Resuming narration with active sleep timer (remaining: ${Math.round(remaining / 1000)}s)`);
       } else {
-        // Timer already expired, don't resume
-        console.log('Timer already expired, not resuming');
-        return;
+        // If it was null but a timer is selected, initialize it now
+        const mins = getTimerMinutes(selectedTimer);
+        sleepEndTimeRef.current = Date.now() + mins * 60 * 1000;
+        console.log(`[Timer] Sleep timer initialized on resume for ${mins} mins`);
       }
     }
 
@@ -1320,6 +1375,21 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
   }, [playbackSpeed]);
 
+  // Handle sleep timer selection changes mid-playback
+  useEffect(() => {
+    if (selectedTimer !== 'stop' && selectedTimer !== 'end-chapter') {
+      const minutes = getTimerMinutes(selectedTimer);
+      // If audio is currently playing, set/reset the sleepEndTime based on the new selection
+      if (audioPlaying) {
+        sleepEndTimeRef.current = Date.now() + minutes * 60 * 1000;
+        console.log(`[Timer] Mid-playback update: sleep timer set to ${minutes} mins (expires at ${new Date(sleepEndTimeRef.current).toLocaleTimeString()})`);
+      }
+    } else {
+      // If timer is disabled or set to end-chapter, clear the absolute timer
+      sleepEndTimeRef.current = null;
+    }
+  }, [selectedTimer, audioPlaying]);
+
   // Update audio progress while playing
   useEffect(() => {
     let progressInterval: NodeJS.Timeout | null = null;
@@ -1329,6 +1399,18 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     // which prevents the estimation from drifting too far from reality.
     if (audioPlaying) {
       progressInterval = setInterval(() => {
+        // Centralized sleep timer expiration check
+        if (selectedTimer !== 'stop' && selectedTimer !== 'end-chapter') {
+          if (sleepEndTimeRef.current !== null) {
+            const remainingMs = sleepEndTimeRef.current - Date.now();
+            if (remainingMs <= 0) {
+              console.log('[Timer] Centralized check: sleep timer expired! Stopping narration.');
+              handleTimerExpired();
+              return;
+            }
+          }
+        }
+
         // Skip updating time if user is dragging (either slider or swipe) 
         // to prevent competing re-renders during high-frequency gestures.
         if (isDraggingRef.current || isUserInteractingRef.current) return;
@@ -1349,7 +1431,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         clearInterval(progressInterval);
       }
     };
-  }, [audioPlaying, playbackSpeed, audioDuration]);
+  }, [audioPlaying, playbackSpeed, audioDuration, selectedTimer]);
 
   // Reset progress tracker when chapter changes
   useEffect(() => {
@@ -1390,7 +1472,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   }, [verses, audioDuration]);
 
   return (
-    <div className="min-h-screen bg-[var(--color-bg-primary)] flex flex-col pb-20" style={{ "--header-height": "60px" } as any}>
+    <div className="min-h-screen flex flex-col pb-20 transition-colors duration-300" style={{ backgroundColor: currentTheme.bg, color: currentTheme.text, "--header-height": "60px" } as any}>
       {/* Main Header/Navbar - SCROLLS AWAY */}
       <AppHeader className="!static" />
 
@@ -1487,7 +1569,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
                 {showMoreMenu && (
                   <div
-                    className="absolute right-0 top-full mt-2 z-[60] w-56 overflow-hidden rounded-xl border border-white/40 bg-white/95 shadow-lg backdrop-blur-xl backdrop-saturate-[180%]"
+                    className="absolute right-0 top-full mt-2 z-[60] w-56 overflow-hidden rounded-xl shadow-lg backdrop-blur-xl backdrop-saturate-[180%]"
+                    style={{
+                      backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.95)',
+                      border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.4)',
+                    }}
                     onClick={(e) => e.stopPropagation()}
                   >
                     <div className="py-2">
@@ -1496,13 +1582,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                           setShowMoreMenu(false);
                           setShowSettingsMenu(true);
                         }}
-                        className="w-full px-4 py-3 text-left text-sm font-medium text-[#31393a] hover:bg-gray-100/70 transition-colors"
+                        className="w-full px-4 py-3 text-left text-sm font-medium transition-colors"
+                        style={{ color: currentTheme.text }}
                       >
                         Fonts & Settings
                       </button>
 
-                      <div className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-gray-100/70 transition-colors">
-                        <span className="text-sm font-medium text-[#31393a]">Hide footnotes</span>
+                      <div className="flex items-center justify-between gap-4 px-4 py-3 transition-colors">
+                        <span className="text-sm font-medium" style={{ color: currentTheme.text }}>Hide footnotes</span>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1529,56 +1616,68 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       {/* Selector panels */}
       {showBookSelector && (
-        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowBookSelector(false)}>
-          <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-[100]"
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          onClick={() => setShowBookSelector(false)}
+        >
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-20 rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)]"
+            style={{
+              backgroundColor: selectedTheme === 'dark' ? '#1c1c1e' : '#ffffff',
+              border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header */}
             <div className="flex items-center justify-between p-4">
-              <h3 className="text-lg font-semibold text-[var(--color-text-primary)]">Books</h3>
+              <h3 className="text-lg font-semibold" style={{ color: currentTheme.text }}>Books</h3>
 
               <div className="flex items-center gap-3">
                 {/* Sort Toggle */}
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-[var(--color-text-primary)] font-medium">
+                  <span className="text-sm font-medium" style={{ color: currentTheme.text }}>
                     {bookSortType === 'traditional' ? 'Traditional' : 'Alphabetical'}
                   </span>
-                  <div className="flex bg-gray-200/80 rounded-full p-0.5">
+                  <div
+                    className="flex rounded-full p-0.5"
+                    style={{ backgroundColor: selectedTheme === 'dark' ? '#3a3a3c' : 'rgba(209,213,219,0.8)' }}
+                  >
                     <button
                       onClick={() => setBookSortType('traditional')}
-                      className={`p-1.5 rounded-full transition-all ${bookSortType === 'traditional'
-                        ? 'bg-white shadow-sm'
-                        : 'bg-transparent'
-                        }`}
+                      className="p-1.5 rounded-full transition-all"
+                      style={{ backgroundColor: bookSortType === 'traditional' ? (selectedTheme === 'dark' ? '#2c2c2e' : '#ffffff') : 'transparent' }}
                       aria-label="Traditional sort"
                     >
-                      <RiSortDesc className={`size-4 ${bookSortType === 'traditional' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
-                        }`} />
+                      <RiSortDesc className="size-4" style={{ color: bookSortType === 'traditional' ? 'var(--color-accent-rose)' : currentTheme.text }} />
                     </button>
                     <button
                       onClick={() => setBookSortType('alphabetical')}
-                      className={`p-1.5 rounded-full transition-all ${bookSortType === 'alphabetical'
-                        ? 'bg-white shadow-sm'
-                        : 'bg-transparent'
-                        }`}
+                      className="p-1.5 rounded-full transition-all"
+                      style={{ backgroundColor: bookSortType === 'alphabetical' ? (selectedTheme === 'dark' ? '#2c2c2e' : '#ffffff') : 'transparent' }}
                       aria-label="Alphabetical sort"
                     >
-                      <RiSortAlphabetAsc className={`size-4 ${bookSortType === 'alphabetical' ? 'text-[var(--color-accent-rose)]' : 'text-[var(--color-text-primary)]/60'
-                        }`} />
+                      <RiSortAlphabetAsc className="size-4" style={{ color: bookSortType === 'alphabetical' ? 'var(--color-accent-rose)' : currentTheme.text }} />
                     </button>
                   </div>
                 </div>
 
-                <button onClick={() => setShowBookSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                  <X className="size-6 text-[var(--color-text-primary)]/60" />
+                <button
+                  onClick={() => setShowBookSelector(false)}
+                  className="p-2 rounded-full transition-colors"
+                  style={{ color: currentTheme.text }}
+                >
+                  <X className="size-6" />
                 </button>
               </div>
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto px-4 pb-4">
+            <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ backgroundColor: selectedTheme === 'dark' ? '#1c1c1e' : undefined }}>
               <div className="grid grid-cols-2 gap-8">
                 {/* Old Testament */}
                 <div>
-                  <h4 className="sticky top-0 bg-white text-[var(--color-text-primary)] mb-3 pt-2 pb-2 text-sm font-semibold z-10">Old Testament</h4>
+                  <h4 className="sticky top-0 mb-3 pt-2 pb-2 text-sm font-semibold z-10" style={{ backgroundColor: selectedTheme === 'dark' ? '#1c1c1e' : '#ffffff', color: currentTheme.text }}>Old Testament</h4>
                   <div className="space-y-2">
                     {(bookSortType === 'alphabetical'
                       ? [...books['Old Testament']].sort((a, b) => {
@@ -1612,7 +1711,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
                 {/* New Testament */}
                 <div>
-                  <h4 className="sticky top-0 bg-white text-[var(--color-text-primary)] mb-3 pt-2 pb-2 text-sm font-semibold z-10">New Testament</h4>
+                  <h4 className="sticky top-0 mb-3 pt-2 pb-2 text-sm font-semibold z-10" style={{ backgroundColor: selectedTheme === 'dark' ? '#1c1c1e' : '#ffffff', color: currentTheme.text }}>New Testament</h4>
                   <div className="space-y-2">
                     {(bookSortType === 'alphabetical'
                       ? [...books['New Testament']].sort((a, b) => {
@@ -1650,15 +1749,27 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       )}
 
       {showChapterSelector && (
-        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowChapterSelector(false)}>
-          <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-[100]"
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          onClick={() => setShowChapterSelector(false)}
+        >
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-20 rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)] backdrop-blur-3xl backdrop-saturate-[180%]"
+            style={{
+              backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.85)',
+              border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header with Done button */}
-            <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
-              <div className="w-16"></div> {/* Spacer for centering */}
-              <h3 className="text-base font-normal text-[#31393a]">Select chapter</h3>
+            <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${selectedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(49,57,58,0.1)'}` }}>
+              <div className="w-16"></div>
+              <h3 className="text-base font-normal" style={{ color: currentTheme.text }}>Select chapter</h3>
               <button
                 onClick={() => setShowChapterSelector(false)}
-                className="text-sm text-[#31393a] hover:text-[#E23744] transition-colors px-2"
+                className="text-sm hover:text-[#E23744] transition-colors px-2"
+                style={{ color: currentTheme.text }}
               >
                 Done
               </button>
@@ -1690,27 +1801,40 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       )}
 
       {showVerseSelector && (
-        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowVerseSelector(false)}>
-          <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-[100]"
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          onClick={() => setShowVerseSelector(false)}
+        >
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-20 rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)] backdrop-blur-3xl backdrop-saturate-[180%]"
+            style={{
+              backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.85)',
+              border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header with Back and Done buttons */}
-            <div className="flex items-center justify-between p-4 border-b border-[#31393a]/10">
+            <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${selectedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(49,57,58,0.1)'}` }}>
               <button
                 onClick={() => {
                   setShowVerseSelector(false);
                   setShowChapterSelector(true);
                 }}
-                className="flex items-center space-x-1 text-sm text-[#31393a] hover:text-[#E23744] transition-colors"
+                className="flex items-center space-x-1 text-sm hover:text-[#E23744] transition-colors"
+                style={{ color: currentTheme.text }}
               >
                 <ChevronLeft className="size-4" />
                 <span>Back</span>
               </button>
-              <h3 className="text-base font-normal text-[#31393a]">Select verse</h3>
+              <h3 className="text-base font-normal" style={{ color: currentTheme.text }}>Select verse</h3>
               <button
                 onClick={() => {
                   setShowVerseSelector(false);
                   setShowChapterSelector(false);
                 }}
-                className="text-sm text-[#31393a] hover:text-[#E23744] transition-colors px-2"
+                className="text-sm hover:text-[#E23744] transition-colors px-2"
+                style={{ color: currentTheme.text }}
               >
                 Done
               </button>
@@ -1742,22 +1866,41 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       )}
 
       {showVersionSelector && (
-        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowVersionSelector(false)}>
-          <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-[100]"
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          onClick={() => setShowVersionSelector(false)}
+        >
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-20 rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)] backdrop-blur-3xl backdrop-saturate-[180%]"
+            style={{
+              backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.85)',
+              border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Close button */}
             <div className="flex justify-end p-4">
-              <button onClick={() => setShowVersionSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                <X className="size-6 text-[#31393a]/60" />
+              <button
+                onClick={() => setShowVersionSelector(false)}
+                className="p-2 rounded-full transition-colors"
+                style={{ color: currentTheme.text }}
+              >
+                <X className="size-6 opacity-60" />
               </button>
             </div>
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 pb-4">
               <h4 className="font-bold text-[#E23744] mb-4 text-sm">Bible Versions</h4>
+              <style>{`
+                .version-btn-dark { background: #2c2c2e !important; color: #e5e7e7 !important; }
+                .version-btn-dark:hover { background: #3a3a3c !important; }
+              `}</style>
               <div className="space-y-3">
                 {/* English Section */}
                 <div className="space-y-2">
-                  <p className="text-sm text-[#31393a]/60 mb-2">English</p>
+                  <p className="text-sm mb-2 opacity-60" style={{ color: currentTheme.text }}>English</p>
                   {(apiVersions || fallbackVersions).filter(v => v.language === 'English').map(version => (
                     <button
                       key={version.name}
@@ -1765,10 +1908,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                         setSelectedVersion(version.name);
                         setShowVersionSelector(false);
                       }}
-                      className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
-                        ? 'bg-[#fde8ea] text-[#E23744]'
-                        : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
-                        }`}
+                      className="w-full text-left px-4 py-2.5 rounded transition-colors"
+                      style={{
+                        backgroundColor: selectedVersion === version.name
+                          ? '#fde8ea'
+                          : selectedTheme === 'dark' ? '#2c2c2e' : '#f1f3f3',
+                        color: selectedVersion === version.name
+                          ? '#E23744'
+                          : currentTheme.text,
+                      }}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>
                     </button>
@@ -1777,7 +1925,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
                 {/* Telugu Section */}
                 <div className="space-y-2">
-                  <p className="text-sm text-[#31393a]/60 mb-2">Telugu</p>
+                  <p className="text-sm mb-2 opacity-60" style={{ color: currentTheme.text }}>Telugu</p>
                   {(apiVersions || fallbackVersions).filter(v => v.language === 'Telugu').map(version => (
                     <button
                       key={version.name}
@@ -1785,10 +1933,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                         setSelectedVersion(version.name);
                         setShowVersionSelector(false);
                       }}
-                      className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
-                        ? 'bg-[#fde8ea] text-[#E23744]'
-                        : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
-                        }`}
+                      className="w-full text-left px-4 py-2.5 rounded transition-colors"
+                      style={{
+                        backgroundColor: selectedVersion === version.name
+                          ? '#fde8ea'
+                          : selectedTheme === 'dark' ? '#2c2c2e' : '#f1f3f3',
+                        color: selectedVersion === version.name ? '#E23744' : currentTheme.text,
+                      }}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>
                     </button>
@@ -1797,7 +1948,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
                 {/* Hindi Section */}
                 <div className="space-y-2">
-                  <p className="text-sm text-[#31393a]/60 mb-2">Hindi</p>
+                  <p className="text-sm mb-2 opacity-60" style={{ color: currentTheme.text }}>Hindi</p>
                   {(apiVersions || fallbackVersions).filter(v => v.language === 'Hindi').map(version => (
                     <button
                       key={version.name}
@@ -1805,10 +1956,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                         setSelectedVersion(version.name);
                         setShowVersionSelector(false);
                       }}
-                      className={`w-full text-left px-4 py-2.5 rounded transition-colors ${selectedVersion === version.name
-                        ? 'bg-[#fde8ea] text-[#E23744]'
-                        : 'bg-[#f1f3f3] text-[#31393a] hover:bg-[#e5e7e7]'
-                        }`}
+                      className="w-full text-left px-4 py-2.5 rounded transition-colors"
+                      style={{
+                        backgroundColor: selectedVersion === version.name
+                          ? '#fde8ea'
+                          : selectedTheme === 'dark' ? '#2c2c2e' : '#f1f3f3',
+                        color: selectedVersion === version.name ? '#E23744' : currentTheme.text,
+                      }}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>
                     </button>
@@ -1821,8 +1975,19 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       )}
 
       {showMusicSelector && (
-        <div className="fixed inset-0 z-[100] bg-black/20" onClick={() => setShowMusicSelector(false)}>
-          <div className="absolute top-20 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_4px_12px_0_rgba(0,0,0,0.1)] rounded-lg sm:w-full sm:max-w-[400px] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div
+          className="fixed inset-0 z-[100]"
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          onClick={() => setShowMusicSelector(false)}
+        >
+          <div
+            className="absolute top-20 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 backdrop-blur-3xl backdrop-saturate-[180%] rounded-lg sm:w-full sm:max-w-[400px] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)]"
+            style={{
+              backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.85)',
+              border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
             {/* Header with loop/shuffle controls */}
             <div className="flex items-center justify-between px-4 pt-4 pb-2">
               {/* Empty left side for alignment */}
@@ -1837,23 +2002,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     const currentIndex = modes.indexOf(musicLoopMode);
                     setMusicLoopMode(modes[(currentIndex + 1) % modes.length]);
                   }}
-                  className="flex items-center space-x-1.5 px-3 py-2 hover:bg-gray-100 rounded-full transition-colors"
+                  className="flex items-center space-x-1.5 px-3 py-2 rounded-full transition-colors"
+                  style={{ color: currentTheme.text }}
                 >
                   {musicLoopMode === 'shuffle' ? (
-                    <>
-                      <Shuffle className="size-5 text-[#31393a]" />
-                      <span className="text-sm text-[#31393a]">Shuffle</span>
-                    </>
+                    <><Shuffle className="size-5" /><span className="text-sm">Shuffle</span></>
                   ) : musicLoopMode === 'repeat-all' ? (
-                    <>
-                      <Repeat className="size-5 text-[#31393a]" />
-                      <span className="text-sm text-[#31393a]">Repeat All</span>
-                    </>
+                    <><Repeat className="size-5" /><span className="text-sm">Repeat All</span></>
                   ) : (
-                    <>
-                      <Repeat1 className="size-5 text-[#31393a]" />
-                      <span className="text-sm text-[#31393a]">Repeat One</span>
-                    </>
+                    <><Repeat1 className="size-5" /><span className="text-sm">Repeat One</span></>
                   )}
                 </button>
 
@@ -1866,10 +2023,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     }
                   }}
                   disabled={!selectedMusic || selectedMusic === 'none'}
-                  className={`p-2 rounded-full transition-colors ${selectedMusic && selectedMusic !== 'none'
-                    ? 'hover:bg-gray-100 cursor-pointer'
-                    : 'opacity-40 cursor-not-allowed'
-                    }`}
+                  className={`p-2 rounded-full transition-colors ${
+                    selectedMusic && selectedMusic !== 'none' ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'
+                  }`}
                 >
                   {audioPlaying ? (
                     <Pause className="size-5 text-[var(--color-primary-teal)] fill-current" />
@@ -1879,8 +2035,12 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 </button>
 
                 {/* Close button */}
-                <button onClick={() => setShowMusicSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                  <X className="size-6 text-[#31393a]/60" />
+                <button
+                  onClick={() => setShowMusicSelector(false)}
+                  className="p-2 rounded-full transition-colors"
+                  style={{ color: currentTheme.text }}
+                >
+                  <X className="size-6 opacity-60" />
                 </button>
               </div>
             </div>
@@ -1916,10 +2076,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       </div>
 
                       {/* Track name */}
-                      <span className={`text-base ${selectedMusic === track.id
-                        ? 'text-[#E23744] font-medium'
-                        : 'text-[#31393a]'
-                        }`}>
+                      <span
+                        className="text-base"
+                        style={{ color: selectedMusic === track.id ? '#E23744' : currentTheme.text, fontWeight: selectedMusic === track.id ? 500 : 400 }}
+                      >
                         {track.name}
                       </span>
                     </div>
@@ -2007,21 +2167,33 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       {/* Timer Menu */}
       {showTimerMenu && (
-        <div className="fixed inset-0 z-[110] bg-black/20" onClick={() => setShowTimerMenu(false)}>
+        <div
+          className="fixed inset-0 z-[110]"
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          onClick={() => setShowTimerMenu(false)}
+        >
           <div
-            className="absolute bottom-0 left-0 right-0 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border-t border-white/30 rounded-t-[32px] shadow-[0px_8px_12px_6px_rgba(0,0,0,0.15),0px_4px_4px_0px_rgba(0,0,0,0.3)] max-w-[600px] mx-auto max-h-[70vh] overflow-hidden flex flex-col"
+            className="absolute bottom-0 left-0 right-0 backdrop-blur-3xl backdrop-saturate-[180%] rounded-t-[32px] shadow-[0px_8px_12px_6px_rgba(0,0,0,0.15),0px_4px_4px_0px_rgba(0,0,0,0.3)] max-w-[600px] mx-auto max-h-[70vh] overflow-hidden flex flex-col"
+            style={{
+              backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.85)',
+              borderTop: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+            }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+            <div
+              className="flex items-center justify-between px-6 py-4"
+              style={{ borderBottom: `1px solid ${selectedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}` }}
+            >
               <button
                 onClick={() => setShowTimerMenu(false)}
-                className="flex items-center gap-1 text-[#31393a]"
+                className="flex items-center gap-1"
+                style={{ color: currentTheme.text }}
               >
                 <ChevronLeft className="size-5" />
                 <span className="text-base">Back</span>
               </button>
-              <h3 className="text-lg font-semibold text-[#31393a]">Timer</h3>
+              <h3 className="text-lg font-semibold" style={{ color: currentTheme.text }}>Timer</h3>
               <button
                 onClick={() => setShowTimerMenu(false)}
                 className="text-base text-[var(--color-primary-teal)] font-medium"
@@ -2033,89 +2205,31 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             {/* Timer Options */}
             <div className="flex-1 overflow-y-auto px-6 py-4">
               <div className="space-y-0">
-                {/* Stop the timer */}
-                <button
-                  onClick={() => setSelectedTimer('stop')}
-                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                >
-                  <span className="text-base text-[#31393a]">Timer Off</span>
-                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'stop'
-                    ? 'bg-[#E23744] border-[#E23744]'
-                    : 'border-gray-300'
-                    }`} />
-                </button>
-
-                {/* End of this chapter */}
-                <button
-                  onClick={() => setSelectedTimer('end-chapter')}
-                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                >
-                  <span className="text-base text-[#31393a]">End of this chapter</span>
-                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === 'end-chapter'
-                    ? 'bg-[#E23744] border-[#E23744]'
-                    : 'border-gray-300'
-                    }`} />
-                </button>
-
-                {/* 10 mins */}
-                <button
-                  onClick={() => setSelectedTimer('10-mins')}
-                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                >
-                  <span className="text-base text-[#31393a]">10 mins</span>
-                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '10-mins'
-                    ? 'bg-[#E23744] border-[#E23744]'
-                    : 'border-gray-300'
-                    }`} />
-                </button>
-
-                {/* 15 mins */}
-                <button
-                  onClick={() => setSelectedTimer('15-mins')}
-                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                >
-                  <span className="text-base text-[#31393a]">15 mins</span>
-                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '15-mins'
-                    ? 'bg-[#E23744] border-[#E23744]'
-                    : 'border-gray-300'
-                    }`} />
-                </button>
-
-                {/* 30 mins */}
-                <button
-                  onClick={() => setSelectedTimer('30-mins')}
-                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                >
-                  <span className="text-base text-[#31393a]">30 mins</span>
-                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '30-mins'
-                    ? 'bg-[#E23744] border-[#E23744]'
-                    : 'border-gray-300'
-                    }`} />
-                </button>
-
-                {/* 1 hr */}
-                <button
-                  onClick={() => setSelectedTimer('1-hr')}
-                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                >
-                  <span className="text-base text-[#31393a]">1 hr</span>
-                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '1-hr'
-                    ? 'bg-[#E23744] border-[#E23744]'
-                    : 'border-gray-300'
-                    }`} />
-                </button>
-
-                {/* 2 hrs */}
-                <button
-                  onClick={() => setSelectedTimer('2-hrs')}
-                  className="w-full flex items-center justify-between py-4 border-b border-gray-200"
-                >
-                  <span className="text-base text-[#31393a]">2 hrs</span>
-                  <div className={`size-6 rounded-full border-2 transition-all ${selectedTimer === '2-hrs'
-                    ? 'bg-[#E23744] border-[#E23744]'
-                    : 'border-gray-300'
-                    }`} />
-                </button>
+                {([
+                  { key: 'stop',        label: 'Timer Off' },
+                  { key: 'end-chapter', label: 'End of this chapter' },
+                  { key: '10-mins',     label: '10 mins' },
+                  { key: '15-mins',     label: '15 mins' },
+                  { key: '30-mins',     label: '30 mins' },
+                  { key: '1-hr',        label: '1 hr' },
+                  { key: '2-hrs',       label: '2 hrs' },
+                ] as const).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setSelectedTimer(key)}
+                    className="w-full flex items-center justify-between py-4"
+                    style={{ borderBottom: `1px solid ${selectedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}` }}
+                  >
+                    <span className="text-base" style={{ color: currentTheme.text }}>{label}</span>
+                    <div
+                      className="size-6 rounded-full border-2 transition-all"
+                      style={{
+                        backgroundColor: selectedTimer === key ? '#E23744' : 'transparent',
+                        borderColor: selectedTimer === key ? '#E23744' : selectedTheme === 'dark' ? '#636366' : '#d1d5db',
+                      }}
+                    />
+                  </button>
+                ))}
               </div>
             </div>
           </div>
@@ -2333,6 +2447,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         onClose={() => setShowSearch(false)}
         selectedVersion={selectedVersion}
         onNavigateToVerse={handleNavigateToVerse}
+        isDark={selectedTheme === 'dark'}
       />
 
       {/* Compare Versions Modal */}
@@ -2343,6 +2458,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         selectedVersions={compareMode.selectedVersions}
         onToggleVersion={handleToggleCompareVersion}
         onStartCompare={handleStartCompare}
+        isDark={selectedTheme === 'dark'}
       />
 
       {/* Compare Menu (when clicking compare icon in active mode) */}
@@ -2354,6 +2470,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         onRemoveVersion={handleRemoveCompareVersion}
         onAddVersion={handleAddCompareVersion}
         onExitCompare={handleExitCompare}
+        isDark={selectedTheme === 'dark'}
       />
       <AnimatePresence>
         {showVerseActionMenu && selectedVerses.length > 0 && (
@@ -2364,11 +2481,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             selectedVerses={selectedVerses}
             onClose={() => onVerseTap?.(0)} // container handles clearing
             existingHighlightColor={userHighlights.find(h => h.metadata?.verse === selectedVerses[0])?.metadata?.color}
+            existingSaveLabels={existingSaveLabels}
             onHighlight={(color) => onSaveHighlight?.(selectedVerses, color)}
             onSave={(labels) => onSaveVerses?.(labels)}
             onNote={(note) => onSaveNote?.(selectedVerses, note)}
             onShare={() => onShareVerses?.()}
             isLoggedIn={isLoggedIn}
+            isDark={selectedTheme === 'dark'}
           />
         )}
       </AnimatePresence>

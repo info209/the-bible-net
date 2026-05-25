@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { FiSearch } from 'react-icons/fi';
 import { X, Clock, Trash2, BookOpen } from 'lucide-react';
+
 interface SearchResult {
   book: string;
   chapter: number;
@@ -16,12 +17,19 @@ interface BibleSearchProps {
   onClose: () => void;
   selectedVersion: string;
   onNavigateToVerse: (book: string, chapter: number, verse: number, version?: string) => void;
+  isDark?: boolean;
 }
 
 const SEARCH_HISTORY_KEY = 'bible_search_history';
 const MAX_HISTORY_ITEMS = 10;
 
-export default function BibleSearch({ isOpen, onClose, selectedVersion, onNavigateToVerse }: BibleSearchProps) {
+export default function BibleSearch({
+  isOpen,
+  onClose,
+  selectedVersion,
+  onNavigateToVerse,
+  isDark = false,
+}: BibleSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
@@ -60,9 +68,6 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
 
     setIsSearching(true);
     try {
-      // We search across all versions if no specific version is 'locked' in search.
-      // Or we can default to selectedVersion. 
-      // User said "All bible content should be visible", so we'll omit versionId to search everything.
       const response = await fetch(`/api/v1/bible/search?q=${encodeURIComponent(query)}&limit=50`);
       const data = await response.json();
 
@@ -72,7 +77,7 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
           chapter: r.chapter.number,
           verse: r.number,
           text: r.text,
-          preview: r.text, // The backend doesn't provide preview yet, using text
+          preview: r.text,
           versionAbbr: r.version?.abbreviation,
           versionName: r.version?.name
         }));
@@ -98,7 +103,7 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
       setShowSuggestions(true);
       searchTimeoutRef.current = setTimeout(() => {
         performSearch(searchQuery);
-      }, 500); // 500ms debounce for server hits
+      }, 500);
     } else {
       setSearchResults([]);
       setShowSuggestions(false);
@@ -151,31 +156,49 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
     if (!query.trim()) return text;
 
     const terms = query.toLowerCase().split(' ').filter(term => term.length > 0);
-    // Escape special characters in terms
     const escapedTerms = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
     let highlightedText = text;
     
     escapedTerms.forEach(term => {
       const regex = new RegExp(`(${term})`, 'gi');
-      highlightedText = highlightedText.replace(regex, '<mark class="bg-yellow-200/80 text-black px-0.5 rounded-sm">$1</mark>');
+      highlightedText = highlightedText.replace(regex, `<mark class="${isDark ? 'bg-yellow-500/30 text-yellow-300' : 'bg-yellow-200/80 text-black'} px-0.5 rounded-sm">$1</mark>`);
     });
 
     return highlightedText;
   };
 
-
   if (!isOpen) return null;
 
+  // Premium Dark Mode Styling Variables
+  const backdropBg = isDark ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.3)';
+  const backdropBlur = isDark ? 'blur(8px)' : 'blur(4px)';
+  const modalBg = isDark ? 'rgba(28,28,30,0.95)' : 'rgba(255,255,255,0.85)';
+  const borderCol = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.3)';
+  const innerBorderCol = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textCol = isDark ? '#e5e7e7' : '#31393a';
+  const subTextCol = isDark ? 'rgba(255,255,255,0.4)' : '#6b7280';
+  const hoverBg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
+  const resultCardBorder = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
+  const resultCardHover = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)';
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black/20" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-[100] transition-all duration-300 flex items-start justify-center"
+      style={{ backgroundColor: backdropBg, backdropFilter: backdropBlur }}
+      onClick={onClose}
+    >
       <div 
-        className="absolute top-16 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-[0_8px_24px_0_rgba(0,0,0,0.15)] rounded-2xl sm:w-full sm:max-w-[600px] max-h-[80vh] overflow-hidden flex flex-col"
+        className="absolute top-16 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 shadow-[0_8px_24px_0_rgba(0,0,0,0.15)] rounded-2xl sm:w-full sm:max-w-[600px] max-h-[80vh] overflow-hidden flex flex-col transition-all duration-300 border backdrop-blur-3xl backdrop-saturate-[180%]"
+        style={{
+          backgroundColor: modalBg,
+          borderColor: borderCol,
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with search input */}
-        <div className="p-4 border-b border-gray-200/50">
+        <div className="p-4 border-b" style={{ borderColor: innerBorderCol }}>
           <div className="flex items-center space-x-3">
-            <FiSearch className="size-5 text-gray-400 flex-shrink-0" />
+            <FiSearch className="size-5 flex-shrink-0" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : '#9ca3af' }} />
             <input
               ref={searchInputRef}
               type="text"
@@ -187,7 +210,10 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
                 }
               }}
               placeholder="Search the Bible..."
-              className="flex-1 bg-transparent outline-none text-[#31393a] placeholder:text-gray-400"
+              className="flex-1 bg-transparent outline-none transition-colors"
+              style={{
+                color: textCol,
+              }}
             />
             {searchQuery && (
               <button
@@ -196,16 +222,18 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
                   setSearchResults([]);
                   setShowSuggestions(false);
                 }}
-                className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-1.5 rounded-full transition-colors"
+                style={{ backgroundColor: hoverBg }}
               >
                 <X className="size-4 text-gray-400" />
               </button>
             )}
             <button
               onClick={onClose}
-              className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-1.5 rounded-full transition-colors"
+              style={{ backgroundColor: hoverBg }}
             >
-              <X className="size-5 text-gray-500" />
+              <X className="size-5" style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280' }} />
             </button>
           </div>
         </div>
@@ -216,24 +244,29 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
           {!searchQuery && searchHistory.length > 0 && (
             <div className="p-4">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="text-sm font-medium text-gray-500">Recent Searches</h3>
+                <h3 className="text-sm font-semibold" style={{ color: subTextCol }}>Recent Searches</h3>
                 <button
                   onClick={clearHistory}
-                  className="text-xs text-[#E23744] hover:text-[#D42C3A] flex items-center space-x-1"
+                  className="text-xs font-bold hover:text-[#D42C3A] flex items-center space-x-1 transition-colors"
+                  style={{ color: '#E23744' }}
                 >
-                  <Trash2 className="size-3" />
+                  <Trash2 className="size-3.5" />
                   <span>Clear All</span>
                 </button>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1">
                 {searchHistory.map((item, index) => (
                   <button
                     key={index}
                     onClick={() => handleHistoryClick(item)}
-                    className="w-full flex items-center space-x-3 p-2 hover:bg-gray-100/70 rounded-lg transition-colors text-left"
+                    className="w-full flex items-center space-x-3 p-2.5 rounded-xl transition-all text-left border border-transparent"
+                    style={{
+                      hoverBg: hoverBg,
+                      color: textCol
+                    } as any}
                   >
-                    <Clock className="size-4 text-gray-400 flex-shrink-0" />
-                    <span className="text-[#31393a] flex-1">{item}</span>
+                    <Clock className="size-4 flex-shrink-0" style={{ color: isDark ? 'rgba(255,255,255,0.3)' : '#9ca3af' }} />
+                    <span className="flex-1 text-sm font-medium">{item}</span>
                   </button>
                 ))}
               </div>
@@ -244,23 +277,23 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
           {searchQuery && (
             <div className="p-4">
               {isSearching && (
-                <div className="text-center py-8 text-gray-500">
+                <div className="text-center py-8" style={{ color: subTextCol }}>
                   <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-[#E23744]"></div>
-                  <p className="mt-2 text-sm">Searching...</p>
+                  <p className="mt-2 text-sm font-medium">Searching...</p>
                 </div>
               )}
 
               {!isSearching && searchResults.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <FiSearch className="size-12 mx-auto mb-3 text-gray-300" />
-                  <p className="text-sm">No results found for "{searchQuery}"</p>
-                  <p className="text-xs mt-1 text-gray-400">Try different keywords</p>
+                <div className="text-center py-10" style={{ color: subTextCol }}>
+                  <FiSearch className="size-12 mx-auto mb-3" style={{ color: isDark ? 'rgba(255,255,255,0.15)' : '#d1d5db' }} />
+                  <p className="text-sm font-semibold">No results found for "{searchQuery}"</p>
+                  <p className="text-xs mt-1">Try different keywords or phrasing</p>
                 </div>
               )}
 
               {!isSearching && searchResults.length > 0 && (
                 <>
-                  <div className="mb-4 text-sm text-gray-600">
+                  <div className="mb-4 text-xs font-bold uppercase tracking-wider" style={{ color: subTextCol }}>
                     Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
                   </div>
                   <div className="space-y-3">
@@ -268,23 +301,36 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
                       <button
                         key={`${result.book}-${result.chapter}-${result.verse}-${index}`}
                         onClick={() => handleResultClick(result)}
-                        className="w-full text-left p-3 hover:bg-gray-100/70 rounded-lg transition-colors border border-gray-200/50"
+                        className="w-full text-left p-3.5 rounded-xl transition-all border flex flex-col"
+                        style={{
+                          backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
+                          borderColor: resultCardBorder,
+                          hoverBg: resultCardHover
+                        } as any}
                       >
-                        <div className="flex items-start space-x-3">
-                          <BookOpen className="size-5 text-[#E23744] flex-shrink-0 mt-0.5" />
+                        <div className="flex items-start space-x-3 w-full">
+                          <BookOpen className="size-4.5 flex-shrink-0 mt-1" style={{ color: '#E23744' }} />
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium text-[#E23744] mb-1 flex items-center justify-between">
+                            <div className="text-sm font-bold mb-1 flex items-center justify-between" style={{ color: '#E23744' }}>
                               <span>{result.book} {result.chapter}:{result.verse}</span>
                               {result.versionAbbr && (
-                                <span className="text-[10px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded border border-gray-200 uppercase tracking-wider font-bold">
+                                <span
+                                  className="text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-widest font-bold"
+                                  style={{
+                                    backgroundColor: isDark ? '#2c2c2e' : '#f3f4f6',
+                                    borderColor: isDark ? 'rgba(255,255,255,0.08)' : '#e5e7eb',
+                                    color: textCol,
+                                  }}
+                                >
                                   {result.versionAbbr}
                                 </span>
                               )}
                             </div>
                             <div 
-                              className="text-sm text-[#31393a] leading-relaxed"
+                              className="text-sm leading-relaxed"
+                              style={{ color: textCol }}
                               dangerouslySetInnerHTML={{ 
-                                __html: highlightText(result.preview, searchQuery) 
+                                __html: highlightText(result.text, searchQuery) 
                               }}
                             />
                           </div>
@@ -292,7 +338,7 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
                       </button>
                     ))}
                     {searchResults.length > 50 && (
-                      <div className="text-center py-2 text-sm text-gray-500">
+                      <div className="text-center py-4 text-xs font-semibold" style={{ color: subTextCol }}>
                         Showing first 50 results
                       </div>
                     )}
@@ -304,10 +350,10 @@ export default function BibleSearch({ isOpen, onClose, selectedVersion, onNaviga
 
           {/* Empty state (no search query and no history) */}
           {!searchQuery && searchHistory.length === 0 && (
-            <div className="text-center py-12 text-gray-400">
-              <FiSearch className="size-16 mx-auto mb-4 text-gray-300" />
-              <p className="text-sm">Search the entire Bible</p>
-              <p className="text-xs mt-1">Type to start searching</p>
+            <div className="text-center py-16" style={{ color: subTextCol }}>
+              <FiSearch className="size-16 mx-auto mb-4" style={{ color: isDark ? 'rgba(255,255,255,0.15)' : '#d1d5db' }} />
+              <p className="text-sm font-semibold">Search the entire Bible</p>
+              <p className="text-xs mt-1">Start typing to search chapters, books, and verses</p>
             </div>
           )}
         </div>

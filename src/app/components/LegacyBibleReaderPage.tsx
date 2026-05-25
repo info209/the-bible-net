@@ -418,13 +418,13 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
       return;
     }
 
-    setShowVerseActionMenu(false);
+    if (showVerseActionMenu) return;
     const timer = window.setTimeout(() => {
       setShowVerseActionMenu(true);
     }, VERSE_ACTION_MENU_OPEN_DELAY);
 
     return () => window.clearTimeout(timer);
-  }, [selectedVerses]);
+  }, [selectedVerses, showVerseActionMenu]);
 
   // Debounced Bible search
   useEffect(() => {
@@ -2291,6 +2291,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           onHighlight={onVerseMenuHighlight}
           onSave={onVerseMenuSave}
           onNote={onVerseMenuNote}
+          onCompare={onVerseMenuCompare}
           onShare={onVerseMenuShare}
           isLoggedIn={!!session?.user}
         />

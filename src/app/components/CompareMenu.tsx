@@ -9,6 +9,7 @@ interface CompareMenuProps {
   onRemoveVersion: (versionName: string) => void;
   onAddVersion: (versionName: string) => void;
   onExitCompare: () => void;
+  isDark?: boolean;
 }
 
 export default function CompareMenu({
@@ -18,22 +19,38 @@ export default function CompareMenu({
   selectedVersions,
   onRemoveVersion,
   onAddVersion,
-  onExitCompare
+  onExitCompare,
+  isDark = false,
 }: CompareMenuProps) {
   if (!isOpen) return null;
 
   const availableVersions = versions.filter(v => !selectedVersions.includes(v.id));
   const canAddMore = selectedVersions.length < 4;
 
+  // Premium Dark Mode Styling Variables
+  const backdropBg = isDark ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.4)';
+  const backdropBlur = isDark ? 'blur(8px)' : 'blur(4px)';
+  const panelBg = isDark ? '#1c1c1e' : '#ffffff';
+  const borderCol = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)';
+  const textCol = isDark ? '#e5e7e7' : '#31393a';
+  const headingCol = isDark ? '#ffffff' : '#111827';
+  const subTextCol = isDark ? 'rgba(255,255,255,0.4)' : '#9ca3af';
+  const cardBg = isDark ? '#2c2c2e' : '#f9fafb';
+  const cardBorder = isDark ? 'rgba(255,255,255,0.04)' : '#f3f4f6';
+  const availableBtnBg = isDark ? '#2c2c2e' : '#ffffff';
+  const availableBtnBorder = isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb';
+
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[250] flex justify-end" onClick={onClose}>
+      <div className="fixed inset-0 z-[250] flex justify-end">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="absolute inset-0 bg-black/40 backdrop-blur-sm"
+          className="absolute inset-0 transition-all duration-300"
+          style={{ backgroundColor: backdropBg, backdropFilter: backdropBlur }}
+          onClick={onClose}
         />
 
         {/* Drawer Panel */}
@@ -42,15 +59,20 @@ export default function CompareMenu({
           animate={{ x: 0, opacity: 1 }}
           exit={{ x: '100%', opacity: 0 }}
           transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
-          className="relative bg-white shadow-2xl w-full max-w-sm h-full flex flex-col border-l border-gray-100"
+          className="relative shadow-2xl w-full max-w-sm h-full flex flex-col transition-all duration-300 border-l"
+          style={{
+            backgroundColor: panelBg,
+            borderColor: borderCol,
+          }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900">Compare Settings</h2>
+          <div className="px-5 py-4 border-b flex items-center justify-between" style={{ borderColor: borderCol }}>
+            <h2 className="text-xl font-bold font-sans" style={{ color: headingCol }}>Compare Settings</h2>
             <button
               onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-500"
+              className="p-2 rounded-full transition-colors"
+              style={{ color: isDark ? 'rgba(255,255,255,0.6)' : '#6b7280', backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : 'transparent' }}
             >
               <X className="size-5" />
             </button>
@@ -58,7 +80,7 @@ export default function CompareMenu({
 
           <div className="flex-1 overflow-y-auto px-5 py-6">
             {/* 1. Currently comparing versions */}
-            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">
+            <h3 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: subTextCol }}>
               Currently Comparing
             </h3>
             <div className="space-y-2 mb-8">
@@ -69,13 +91,17 @@ export default function CompareMenu({
                 return (
                   <div
                     key={version.id}
-                    className="flex items-center justify-between py-3 px-4 rounded-xl bg-gray-50 border border-gray-100 group"
+                    className="flex items-center justify-between py-3 px-4 rounded-xl border transition-all duration-200"
+                    style={{
+                      backgroundColor: cardBg,
+                      borderColor: cardBorder,
+                    }}
                   >
                     <div className="flex flex-col">
-                      <span className="text-sm font-bold text-gray-900 leading-tight">
+                      <span className="text-sm font-bold leading-tight" style={{ color: textCol }}>
                         {version.name}
                       </span>
-                      <span className="text-[11px] text-gray-500 uppercase tracking-wider">
+                      <span className="text-[11px] uppercase tracking-wider mt-0.5" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>
                         {version.fullName}
                       </span>
                     </div>
@@ -86,9 +112,11 @@ export default function CompareMenu({
                         }
                       }}
                       className={`p-2 rounded-full transition-all ${
-                        selectedVersions.length > 2 
-                          ? 'hover:bg-red-100 text-gray-400 hover:text-red-500' 
-                          : 'text-gray-300 cursor-not-allowed'
+                        selectedVersions.length > 2
+                          ? isDark
+                            ? 'hover:bg-red-500/20 text-white/40 hover:text-red-400'
+                            : 'hover:bg-red-100 text-gray-400 hover:text-red-500'
+                          : 'text-gray-300 cursor-not-allowed opacity-40'
                       }`}
                       title={selectedVersions.length <= 2 ? "Minimum 2 versions required" : "Remove version"}
                     >
@@ -102,9 +130,9 @@ export default function CompareMenu({
             {/* 2. Available versions */}
             {canAddMore && availableVersions.length > 0 && (
               <>
-                <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 flex items-center justify-between">
+                <h3 className="text-xs font-bold uppercase tracking-widest mb-3 flex items-center justify-between" style={{ color: subTextCol }}>
                   <span>Available to Add</span>
-                  <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full text-[10px]">
+                  <span className="px-2 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6', color: textCol }}>
                     Max 4
                   </span>
                 </h3>
@@ -114,21 +142,23 @@ export default function CompareMenu({
                       key={version.id}
                       onClick={() => {
                         onAddVersion(version.id);
-                        // Optional: keep it open so they can add multiple, or close it.
-                        // User report didn't specify closing, but let's keep drawer open for better UX when adding.
                       }}
-                      className="w-full flex items-center justify-between py-3 px-4 rounded-xl bg-white border border-gray-200 hover:border-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-lighter)] transition-all text-left group"
+                      className="w-full flex items-center justify-between py-3 px-4 rounded-xl border transition-all text-left group"
+                      style={{
+                        backgroundColor: availableBtnBg,
+                        borderColor: availableBtnBorder,
+                      }}
                     >
                       <div className="flex flex-col">
-                        <span className="text-sm font-bold text-gray-700 group-hover:text-[var(--color-primary-teal)] leading-tight">
+                        <span className="text-sm font-bold group-hover:text-[var(--color-primary-teal)] leading-tight transition-colors" style={{ color: textCol }}>
                           {version.name}
                         </span>
-                        <span className="text-[11px] text-gray-500 group-hover:text-[var(--color-primary-teal)]/70 uppercase tracking-wider">
+                        <span className="text-[11px] group-hover:text-[var(--color-primary-teal)]/70 uppercase tracking-wider mt-0.5 transition-colors" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>
                           {version.fullName}
                         </span>
                       </div>
-                      <div className="p-1.5 rounded-full bg-gray-50 group-hover:bg-[var(--color-primary-teal)]/10 transition-colors">
-                        <Plus className="size-4 text-gray-400 group-hover:text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+                      <div className="p-1.5 rounded-full transition-colors" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb' }}>
+                        <Plus className="size-4 text-gray-400 group-hover:text-[var(--color-primary-teal)] transition-colors" strokeWidth={2.5} />
                       </div>
                     </button>
                   ))}
@@ -136,20 +166,24 @@ export default function CompareMenu({
               </>
             )}
             {!canAddMore && (
-               <div className="text-center py-4 text-sm font-medium text-gray-400">
-                  Maximum 4 versions reached.
-               </div>
+              <div className="text-center py-4 text-sm font-medium" style={{ color: subTextCol }}>
+                Maximum 4 versions reached.
+              </div>
             )}
           </div>
 
           {/* 3. Exit Compare Mode button */}
-          <div className="p-5 border-t border-gray-100 bg-gray-50 shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+          <div className="p-5 border-t shadow-[0_-4px_10px_rgba(0,0,0,0.02)]" style={{ borderColor: borderCol, backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : '#f9fafb' }}>
             <button
               onClick={() => {
                 onExitCompare();
                 onClose();
               }}
-              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl bg-red-50 hover:bg-red-100 border border-red-100 transition-all text-red-600 group"
+              className={`w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl border transition-all group ${
+                isDark 
+                  ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/20 text-red-400' 
+                  : 'bg-red-50 hover:bg-red-100 border-red-100 text-red-600'
+              }`}
             >
               <span className="text-sm font-bold">Exit Compare Mode</span>
               <ArrowRight className="size-4 transform group-hover:translate-x-1 transition-transform" strokeWidth={2.5} />

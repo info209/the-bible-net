@@ -98,7 +98,15 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
         </SheetHeader>
 
         {/* ─── Hero Banner ─── */}
-        <div className="relative h-44 bg-gradient-to-br from-[#41ADB0] via-[#319ea1] to-[#1d7e82] flex-shrink-0" />
+        <div className="relative h-44 bg-gradient-to-br from-[#41ADB0] via-[#319ea1] to-[#1d7e82] flex-shrink-0">
+          <button
+            type="button"
+            onClick={onClose}
+            className="absolute left-4 top-4 flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
+          >
+            <span className="text-sm font-medium">← Back</span>
+          </button>
+        </div>
 
         {/* ─── Avatar (overlaps hero) ─── */}
         <div className="flex flex-col items-center -mt-10 px-4 pb-2 flex-shrink-0">

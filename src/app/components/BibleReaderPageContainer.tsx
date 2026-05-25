@@ -395,7 +395,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
   const isAnyPopupOpen = showBookSelector || showChapterSelector ||
     showVersionSelector || showMoreMenu ||
-    showSearch || showVerseSelector || selectedVerses.length > 0;
+    showSearch || showVerseSelector || selectedVerses.length > 0 ||
+    showCompareSelector || showCompareMenu || showSettingsModal;
 
   // ESC key closes any open popup
   useEffect(() => {
@@ -408,10 +409,12 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       else if (showMoreMenu) setShowMoreMenu(false);
       else if (showSearch) setShowSearch(false);
       else if (showSettingsModal) setShowSettingsModal(false);
+      else if (showCompareSelector) setShowCompareSelector(false);
+      else if (showCompareMenu) setShowCompareMenu(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showBookSelector, showChapterSelector, showVerseSelector, showVersionSelector, showMoreMenu, showSearch, showSettingsModal]);
+  }, [showBookSelector, showChapterSelector, showVerseSelector, showVersionSelector, showMoreMenu, showSearch, showSettingsModal, showCompareSelector, showCompareMenu]);
 
   // Lock background scroll when any popup is open
   useEffect(() => {
@@ -1402,6 +1405,18 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
 
 
+  // ── Derive saved labels for the first selected verse ───────────────────
+  const existingSaveLabels = useMemo(() => {
+    if (selectedVerses.length === 0 || !selectedBookId || !selectedVersionId) return null;
+    const firstVerse = selectedVerses[0];
+    const refId = `${selectedBookId}_${selectedChapter}_${firstVerse}_${selectedVersionId}`;
+    const saved = getSavedItem('bible', refId);
+    if (!saved) return null;
+    return (saved.metadata?.labels as string[] | undefined) ?? [];
+  }, [selectedVerses, selectedBookId, selectedChapter, selectedVersionId, getSavedItem]);
+
+
+
 
   return (
     <BibleReaderPage
@@ -1526,6 +1541,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       onSliderDragStart={() => setIsSliderDragging(true)}
       onSliderDragEnd={() => setIsSliderDragging(false)}
       isLoggedIn={!!session?.user}
+      existingSaveLabels={existingSaveLabels}
     />
   );
 }
