@@ -136,13 +136,24 @@ export const PrayerSkeleton = () => (
 
 export default function HomeSkeleton() {
   return (
-    <div className="space-y-6 pb-20 p-4 max-w-2xl mx-auto">
-      <GreetingSkeleton />
-      <BannerSkeleton />
-      <VerseSkeleton />
-      <DevotionSkeleton />
-      <ReadingPlanSkeleton />
-      <PrayerSkeleton />
+    <div className="space-y-6 pb-20 pt-2 px-0 max-w-2xl mx-auto">
+      <div className="px-4">
+        <GreetingSkeleton />
+      </div>
+      <div className="px-4">
+        <BannerSkeleton />
+      </div>
+      <div className="px-2">
+        <VerseSkeleton />
+      </div>
+      <div className="px-2">
+        <DevotionSkeleton />
+      </div>
+      {/* ReadingPlanSkeleton is commented out to match the main HomeView */}
+      {/* <ReadingPlanSkeleton /> */}
+      <div className="px-4">
+        <PrayerSkeleton />
+      </div>
     </div>
   );
 }

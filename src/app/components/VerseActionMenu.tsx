@@ -121,7 +121,7 @@ export default function VerseActionMenu({
 
   // ── Dark mode colour tokens ─────────────────────────────────────────────
   const dm = isDark;
-  const sheetBg     = dm ? '#1c1c1e' : '#ffffff';
+  const sheetBg     = dm ? '#000000' : '#ffffff';
   const dragBg      = dm ? '#3a3a3c' : '#e5e5e5';
   const labelText   = dm ? '#ebebf5cc' : '#31393a';
   const subLabelTxt = dm ? '#8e8e93' : '#9ca3af';
@@ -229,6 +229,7 @@ export default function VerseActionMenu({
       style={{
         paddingBottom: 'env(safe-area-inset-bottom)',
         backgroundColor: sheetBg,
+        border: dm ? '1px solid rgba(255, 255, 255, 0.08)' : 'none',
       }}
       data-bottom-sheet="true"
     >

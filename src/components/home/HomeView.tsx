@@ -250,10 +250,10 @@ export default function HomeView() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="space-y-6 pt-10 pb-6 bg-transparent min-h-full px-4 overflow-hidden"
+      className="space-y-6 pt-2 pb-6 bg-transparent min-h-full px-0 overflow-hidden"
     >
       {/* Greeting - Figma Style */}
-      <div className="flex items-center space-x-3 animate-fade-in">
+      <div className="flex items-center space-x-3 animate-fade-in px-4">
         <div className="flex items-center justify-center text-gray-800 text-2xl font-bold px-1">
           ✝
         </div>
@@ -269,26 +269,28 @@ export default function HomeView() {
 
       {/* Profile Setup Banner (Preserved) */}
       {status === 'authenticated' && (session?.user as any).onboardingCompleted === false && (
-        <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-100 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm animate-fade-in gap-4 sm:gap-2">
-          <div className="flex items-center space-x-3">
-            <div className="bg-white p-2 rounded-full shadow-sm border border-teal-100 flex-shrink-0">
-              <User className="size-5 text-[var(--color-primary-teal)]" />
+        <div className="px-4">
+          <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-100 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm animate-fade-in gap-4 sm:gap-2">
+            <div className="flex items-center space-x-3">
+              <div className="bg-white p-2 rounded-full shadow-sm border border-teal-100 flex-shrink-0">
+                <User className="size-5 text-[var(--color-primary-teal)]" />
+              </div>
+              <p className="text-sm text-gray-800 font-medium leading-tight">
+                Complete your profile to personalize your Bible reading experience.
+              </p>
             </div>
-            <p className="text-sm text-gray-800 font-medium leading-tight">
-              Complete your profile to personalize your Bible reading experience.
-            </p>
+            <button
+              onClick={() => router.push('/auth/profile-setup')}
+              className="flex-shrink-0 px-4 py-2 bg-[var(--color-primary-teal)] hover:bg-[#328e91] text-white text-sm font-semibold rounded-lg shadow-sm transition-colors whitespace-nowrap w-full sm:w-auto text-center"
+            >
+              Complete Profile
+            </button>
           </div>
-          <button
-            onClick={() => router.push('/auth/profile-setup')}
-            className="flex-shrink-0 px-4 py-2 bg-[var(--color-primary-teal)] hover:bg-[#328e91] text-white text-sm font-semibold rounded-lg shadow-sm transition-colors whitespace-nowrap w-full sm:w-auto text-center"
-          >
-            Complete Profile
-          </button>
         </div>
       )}
 
       {/* Daily Verse Carousel (7-Day History) */}
-      <div className="relative overflow-hidden mb-8 w-full">
+      <div className="relative overflow-hidden mb-8 w-full px-2">
         <div className="overflow-hidden w-full rounded-2xl">
           <motion.div
             drag="x"
@@ -417,7 +419,7 @@ export default function HomeView() {
       </div>
 
       {/* Daily Devotional Carousel (7-Day History) */}
-      <div className="relative overflow-hidden mb-6 w-full">
+      <div className="relative overflow-hidden mb-6 w-full px-2">
         <div className="overflow-hidden w-full rounded-2xl">
           <motion.div
             drag="x"
@@ -561,7 +563,7 @@ export default function HomeView() {
         )}
       </div>
 
-      {/* My Reading Plan - Figma Style */}
+      {/* My Reading Plan - Figma Style (Commented out)
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-xl font-bold text-gray-800">My Reading Plan</h3>
@@ -575,7 +577,6 @@ export default function HomeView() {
 
         {latestProgress ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {/* Latest Progress Card */}
             <div className="bg-white rounded-xl p-5 shadow-md hover:shadow-lg transition-shadow border border-gray-100 flex flex-col justify-between">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
@@ -639,52 +640,119 @@ export default function HomeView() {
           </div>
         )}
       </div>
+      */}
 
       {/* Community Prayer Wall - Figma Design */}
-      <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl p-6 shadow-xl">
-        <h3 className="text-xl font-bold text-gray-800 mb-4">Community Prayer Requests</h3>
-        <div className="space-y-3">
-          {prayers.length === 0 ? (
-            <div className="bg-white/50 rounded-lg p-8 text-center text-gray-500 italic">
-              No public prayer requests yet.
-            </div>
-          ) : (
-            prayers.map((request) => (
-              <div key={request._id} className="bg-white/80 backdrop-blur-sm rounded-lg p-4 hover:bg-white transition-colors">
-                <div className="flex items-start space-x-3">
-                  <div className="size-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold uppercase">
-                    {(request.anonymous ? 'A' : (request.userId?.firstName?.[0] || 'U'))}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="font-semibold text-gray-800">
-                        {request.anonymous ? 'Anonymous' : `${request.userId?.firstName} ${request.userId?.lastName?.[0]}.`}
-                      </p>
-                      <span className="text-xs text-gray-500">{getRelativeTime(request.createdAt)}</span>
+      <div className="px-4">
+        <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl p-6 shadow-xl">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Community Prayer Requests</h3>
+          <div className="space-y-3">
+            {prayers.length === 0 ? (
+              <div className="bg-white/50 rounded-lg p-8 text-center text-gray-500 italic">
+                No public prayer requests yet.
+              </div>
+            ) : (
+              prayers.map((request) => (
+                <div key={request._id} className="bg-white/80 backdrop-blur-sm rounded-lg p-4 hover:bg-white transition-colors">
+                  <div className="flex items-start space-x-3">
+                    <div className="size-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold uppercase">
+                      {(request.anonymous ? 'A' : (request.userId?.firstName?.[0] || 'U'))}
                     </div>
-                    <p className="text-sm text-gray-600 line-clamp-2">{request.text}</p>
-                    <button
-                      onClick={() => handleIntercede(request._id)}
-                      className={`text-xs font-medium mt-2 hover:underline flex items-center gap-1.5 ${request.intercessors?.includes((session?.user as any)?.id)
-                          ? 'text-orange-600'
-                          : 'text-[var(--color-primary-teal)]'
-                        }`}
-                    >
-                      <span>🙏</span> {request.intercessionCount > 0 ? `${request.intercessionCount} praying` : 'Pray for this'}
-                    </button>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="font-semibold text-gray-800">
+                          {request.anonymous ? 'Anonymous' : `${request.userId?.firstName} ${request.userId?.lastName?.[0]}.`}
+                        </p>
+                        <span className="text-xs text-gray-500">{getRelativeTime(request.createdAt)}</span>
+                      </div>
+                      <p className="text-sm text-gray-600 line-clamp-2">{request.text}</p>
+                      <button
+                        onClick={() => handleIntercede(request._id)}
+                        className={`text-xs font-medium mt-2 hover:underline flex items-center gap-1.5 ${request.intercessors?.includes((session?.user as any)?.id)
+                            ? 'text-orange-600'
+                            : 'text-[var(--color-primary-teal)]'
+                          }`}
+                      >
+                        <span>🙏</span> {request.intercessionCount > 0 ? `${request.intercessionCount} praying` : 'Pray for this'}
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
-          )}
+              ))
+            )}
+          </div>
+          <button
+            onClick={() => router.push('/community/prayers')}
+            className="w-full mt-4 py-3 bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] text-white rounded-xl font-medium hover:shadow-lg transition-all"
+          >
+            View All Prayers
+          </button>
         </div>
-        <button
-          onClick={() => router.push('/community/prayers')}
-          className="w-full mt-4 py-3 bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] text-white rounded-xl font-medium hover:shadow-lg transition-all"
-        >
-          View All Prayers
-        </button>
       </div>
+
+      {/* Footer Section - Figma Replica */}
+      <footer className="w-full bg-white border-t border-gray-100/80 mt-12 py-10 px-6 flex flex-col items-center select-none">
+        {/* Logo Card */}
+        <div className="flex justify-center mb-6">
+          <div className="bg-[#24a0a4] text-white px-7 py-3 rounded-xl flex flex-col items-center justify-center shadow-sm w-fit select-none">
+            <span className="font-serif italic text-xl font-bold tracking-wide leading-none" style={{ fontFamily: 'Georgia, serif' }}>
+              the bible net
+            </span>
+            <div className="flex items-center gap-1.5 mt-2 text-[8px] font-extrabold tracking-widest text-teal-50/90 uppercase">
+              <span className="h-[1px] w-6 bg-teal-100/40"></span>
+              SDO CONNECT
+              <span className="h-[1px] w-6 bg-teal-100/40"></span>
+            </div>
+          </div>
+        </div>
+
+        {/* Paragraph Text */}
+        <p className="text-gray-500 text-sm leading-relaxed text-center max-w-sm mb-8 px-2 font-normal">
+          Lorem ipsum dolor sit amet, consectetur adipiscing elit. In volutpat enim a odio sagittis pretium ut vitae diam.
+        </p>
+
+        {/* Links Grid */}
+        <div className="grid grid-cols-2 gap-x-12 gap-y-3.5 text-sm text-gray-400 font-medium mb-10 w-full max-w-[280px]">
+          <div className="flex flex-col space-y-3 items-start">
+            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
+            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
+            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
+            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
+          </div>
+          <div className="flex flex-col space-y-3 items-end">
+            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
+            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
+            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
+            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
+          </div>
+        </div>
+
+        {/* Social Icons */}
+        <div className="flex items-center justify-center gap-8 mb-4">
+          {/* Instagram */}
+          <a href="#" className="text-gray-900 hover:text-gray-600 hover:scale-110 transition-all duration-200" aria-label="Instagram">
+            <svg className="size-6 stroke-current fill-none" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+            </svg>
+          </a>
+
+          {/* Facebook */}
+          <a href="#" className="text-[#1877F2] hover:opacity-90 hover:scale-110 transition-all duration-200" aria-label="Facebook">
+            <svg className="size-6 fill-current" viewBox="0 0 24 24">
+              <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+            </svg>
+          </a>
+
+          {/* X (formerly Twitter) */}
+          <a href="#" className="text-gray-900 hover:text-gray-600 hover:scale-110 transition-all duration-200" aria-label="X">
+            <svg className="size-5.5 fill-current" viewBox="0 0 24 24">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+          </a>
+        </div>
+      </footer>
 
       <DailyDetailModal
         isOpen={isDetailModalOpen}

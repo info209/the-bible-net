@@ -2101,6 +2101,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       {/* Audio Control Panel */}
       <AudioControlPanel
         isOpen={showAudioControls && showAudioControlPanel}
+        isDark={selectedTheme === 'dark'}
         onClose={() => {
           setShowAudioControlPanel(false);
           setAudioPlayerState('default');
@@ -2175,7 +2176,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           <div
             className="absolute bottom-0 left-0 right-0 backdrop-blur-3xl backdrop-saturate-[180%] rounded-t-[32px] shadow-[0px_8px_12px_6px_rgba(0,0,0,0.15),0px_4px_4px_0px_rgba(0,0,0,0.3)] max-w-[600px] mx-auto max-h-[70vh] overflow-hidden flex flex-col"
             style={{
-              backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.85)',
+              backgroundColor: selectedTheme === 'dark' ? '#000000' : 'rgba(255,255,255,0.85)',
               borderTop: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
             }}
             onClick={(e) => e.stopPropagation()}

@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import bannerBible from '@/../assets/images/banner_bible.jpg';
 
 interface ProfilePanelProps {
   isOpen: boolean;
@@ -89,7 +90,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
     <Sheet open={isOpen} onOpenChange={(open) => { if (!open) onClose(); }}>
       <SheetContent
         side="right"
-        className="w-full max-w-none sm:max-w-sm p-0 border-none [&>[data-slot=sheet-close]]:hidden"
+        className="w-full max-w-none sm:max-w-sm p-0 border-none [&>[data-slot=sheet-close]]:hidden flex flex-col h-full"
       >
         {/* Visually hidden title for accessibility */}
         <SheetHeader className="sr-only">
@@ -98,17 +99,21 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
         </SheetHeader>
 
         {/* ─── Hero Banner ─── */}
-        <div className="relative h-44 bg-gradient-to-br from-[#41ADB0] via-[#319ea1] to-[#1d7e82] flex-shrink-0">
+        <div 
+          className="relative h-44 flex-shrink-0 bg-cover bg-center bg-no-repeat overflow-hidden"
+          style={{ backgroundImage: `url(${bannerBible.src})` }}
+        >
+          {/* Gradient overlay to ensure text contrast for interactive buttons */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-black/30" />
+          
           <button
             type="button"
             onClick={onClose}
-            className="absolute left-4 top-4 flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
+            className="absolute left-4 top-4 z-10 flex items-center gap-1.5 text-white/90 transition-colors hover:text-white"
           >
             <span className="text-sm font-medium">← Back</span>
           </button>
         </div>
-
-        {/* ─── Avatar (overlaps hero) ─── */}
         <div className="flex flex-col items-center -mt-10 px-4 pb-2 flex-shrink-0">
           <div className="relative">
             {user?.image ? (

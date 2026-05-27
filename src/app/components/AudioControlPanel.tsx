@@ -29,6 +29,7 @@ interface AudioControlPanelProps {
   selectedBook?: string;
   onChapterChange?: (chapter: number) => void;
   onBookChange?: (direction: 'prev' | 'next') => void;
+  isDark?: boolean;
 }
 
 export default function AudioControlPanel({
@@ -57,7 +58,8 @@ export default function AudioControlPanel({
   totalChapters = 50,
   selectedBook = '',
   onChapterChange,
-  onBookChange
+  onBookChange,
+  isDark = false
 }: AudioControlPanelProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
@@ -144,14 +146,30 @@ export default function AudioControlPanel({
     : selectedVerse;
   const panelTitle = `${selectedBook || 'Bible'} ${selectedChapter}:${displayVerse}`;
 
+  // Premium dark/light themes variables
+  const dm = isDark;
+  const panelBg = dm ? '#000000' : 'rgba(255, 255, 255, 0.95)';
+  const panelBorder = dm ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.4)';
+  const textPrimary = dm ? '#e5e7e7' : '#31393a';
+  const textSecondary = dm ? '#8e8e93' : '#7c7c7c';
+  const textTertiary = dm ? '#636366' : '#9ca3a3';
+  const btnBg = dm ? '#1c1c1e' : '#f2f2f2';
+  const pillBg = dm ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.88)';
+  const pillBorder = dm ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.65)';
+  const sliderTrackBg = dm ? '#2c2c2e' : '#d9d9d9';
+
   return (
     <div className="fixed inset-0 z-[100] overlay-dark" onClick={onClose}>
       <div
         ref={panelRef}
-        className="absolute bottom-0 left-0 right-0 glass-heavy rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto border-t border-white/40 max-h-[85dvh] flex flex-col overflow-hidden bg-white/95 backdrop-blur-xl"
+        className={`absolute bottom-0 left-0 right-0 rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto border-t max-h-[85dvh] flex flex-col overflow-hidden backdrop-blur-xl ${
+          dm ? '' : 'glass-heavy bg-white/95'
+        }`}
         style={{
           transform: `translateY(${currentY}px)`,
-          transition: isDragging ? 'none' : 'transform 0.3s ease-out'
+          transition: isDragging ? 'none' : 'transform 0.3s ease-out',
+          backgroundColor: panelBg,
+          borderColor: panelBorder,
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -172,27 +190,25 @@ export default function AudioControlPanel({
           <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 pt-6 pb-3">
             <button
               onClick={onMinimize ?? onClose}
-              className="justify-self-start flex items-center gap-1.5 px-3 py-1.5 rounded-full
-                bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)]
-                transition-colors"
+              className="justify-self-start flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors"
+              style={{ backgroundColor: btnBg }}
               aria-label="Minimize player"
             >
-              <Minimize2 className="size-4 text-[var(--color-text-secondary)]" />
-              <span className="text-xs font-medium text-[var(--color-text-secondary)]">Minimize</span>
+              <Minimize2 className="size-4" style={{ color: textSecondary }} />
+              <span className="text-xs font-medium" style={{ color: textSecondary }}>Minimize</span>
             </button>
 
-            <h2 className="min-w-0 max-w-[150px] sm:max-w-[240px] truncate text-center text-base font-semibold text-[var(--color-text-primary)]">
+            <h2 className="min-w-0 max-w-[150px] sm:max-w-[240px] truncate text-center text-base font-semibold" style={{ color: textPrimary }}>
               {panelTitle}
             </h2>
 
             <button
               onClick={onClose}
-              className="justify-self-end size-8 rounded-full flex items-center justify-center
-                bg-[var(--color-bg-secondary)] hover:bg-[var(--color-bg-tertiary)]
-                transition-colors"
+              className="justify-self-end size-8 rounded-full flex items-center justify-center transition-colors"
+              style={{ backgroundColor: btnBg }}
               aria-label="Close player"
             >
-              <X className="size-4 text-[var(--color-text-secondary)]" />
+              <X className="size-4" style={{ color: textSecondary }} />
             </button>
           </div>
         </div>
@@ -207,7 +223,7 @@ export default function AudioControlPanel({
           <div className="mb-4 px-11">
             <div className="relative h-5 mb-1" style={{ overflow: 'visible' }}>
               {/* Background track */}
-              <div className="absolute top-[8px] w-full h-[4px] bg-[var(--color-bg-tertiary)] rounded-sm" />
+              <div className="absolute top-[8px] w-full h-[4px] rounded-sm" style={{ backgroundColor: sliderTrackBg }} />
               {/* Progress track — uses preview verse during drag */}
               <div
                 className="absolute top-[8px] h-[4px] bg-[var(--color-accent-rose)] rounded-sm"
@@ -271,7 +287,7 @@ export default function AudioControlPanel({
               />
             </div>
             {/* Verse counter — uses preview during drag */}
-            <div className="flex justify-between text-[11px] text-[var(--color-text-secondary)] font-medium">
+            <div className="flex justify-between text-[11px] font-medium" style={{ color: textSecondary }}>
               <span>Verse {displayVerse}</span>
               <span>Total {totalVerses}</span>
             </div>
@@ -289,9 +305,8 @@ export default function AudioControlPanel({
                   onBookChange?.('prev');
                 }
               }}
-              className="size-9 rounded-full flex items-center justify-center shrink-0
-                bg-[var(--color-bg-secondary)] shadow-[var(--shadow-sm)]
-                hover:scale-105 active:scale-95 transition-transform"
+              className="size-9 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
+              style={{ backgroundColor: btnBg }}
               aria-label="Previous chapter"
             >
               <ChevronLeft className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
@@ -317,7 +332,7 @@ export default function AudioControlPanel({
                 progress={ringProgress}
                 size={80}
                 strokeWidth={4}
-                trackColor="var(--color-bg-tertiary)"
+                trackColor={sliderTrackBg}
                 color="var(--color-accent-rose)"
               >
                 <button
@@ -358,9 +373,8 @@ export default function AudioControlPanel({
                   onBookChange?.('next');
                 }
               }}
-              className="size-9 rounded-full flex items-center justify-center shrink-0
-                bg-[var(--color-bg-secondary)] shadow-[var(--shadow-sm)]
-                hover:scale-105 active:scale-95 transition-transform"
+              className="size-9 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
+              style={{ backgroundColor: btnBg }}
               aria-label="Next chapter"
             >
               <ChevronRight className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
@@ -368,17 +382,22 @@ export default function AudioControlPanel({
           </div>
 
           {/* ── Secondary controls row ────────────────────────────────────────── */}
-          <div className="flex items-center justify-center gap-6
-            glass-light rounded-[var(--radius-xl)]
-            py-2 px-6 mx-auto w-fit
-            shadow-glass mb-4">
+          <div className={`flex items-center justify-center gap-6 rounded-[var(--radius-xl)] py-2 px-6 mx-auto w-fit shadow-glass mb-4 ${
+            dm ? '' : 'glass-light'
+          }`}
+            style={{
+              backgroundColor: pillBg,
+              border: dm ? `1px solid ${pillBorder}` : undefined,
+            }}
+          >
 
             {/* Repeat */}
             <button
               onClick={onRepeatModeToggle}
               className={`relative flex flex-col items-center justify-center gap-3
                 hover:scale-110 active:scale-95 transition-transform
-                ${repeatMode !== 'none' ? 'text-[var(--color-primary-teal)]' : 'text-[var(--color-text-tertiary)]'}`}
+                ${repeatMode !== 'none' ? 'text-[var(--color-primary-teal)]' : ''}`}
+              style={{ color: repeatMode !== 'none' ? undefined : textTertiary }}
               aria-label="Toggle repeat mode"
             >
               <div className="size-7 flex items-center justify-center">
@@ -398,12 +417,13 @@ export default function AudioControlPanel({
               }}
               className="relative flex flex-col items-center justify-center gap-3
                 hover:scale-110 active:scale-95 transition-transform"
+              style={{ color: textTertiary }}
               aria-label="Change playback speed"
             >
               <div className="size-7 flex items-center justify-center">
-                <Gauge className="size-[22px] text-[var(--color-text-tertiary)]" strokeWidth={2.2} />
+                <Gauge className="size-[22px]" strokeWidth={2.2} />
               </div>
-              <span className="text-[8px] font-bold text-[var(--color-text-tertiary)] whitespace-nowrap leading-none">
+              <span className="text-[8px] font-bold whitespace-nowrap leading-none">
                 {playbackSpeed}x
               </span>
             </button>
@@ -413,12 +433,13 @@ export default function AudioControlPanel({
               onClick={onTimerClick}
               className="relative flex flex-col items-center justify-center gap-3
                 hover:scale-110 active:scale-95 transition-transform"
+              style={{ color: textTertiary }}
               aria-label="Set sleep timer"
             >
               <div className="size-7 flex items-center justify-center">
-                <Timer className="size-[22px] text-[var(--color-text-tertiary)]" strokeWidth={2.2} />
+                <Timer className="size-[22px]" strokeWidth={2.2} />
               </div>
-              <span className="text-[8px] font-bold text-[var(--color-text-tertiary)] uppercase whitespace-nowrap leading-none">
+              <span className="text-[8px] font-bold uppercase whitespace-nowrap leading-none">
                 Timer
               </span>
             </button>
@@ -426,7 +447,7 @@ export default function AudioControlPanel({
 
           {/* ── Volume row ───────────────────────────────────────────────────── */}
           <div className="px-10 flex items-center gap-4 mt-2">
-            <Volume2 className="size-4 text-[var(--color-text-tertiary)] shrink-0" strokeWidth={2.5} />
+            <Volume2 className="size-4 shrink-0" strokeWidth={2.5} style={{ color: textTertiary }} />
             <input
               type="range"
               min="0"
@@ -440,7 +461,7 @@ export default function AudioControlPanel({
               className="w-full accent-[var(--color-primary-teal)]"
               aria-label="Volume"
             />
-            <span className="text-xs font-bold text-[var(--color-text-tertiary)] shrink-0 w-8 text-right">
+            <span className="text-xs font-bold shrink-0 w-8 text-right" style={{ color: textTertiary }}>
               {Math.round(ttsVolume * 100)}%
             </span>
           </div>
