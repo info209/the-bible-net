@@ -48,25 +48,35 @@ export class BibleService {
      * @param includeInactive - Include inactive versions (default: false)
      */
     static async getAllVersions(page?: number, limit?: number, includeInactive: boolean = false): Promise<any> {
-        // Build filter query
-        const filter = includeInactive ? {} : { isActive: true };
-        
-        let query = BibleVersion.find(filter).sort({ language: 1, abbreviation: 1 });
-        let total = 0;
+        try {
+            await connectDB();
+            // Build filter query
+            const filter = includeInactive ? {} : { isActive: true };
+            
+            let query = BibleVersion.find(filter).sort({ language: 1, abbreviation: 1 });
+            let total = 0;
 
-        if (page && limit) {
-            total = await BibleVersion.countDocuments(filter);
-            query = query.skip((page - 1) * limit).limit(limit);
+            if (page && limit) {
+                total = await BibleVersion.countDocuments(filter);
+                query = query.skip((page - 1) * limit).limit(limit);
+            }
+
+            const versions = await query.lean();
+
+            if (!versions || versions.length === 0) {
+                console.warn('getAllVersions: No active Bible versions found in MongoDB.');
+            }
+
+            const result = page && limit ? {
+                versions,
+                pagination: getPaginationMeta(total, page, limit)
+            } : versions;
+
+            return result;
+        } catch (error) {
+            console.error('Error in getAllVersions service:', error);
+            throw new Error('Failed to retrieve Bible versions from the database.');
         }
-
-        const versions = await query.lean();
-
-        const result = page && limit ? {
-            versions,
-            pagination: getPaginationMeta(total, page, limit)
-        } : versions;
-
-        return result;
     }
 
     /**
@@ -80,266 +90,319 @@ export class BibleService {
      * Get a specific version by abbreviation
      */
     static async getVersionByAbbreviation(abbreviation: string): Promise<(IBibleVersion & { _id: any }) | null> {
-        const cacheKey = `bible:version:${abbreviation.toUpperCase()}`;
-        const cached = await this.getFromCache(cacheKey) as any;
-        if (cached) return cached;
+        try {
+            await connectDB();
+            const cacheKey = `bible:version:${abbreviation.toUpperCase()}`;
+            const cached = await this.getFromCache(cacheKey) as any;
+            if (cached) return cached;
 
-        const version = await BibleVersion.findOne({ abbreviation: abbreviation.toUpperCase() }).lean() as any;
-        await this.setInCache(cacheKey, version);
-        return version;
+            const version = await BibleVersion.findOne({ abbreviation: abbreviation.toUpperCase() }).lean() as any;
+            if (!version) {
+                console.warn(`getVersionByAbbreviation: Bible version not found for abbreviation: ${abbreviation}`);
+            } else {
+                await this.setInCache(cacheKey, version);
+            }
+            return version;
+        } catch (error) {
+            console.error(`Error in getVersionByAbbreviation for ${abbreviation}:`, error);
+            throw new Error(`Failed to retrieve Bible version details.`);
+        }
     }
 
     /**
      * Get books for a specific version with optional pagination
      */
     static async getBooksByVersion(versionId: string, page?: number, limit?: number): Promise<any> {
-        const cacheKey = `bible:books:${versionId}${page ? `:${page}:${limit}` : ''}`;
-        const cached = await this.getFromCache(cacheKey);
-        if (cached) return cached;
+        try {
+            await connectDB();
+            const cacheKey = `bible:books:${versionId}${page ? `:${page}:${limit}` : ''}`;
+            const cached = await this.getFromCache(cacheKey);
+            if (cached) return cached;
 
-        let query = Book.find({ version: versionId }).sort({ order: 1 });
-        let total = 0;
+            let query = Book.find({ version: versionId }).sort({ order: 1 });
+            let total = 0;
 
-        if (page && limit) {
-            total = await Book.countDocuments({ version: versionId });
-            query = query.skip((page - 1) * limit).limit(limit);
+            if (page && limit) {
+                total = await Book.countDocuments({ version: versionId });
+                query = query.skip((page - 1) * limit).limit(limit);
+            }
+
+            const books = await query.lean();
+            if (!books || books.length === 0) {
+                console.warn(`getBooksByVersion: No books found for version ${versionId}`);
+            }
+
+            const result = page && limit ? {
+                books,
+                pagination: getPaginationMeta(total, page, limit)
+            } : books;
+
+            await this.setInCache(cacheKey, result);
+            return result;
+        } catch (error) {
+            console.error(`Error in getBooksByVersion for version ${versionId}:`, error);
+            throw new Error(`Failed to retrieve books for Bible version.`);
         }
-
-        const books = await query.lean();
-
-        const result = page && limit ? {
-            books,
-            pagination: getPaginationMeta(total, page, limit)
-        } : books;
-
-        await this.setInCache(cacheKey, result);
-        return result;
     }
 
     /**
      * Get chapters for a specific book with optional pagination
      */
     static async getChaptersByBook(bookId: string, page?: number, limit?: number): Promise<any> {
-        const cacheKey = `bible:chapters:${bookId}${page ? `:${page}:${limit}` : ''}`;
-        const cached = await this.getFromCache(cacheKey);
-        if (cached) return cached;
+        try {
+            await connectDB();
+            const cacheKey = `bible:chapters:${bookId}${page ? `:${page}:${limit}` : ''}`;
+            const cached = await this.getFromCache(cacheKey);
+            if (cached) return cached;
 
-        let query = Chapter.find({ book: bookId }).sort({ number: 1 });
-        let total = 0;
+            let query = Chapter.find({ book: bookId }).sort({ number: 1 });
+            let total = 0;
 
-        if (page && limit) {
-            total = await Chapter.countDocuments({ book: bookId });
-            query = query.skip((page - 1) * limit).limit(limit);
+            if (page && limit) {
+                total = await Chapter.countDocuments({ book: bookId });
+                query = query.skip((page - 1) * limit).limit(limit);
+            }
+
+            const chapters = await query.lean();
+            if (!chapters || chapters.length === 0) {
+                console.warn(`getChaptersByBook: No chapters found for book ${bookId}`);
+            }
+
+            const result = page && limit ? {
+                chapters,
+                pagination: getPaginationMeta(total, page, limit)
+            } : chapters;
+
+            await this.setInCache(cacheKey, result);
+            return result;
+        } catch (error) {
+            console.error(`Error in getChaptersByBook for book ${bookId}:`, error);
+            throw new Error(`Failed to retrieve chapters for Bible book.`);
         }
-
-        const chapters = await query.lean();
-
-        const result = page && limit ? {
-            chapters,
-            pagination: getPaginationMeta(total, page, limit)
-        } : chapters;
-
-        await this.setInCache(cacheKey, result);
-        return result;
     }
 
     /**
      * Get verses for a specific chapter with natively supported pagination
      */
     static async getVersesByChapter(chapterId: string, page?: number, limit?: number): Promise<any> {
-        const cacheKey = `bible:verses:${chapterId}${page ? `:${page}:${limit}` : ''}`;
-        const cached = await this.getFromCache(cacheKey);
-        if (cached) return cached;
+        try {
+            await connectDB();
+            const cacheKey = `bible:verses:${chapterId}${page ? `:${page}:${limit}` : ''}`;
+            const cached = await this.getFromCache(cacheKey);
+            if (cached) return cached;
 
-        let query = Verse.find({ chapter: chapterId }).sort({ number: 1 });
-        let total = 0;
+            let query = Verse.find({ chapter: chapterId }).sort({ number: 1 });
+            let total = 0;
 
-        if (page && limit) {
-            total = await Verse.countDocuments({ chapter: chapterId });
-            query = query.skip((page - 1) * limit).limit(limit);
-        } else {
-            // Even if not paginated, we should probably know the total for consistency in some contexts
-            // but for now let's keep it simple
+            if (page && limit) {
+                total = await Verse.countDocuments({ chapter: chapterId });
+                query = query.skip((page - 1) * limit).limit(limit);
+            }
+
+            const verses = await query.lean();
+            if (!verses || verses.length === 0) {
+                console.warn(`getVersesByChapter: No verses found for chapter ${chapterId}`);
+            }
+
+            const result = page && limit ? {
+                verses,
+                pagination: getPaginationMeta(total, page, limit)
+            } : verses;
+
+            await this.setInCache(cacheKey, result);
+            return result;
+        } catch (error) {
+            console.error(`Error in getVersesByChapter for chapter ${chapterId}:`, error);
+            throw new Error(`Failed to retrieve verses for Bible chapter.`);
         }
-
-        const verses = await query.lean();
-
-        const result = page && limit ? {
-            verses,
-            pagination: getPaginationMeta(total, page, limit)
-        } : verses;
-
-        await this.setInCache(cacheKey, result);
-        return result;
     }
 
     /**
      * Get a complete chapter with verses
-     * @param versionAbbr - Version abbreviation (e.g., 'KJV')
-     * @param bookName - Book name or abbreviation
+     * @param versionId - Version abbreviation or ID
+     * @param bookId - Book abbreviation, name, or ID
      * @param chapterNum - Chapter number
      * @param search - Optional search query to filter verses within the chapter
      */
     static async getChapterContent(versionId: string, bookId: string, chapterNum: number, search?: string) {
-        const cacheKey = `bible:content:${versionId}:${bookId}:${chapterNum}${search ? `:search:${search}` : ''}`;
-        const cached = await this.getFromCache(cacheKey);
-        if (cached) return cached;
+        try {
+            await connectDB();
+            const cacheKey = `bible:content:${versionId}:${bookId}:${chapterNum}${search ? `:search:${search}` : ''}`;
+            const cached = await this.getFromCache(cacheKey);
+            if (cached) return cached;
 
-        // Find version
-        let version = null;
-        if (mongoose.Types.ObjectId.isValid(versionId)) {
-            version = await BibleVersion.findById(versionId).lean();
-        }
-        if (!version) {
-            version = await BibleVersion.findOne({ abbreviation: versionId.toUpperCase() }).lean();
-        }
+            // Find version
+            let version = null;
+            if (mongoose.Types.ObjectId.isValid(versionId)) {
+                version = await BibleVersion.findById(versionId).lean();
+            }
+            if (!version) {
+                version = await BibleVersion.findOne({ abbreviation: versionId.toUpperCase() }).lean();
+            }
 
-        if (!version) {
-            throw new Error('Version not found');
-        }
+            if (!version) {
+                console.error(`getChapterContent: Version not found for versionId: ${versionId}`);
+                throw new Error('Version not found');
+            }
 
-        const resolvedVersionId = version._id;
+            const resolvedVersionId = version._id;
 
-        // Find initial book
-        let book = null;
-        if (mongoose.Types.ObjectId.isValid(bookId)) {
-            book = await Book.findById(bookId).lean();
-        }
-        if (!book) {
-            // First try finding in the requested version
-            book = await Book.findOne({
-                version: resolvedVersionId,
-                $or: [
-                    { name: { $regex: new RegExp(`^${bookId.replace(/-/g, ' ')}$`, 'i') } },
-                    { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } }
-                ]
-            }).lean();
-            
-            // If not found in the requested version, try finding in ANY version to support cross-version fallback
+            // Find initial book
+            let book = null;
+            if (mongoose.Types.ObjectId.isValid(bookId)) {
+                book = await Book.findById(bookId).lean();
+            }
             if (!book) {
+                // First try finding in the requested version
                 book = await Book.findOne({
+                    version: resolvedVersionId,
                     $or: [
                         { name: { $regex: new RegExp(`^${bookId.replace(/-/g, ' ')}$`, 'i') } },
                         { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } }
                     ]
                 }).lean();
-            }
-        }
-
-        if (!book) {
-            throw new Error('Book not found');
-        }
-
-        // Cross-version check: If the book's version doesn't match the requested versionId,
-        // find the matching book in the target version.
-        let targetBook = book;
-        if (book.version.toString() !== resolvedVersionId.toString()) {
-            const equivalentBook = await Book.findOne({
-                version: resolvedVersionId,
-                $or: [
-                    { abbreviation: book.abbreviation },
-                    { order: book.order },
-                    { name: book.name }
-                ]
-            }).lean();
-            
-            if (equivalentBook) {
-                targetBook = equivalentBook;
-            } else {
-                console.warn(`Equivalent book for ${book.name} not found in version ${version.abbreviation}`);
-                 // Fallback to searching by order if abbreviation/name didn't work (already in $or but being explicit)
-                 const fallbackBookByOrder = await Book.findOne({
-                    version: resolvedVersionId,
-                    order: book.order
-                }).lean();
-                if (fallbackBookByOrder) {
-                    targetBook = fallbackBookByOrder;
+                
+                // If not found in the requested version, try finding in ANY version to support cross-version fallback
+                if (!book) {
+                    book = await Book.findOne({
+                        $or: [
+                            { name: { $regex: new RegExp(`^${bookId.replace(/-/g, ' ')}$`, 'i') } },
+                            { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } }
+                        ]
+                    }).lean();
                 }
             }
+
+            if (!book) {
+                console.error(`getChapterContent: Book not found for bookId: ${bookId}`);
+                throw new Error('Book not found');
+            }
+
+            // Cross-version check: If the book's version doesn't match the requested versionId,
+            // find the matching book in the target version.
+            let targetBook = book;
+            if (book.version.toString() !== resolvedVersionId.toString()) {
+                const equivalentBook = await Book.findOne({
+                    version: resolvedVersionId,
+                    $or: [
+                        { abbreviation: book.abbreviation },
+                        { order: book.order },
+                        { name: book.name }
+                    ]
+                }).lean();
+                
+                if (equivalentBook) {
+                    targetBook = equivalentBook;
+                } else {
+                    console.warn(`getChapterContent: Equivalent book for ${book.name} not found in version ${version.abbreviation}`);
+                     // Fallback to searching by order if abbreviation/name didn't work
+                     const fallbackBookByOrder = await Book.findOne({
+                        version: resolvedVersionId,
+                        order: book.order
+                    }).lean();
+                    if (fallbackBookByOrder) {
+                        targetBook = fallbackBookByOrder;
+                    }
+                }
+            }
+
+            // Find chapter using the target book
+            const chapter = await Chapter.findOne({
+                book: targetBook._id,
+                number: chapterNum,
+            }).lean();
+            
+            if (!chapter) {
+                console.error(`getChapterContent: Chapter ${chapterNum} not found for book ${targetBook.name} in version ${version.abbreviation}`);
+                throw new Error(`Chapter ${chapterNum} not found for book ${targetBook.name} in version ${version.abbreviation}`);
+            }
+
+            // Get verses
+            const verseQuery: any = { 
+                chapter: chapter._id,
+                version: resolvedVersionId // Be explicit
+            };
+            if (search) {
+                verseQuery.text = { $regex: search, $options: 'i' };
+            }
+
+            const verses = await Verse.find(verseQuery).sort({ number: 1 }).lean();
+            if (!verses || verses.length === 0) {
+                console.warn(`getChapterContent: No verses found for chapter ${chapter._id} (search: "${search || ''}")`);
+            }
+
+            const result = {
+                version: {
+                    name: version.name,
+                    abbreviation: version.abbreviation,
+                },
+                book: {
+                    name: book.name,
+                    abbreviation: book.abbreviation,
+                    testament: book.testament,
+                },
+                chapter: {
+                    number: chapter.number,
+                },
+                verses: verses.map((v) => ({
+                    number: v.number,
+                    text: v.text,
+                })),
+            };
+
+            await this.setInCache(cacheKey, result);
+            return result;
+        } catch (error: any) {
+            console.error(`Error in getChapterContent for version ${versionId}, book ${bookId}, chapter ${chapterNum}:`, error);
+            throw error;
         }
-
-        // Find chapter using the target book
-        const chapter = await Chapter.findOne({
-            book: targetBook._id,
-            number: chapterNum,
-        }).lean();
-        
-        if (!chapter) {
-            throw new Error(`Chapter ${chapterNum} not found for book ${targetBook.name} in version ${version.abbreviation}`);
-        }
-
-        // Get verses
-        const verseQuery: any = { 
-            chapter: chapter._id,
-            version: resolvedVersionId // Be explicit
-        };
-        if (search) {
-            verseQuery.text = { $regex: search, $options: 'i' };
-        }
-
-        const verses = await Verse.find(verseQuery).sort({ number: 1 }).lean();
-
-        const result = {
-            version: {
-                name: version.name,
-                abbreviation: version.abbreviation,
-            },
-            book: {
-                name: book.name,
-                abbreviation: book.abbreviation,
-                testament: book.testament,
-            },
-            chapter: {
-                number: chapter.number,
-            },
-            verses: verses.map((v) => ({
-                number: v.number,
-                text: v.text,
-            })),
-        };
-
-        await this.setInCache(cacheKey, result);
-        return result;
     }
 
     /**
      * Get a random verse
      */
     static async getRandomVerse(): Promise<any> {
-        const randomVerses = await Verse.aggregate([
-            { $sample: { size: 1 } }
-        ]);
+        try {
+            await connectDB();
+            const randomVerses = await Verse.aggregate([
+                { $sample: { size: 1 } }
+            ]);
 
-        if (!randomVerses || randomVerses.length === 0) {
-            throw new Error('No verses found in the database');
+            if (!randomVerses || randomVerses.length === 0) {
+                console.error('getRandomVerse: No verses found in the database');
+                throw new Error('No verses found in the database');
+            }
+
+            const verse = randomVerses[0];
+
+            // Populate details manually since aggregate doesn't support .populate() directly the same way
+            const [version, book, chapter] = await Promise.all([
+                BibleVersion.findById(verse.version).lean(),
+                Book.findById(verse.book).lean(),
+                Chapter.findById(verse.chapter).lean(),
+            ]);
+
+            return {
+                id: verse._id,
+                text: verse.text,
+                number: verse.number,
+                version: version ? {
+                    name: version.name,
+                    abbreviation: version.abbreviation,
+                } : null,
+                book: book ? {
+                    name: book.name,
+                    abbreviation: book.abbreviation,
+                    testament: book.testament,
+                } : null,
+                chapter: chapter ? {
+                    number: chapter.number,
+                } : null,
+            };
+        } catch (error: any) {
+            console.error('Error in getRandomVerse service:', error);
+            throw error;
         }
-
-        const verse = randomVerses[0];
-
-        // Populate details manually since aggregate doesn't support .populate() directly the same way
-        const [version, book, chapter] = await Promise.all([
-            BibleVersion.findById(verse.version).lean(),
-            Book.findById(verse.book).lean(),
-            Chapter.findById(verse.chapter).lean(),
-        ]);
-
-        return {
-            id: verse._id,
-            text: verse.text,
-            number: verse.number,
-            version: version ? {
-                name: version.name,
-                abbreviation: version.abbreviation,
-            } : null,
-            book: book ? {
-                name: book.name,
-                abbreviation: book.abbreviation,
-                testament: book.testament,
-            } : null,
-            chapter: chapter ? {
-                number: chapter.number,
-            } : null,
-        };
     }
 
     /**

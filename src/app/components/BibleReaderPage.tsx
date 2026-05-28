@@ -87,7 +87,16 @@ interface BibleReaderPageProps {
   onPauseAudio?: () => void;
   onCompareVerses?: () => void;
   onShareVerses?: () => void;
-  onSaveVerses?: (labels: string[]) => void;
+  onSaveVerses?: (labels: string[], note: string, isPrivate: boolean) => void;
+  onDeleteSavedVerse?: () => void;
+  savedVerseIds?: number[];
+  existingSaveNote?: string | null;
+  existingSaveIsPrivate?: boolean;
+  /** The _id of the existing save record */
+  savedVerseId?: string | null;
+  /** DB-persisted user labels */
+  userLabels?: string[];
+  onAddUserLabel?: (label: string) => Promise<void>;
   /** Highlights for the current chapter from the API */
   userHighlights?: any[];
   /** Notes for the current chapter from the API */
@@ -125,8 +134,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     onCompareVerses,
     onShareVerses,
     onSaveVerses,
+    onDeleteSavedVerse,
     onPlayAudio,
     onPauseAudio,
+    savedVerseIds = [],
+    existingSaveNote = null,
+    existingSaveIsPrivate = false,
+    savedVerseId = null,
+    userLabels = [],
+    onAddUserLabel,
     userHighlights = [],
     userNotes = [],
     isSliderDragging = false,
@@ -269,8 +285,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const shouldLockBodyScroll = showBookSelector || showChapterSelector ||
     showVersionSelector || showMusicSelector ||
     showSettingsMenu || showAudioControlPanel || showVerseSelector ||
-    showTimerMenu || showSearch || showCompareSelector || showCompareMenu ||
-    selectedVerses.length > 0;
+    showTimerMenu || showSearch || showCompareSelector || showCompareMenu;
 
   useEffect(() => {
     if (shouldLockBodyScroll) {
@@ -2280,6 +2295,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? selectedVerse : undefined}
                   readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? currentReadingVerse : null}
                   theme={currentTheme}
+                  savedVerseIds={savedVerseIds}
                   isSliderDragging={isSliderDragging}
                 />
               </div>
@@ -2303,6 +2319,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? selectedVerse : undefined}
                   readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? currentReadingVerse : null}
                   theme={currentTheme}
+                  savedVerseIds={savedVerseIds}
                   isSliderDragging={isSliderDragging}
                 />
               </div>
@@ -2333,6 +2350,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   scrollToVerse={selectedVerse}
                   readingVerse={currentReadingVerse}
                   theme={currentTheme}
+                  savedVerseIds={savedVerseIds}
                   isSliderDragging={isSliderDragging}
                   highlights={userHighlights}
                   notes={userNotes}
@@ -2377,6 +2395,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       readingVerse={currentReadingVerse}
                       theme={currentTheme}
                       selectedVerses={selectedVerses}
+                      savedVerseIds={savedVerseIds}
                       onVerseLongPress={onVerseLongPress}
                       onVerseTap={onVerseTap}
                       highlights={userHighlights}
@@ -2483,10 +2502,17 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             onClose={() => onVerseTap?.(0)} // container handles clearing
             existingHighlightColor={userHighlights.find(h => h.metadata?.verse === selectedVerses[0])?.metadata?.color}
             existingSaveLabels={existingSaveLabels}
+            existingSaveNote={existingSaveNote}
+            existingSaveIsPrivate={existingSaveIsPrivate}
+            savedVerseId={savedVerseId}
+            userLabels={userLabels}
+            onAddUserLabel={onAddUserLabel}
             onHighlight={(color) => onSaveHighlight?.(selectedVerses, color)}
-            onSave={(labels) => onSaveVerses?.(labels)}
+            onSave={(labels, note, isPrivate) => onSaveVerses?.(labels, note, isPrivate)}
+            onDelete={onDeleteSavedVerse}
             onNote={(note) => onSaveNote?.(selectedVerses, note)}
             onShare={() => onShareVerses?.()}
+            onCompare={onCompareVerses}
             isLoggedIn={isLoggedIn}
             isDark={selectedTheme === 'dark'}
           />

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useSavedItems } from '@/lib/useSavedItems';
+import { useSavedVerses, buildVerseRangeText } from '@/lib/useSavedVerses';
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
 import { MdOutlineLibraryBooks } from 'react-icons/md';
@@ -99,7 +100,16 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const { updateProgress, latestProgress } = useReadingProgress();
   const { data: session } = useSession();
   const router = useRouter();
-  const { isSaved, getSavedItem, toggleSave, saveItem, unsaveItem } = useSavedItems();
+  const { savedItems, isSaved, getSavedItem, toggleSave, saveItem, unsaveItem } = useSavedItems();
+  const {
+    savedVerses,
+    userLabels,
+    getSavedVerse,
+    savedVerseIdsForChapter,
+    saveVerse,
+    deleteSavedVerse,
+    addUserLabel,
+  } = useSavedVerses();
 
   // determine whether we are on bible page; if not, render only nav bar
   const pathname = usePathname();
@@ -174,12 +184,10 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       return;
     }
     setSelectedVerses(prev => {
-      if (prev.length === 0) return prev;
       if (prev.includes(verseNum)) {
         return prev.filter(v => v !== verseNum);
-      } else {
-        return [...prev, verseNum];
       }
+      return [...prev, verseNum];
     });
   }, []);
 
@@ -206,33 +214,42 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     setSelectedVerses([]);
   };
 
-  const onVerseMenuSave = async (labels: string[]) => {
+  const onVerseMenuSave = async (labels: string[], note: string, isPrivate: boolean) => {
     if (!session?.user || selectedVerses.length === 0) return;
 
-    for (const verseNum of selectedVerses) {
-      const refId = `${selectedBookId}_${selectedChapter}_${verseNum}_${selectedVersionId}`;
-      if (labels.length === 0) {
-        // If no labels, check if we should unsave
-        const existing = getSavedItem('bible', refId);
-        if (existing) {
-          await unsaveItem(existing._id);
-        }
-      } else {
-        await saveItem({
-          type: 'bible',
-          refId,
-          metadata: {
-            bookId: selectedBookId || undefined,
-            bookName: displayBookName || undefined,
-            chapter: selectedChapter,
-            verse: verseNum,
-            versionId: selectedVersionId || undefined,
-            versionName: displayVersionName || undefined,
-            labels
-          }
-        });
+    const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
+    const verseRangeText = buildVerseRangeText(displayBookName || '', selectedChapter, sortedVerses);
+
+    if (labels.length === 0) {
+      // No labels selected — check if we should delete
+      const existing = selectedBookId
+        ? getSavedVerse(selectedBookId, selectedChapter, sortedVerses)
+        : undefined;
+      if (existing) {
+        await deleteSavedVerse(existing._id);
       }
+    } else {
+      await saveVerse({
+        bookId: selectedBookId || '',
+        bookName: displayBookName || '',
+        chapter: selectedChapter,
+        verses: sortedVerses,
+        verseRangeText,
+        labels,
+        note,
+        isPrivate,
+      });
     }
+    setSelectedVerses([]);
+  };
+
+  const onVerseMenuDelete = async () => {
+    if (!session?.user || selectedVerses.length === 0) return;
+    const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
+    const existing = selectedBookId
+      ? getSavedVerse(selectedBookId, selectedChapter, sortedVerses)
+      : undefined;
+    if (existing) await deleteSavedVerse(existing._id);
     setSelectedVerses([]);
   };
 
@@ -1405,18 +1422,23 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
 
 
-  // ── Derive saved labels for the first selected verse ───────────────────
-  const existingSaveLabels = useMemo(() => {
-    if (selectedVerses.length === 0 || !selectedBookId || !selectedVersionId) return null;
-    const firstVerse = selectedVerses[0];
-    const refId = `${selectedBookId}_${selectedChapter}_${firstVerse}_${selectedVersionId}`;
-    const saved = getSavedItem('bible', refId);
-    if (!saved) return null;
-    return (saved.metadata?.labels as string[] | undefined) ?? [];
-  }, [selectedVerses, selectedBookId, selectedChapter, selectedVersionId, getSavedItem]);
+  // ── Derive save data for the selected verses ───────────────────────────
+  const existingSaveData = useMemo(() => {
+    if (selectedVerses.length === 0 || !selectedBookId) return null;
+    const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
+    return getSavedVerse(selectedBookId, selectedChapter, sortedVerses) ?? null;
+  }, [selectedVerses, selectedBookId, selectedChapter, getSavedVerse]);
 
+  const existingSaveLabels = existingSaveData?.labels ?? null;
+  const existingSaveNote = existingSaveData?.note ?? null;
+  const existingSaveIsPrivate = existingSaveData?.isPrivate ?? false;
+  const savedVerseId = existingSaveData?._id ?? null;
 
-
+  // ── Saved verse IDs for current chapter (for bookmark icons in text) ───
+  const savedVerseIds = useMemo(() => {
+    if (!selectedBookId) return [];
+    return savedVerseIdsForChapter(selectedBookId, selectedChapter);
+  }, [selectedBookId, selectedChapter, savedVerseIdsForChapter, savedVerses]);
 
   return (
     <BibleReaderPage
@@ -1533,6 +1555,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         else handleVerseTap(v);
       }}
       onSaveVerses={onVerseMenuSave}
+      onDeleteSavedVerse={onVerseMenuDelete}
       onCompareVerses={onVerseMenuCompare}
       onShareVerses={onVerseMenuShare}
       onPlayAudio={() => startTTS(0)}
@@ -1542,6 +1565,12 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       onSliderDragEnd={() => setIsSliderDragging(false)}
       isLoggedIn={!!session?.user}
       existingSaveLabels={existingSaveLabels}
+      existingSaveNote={existingSaveNote}
+      existingSaveIsPrivate={existingSaveIsPrivate}
+      savedVerseId={savedVerseId}
+      savedVerseIds={savedVerseIds}
+      userLabels={userLabels}
+      onAddUserLabel={addUserLabel}
     />
   );
 }

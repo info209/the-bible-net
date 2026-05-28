@@ -15,3 +15,11 @@ async function run() {
 }
 
 run().catch(console.error);
+console.log(`  Chapters: ${chapterCount}`);
+console.log(`  Verses: ${verseCount}`);
+console.log('-----------------------------------');
+    }
+process.exit(0);
+}
+
+run().catch(console.error);
