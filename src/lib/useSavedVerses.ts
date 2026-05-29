@@ -100,6 +100,8 @@ export function useSavedVerses(): UseSavedVersesReturn {
   const [userLabels, setUserLabels] = useState<string[]>([]);
   const [isLabelsLoading, setIsLabelsLoading] = useState(false);
   const pendingRef = useRef<Set<string>>(new Set());
+  // Guards against double-fetching when status is already 'authenticated' on mount
+  const hasFetchedRef = useRef(false);
 
   const fetchSavedVerses = useCallback(async () => {
     setIsLoading(true);
@@ -130,7 +132,13 @@ export function useSavedVerses(): UseSavedVersesReturn {
   }, []);
 
   useEffect(() => {
+    // Fires when status becomes 'authenticated' (normal login flow), OR
+    // immediately on mount if Next-Auth already restored the session from
+    // cookie (e.g. page refresh / navigation back) — hasFetchedRef prevents
+    // a duplicate fetch if both happen in the same lifecycle.
     if (status !== 'authenticated') return;
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
     fetchSavedVerses();
     fetchUserLabels();
   }, [status, fetchSavedVerses, fetchUserLabels]);

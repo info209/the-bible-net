@@ -317,23 +317,12 @@ export default function VerseActionMenu({
                         <p className="text-[11px] mb-4 leading-relaxed" style={{ color: subText }}>
                           Sign in to save verses, highlight, and take personal notes.
                         </p>
-                        <div className="flex gap-2 w-full">
+                        <div className="flex w-full">
                           <Link
                             href="/auth/login"
                             className="flex-1 py-3 bg-[#31C4BE] text-white text-[13px] font-bold rounded-[16px] shadow-[0_6px_20px_rgba(49,196,190,0.28)] active:scale-95 transition-all text-center"
                           >
                             Login
-                          </Link>
-                          <Link
-                            href="/auth/register"
-                            className="flex-1 py-3 text-[13px] font-bold rounded-[16px] active:scale-95 transition-all text-center border"
-                            style={{
-                              backgroundColor: dm ? '#1C1C1E' : '#FFFFFF',
-                              color: labelText,
-                              borderColor: dm ? '#3A3A3C' : '#E5E7EB',
-                            }}
-                          >
-                            Register
                           </Link>
                         </div>
                       </div>
@@ -419,9 +408,9 @@ export default function VerseActionMenu({
                           <PenTool
                             className="w-[19px] h-[19px]"
                             strokeWidth={2}
-                            style={{ color: existingHighlightColor ? '#31C4BE' : subText }}
+                            style={{ color: existingHighlightColor ? '#31C4BE' : '#000000' }}
                           />
-                          <span className="text-[10px] font-medium" style={{ color: existingHighlightColor ? '#31C4BE' : subText }}>
+                          <span className="text-[10px] font-medium" style={{ color: existingHighlightColor ? '#31C4BE' : '#000000' }}>
                             Highlight
                           </span>
                         </button>
@@ -441,9 +430,9 @@ export default function VerseActionMenu({
                           {isSavedVerse ? (
                             <BookmarkCheck className="w-[19px] h-[19px] text-[#31C4BE]" strokeWidth={2} />
                           ) : (
-                            <BookmarkPlus className="w-[19px] h-[19px] text-[#31C4BE]" strokeWidth={2} />
+                            <BookmarkPlus className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: '#000000' }} />
                           )}
-                          <span className="text-[10px] font-medium" style={{ color: isSavedVerse ? '#31C4BE' : subText }}>
+                          <span className="text-[10px] font-medium" style={{ color: isSavedVerse ? '#31C4BE' : '#000000' }}>
                             {isSavedVerse ? 'Saved' : 'Save'}
                           </span>
                         </button>
@@ -456,8 +445,8 @@ export default function VerseActionMenu({
                           className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] transition-all active:scale-95"
                           style={{ height: 74, backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <FileText className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: '#F59E0B' }} />
-                          <span className="text-[10px] font-medium" style={{ color: subText }}>Note</span>
+                          <FileText className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: '#000000' }} />
+                          <span className="text-[10px] font-medium" style={{ color: '#000000' }}>Note</span>
                         </button>
 
                         {/* Compare */}
@@ -468,8 +457,8 @@ export default function VerseActionMenu({
                           className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] transition-all active:scale-95"
                           style={{ height: 74, backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <ArrowRightLeft className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: subText }} />
-                          <span className="text-[10px] font-medium" style={{ color: subText }}>Compare</span>
+                          <ArrowRightLeft className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: '#000000' }} />
+                          <span className="text-[10px] font-medium" style={{ color: '#000000' }}>Compare</span>
                         </button>
 
                         {/* Share */}
@@ -480,8 +469,8 @@ export default function VerseActionMenu({
                           className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] transition-all active:scale-95"
                           style={{ height: 74, backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <Share2 className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: subText }} />
-                          <span className="text-[10px] font-medium" style={{ color: subText }}>Share</span>
+                          <Share2 className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: '#000000' }} />
+                          <span className="text-[10px] font-medium" style={{ color: '#000000' }}>Share</span>
                         </button>
                       </div>
                     </>

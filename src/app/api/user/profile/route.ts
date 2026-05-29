@@ -8,7 +8,7 @@ const profileUpdateSchema = z.object({
     lastName: z.string().min(1, 'Last name is required'),
     country: z.enum(['New Zealand', 'United States', 'United Kingdom', 'India', 'Australia', 'Canada']),
     preferredLanguage: z.enum(['English', 'Spanish', 'French', 'Hindi', 'Telugu']),
-    preferredBibleVersion: z.enum(['NKJV', 'KJV', 'NIV', 'ESV']),
+    preferredBibleVersion: z.string().min(1, 'Preferred Bible version is required'),
     onboardingCompleted: z.boolean().optional(),
 });
 
@@ -64,7 +64,7 @@ const profileUpdateSchema = z.object({
  *               lastName: { type: string }
  *               country: { type: string, enum: [New Zealand, United States, United Kingdom, India, Australia, Canada] }
  *               preferredLanguage: { type: string, enum: [English, Spanish, French, Hindi, Telugu] }
- *               preferredBibleVersion: { type: string, enum: [NKJV, KJV, NIV, ESV] }
+ *               preferredBibleVersion: { type: string, description: 'Bible version abbreviation (e.g. NKJV, KJV, TEL, HIN)' }
  *               onboardingCompleted: { type: boolean }
  *     responses:
  *       200:

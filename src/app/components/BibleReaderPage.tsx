@@ -20,7 +20,7 @@ import BibleSearch from './BibleSearch';
 import FontsSettingsModal, { ThemeType, TransitionType } from './FontsSettingsModal';
 import AudioFloatingPlayer from './AudioFloatingPlayer';
 
-const VERSE_ACTION_MENU_OPEN_DELAY = 800;
+const VERSE_ACTION_MENU_OPEN_DELAY = 1800;
 
 const bibleBooks = {
   'Old Testament': [
@@ -547,18 +547,19 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     const diffX = e.touches[0].clientX - touchStartX.current;
     const diffY = e.touches[0].clientY - touchStartY.current;
 
-    // Detect gesture direction only once after a small threshold
+    // Detect gesture direction only once after a meaningful threshold.
+    // We default to vertical (scroll) and only switch to horizontal when the
+    // X displacement clearly dominates Y. This prevents accidental chapter
+    // changes when the user slightly moves fingers sideways while scrolling.
     if (gestureDetected.current === 'none') {
-      const threshold = 12; // Increased threshold for better disambiguation
-      if (Math.abs(diffX) > threshold || Math.abs(diffY) > threshold) {
-        if (Math.abs(diffY) > Math.abs(diffX) * 1.5) { // Bias towards vertical scroll
-          gestureDetected.current = 'vertical';
-        } else {
+      const initThreshold = 10; // minimum movement before we classify at all
+      if (Math.abs(diffX) > initThreshold || Math.abs(diffY) > initThreshold) {
+        // Only treat as horizontal when X is at least 2.5× the Y movement.
+        // Everything else (including diagonal) is treated as vertical scroll.
+        if (Math.abs(diffX) > Math.abs(diffY) * 2.5) {
           gestureDetected.current = 'horizontal';
-          // Prevent horizontal swipes from triggering browser back/forward on mobile
-          if (Math.abs(diffX) > threshold) {
-            // e.preventDefault(); // Note: cannot preventDefault in passive listeners, but touch-action: pan-y covers this
-          }
+        } else {
+          gestureDetected.current = 'vertical';
         }
       }
     }

@@ -415,6 +415,13 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     showSearch || showVerseSelector || selectedVerses.length > 0 ||
     showCompareSelector || showCompareMenu || showSettingsModal;
 
+  // Verse selection must NOT lock scroll — the user needs to scroll the page
+  // to continue tapping additional verses before the action menu appears.
+  const shouldLockScroll = showBookSelector || showChapterSelector ||
+    showVersionSelector || showMoreMenu ||
+    showSearch || showVerseSelector ||
+    showCompareSelector || showCompareMenu || showSettingsModal;
+
   // ESC key closes any open popup
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -433,9 +440,10 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showBookSelector, showChapterSelector, showVerseSelector, showVersionSelector, showMoreMenu, showSearch, showSettingsModal, showCompareSelector, showCompareMenu]);
 
-  // Lock background scroll when any popup is open
+  // Lock background scroll when a modal/sheet is open.
+  // Deliberately excludes selectedVerses — verse selection must allow scrolling.
   useEffect(() => {
-    if (isAnyPopupOpen) {
+    if (shouldLockScroll) {
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -443,7 +451,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     return () => {
       document.body.style.overflow = 'unset';
     };
-  }, [isAnyPopupOpen]);
+  }, [shouldLockScroll]);
+
 
   // Debounced Bible search
   useEffect(() => {
@@ -1162,18 +1171,20 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const handleTouchMove = (e: React.TouchEvent) => {
     touchEndX.current = e.touches[0].clientX;
 
-    if (pageTransition !== 'slide') return;
-
     const diffX = e.touches[0].clientX - touchStartX.current;
     const diffY = e.touches[0].clientY - touchStartY.current;
 
-    // Detect gesture direction only once
+    // Detect gesture direction only once after a meaningful threshold.
+    // Only classify as horizontal when X clearly dominates Y (2.5×).
+    // Everything else defaults to vertical scroll to prevent accidental chapter changes.
     if (gestureDetected.current === 'none' && (Math.abs(diffX) > 10 || Math.abs(diffY) > 10)) {
-      if (Math.abs(diffY) > Math.abs(diffX)) {
-        gestureDetected.current = 'vertical';
-      } else {
+      if (Math.abs(diffX) > Math.abs(diffY) * 2.5) {
         gestureDetected.current = 'horizontal';
-        setIsDragging(true); // Only engage drag system for horizontal gestures
+        if (pageTransition === 'slide') {
+          setIsDragging(true); // Only engage drag system for horizontal gestures
+        }
+      } else {
+        gestureDetected.current = 'vertical';
       }
     }
 
@@ -1181,6 +1192,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     if (gestureDetected.current === 'vertical') {
       return;
     }
+
+    if (pageTransition !== 'slide') return;
 
     // If horizontal and dragging is engaged, handle page navigation
     if (gestureDetected.current === 'horizontal' && isDragging) {
@@ -1194,17 +1207,20 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
   const handleTouchEnd = () => {
     if (pageTransition !== 'slide') {
-      // For non-slide transitions, use simple swipe detection
-      const swipeThreshold = 50; // Lowered for better sensitivity
-      const diff = touchStartX.current - touchEndX.current;
+      // For non-slide transitions, only navigate if a horizontal gesture was confirmed
+      if (gestureDetected.current === 'horizontal') {
+        const swipeThreshold = 80; // Higher threshold to require a deliberate swipe
+        const diff = touchStartX.current - touchEndX.current;
 
-      if (Math.abs(diff) > swipeThreshold) {
-        if (diff > 0 && !isLastChapterOfBible) {
-          handleNext();
-        } else if (diff < 0 && !isFirstChapterOfBible) {
-          handlePrevious();
+        if (Math.abs(diff) > swipeThreshold) {
+          if (diff > 0 && !isLastChapterOfBible) {
+            handleNext();
+          } else if (diff < 0 && !isFirstChapterOfBible) {
+            handlePrevious();
+          }
         }
       }
+      gestureDetected.current = 'none';
       return;
     }
 

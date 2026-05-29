@@ -61,7 +61,7 @@ export default function FontsSettingsModal({
           subText: "#b0b0b0",
           border: "#444",
           card: "#3a3a3a",
-          accent: "#ffffff",
+          accent: "var(--color-accent-rose)",
         };
 
       case "sepia":

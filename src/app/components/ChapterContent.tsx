@@ -304,18 +304,9 @@ function ChapterContent({
               (n.metadata?.bookId === book || n.metadata?.bookName === book)
             );
 
-            // Determine background: selection > highlight > reading > transparent
+            // Determine background: highlight > reading > transparent
             let bgColor: string;
-            let borderStyle: string | undefined;
-            let borderRadius: string | undefined;
-            let paddingStyle: string | undefined;
-
-            if (isSelected) {
-              bgColor = 'rgba(49, 196, 190, 0.10)';
-              borderStyle = '1px solid rgba(49, 196, 190, 0.24)';
-              borderRadius = '16px';
-              paddingStyle = '12px 14px';
-            } else if (highlight?.metadata?.color && highlight.metadata.color !== 'none') {
+            if (highlight?.metadata?.color && highlight.metadata.color !== 'none') {
               bgColor = (HIGHLIGHT_COLOR_MAP[highlight.metadata.color] ?? highlight.metadata.color) + '55';
             } else if (isReading) {
               bgColor = 'rgba(49, 196, 190, 0.08)';
@@ -327,7 +318,7 @@ function ChapterContent({
               <div
                 key={verse.number}
                 id={`verse-${book}-${chapter}-${verse.number}`}
-                className="relative transition-all duration-200 select-none cursor-pointer scroll-mt-[120px]"
+                className="relative transition-all duration-200 rounded px-2 py-1 select-none cursor-pointer hover:bg-black/[0.02] scroll-mt-[120px]"
                 onMouseDown={(e) => handlePressStart(e, verse.number)}
                 onMouseUp={(e) => handlePressEnd(e, verse.number)}
                 onMouseLeave={handlePressCancel}
@@ -338,14 +329,18 @@ function ChapterContent({
                 style={{
                   color: theme.text,
                   backgroundColor: bgColor,
-                  border: borderStyle,
-                  borderRadius: borderRadius,
-                  padding: paddingStyle,
-                  marginLeft: isSelected ? 0 : undefined,
                 }}
               >
                 <sup className="font-bold mr-1.5 select-none opacity-60" style={{ color: theme.verseNumber }}>{verse.number}</sup>
-                <span className={`${isReading ? 'font-medium' : 'font-normal'}`}>
+                <span
+                  className={`${isReading ? 'font-medium' : 'font-normal'}`}
+                  style={isSelected ? {
+                    textDecoration: 'underline',
+                    textDecorationStyle: 'dashed',
+                    textDecorationColor: 'var(--color-accent-rose)',
+                    textUnderlineOffset: '4px',
+                  } : undefined}
+                >
                   {verse.text}
                   {hasNote && (
                     <span className="ml-2 inline-flex items-center justify-center">
