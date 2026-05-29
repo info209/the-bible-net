@@ -165,9 +165,9 @@ export default function VerseActionMenu({
   const inputText   = dm ? '#F5F5F7' : '#374151';
   const headerBorder= dm ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.04)';
   const actionBg    = dm ? '#111111' : '#F9FAFB';
-  const actionBorder= dm ? '1px solid rgba(255,255,255,0.04)' : '1px solid rgba(0,0,0,0.04)';
+  const actionBorder= dm ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(0,0,0,0.06)';
   const chipBg      = dm ? '#111111' : '#F3F4F6';
-  const chipBorder  = dm ? '1px solid rgba(255,255,255,0.06)' : '1px solid #E5E7EB';
+  const chipBorder  = dm ? '1px solid rgba(255,255,255,0.18)' : '1px solid #E5E7EB';
   const sectionTxt  = dm ? '#636366' : '#9CA3AF';
   const backdropBg  = dm ? 'rgba(0,0,0,0.82)' : 'rgba(0,0,0,0.42)';
 
@@ -238,19 +238,6 @@ export default function VerseActionMenu({
     <AnimatePresence mode="wait">
       {isOpen && (
         <>
-          {/* ── Backdrop ──────────────────────────────────────────────────── */}
-          <motion.div
-            key="backdrop"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.22 }}
-            onClick={onClose}
-            className="fixed inset-0 z-[1100]"
-            style={{ backgroundColor: backdropBg, backdropFilter: 'blur(10px)' }}
-            aria-hidden="true"
-          />
-
           {/* ── Bottom Sheet ──────────────────────────────────────────────── */}
           <motion.div
             key="sheet"
@@ -268,6 +255,10 @@ export default function VerseActionMenu({
               borderRadius: '28px 28px 0 0',
               boxShadow: '0 -10px 40px rgba(0,0,0,0.18)',
               paddingBottom: 'env(safe-area-inset-bottom)',
+              height: '25vh',
+              maxHeight: '25vh',
+              display: 'flex',
+              flexDirection: 'column',
             }}
             data-bottom-sheet="true"
           >
@@ -285,7 +276,7 @@ export default function VerseActionMenu({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.15 }}
-                  className="px-4 pt-3 pb-6"
+                  className="px-4 pt-3 pb-6 flex flex-col flex-1 min-h-0 overflow-y-auto"
                 >
                   {/* Selected verse label */}
                   <p
@@ -408,9 +399,9 @@ export default function VerseActionMenu({
                           <PenTool
                             className="w-[19px] h-[19px]"
                             strokeWidth={2}
-                            style={{ color: existingHighlightColor ? '#31C4BE' : '#000000' }}
+                            style={{ color: existingHighlightColor ? '#31C4BE' : (dm ? '#FFFFFF' : '#000000') }}
                           />
-                          <span className="text-[10px] font-medium" style={{ color: existingHighlightColor ? '#31C4BE' : '#000000' }}>
+                          <span className="text-[10px] font-medium" style={{ color: existingHighlightColor ? '#31C4BE' : (dm ? '#FFFFFF' : '#000000') }}>
                             Highlight
                           </span>
                         </button>
@@ -430,9 +421,9 @@ export default function VerseActionMenu({
                           {isSavedVerse ? (
                             <BookmarkCheck className="w-[19px] h-[19px] text-[#31C4BE]" strokeWidth={2} />
                           ) : (
-                            <BookmarkPlus className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: '#000000' }} />
+                            <BookmarkPlus className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
                           )}
-                          <span className="text-[10px] font-medium" style={{ color: isSavedVerse ? '#31C4BE' : '#000000' }}>
+                          <span className="text-[10px] font-medium" style={{ color: isSavedVerse ? '#31C4BE' : (dm ? '#FFFFFF' : '#000000') }}>
                             {isSavedVerse ? 'Saved' : 'Save'}
                           </span>
                         </button>
@@ -445,8 +436,8 @@ export default function VerseActionMenu({
                           className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] transition-all active:scale-95"
                           style={{ height: 74, backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <FileText className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: '#000000' }} />
-                          <span className="text-[10px] font-medium" style={{ color: '#000000' }}>Note</span>
+                          <FileText className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
+                          <span className="text-[10px] font-medium" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Note</span>
                         </button>
 
                         {/* Compare */}
@@ -457,8 +448,8 @@ export default function VerseActionMenu({
                           className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] transition-all active:scale-95"
                           style={{ height: 74, backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <ArrowRightLeft className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: '#000000' }} />
-                          <span className="text-[10px] font-medium" style={{ color: '#000000' }}>Compare</span>
+                          <ArrowRightLeft className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
+                          <span className="text-[10px] font-medium" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Compare</span>
                         </button>
 
                         {/* Share */}
@@ -469,8 +460,8 @@ export default function VerseActionMenu({
                           className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] transition-all active:scale-95"
                           style={{ height: 74, backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <Share2 className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: '#000000' }} />
-                          <span className="text-[10px] font-medium" style={{ color: '#000000' }}>Share</span>
+                          <Share2 className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
+                          <span className="text-[10px] font-medium" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Share</span>
                         </button>
                       </div>
                     </>
@@ -486,7 +477,7 @@ export default function VerseActionMenu({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ duration: 0.15 }}
-                  className="px-4 pt-3 pb-6"
+                  className="px-4 pt-3 pb-6 flex flex-col flex-1 min-h-0 overflow-y-auto"
                 >
                   {/* Header */}
                   <div
@@ -551,8 +542,8 @@ export default function VerseActionMenu({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ duration: 0.15 }}
-                  className="flex flex-col"
-                  style={{ maxHeight: '80dvh' }}
+                  className="flex flex-col flex-1 min-h-0"
+                  style={{ height: '100%' }}
                 >
                   {/* ── Header ──────────────────────────────────────────── */}
                   <div
@@ -769,7 +760,8 @@ export default function VerseActionMenu({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ duration: 0.15 }}
-                  className="flex flex-col px-4 pb-5"
+                  className="flex flex-col flex-1 min-h-0 px-4 pb-5"
+                  style={{ height: '100%' }}
                 >
                   {/* Header */}
                   <div
@@ -802,7 +794,7 @@ export default function VerseActionMenu({
                     value={noteInput}
                     onChange={(e) => setNoteInput(e.target.value)}
                     placeholder="Write your thoughts here…"
-                    className="w-full min-h-[120px] rounded-[18px] p-4 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 resize-none mb-4"
+                    className="w-full flex-1 min-h-0 rounded-[18px] p-4 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 resize-none mb-4 overflow-y-auto"
                     style={{
                       backgroundColor: inputBg,
                       border: `1px solid ${inputBorder}`,

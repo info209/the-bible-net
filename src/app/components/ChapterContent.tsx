@@ -126,17 +126,20 @@ function ChapterContent({
     
     isLongPressRef.current = false;
     
-    longPressTimerRef.current = setTimeout(() => {
-      console.log(`[VersePress] Trigger long press for verse ${verseNum}`);
-      if (onVerseLongPress) onVerseLongPress(verseNum, e);
-      isLongPressRef.current = true;
-      longPressTimerRef.current = null;
-      
-      // If mobile, try to provide haptic feedback if available
-      if ('vibrate' in navigator) {
-        try { navigator.vibrate(50); } catch (e) {}
-      }
-    }, 600); // 600ms for a distinctive long press
+    // Only activate the long press timer if we are NOT already in selection mode
+    if (selectedVerses.length === 0) {
+      longPressTimerRef.current = setTimeout(() => {
+        console.log(`[VersePress] Trigger long press for verse ${verseNum}`);
+        if (onVerseLongPress) onVerseLongPress(verseNum, e);
+        isLongPressRef.current = true;
+        longPressTimerRef.current = null;
+        
+        // If mobile, try to provide haptic feedback if available
+        if ('vibrate' in navigator) {
+          try { navigator.vibrate(50); } catch (err) {}
+        }
+      }, 600); // 600ms for a distinctive long press
+    }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
@@ -186,7 +189,11 @@ function ChapterContent({
     // If not a long press and moved very little, it's a tap
     if (moveDist < 15) {
       console.log(`[VersePress] Trigger tap for verse ${verseNum}`);
-      if (onVerseTap) onVerseTap(verseNum, e);
+      // Gesture requirements: Long press ONLY activates selection mode initially.
+      // After that, normal tap toggles selection.
+      if (selectedVerses.length > 0) {
+        if (onVerseTap) onVerseTap(verseNum, e);
+      }
     }
     
     touchStartPosRef.current = null;
@@ -306,7 +313,13 @@ function ChapterContent({
 
             // Determine background: highlight > reading > transparent
             let bgColor: string;
-            if (highlight?.metadata?.color && highlight.metadata.color !== 'none') {
+            let outlineStyle = 'none';
+            if (isSelected) {
+              bgColor = theme.bg === '#000000'
+                ? 'rgba(49, 196, 190, 0.2)'
+                : 'rgba(49, 196, 190, 0.12)';
+              outlineStyle = '1.5px solid #31C4BE';
+            } else if (highlight?.metadata?.color && highlight.metadata.color !== 'none') {
               bgColor = (HIGHLIGHT_COLOR_MAP[highlight.metadata.color] ?? highlight.metadata.color) + '55';
             } else if (isReading) {
               bgColor = 'rgba(49, 196, 190, 0.08)';
@@ -329,6 +342,8 @@ function ChapterContent({
                 style={{
                   color: theme.text,
                   backgroundColor: bgColor,
+                  outline: outlineStyle,
+                  outlineOffset: '-1.5px',
                 }}
               >
                 <sup className="font-bold mr-1.5 select-none opacity-60" style={{ color: theme.verseNumber }}>{verse.number}</sup>

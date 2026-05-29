@@ -282,6 +282,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     showSettingsMenu || showAudioControlPanel || showVerseSelector ||
     showTimerMenu || showSearch || showCompareSelector || showCompareMenu ||
     selectedVerses.length > 0;
+
+  const isBlockingPopupOpen = showBookSelector || showChapterSelector ||
+    showVersionSelector || showMusicSelector || showMoreMenu ||
+    showSettingsMenu || showAudioControlPanel || showVerseSelector ||
+    showTimerMenu || showSearch || showCompareSelector || showCompareMenu;
   const shouldLockBodyScroll = showBookSelector || showChapterSelector ||
     showVersionSelector || showMusicSelector ||
     showSettingsMenu || showAudioControlPanel || showVerseSelector ||
@@ -319,13 +324,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       setShowVerseActionMenu(false);
       return;
     }
-
-    setShowVerseActionMenu(false);
-    const timer = window.setTimeout(() => {
-      setShowVerseActionMenu(true);
-    }, VERSE_ACTION_MENU_OPEN_DELAY);
-
-    return () => window.clearTimeout(timer);
+    setShowVerseActionMenu(true);
   }, [selectedVerses]);
 
   // Audio narration state
@@ -2411,7 +2410,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       </div>
 
       {/* Audio Controls Floating Button — hidden when any popup or selector is open */}
-      {showAudioControls && !isAnyPopupOpen && !showAudioControlPanel && !showSettingsMenu && (
+      {showAudioControls && !isBlockingPopupOpen && !showAudioControlPanel && !showSettingsMenu && (
         <AudioFloatingPlayer
           playerState={audioPlayerState}
           isReadingMode={isReadingMode}
