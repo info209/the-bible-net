@@ -62,10 +62,11 @@ function getInitials(name?: string | null, email?: string | null): string {
 }
 
 // ─── Animated skeleton shimmer ─────────────────────────────────────────────
-function Shimmer({ className }: { className?: string }) {
+function Shimmer({ className, style }: { className?: string; style?: React.CSSProperties }) {
   return (
     <div
       className={`rounded-xl bg-gradient-to-r from-gray-100 via-gray-200 to-gray-100 bg-[length:200%_100%] animate-[shimmer_1.4s_ease-in-out_infinite] ${className ?? ''}`}
+      style={style}
     />
   );
 }
