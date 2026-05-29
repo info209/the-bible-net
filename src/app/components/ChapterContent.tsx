@@ -189,8 +189,8 @@ function ChapterContent({
     // If not a long press and moved very little, it's a tap
     if (moveDist < 15) {
       console.log(`[VersePress] Trigger tap for verse ${verseNum}`);
-      // Gesture requirements: Long press ONLY activates selection mode initially.
-      // After that, normal tap toggles selection.
+      // Only the subsequent taps on the verse (post entering selection mode) should select/deselect.
+      // The first tap to enter selection mode should require the hold.
       if (selectedVerses.length > 0) {
         if (onVerseTap) onVerseTap(verseNum, e);
       }
@@ -313,13 +313,7 @@ function ChapterContent({
 
             // Determine background: highlight > reading > transparent
             let bgColor: string;
-            let outlineStyle = 'none';
-            if (isSelected) {
-              bgColor = theme.bg === '#000000'
-                ? 'rgba(49, 196, 190, 0.2)'
-                : 'rgba(49, 196, 190, 0.12)';
-              outlineStyle = '1.5px solid #31C4BE';
-            } else if (highlight?.metadata?.color && highlight.metadata.color !== 'none') {
+            if (highlight?.metadata?.color && highlight.metadata.color !== 'none') {
               bgColor = (HIGHLIGHT_COLOR_MAP[highlight.metadata.color] ?? highlight.metadata.color) + '55';
             } else if (isReading) {
               bgColor = 'rgba(49, 196, 190, 0.08)';
@@ -342,8 +336,6 @@ function ChapterContent({
                 style={{
                   color: theme.text,
                   backgroundColor: bgColor,
-                  outline: outlineStyle,
-                  outlineOffset: '-1.5px',
                 }}
               >
                 <sup className="font-bold mr-1.5 select-none opacity-60" style={{ color: theme.verseNumber }}>{verse.number}</sup>
