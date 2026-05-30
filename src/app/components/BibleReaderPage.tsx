@@ -536,82 +536,80 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   }, [navigateNext, selectedChapter, totalChapters, currentBookIndex, allBooks]);
 
   // ─── New gesture system via useGestureNavigation hook ───────────────────
+  // Uses native DOM listeners (not React synthetic events) so child elements
+  // calling e.stopPropagation() do NOT block chapter navigation gestures.
 
   // isSliderDragging tracks audio slider drag — must disable gesture during it
   const gestureDisabled = isAnyPopupOpen || isSliderDragging;
 
-  const { handlers: gestureHandlers, cancel: cancelGesture } = useGestureNavigation(
-    {
-      onDragStart: useCallback(() => {
-        if (pageTransition === 'slide' || pageTransition === 'scroll') {
-          dragOffsetRef.current = 0;
-          setIsDragging(true);
-          setDragOffsetForRender(0);
-        }
-      }, [pageTransition]),
+  const onDragStart = useCallback(() => {
+    if (pageTransition === 'slide' || pageTransition === 'scroll') {
+      dragOffsetRef.current = 0;
+      setIsDragging(true);
+      setDragOffsetForRender(0);
+    }
+  }, [pageTransition]);
 
-      onDragMove: useCallback((offset: number) => {
-        if (pageTransition !== 'slide' && pageTransition !== 'scroll') return;
-        dragOffsetRef.current = offset;
-        // Use rAF so we don't re-render more than once per animation frame
-        if (rafRef.current === null) {
-          rafRef.current = requestAnimationFrame(() => {
-            setDragOffsetForRender(dragOffsetRef.current);
-            rafRef.current = null;
-          });
-        }
-      }, [pageTransition]),
+  const onDragMove = useCallback((offset: number) => {
+    if (pageTransition !== 'slide' && pageTransition !== 'scroll') return;
+    dragOffsetRef.current = offset;
+    // Throttle re-renders to once per animation frame
+    if (rafRef.current === null) {
+      rafRef.current = requestAnimationFrame(() => {
+        setDragOffsetForRender(dragOffsetRef.current);
+        rafRef.current = null;
+      });
+    }
+  }, [pageTransition]);
 
-      onDragEnd: useCallback((offset: number, velocity: number, isHorizontal: boolean) => {
-        // Cancel any pending rAF
-        if (rafRef.current !== null) {
-          cancelAnimationFrame(rafRef.current);
-          rafRef.current = null;
-        }
+  const onDragEnd = useCallback((offset: number, velocity: number, isHorizontal: boolean) => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
 
-        if (!isHorizontal) {
-          // Purely vertical gesture — settle back cleanly
-          setIsDragging(false);
-          setDragOffsetForRender(0);
-          dragOffsetRef.current = 0;
-          return;
-        }
+    if (!isHorizontal) {
+      setIsDragging(false);
+      setDragOffsetForRender(0);
+      dragOffsetRef.current = 0;
+      return;
+    }
 
-        const DIST_THRESHOLD = 60;   // px
-        const VEL_THRESHOLD  = 0.45; // px/ms
+    const DIST_THRESHOLD = 60;   // px
+    const VEL_THRESHOLD  = 0.45; // px/ms
 
-        const absOffset = Math.abs(offset);
-        const absVelocity = Math.abs(velocity);
-        const shouldCommit = absOffset > DIST_THRESHOLD || (absVelocity > VEL_THRESHOLD && absOffset > 18);
+    const absOffset = Math.abs(offset);
+    const absVelocity = Math.abs(velocity);
+    const shouldCommit = absOffset > DIST_THRESHOLD || (absVelocity > VEL_THRESHOLD && absOffset > 18);
 
-        if (shouldCommit) {
-          if (offset < 0 && !isLastChapterOfBible) {
-            handleNext();
-          } else if (offset > 0 && !isFirstChapterOfBible) {
-            handlePrevious();
-          }
-        }
+    if (shouldCommit) {
+      if (offset < 0 && !isLastChapterOfBible) {
+        handleNext();
+      } else if (offset > 0 && !isFirstChapterOfBible) {
+        handlePrevious();
+      }
+    }
 
-        // Always settle drag state back to resting position
-        setIsDragging(false);
-        setDragOffsetForRender(0);
-        dragOffsetRef.current = 0;
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      }, [isLastChapterOfBible, isFirstChapterOfBible, handleNext, handlePrevious, pageTransition]),
+    setIsDragging(false);
+    setDragOffsetForRender(0);
+    dragOffsetRef.current = 0;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLastChapterOfBible, isFirstChapterOfBible, handleNext, handlePrevious, pageTransition]);
 
-      onDragCancel: useCallback(() => {
-        if (rafRef.current !== null) {
-          cancelAnimationFrame(rafRef.current);
-          rafRef.current = null;
-        }
-        setIsDragging(false);
-        setDragOffsetForRender(0);
-        dragOffsetRef.current = 0;
-      }, []),
-    },
+  const onDragCancel = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    setIsDragging(false);
+    setDragOffsetForRender(0);
+    dragOffsetRef.current = 0;
+  }, []);
+
+  const { containerRef: gestureContainerRef, cancel: cancelGesture } = useGestureNavigation(
+    { onDragStart, onDragMove, onDragEnd, onDragCancel },
     {
       disabled: gestureDisabled,
-      // Abort if a popup opens mid-gesture
       shouldAbort: () => isAnyPopupOpen || isSliderDragging,
     }
   );
@@ -622,6 +620,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       cancelGesture();
     }
   }, [gestureDisabled, isDragging, cancelGesture]);
+
 
   // Trackpad swipe navigation (two-finger swipe on laptop trackpads)
   useEffect(() => {
@@ -2217,12 +2216,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       {/* Main Reading Content */}
       <div
+        ref={gestureContainerRef as React.RefObject<HTMLDivElement>}
         className="transition-colors duration-300 relative"
         style={{ backgroundColor: currentTheme.bg }}
-        onTouchStart={gestureHandlers.onTouchStart}
-        onTouchMove={gestureHandlers.onTouchMove}
-        onTouchEnd={gestureHandlers.onTouchEnd}
-        onTouchCancel={gestureHandlers.onTouchCancel}
       >
         <ChapterTransitionStage
           pageKey={chapterKey}
