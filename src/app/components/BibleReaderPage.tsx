@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, Home, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity } from 'lucide-react';
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
@@ -6,6 +6,9 @@ import { MdCompareArrows } from 'react-icons/md';
 import { BiBible } from 'react-icons/bi';
 import { LuLibraryBig } from 'react-icons/lu';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGestureNavigation } from './navigation/useGestureNavigation';
+import { useChapterTransition } from './navigation/useChapterTransition';
+import ChapterTransitionStage from './navigation/ChapterTransitionStage';
 import AppHeader from './AppHeader';
 import EqualizerIcon from './EqualizerIcon';
 import ChapterContent, { mockBibleContent } from './ChapterContent';
@@ -253,20 +256,33 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
   }, [fontSize]);
 
-  // Page transition state
-  const [transitionDirection, setTransitionDirection] = useState<'next' | 'prev' | null>(null);
-  const [chapterKey, setChapterKey] = useState(0);
+  // ─── Transition system (new hook-based, centralized) ─────────────────────
+  const {
+    transitionState,
+    isNavigating,
+    isNavigatingLive,
+    navigateNext,
+    navigatePrev,
+    releaseLock,
+  } = useChapterTransition(pageTransition);
 
-  // Touch/swipe state for interactive slide
+  // Expose convenient aliases that match what the rest of the component uses
+  const chapterKey = transitionState.key;
+  const transitionDirection = transitionState.direction;
+
+  // ─── Interactive drag state (ref-only — no React state for hot path) ──────
+  /**
+   * dragOffsetRef holds the current gesture offset in px during a drag.
+   * We use a React state pair (dragOffsetState) ONLY to trigger a re-render
+   * when we need to switch between AnimatePresence mode and drag-layer mode.
+   * During actual finger movement we update the DOM directly via a callback.
+   */
+  const dragOffsetRef = useRef(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragOffset, setDragOffset] = useState(0);
-  const touchStartX = useRef<number>(0);
-  const touchStartY = useRef<number>(0);
-  const touchEndX = useRef<number>(0);
-  const touchEndY = useRef<number>(0);
-  const touchStartTime = useRef<number>(0);
-  const touchVelocityX = useRef<number>(0);
-  const gestureDetected = useRef<'none' | 'horizontal' | 'vertical'>('none');
+  // Stable value used for the interactive layer render (updated on RAF)
+  const [dragOffsetForRender, setDragOffsetForRender] = useState(0);
+  const rafRef = useRef<number | null>(null);
+
   const contentRef = useRef<HTMLDivElement>(null);
 
   const lastScrollY = useRef(0);
@@ -479,225 +495,158 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }));
   };
 
-  const handlePrevious = () => {
-    setTransitionDirection('prev');
-    setChapterKey(prev => prev + 1);
+  // ─── Navigation handlers (call navigatePrev/navigateNext from hook) ────────
 
-    // Scroll to top immediately
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+  const handlePrevious = useCallback(() => {
+    if (!navigatePrev()) return; // locked — ignore
 
+    // Instant scroll reset (smooth conflicts with page transition animation)
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+
+    // Chapter state change is deferred slightly so the exit animation can
+    // begin rendering the OLD content before the new content mounts.
     setTimeout(() => {
       if (selectedChapter > 1) {
-        // Go to previous chapter in same book
         setSelectedChapter(selectedChapter - 1);
       } else if (currentBookIndex > 0) {
-        // Go to last chapter of previous book
         const prevBook = allBooks[currentBookIndex - 1];
         setSelectedBook(prevBook);
         setSelectedChapter(bookChapters[prevBook]);
       }
-    }, 50);
-  };
+    }, 32);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigatePrev, selectedChapter, currentBookIndex, allBooks]);
 
-  const handleNext = () => {
-    setTransitionDirection('next');
-    setChapterKey(prev => prev + 1);
+  const handleNext = useCallback(() => {
+    if (!navigateNext()) return; // locked — ignore
 
-    // Scroll to top immediately
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    // Instant scroll reset
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
 
     setTimeout(() => {
       if (selectedChapter < totalChapters) {
-        // Go to next chapter in same book
         setSelectedChapter(selectedChapter + 1);
       } else if (currentBookIndex < allBooks.length - 1) {
-        // Go to first chapter of next book
         const nextBook = allBooks[currentBookIndex + 1];
         setSelectedBook(nextBook);
         setSelectedChapter(1);
       }
-    }, 50);
-  };
+    }, 32);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navigateNext, selectedChapter, totalChapters, currentBookIndex, allBooks]);
 
-  // Interactive drag handlers for slide transition
-  const handleTouchStart = (e: React.TouchEvent) => {
-    if (isAnyPopupOpen) return;
-    
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-    touchEndX.current = e.touches[0].clientX;
-    touchEndY.current = e.touches[0].clientY;
-    touchStartTime.current = Date.now();
-    touchVelocityX.current = 0;
-    gestureDetected.current = 'none';
-  };
+  // ─── New gesture system via useGestureNavigation hook ───────────────────
 
-  const handleTouchMove = (e: React.TouchEvent) => {
-    if (isAnyPopupOpen) return;
+  // isSliderDragging tracks audio slider drag — must disable gesture during it
+  const gestureDisabled = isAnyPopupOpen || isSliderDragging;
 
-    touchEndX.current = e.touches[0].clientX;
-    touchEndY.current = e.touches[0].clientY;
-    const diffX = e.touches[0].clientX - touchStartX.current;
-    const diffY = e.touches[0].clientY - touchStartY.current;
-
-    // Detect gesture direction only once after a meaningful threshold.
-    // We default to vertical (scroll) and only switch to horizontal when the
-    // X displacement clearly dominates Y. This prevents accidental chapter
-    // changes when the user slightly moves fingers sideways while scrolling.
-    if (gestureDetected.current === 'none') {
-      const initThreshold = 10; // minimum movement before we classify at all
-      if (Math.abs(diffX) > initThreshold || Math.abs(diffY) > initThreshold) {
-        // Only treat as horizontal when X is at least 2.5× the Y movement.
-        // Everything else (including diagonal) is treated as vertical scroll.
-        if (Math.abs(diffX) > Math.abs(diffY) * 2.5) {
-          gestureDetected.current = 'horizontal';
-        } else {
-          gestureDetected.current = 'vertical';
+  const { handlers: gestureHandlers, cancel: cancelGesture } = useGestureNavigation(
+    {
+      onDragStart: useCallback(() => {
+        if (pageTransition === 'slide' || pageTransition === 'scroll') {
+          dragOffsetRef.current = 0;
+          setIsDragging(true);
+          setDragOffsetForRender(0);
         }
-      }
-    }
+      }, [pageTransition]),
 
-    // If vertical scroll, do nothing - let native scrolling work
-    if (gestureDetected.current === 'vertical') {
-      return;
-    }
+      onDragMove: useCallback((offset: number) => {
+        if (pageTransition !== 'slide' && pageTransition !== 'scroll') return;
+        dragOffsetRef.current = offset;
+        // Use rAF so we don't re-render more than once per animation frame
+        if (rafRef.current === null) {
+          rafRef.current = requestAnimationFrame(() => {
+            setDragOffsetForRender(dragOffsetRef.current);
+            rafRef.current = null;
+          });
+        }
+      }, [pageTransition]),
 
-    if (pageTransition !== 'slide') {
-      // For non-slide transitions we only need horizontal gesture detection
-      return;
-    }
+      onDragEnd: useCallback((offset: number, velocity: number, isHorizontal: boolean) => {
+        // Cancel any pending rAF
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
 
-    // If horizontal and dragging is engaged, handle page navigation
-    if (gestureDetected.current === 'horizontal') {
-      if (!isDragging) {
-        setIsDragging(true);
-        isDraggingRef.current = true;
-      }
+        if (!isHorizontal) {
+          // Purely vertical gesture — settle back cleanly
+          setIsDragging(false);
+          setDragOffsetForRender(0);
+          dragOffsetRef.current = 0;
+          return;
+        }
 
-      // Resistance logic at Bible boundaries
-      let effectiveDiffX = diffX;
-      if ((diffX < 0 && isLastChapterOfBible) || (diffX > 0 && isFirstChapterOfBible)) {
-        effectiveDiffX = diffX * 0.3; // 30% resistance
-      }
+        const DIST_THRESHOLD = 60;   // px
+        const VEL_THRESHOLD  = 0.45; // px/ms
 
-      setDragOffset(effectiveDiffX);
-      
-      // Calculate velocity for natural end-gesture detection
-      const now = Date.now();
-      const deltaTime = now - touchStartTime.current;
-      if (deltaTime > 0) {
-        touchVelocityX.current = Math.abs(diffX) / deltaTime;
-      }
-    }
-  };
+        const absOffset = Math.abs(offset);
+        const absVelocity = Math.abs(velocity);
+        const shouldCommit = absOffset > DIST_THRESHOLD || (absVelocity > VEL_THRESHOLD && absOffset > 18);
 
-  const handleTouchEnd = () => {
-    if (isAnyPopupOpen) return;
-
-    const diffX = touchEndX.current - touchStartX.current;
-    const velocity = touchVelocityX.current;
-    const swipeThreshold = 80;
-    const velocityThreshold = 0.6; // px/ms
-
-    if (pageTransition !== 'slide') {
-      // For non-slide transitions, use velocity-aware swipe detection
-      if (gestureDetected.current === 'horizontal') {
-        if (Math.abs(diffX) > swipeThreshold || velocity > velocityThreshold) {
-          if (diffX < -40 && !isLastChapterOfBible) {
+        if (shouldCommit) {
+          if (offset < 0 && !isLastChapterOfBible) {
             handleNext();
-          } else if (diffX > 40 && !isFirstChapterOfBible) {
+          } else if (offset > 0 && !isFirstChapterOfBible) {
             handlePrevious();
           }
         }
+
+        // Always settle drag state back to resting position
+        setIsDragging(false);
+        setDragOffsetForRender(0);
+        dragOffsetRef.current = 0;
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [isLastChapterOfBible, isFirstChapterOfBible, handleNext, handlePrevious, pageTransition]),
+
+      onDragCancel: useCallback(() => {
+        if (rafRef.current !== null) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+        setIsDragging(false);
+        setDragOffsetForRender(0);
+        dragOffsetRef.current = 0;
+      }, []),
+    },
+    {
+      disabled: gestureDisabled,
+      // Abort if a popup opens mid-gesture
+      shouldAbort: () => isAnyPopupOpen || isSliderDragging,
+    }
+  );
+
+  // Cancel gesture if any popup opens while dragging
+  useEffect(() => {
+    if (gestureDisabled && isDragging) {
+      cancelGesture();
+    }
+  }, [gestureDisabled, isDragging, cancelGesture]);
+
+  // Trackpad swipe navigation (two-finger swipe on laptop trackpads)
+  useEffect(() => {
+    const swipeThreshold = 50;
+    let lastSwipeTime = 0;
+    const swipeDebounce = 850;
+
+    const handleWheel = (e: WheelEvent) => {
+      const horizontalDelta = Math.abs(e.deltaX);
+      const verticalDelta = Math.abs(e.deltaY);
+
+      if (horizontalDelta > verticalDelta && horizontalDelta > swipeThreshold) {
+        const now = Date.now();
+        if (now - lastSwipeTime < swipeDebounce) return;
+        lastSwipeTime = now;
+
+        if (e.deltaX > 0 && !isFirstChapterOfBible) handlePrevious();
+        else if (e.deltaX < 0 && !isLastChapterOfBible) handleNext();
       }
-      gestureDetected.current = 'none';
-      return;
-    }
+    };
 
-    if (!isDragging) {
-      gestureDetected.current = 'none';
-      return;
-    }
-
-    const completionThreshold = window.innerWidth * 0.25; // 25% of screen width
-
-    // Complete transition if dragged far enough OR flicked fast enough
-    if (Math.abs(dragOffset) > completionThreshold || velocity > velocityThreshold) {
-      if (dragOffset < -20 && !isLastChapterOfBible) {
-        handleNext();
-      } else if (dragOffset > 20 && !isFirstChapterOfBible) {
-        handlePrevious();
-      }
-    }
-
-    // Reset drag state
-    setIsDragging(false);
-    isDraggingRef.current = false;
-    setDragOffset(0);
-    gestureDetected.current = 'none';
-  };
-
-  // Get transition animation variants
-  const getTransitionVariants = () => {
-    const direction = transitionDirection === 'next' ? 1 : -1;
-
-    switch (pageTransition) {
-      case 'slide':
-        return {
-          initial: { x: `${100 * direction}%`, opacity: 1 },
-          animate: { x: 0, opacity: 1 },
-          exit: { x: `${-100 * direction}%`, opacity: 1 }
-        };
-
-      case 'curl':
-        const origin = direction > 0 ? 'left center' : 'right center';
-        return {
-          initial: {
-            rotateY: 90 * direction,
-            opacity: 0
-          },
-          animate: {
-            rotateY: 0,
-            opacity: 1
-          },
-          exit: {
-            rotateY: -90 * direction,
-            opacity: 0
-          },
-          style: {
-            transformOrigin: origin
-          }
-        };
-
-      case 'fade':
-        return {
-          initial: { opacity: 0 },
-          animate: { opacity: 1 },
-          exit: { opacity: 0 }
-        };
-
-      case 'scroll':
-      default:
-        return {
-          initial: { y: direction > 0 ? 50 : -50, opacity: 0 },
-          animate: { y: 0, opacity: 1 },
-          exit: { y: direction > 0 ? -50 : 50, opacity: 0 }
-        };
-    }
-  };
-
-  const transitionConfig: Record<string, any> = {
-    slide: { duration: 0.7, ease: [0.4, 0, 0.2, 1] },
-    curl: { duration: 0.9, ease: [0.4, 0, 0.2, 1] },
-    fade: { duration: 0.5, ease: 'easeInOut' },
-    scroll: { duration: 0.6, ease: [0.4, 0, 0.2, 1] }
-  };
+    window.addEventListener('wheel', handleWheel, { passive: true });
+    return () => window.removeEventListener('wheel', handleWheel);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedChapter, selectedBook, isFirstChapterOfBible, isLastChapterOfBible]);
 
   // Theme configurations
   const themeConfig = {
@@ -2167,10 +2116,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         totalChapters={totalChapters}
         selectedBook={selectedBook}
         onChapterChange={(chapter: number) => {
+          const dir = chapter > selectedChapter ? 'next' : 'prev';
+          if (dir === 'next') navigateNext(); else navigatePrev();
           setSelectedChapter(chapter);
-          setTransitionDirection(chapter > selectedChapter ? 'next' : 'prev');
-          setChapterKey(prev => prev + 1);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+          window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
         }}
         onBookChange={(direction: 'prev' | 'next') => {
           if (direction === 'next' && !isLastChapterOfBible) {
@@ -2268,145 +2217,75 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       {/* Main Reading Content */}
       <div
-        className="transition-colors duration-300 relative overflow-hidden touch-pan-y"
+        className="transition-colors duration-300 relative"
         style={{ backgroundColor: currentTheme.bg }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
+        onTouchStart={gestureHandlers.onTouchStart}
+        onTouchMove={gestureHandlers.onTouchMove}
+        onTouchEnd={gestureHandlers.onTouchEnd}
+        onTouchCancel={gestureHandlers.onTouchCancel}
       >
-        {pageTransition === 'slide' && isDragging ? (
-          /* Interactive slide mode - show both pages */
-          <>
-            {/* Next page (shows when dragging left) */}
-            {dragOffset < 0 && (
-              <div
-                className="absolute inset-0"
-                style={{
-                  transform: `translateX(${100 + (dragOffset / window.innerWidth) * 100}%)`,
-                  backgroundColor: currentTheme.bg
-                }}
-              >
-                <ChapterContent
-                  book={nextChapterInfo.book}
-                  chapter={nextChapterInfo.chapter}
-                  font={selectedFont}
-                  fontSize={fontSize}
-                  version={selectedVersion}
-                  scrollToVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? selectedVerse : undefined}
-                  readingVerse={nextChapterInfo.chapter === selectedChapter && nextChapterInfo.book === selectedBook ? currentReadingVerse : null}
-                  theme={currentTheme}
-                  savedVerseIds={savedVerseIds}
-                  isSliderDragging={isSliderDragging}
-                />
-              </div>
-            )}
-
-            {/* Previous page (shows when dragging right) */}
-            {dragOffset > 0 && (
-              <div
-                className="absolute inset-0"
-                style={{
-                  transform: `translateX(${-100 + (dragOffset / window.innerWidth) * 100}%)`,
-                  backgroundColor: currentTheme.bg
-                }}
-              >
-                <ChapterContent
-                  book={prevChapterInfo.book}
-                  chapter={prevChapterInfo.chapter}
-                  font={selectedFont}
-                  fontSize={fontSize}
-                  version={selectedVersion}
-                  scrollToVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? selectedVerse : undefined}
-                  readingVerse={prevChapterInfo.chapter === selectedChapter && prevChapterInfo.book === selectedBook ? currentReadingVerse : null}
-                  theme={currentTheme}
-                  savedVerseIds={savedVerseIds}
-                  isSliderDragging={isSliderDragging}
-                />
-              </div>
-            )}
-
-            {/* Current page */}
-            <div
-              className="relative"
-              style={{
-                transform: `translateX(${(dragOffset / window.innerWidth) * 100}%)`,
-                transition: 'none'
-              }}
-            >
-              {compareMode.isActive ? (
-                <CompareView
-                  book={selectedBook}
-                  chapter={selectedChapter}
-                  selectedVersions={compareMode.selectedVersions}
-                  selectedTheme={selectedTheme}
-                />
-              ) : (
-                <ChapterContent
-                  book={selectedBook}
-                  chapter={selectedChapter}
-                  font={selectedFont}
-                  fontSize={fontSize}
-                  version={selectedVersion}
-                  scrollToVerse={selectedVerse}
-                  readingVerse={currentReadingVerse}
-                  theme={currentTheme}
-                  savedVerseIds={savedVerseIds}
-                  isSliderDragging={isSliderDragging}
-                  highlights={userHighlights}
-                  notes={userNotes}
-                />
-              )}
-            </div>
-          </>
-        ) : (
-          /* Normal transition modes */
-          <AnimatePresence mode="wait" initial={false}>
-            {(() => {
-              const variants = getTransitionVariants();
-              const { style, ...animationVariants } = variants;
-              return (
-                <motion.div
-                  key={chapterKey}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  variants={animationVariants}
-                  transition={transitionConfig[pageTransition]}
-                  style={style}
-                >
-                  {compareMode.isActive ? (
-                    <CompareView
-                      book={selectedBook}
-                      chapter={selectedChapter}
-                      selectedVersions={compareMode.selectedVersions}
-                      selectedTheme={selectedTheme}
-                      apiVersions={apiVersions}
-                      font={selectedFont}
-                      fontSize={fontSize}
-                    />
-                  ) : (
-                    <ChapterContent
-                      book={selectedBook}
-                      chapter={selectedChapter}
-                      font={selectedFont}
-                      fontSize={fontSize}
-                      version={selectedVersion}
-                      scrollToVerse={selectedVerse}
-                      readingVerse={currentReadingVerse}
-                      theme={currentTheme}
-                      selectedVerses={selectedVerses}
-                      savedVerseIds={savedVerseIds}
-                      onVerseLongPress={onVerseLongPress}
-                      onVerseTap={onVerseTap}
-                      highlights={userHighlights}
-                      notes={userNotes}
-                    />
-                  )}
-                </motion.div>
-              );
-            })()}
-          </AnimatePresence>
-        )}
+        <ChapterTransitionStage
+          pageKey={chapterKey}
+          direction={transitionDirection}
+          mode={pageTransition}
+          dragOffset={dragOffsetForRender}
+          isDragging={isDragging && (pageTransition === 'slide' || pageTransition === 'scroll')}
+          bgColor={currentTheme.bg}
+          prevPageContent={!isFirstChapterOfBible ? (
+            <ChapterContent
+              book={prevChapterInfo.book}
+              chapter={prevChapterInfo.chapter}
+              font={selectedFont}
+              fontSize={fontSize}
+              version={selectedVersion}
+              theme={currentTheme}
+              savedVerseIds={savedVerseIds}
+              isSliderDragging={false}
+            />
+          ) : undefined}
+          nextPageContent={!isLastChapterOfBible ? (
+            <ChapterContent
+              book={nextChapterInfo.book}
+              chapter={nextChapterInfo.chapter}
+              font={selectedFont}
+              fontSize={fontSize}
+              version={selectedVersion}
+              theme={currentTheme}
+              savedVerseIds={savedVerseIds}
+              isSliderDragging={false}
+            />
+          ) : undefined}
+        >
+          {compareMode.isActive ? (
+            <CompareView
+              book={selectedBook}
+              chapter={selectedChapter}
+              selectedVersions={compareMode.selectedVersions}
+              selectedTheme={selectedTheme}
+              apiVersions={apiVersions}
+              font={selectedFont}
+              fontSize={fontSize}
+            />
+          ) : (
+            <ChapterContent
+              book={selectedBook}
+              chapter={selectedChapter}
+              font={selectedFont}
+              fontSize={fontSize}
+              version={selectedVersion}
+              scrollToVerse={selectedVerse}
+              readingVerse={currentReadingVerse}
+              theme={currentTheme}
+              selectedVerses={selectedVerses}
+              savedVerseIds={savedVerseIds}
+              onVerseLongPress={onVerseLongPress}
+              onVerseTap={onVerseTap}
+              highlights={userHighlights}
+              notes={userNotes}
+              isSliderDragging={isSliderDragging}
+            />
+          )}
+        </ChapterTransitionStage>
       </div>
 
       {/* Audio Controls Floating Button — hidden when any popup or selector is open */}

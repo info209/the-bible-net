@@ -108,7 +108,7 @@ const PageTurnTransition: React.FC<PageTurnTransitionProps> = ({
         perspectiveOrigin: "50% 38%",
       }}
     >
-      <AnimatePresence initial={false} mode="popLayout">
+      <AnimatePresence initial={false} mode="wait">
         <motion.div
           key={pageKey}
           variants={pageVariants}
