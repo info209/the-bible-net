@@ -35,6 +35,12 @@ interface ChapterTransitionStageProps {
   /** Current chapter content */
   children: React.ReactNode;
   className?: string;
+  /**
+   * Called when the ENTER animation of a new page completes.
+   * Used by BibleReaderPage to release the navigation lock as soon as
+   * the transition is visually finished — earlier than the fallback timer.
+   */
+  onNavigationComplete?: () => void;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -251,6 +257,11 @@ const InteractiveSlideLayer = React.memo(function InteractiveSlideLayer({
  *    (bypasses AnimatePresence, uses direct CSS transforms)
  *  - Otherwise: renders through AnimatePresence with mode-appropriate variants
  *
+ * Lock release:
+ *  - `onNavigationComplete` is called when the `animate` variant finishes.
+ *    BibleReaderPage uses this to call `releaseLock()` from useChapterTransition,
+ *    unlocking navigation exactly when the enter animation ends — not on a timer.
+ *
  * Guarantees:
  *  - ALWAYS resolves to one of two stable states: page fully visible or prev page fully visible
  *  - AnimatePresence `mode="wait"` for curl/fade (one at a time)
@@ -268,10 +279,18 @@ export default function ChapterTransitionStage({
   nextPageContent,
   children,
   className = '',
+  onNavigationComplete,
 }: ChapterTransitionStageProps) {
 
   // Whether we're in interactive drag mode (only for slide & scroll)
   const isInteractiveDrag = isDragging && (mode === 'slide' || mode === 'scroll');
+
+  // Keep a stable ref to the callback so the motion.div onAnimationComplete
+  // closure doesn't go stale when the parent re-renders.
+  const onNavigationCompleteRef = useRef(onNavigationComplete);
+  useEffect(() => {
+    onNavigationCompleteRef.current = onNavigationComplete;
+  });
 
   // ── Compute variants ───────────────────────────────────────────────────────
 
@@ -341,6 +360,12 @@ export default function ChapterTransitionStage({
             backfaceVisibility: mode === 'curl' ? 'hidden' : undefined,
             WebkitBackfaceVisibility: mode === 'curl' ? 'hidden' : undefined,
             transformOrigin: curlTransformOrigin,
+          }}
+          onAnimationComplete={(definition) => {
+            // Only fire on the ENTER animation ("animate"), not on exit
+            if (definition === 'animate') {
+              onNavigationCompleteRef.current?.();
+            }
           }}
         >
           {/* Curl fold-shadow overlay */}

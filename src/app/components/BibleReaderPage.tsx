@@ -283,6 +283,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [dragOffsetForRender, setDragOffsetForRender] = useState(0);
   const rafRef = useRef<number | null>(null);
 
+  /**
+   * isSwipingRef — true while a horizontal swipe gesture is in progress.
+   * Updated via ref (no React state) so ChapterContent can check it
+   * synchronously in handlePressStart without waiting for a re-render.
+   * This prevents the 600ms long-press timer from firing during a swipe.
+   */
+  const isSwipingRef = useRef(false);
+
   const contentRef = useRef<HTMLDivElement>(null);
 
   const lastScrollY = useRef(0);
@@ -293,11 +301,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   // Prevent scroll handler from interfering with clicks
   const isUserInteracting = useRef(false);
 
+  // isAnyPopupOpen: used to disable gestures. Deliberately excludes
+  // `selectedVerses.length > 0` — verse selection should NOT block swipe
+  // navigation. Instead, the gesture hook's `shouldAbort` cancels mid-swipe
+  // if selection is active, but allows new gestures to start after.
   const isAnyPopupOpen = showBookSelector || showChapterSelector ||
     showVersionSelector || showMusicSelector || showMoreMenu ||
     showSettingsMenu || showAudioControlPanel || showVerseSelector ||
-    showTimerMenu || showSearch || showCompareSelector || showCompareMenu ||
-    selectedVerses.length > 0;
+    showTimerMenu || showSearch || showCompareSelector || showCompareMenu;
 
   const isBlockingPopupOpen = showBookSelector || showChapterSelector ||
     showVersionSelector || showMusicSelector || showMoreMenu ||
@@ -402,6 +413,23 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   const totalChapters = bookChapters[selectedBook] || 50;
 
+  // ─── Stable navigation refs ────────────────────────────────────────────────
+  // handleNext/handlePrevious read from these refs so they never suffer from
+  // stale closures even if the component re-renders mid-gesture.
+  const selectedChapterRef = useRef(selectedChapter);
+  const selectedBookRef    = useRef(selectedBook);
+  const totalChaptersRef   = useRef(totalChapters);
+  const currentBookIndexRef = useRef(currentBookIndex);
+  const allBooksRef        = useRef(allBooks);
+
+  useEffect(() => {
+    selectedChapterRef.current    = selectedChapter;
+    selectedBookRef.current       = selectedBook;
+    totalChaptersRef.current      = totalChapters;
+    currentBookIndexRef.current   = currentBookIndex;
+    allBooksRef.current           = allBooks;
+  });
+
   // Get next chapter info for preview during drag
   const getNextChapter = () => {
     if (selectedChapter < totalChapters) {
@@ -495,7 +523,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }));
   };
 
-  // ─── Navigation handlers (call navigatePrev/navigateNext from hook) ────────
+  // ─── Navigation handlers ────────────────────────────────────────────────────
+  // CRITICAL: These callbacks read navigation targets from REFS (not closure
+  // captures). This eliminates the stale-closure bug where rapid re-renders
+  // during a swipe gesture caused selectedChapter to be captured at the wrong
+  // value — resulting in the same chapter reloading instead of navigating.
 
   const handlePrevious = useCallback(() => {
     if (!navigatePrev()) return; // locked — ignore
@@ -503,19 +535,22 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     // Instant scroll reset (smooth conflicts with page transition animation)
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
 
-    // Chapter state change is deferred slightly so the exit animation can
-    // begin rendering the OLD content before the new content mounts.
+    // Read LIVE values from refs — never from the closure
+    const ch = selectedChapterRef.current;
+    const bi = currentBookIndexRef.current;
+    const books = allBooksRef.current;
+
+    // Defer chapter state update so exit animation begins on the OLD content
     setTimeout(() => {
-      if (selectedChapter > 1) {
-        setSelectedChapter(selectedChapter - 1);
-      } else if (currentBookIndex > 0) {
-        const prevBook = allBooks[currentBookIndex - 1];
+      if (ch > 1) {
+        setSelectedChapter(ch - 1);
+      } else if (bi > 0) {
+        const prevBook = books[bi - 1];
         setSelectedBook(prevBook);
         setSelectedChapter(bookChapters[prevBook]);
       }
     }, 32);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigatePrev, selectedChapter, currentBookIndex, allBooks]);
+  }, [navigatePrev]);
 
   const handleNext = useCallback(() => {
     if (!navigateNext()) return; // locked — ignore
@@ -523,26 +558,35 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     // Instant scroll reset
     window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
 
+    // Read LIVE values from refs — never from the closure
+    const ch = selectedChapterRef.current;
+    const bi = currentBookIndexRef.current;
+    const total = totalChaptersRef.current;
+    const books = allBooksRef.current;
+
     setTimeout(() => {
-      if (selectedChapter < totalChapters) {
-        setSelectedChapter(selectedChapter + 1);
-      } else if (currentBookIndex < allBooks.length - 1) {
-        const nextBook = allBooks[currentBookIndex + 1];
+      if (ch < total) {
+        setSelectedChapter(ch + 1);
+      } else if (bi < books.length - 1) {
+        const nextBook = books[bi + 1];
         setSelectedBook(nextBook);
         setSelectedChapter(1);
       }
     }, 32);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [navigateNext, selectedChapter, totalChapters, currentBookIndex, allBooks]);
+  }, [navigateNext]);
 
   // ─── New gesture system via useGestureNavigation hook ───────────────────
   // Uses native DOM listeners (not React synthetic events) so child elements
   // calling e.stopPropagation() do NOT block chapter navigation gestures.
 
-  // isSliderDragging tracks audio slider drag — must disable gesture during it
+  // Gesture is disabled by modals and audio slider drag only.
+  // Verse selection (selectedVerses.length > 0) does NOT fully disable gestures —
+  // instead shouldAbort() causes mid-gesture abort if selection becomes active.
   const gestureDisabled = isAnyPopupOpen || isSliderDragging;
 
   const onDragStart = useCallback(() => {
+    // Mark swipe as active so ChapterContent cancels long-press timer immediately
+    isSwipingRef.current = true;
     if (pageTransition === 'slide' || pageTransition === 'scroll') {
       dragOffsetRef.current = 0;
       setIsDragging(true);
@@ -563,6 +607,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   }, [pageTransition]);
 
   const onDragEnd = useCallback((offset: number, velocity: number, isHorizontal: boolean) => {
+    // Clear swiping flag
+    isSwipingRef.current = false;
+
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -597,6 +644,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   }, [isLastChapterOfBible, isFirstChapterOfBible, handleNext, handlePrevious, pageTransition]);
 
   const onDragCancel = useCallback(() => {
+    // Clear swiping flag
+    isSwipingRef.current = false;
+
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
@@ -610,9 +660,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     { onDragStart, onDragMove, onDragEnd, onDragCancel },
     {
       disabled: gestureDisabled,
-      shouldAbort: () => isAnyPopupOpen || isSliderDragging,
+      // Mid-gesture abort: cancel if a modal opens OR verse selection is active
+      shouldAbort: () => isAnyPopupOpen || isSliderDragging || selectedVerses.length > 0,
     }
   );
+
 
   // Cancel gesture if any popup opens while dragging
   useEffect(() => {
@@ -2227,6 +2279,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           dragOffset={dragOffsetForRender}
           isDragging={isDragging && (pageTransition === 'slide' || pageTransition === 'scroll')}
           bgColor={currentTheme.bg}
+          onNavigationComplete={releaseLock}
           prevPageContent={!isFirstChapterOfBible ? (
             <ChapterContent
               book={prevChapterInfo.book}
@@ -2279,6 +2332,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               highlights={userHighlights}
               notes={userNotes}
               isSliderDragging={isSliderDragging}
+              swipeActiveRef={isSwipingRef}
             />
           )}
         </ChapterTransitionStage>

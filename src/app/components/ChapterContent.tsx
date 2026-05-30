@@ -39,6 +39,13 @@ interface ChapterContentProps {
     verseNumber: string;
   };
   isSliderDragging?: boolean;
+  /**
+   * Ref from BibleReaderPage that is `true` while a horizontal swipe gesture
+   * is active. ChapterContent reads this synchronously in handlePressStart to
+   * skip the long-press timer — preventing VerseActionMenu from opening during
+   * chapter navigation gestures.
+   */
+  swipeActiveRef?: React.RefObject<boolean>;
 }
 
 // Mock Bible content by book and chapter (English)
@@ -95,7 +102,8 @@ function ChapterContent({
   scrollToVerse, readingVerse, theme, selectedVerses = [], savedVerseIds = [], 
   onVerseLongPress, onVerseTap,
   highlights = [], notes = [],
-  isSliderDragging = false
+  isSliderDragging = false,
+  swipeActiveRef,
 }: ChapterContentProps) {
   const [apiContent, setApiContent] = useState<{ title: string; verses: { number: number; text: string }[] } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -108,54 +116,62 @@ function ChapterContent({
   const handlePressStart = (e: React.MouseEvent | React.TouchEvent, verseNum: number) => {
     // Only handle left click for mouse
     if ('button' in e && e.button !== 0) return;
-    
-    // Stop propagation to prevent parent gestures from taking over immediately
-    // but don't preventDefault yet so scrolling can still start
-    e.stopPropagation();
+
+    // If a horizontal swipe is in progress, don't start a long-press at all.
+    // isSwipingRef is updated synchronously by the gesture hook — no re-render needed.
+    if (swipeActiveRef?.current) return;
 
     const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    
-    console.log(`[VersePress] Start verse ${verseNum} at (${Math.round(clientX)}, ${Math.round(clientY)})`);
-    
+
     touchStartPosRef.current = { x: clientX, y: clientY };
-    
+
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
     }
-    
+
     isLongPressRef.current = false;
-    
+
     // Only activate the long press timer if we are NOT already in selection mode
     if (selectedVerses.length === 0) {
       longPressTimerRef.current = setTimeout(() => {
-        console.log(`[VersePress] Trigger long press for verse ${verseNum}`);
         if (onVerseLongPress) onVerseLongPress(verseNum, e);
         isLongPressRef.current = true;
         longPressTimerRef.current = null;
-        
-        // If mobile, try to provide haptic feedback if available
+
+        // Haptic feedback on mobile
         if ('vibrate' in navigator) {
           try { navigator.vibrate(50); } catch (err) {}
         }
-      }, 600); // 600ms for a distinctive long press
+      }, 600);
     }
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!touchStartPosRef.current) return;
-    
-    const dist = Math.sqrt(
-      Math.pow(e.clientX - touchStartPosRef.current.x, 2) + 
-      Math.pow(e.clientY - touchStartPosRef.current.y, 2)
-    );
-    
-    // If moved more than 10px, it's a scroll or swipe, not a long press
-    if (dist > 10) {
-      if (longPressTimerRef.current) {
-        console.log(`[VersePress] Cancel: Movement detected (${Math.round(dist)}px)`);
-        clearTimeout(longPressTimerRef.current);
-        longPressTimerRef.current = null;
+
+    const dx = e.clientX - touchStartPosRef.current.x;
+    const dy = e.clientY - touchStartPosRef.current.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+
+    if (dist > 8) {
+      // Horizontal intent: X dominates Y by 1.5× or more — this is a swipe.
+      // Cancel long-press immediately so VerseActionMenu never opens mid-swipe.
+      if (Math.abs(dx) > Math.abs(dy) * 1.5) {
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+        touchStartPosRef.current = null;
+        return;
+      }
+
+      // Vertical scroll: cancel long-press after a slightly larger threshold
+      if (dist > 14) {
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
       }
     }
   };
@@ -216,8 +232,8 @@ function ChapterContent({
 
   const handleVerseClick = (verseNum: number, e: React.MouseEvent) => {
     e.stopPropagation();
+    // Only handle clicks in selection mode — prevents accidental selection
     if (selectedVerses.length > 0) {
-      console.log(`[VerseClick] Toggle selection for verse ${verseNum}`);
       if (onVerseTap) onVerseTap(verseNum, e);
     }
   };

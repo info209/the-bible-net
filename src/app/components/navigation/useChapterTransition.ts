@@ -15,12 +15,17 @@ export interface TransitionState {
   direction: 'next' | 'prev';
 }
 
-// Lock durations per transition mode (ms) — how long to block new navigations
+/**
+ * Lock durations per transition mode (ms) — maximum time to hold the
+ * navigation lock. In practice the lock is released EARLIER via the
+ * `onNavigationComplete` callback from ChapterTransitionStage (which fires
+ * when the enter animation finishes). This timeout is a safety fallback only.
+ */
 const LOCK_DURATIONS: Record<TransitionMode, number> = {
-  slide: 480,
-  curl:  900,
-  fade:  380,
-  scroll: 460,
+  slide:  700,
+  curl:   1200,
+  fade:   550,
+  scroll: 650,
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,6 +38,7 @@ const LOCK_DURATIONS: Record<TransitionMode, number> = {
  * Centralized transition state manager that:
  *  - Atomically updates key + direction to avoid race conditions
  *  - Implements a navigation lock (prevents double-navigation / rapid-fire)
+ *  - Lock is released by `onNavigationComplete` (animation end) or a fallback timer
  *  - Exposes `navigateNext` / `navigatePrev` as stable callbacks
  *  - Exposes `isNavigating` boolean for UI feedback
  *
@@ -51,7 +57,7 @@ export function useChapterTransition(mode: TransitionMode) {
   /** Ref-based lock so gesture callbacks read the live value (avoids stale closure) */
   const isNavigatingRef = useRef(false);
 
-  /** Unlock timer handle */
+  /** Fallback unlock timer handle */
   const lockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Internal lock management ────────────────────────────────────────────
@@ -65,6 +71,7 @@ export function useChapterTransition(mode: TransitionMode) {
     // Clear any previous lock timer (safety net)
     if (lockTimerRef.current) clearTimeout(lockTimerRef.current);
 
+    // Fallback: release lock after max duration even if animation callback missed
     lockTimerRef.current = setTimeout(() => {
       isNavigatingRef.current = false;
       setIsNavigating(false);
@@ -74,7 +81,11 @@ export function useChapterTransition(mode: TransitionMode) {
     return true;
   }, []);
 
-  /** Force-release the lock (e.g. on interrupt/cancel) */
+  /**
+   * Release the lock early — called by ChapterTransitionStage when the
+   * enter animation completes. This is the PREFERRED unlock path.
+   * The fallback timer in acquireLock() is just a safety net.
+   */
   const releaseLock = useCallback(() => {
     if (lockTimerRef.current) {
       clearTimeout(lockTimerRef.current);
