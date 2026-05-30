@@ -290,7 +290,7 @@ export default function HomeView() {
       )}
 
       {/* Daily Verse Carousel (7-Day History) */}
-      <div className="relative overflow-hidden mb-8 w-full px-2">
+      <div className="relative overflow-hidden mb-8 w-full">
         <div className="overflow-hidden w-full rounded-2xl">
           <motion.div
             drag="x"
@@ -317,22 +317,14 @@ export default function HomeView() {
             className="flex w-full"
           >
             {dailyVerses.map((content, index) => (
-              <div key={content._id || index} className="w-full flex-shrink-0 px-2 select-none">
-                {/* Daily Verse Card - Figma Design - FIXED HEIGHT */}
+              <div key={content._id || index} className="w-full flex-shrink-0 select-none">
+                {/* Daily Verse Card - consistent shared banner background */}
                 <div
-                  className={`bg-gradient-to-br ${content.bgColor || 'from-cyan-400 to-teal-500'} rounded-2xl p-6 shadow-xl relative overflow-hidden h-[395px] flex flex-col`}
-                  style={content.backgroundImage ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                  className="rounded-none p-6 shadow-xl relative overflow-hidden h-[395px] flex flex-col"
+                  style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
                 >
-                  {/* Fallback Overlay if bg image exists */}
-                  {content.backgroundImage && <div className="absolute inset-0 bg-black/40" />}
-
-                  {/* Decorative elements */}
-                  {!content.backgroundImage && (
-                    <>
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16" />
-                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -ml-12 -mb-12" />
-                    </>
-                  )}
+                  {/* Consistent dark overlay */}
+                  <div className="absolute inset-0 bg-black/55" />
 
                   {/* Content */}
                   <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
@@ -394,9 +386,10 @@ export default function HomeView() {
             ))}
 
             {dailyVerses.length === 0 && (
-              <div className="w-full flex-shrink-0 px-2 select-none">
-                <div className="bg-gradient-to-br from-gray-400 to-gray-500 rounded-2xl p-6 shadow-xl relative overflow-hidden h-[395px] flex items-center justify-center text-white">
-                  <p>No daily verses available yet.</p>
+              <div className="w-full flex-shrink-0 select-none">
+                <div className="rounded-none p-6 shadow-xl relative overflow-hidden h-[395px] flex items-center justify-center text-white" style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                  <div className="absolute inset-0 bg-black/55" />
+                  <p className="relative z-10">No daily verses available yet.</p>
                 </div>
               </div>
             )}
@@ -419,7 +412,7 @@ export default function HomeView() {
       </div>
 
       {/* Daily Devotional Carousel (7-Day History) */}
-      <div className="relative overflow-hidden mb-6 w-full px-2">
+      <div className="relative overflow-hidden mb-6 w-full">
         <div className="overflow-hidden w-full rounded-2xl">
           <motion.div
             drag="x"
@@ -446,33 +439,26 @@ export default function HomeView() {
             className="flex w-full"
           >
             {dailyDevotions.map((content, index) => (
-              <div key={content._id || index} className="w-full flex-shrink-0 px-2 select-none">
-                {/* Daily Devotional Card - Figma Design - FIXED HEIGHT */}
+              <div key={content._id || index} className="w-full flex-shrink-0 select-none">
+                {/* Daily Devotional Card - consistent shared banner background */}
                 <div
-                  className="bg-gradient-to-br from-pink-100 via-rose-100 to-pink-200 rounded-2xl p-6 shadow-xl relative overflow-hidden h-[360px] flex flex-col justify-between"
-                  style={content.devotionalBackgroundImage ? { backgroundImage: `url(${content.devotionalBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
+                  className="rounded-none p-6 shadow-xl relative overflow-hidden h-[360px] flex flex-col justify-between"
+                  style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
                 >
-                  {/* Fallback Overlay if bg image exists */}
-                  {content.devotionalBackgroundImage ? (
-                    <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px]" />
-                  ) : (
-                    <>
-                      <div className="absolute top-0 left-0 w-32 h-32 bg-rose-200/50 rounded-full -ml-16 -mt-16" />
-                      <div className="absolute bottom-0 right-0 w-24 h-24 bg-pink-300/50 rounded-full -mr-12 -mb-12" />
-                    </>
-                  )}
+                  {/* Consistent dark overlay */}
+                  <div className="absolute inset-0 bg-black/55" />
 
                   <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0 pr-2">
-                        <p className={`text-xs mb-1 uppercase tracking-wider ${content.devotionalBackgroundImage ? 'text-white/80' : 'text-gray-600'}`}>
+                        <p className="text-xs mb-1 uppercase tracking-wider text-white/80">
                           {getRelativeLabel(content.date)}'s Devotional
                         </p>
-                        <h3 className={`text-xl font-bold truncate ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-800'}`}>
+                        <h3 className="text-xl font-bold truncate text-white">
                           {content.devotionalTitle}
                         </h3>
                         {content.devotionalVerseRef && (
-                          <p className={`text-xs mt-1 font-bold ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-rose-600'} truncate`}>
+                          <p className="text-xs mt-1 font-bold text-white/90 truncate">
                             {content.devotionalVerseRef}
                           </p>
                         )}
@@ -480,54 +466,54 @@ export default function HomeView() {
                       {content.audioUrl && (
                         <button
                           onClick={() => toggleAudio(content.audioUrl)}
-                          className="p-2 bg-white rounded-full shadow-md hover:scale-110 transition-transform shrink-0"
+                          className="p-2 bg-white/20 backdrop-blur-sm rounded-full shadow-md hover:scale-110 transition-transform shrink-0"
                         >
-                          {audioPlaying === content.audioUrl ? <Pause className="size-5 text-[var(--color-accent-rose)]" /> : <Play className="size-5 text-[var(--color-accent-rose)] ml-0.5" />}
+                          {audioPlaying === content.audioUrl ? <Pause className="size-5 text-white" /> : <Play className="size-5 text-white ml-0.5" />}
                         </button>
                       )}
                     </div>
 
                     {/* Devotional content - clamped to exactly 3 lines to maintain uniform height */}
                     <div className="flex-1 flex items-center my-4 overflow-hidden">
-                      <p className={`leading-relaxed text-justify line-clamp-3 ${content.devotionalBackgroundImage ? 'text-white/90' : 'text-gray-700'} text-sm md:text-base w-full`}>
+                      <p className="leading-relaxed text-justify line-clamp-3 text-white/90 text-sm md:text-base w-full">
                         {content.devotionalContent}
                       </p>
                     </div>
 
                     {/* Actions */}
-                    <div className={`flex items-center justify-between pt-3 border-t ${content.devotionalBackgroundImage ? 'border-white/20' : 'border-rose-200'}`}>
+                    <div className="flex items-center justify-between pt-3 border-t border-white/20">
                       <button
                         onClick={() => handleLike(content._id, 'daily-devotion')}
-                        className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                       >
-                        <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
-                          <Heart className={`size-4 ${content.devotionLikeCount > 0 ? (content.devotionalBackgroundImage ? 'fill-white' : 'fill-[var(--color-accent-rose)] text-[var(--color-accent-rose)]') : ''}`} />
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                          <Heart className={`size-4 ${content.devotionLikeCount > 0 ? 'fill-white' : ''}`} />
                         </div>
                         <span className="text-xs">{content.devotionLikeCount || 'Like'}</span>
                       </button>
                       <button
                         onClick={() => handleCommentClick(content._id, 'daily-devotion')}
-                        className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                       >
-                        <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                           <MessageCircle className="size-4" />
                         </div>
                         <span className="text-xs">{content.devotionCommentCount || 'Comment'}</span>
                       </button>
                       <button
                         onClick={() => handleShare(content, 'daily-devotion')}
-                        className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                       >
-                        <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                           <Share2 className="size-4" />
                         </div>
                         <span className="text-xs">Share</span>
                       </button>
                       <button
                         onClick={() => openDetailModal(index, 'devotional')}
-                        className={`flex flex-col items-center space-y-1 hover:scale-110 transition-transform ${content.devotionalBackgroundImage ? 'text-white' : 'text-gray-600 hover:text-[var(--color-accent-rose)]'}`}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                       >
-                        <div className={`p-2 rounded-full shadow-sm ${content.devotionalBackgroundImage ? 'bg-white/20 backdrop-blur-sm' : 'bg-white'}`}>
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                           <Maximize2 className="size-4" />
                         </div>
                         <span className="text-xs">Expand</span>
@@ -539,9 +525,10 @@ export default function HomeView() {
             ))}
 
             {dailyDevotions.length === 0 && (
-              <div className="w-full flex-shrink-0 px-2 select-none">
-                <div className="bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl p-6 shadow-xl h-[360px] flex items-center justify-center text-gray-500">
-                  <p>No daily devotionals available yet.</p>
+              <div className="w-full flex-shrink-0 select-none">
+                <div className="rounded-none p-6 shadow-xl relative overflow-hidden h-[360px] flex items-center justify-center text-white" style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+                  <div className="absolute inset-0 bg-black/55" />
+                  <p className="relative z-10">No daily devotionals available yet.</p>
                 </div>
               </div>
             )}
@@ -694,15 +681,8 @@ export default function HomeView() {
       <footer className="w-full bg-white border-t border-gray-100/80 mt-12 py-10 px-6 flex flex-col items-center select-none">
         {/* Logo Card */}
         <div className="flex justify-center mb-6">
-          <div className="bg-[#24a0a4] text-white px-7 py-3 rounded-xl flex flex-col items-center justify-center shadow-sm w-fit select-none">
-            <span className="font-serif italic text-xl font-bold tracking-wide leading-none" style={{ fontFamily: 'Georgia, serif' }}>
-              the bible net
-            </span>
-            <div className="flex items-center gap-1.5 mt-2 text-[8px] font-extrabold tracking-widest text-teal-50/90 uppercase">
-              <span className="h-[1px] w-6 bg-teal-100/40"></span>
-              SDO CONNECT
-              <span className="h-[1px] w-6 bg-teal-100/40"></span>
-            </div>
+          <div className="bg-[#24a0a4] px-5 py-3 rounded-xl shadow-sm w-fit select-none flex items-center justify-center">
+            <img src="/logo.svg" alt="The Bible Net" width={120} height={46} className="object-contain" />
           </div>
         </div>
 
