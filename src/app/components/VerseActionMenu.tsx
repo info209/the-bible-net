@@ -82,18 +82,18 @@ function IOSToggle({ checked, onChange, isDark }: { checked: boolean; onChange: 
       onClick={() => onChange(!checked)}
       className="relative shrink-0 transition-all active:scale-95"
       style={{
-        width: 51, height: 31,
+        width: 38, height: 22,
         borderRadius: 999,
         backgroundColor: checked ? '#31C4BE' : (isDark ? '#2C2C2E' : '#E5E7EB'),
       }}
     >
       <motion.div
-        animate={{ x: checked ? 22 : 2 }}
+        animate={{ x: checked ? 18 : 2 }}
         transition={{ type: 'spring', stiffness: 500, damping: 40 }}
         style={{
-          position: 'absolute', top: 2, width: 27, height: 27,
+          position: 'absolute', top: 2, width: 18, height: 18,
           borderRadius: '50%', backgroundColor: '#ffffff',
-          boxShadow: '0 2px 6px rgba(0,0,0,0.22)',
+          boxShadow: '0 1.5px 4px rgba(0,0,0,0.22)',
         }}
       />
     </button>
@@ -325,9 +325,9 @@ export default function VerseActionMenu({
                         {view === 'main' && (
                           <motion.div
                             key="palette-row"
-                            className="mb-3"
+                            className="mb-2"
                           >
-                            <div className="flex items-center gap-3 flex-wrap px-0.5 py-1">
+                            <div className="flex items-center gap-2.5 flex-wrap px-0.5 py-0.5">
                               {displayColors.map((c, i) => (
                                 <button
                                   key={c.id}
@@ -335,7 +335,7 @@ export default function VerseActionMenu({
                                   title={c.label}
                                   aria-label={`Highlight ${c.label}`}
                                   className="relative flex-shrink-0 active:scale-90 transition-transform"
-                                  style={{ width: 26, height: 26 }}
+                                  style={{ width: 22, height: 22 }}
                                 >
                                   {selectedColor === c.id && existingHighlightColor && (
                                     <span
@@ -356,16 +356,16 @@ export default function VerseActionMenu({
                               {existingHighlightColor && (
                                 <button
                                   onClick={() => { onHighlight('none'); onClose(); }}
-                                  className="w-[26px] h-[26px] rounded-full flex items-center justify-center active:scale-90 transition-transform border"
+                                  className="w-[22px] h-[22px] rounded-full flex items-center justify-center active:scale-90 transition-transform border"
                                   style={{ borderColor: inputBorder, backgroundColor: chipBg, color: subText }}
                                   title="Remove highlight"
                                 >
-                                  <X className="w-3 h-3" />
+                                  <X className="w-2.5 h-2.5" />
                                 </button>
                               )}
                               <button
                                 onClick={() => setPaletteExpanded((p) => !p)}
-                                className="w-[26px] h-[26px] rounded-full flex items-center justify-center active:scale-90 transition-transform border"
+                                className="w-[22px] h-[22px] rounded-full flex items-center justify-center active:scale-90 transition-transform border"
                                 style={{ backgroundColor: chipBg, borderColor: inputBorder, color: subText }}
                                 title="More colors"
                               >
@@ -374,7 +374,7 @@ export default function VerseActionMenu({
                                   transition={{ duration: 0.18 }}
                                   className="flex items-center justify-center"
                                 >
-                                  <Plus className="w-3 h-3" />
+                                  <Plus className="w-2.5 h-2.5" />
                                 </motion.span>
                               </button>
                             </div>
@@ -383,25 +383,25 @@ export default function VerseActionMenu({
                       </AnimatePresence>
 
                       {/* ── Action Button Grid ──────────────────────────── */}
-                      <div className="grid grid-cols-5 gap-2">
+                      <div className="grid grid-cols-5 gap-1.5">
                         {/* Highlight */}
                         <button
                           onClick={() => setView('highlight')}
                           id="verse-action-highlight"
                           aria-label="Highlight verse"
-                          className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-1 rounded-[14px] transition-all active:scale-95 animate-none"
                           style={{
-                            height: 74,
+                            height: 56,
                             backgroundColor: existingHighlightColor ? 'rgba(49,196,190,0.16)' : actionBg,
                             border: existingHighlightColor ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
                           }}
                         >
                           <PenTool
-                            className="w-[19px] h-[19px]"
-                            strokeWidth={2}
+                            className="w-[16px] h-[16px]"
+                            strokeWidth={2.5}
                             style={{ color: existingHighlightColor ? '#31C4BE' : (dm ? '#FFFFFF' : '#000000') }}
                           />
-                          <span className="text-[10px] font-medium" style={{ color: existingHighlightColor ? '#31C4BE' : (dm ? '#FFFFFF' : '#000000') }}>
+                          <span className="text-[9px] font-semibold" style={{ color: existingHighlightColor ? '#31C4BE' : (dm ? '#FFFFFF' : '#000000') }}>
                             Highlight
                           </span>
                         </button>
@@ -411,19 +411,19 @@ export default function VerseActionMenu({
                           onClick={() => setView('save')}
                           id="verse-action-save"
                           aria-label="Save verse"
-                          className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-1 rounded-[14px] transition-all active:scale-95"
                           style={{
-                            height: 74,
+                            height: 56,
                             backgroundColor: isSavedVerse ? 'rgba(49,196,190,0.16)' : actionBg,
                             border: isSavedVerse ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
                           }}
                         >
                           {isSavedVerse ? (
-                            <BookmarkCheck className="w-[19px] h-[19px] text-[#31C4BE]" strokeWidth={2} />
+                            <BookmarkCheck className="w-[16px] h-[16px] text-[#31C4BE]" strokeWidth={2.5} />
                           ) : (
-                            <BookmarkPlus className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
+                            <BookmarkPlus className="w-[16px] h-[16px]" strokeWidth={2.5} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
                           )}
-                          <span className="text-[10px] font-medium" style={{ color: isSavedVerse ? '#31C4BE' : (dm ? '#FFFFFF' : '#000000') }}>
+                          <span className="text-[9px] font-semibold" style={{ color: isSavedVerse ? '#31C4BE' : (dm ? '#FFFFFF' : '#000000') }}>
                             {isSavedVerse ? 'Saved' : 'Save'}
                           </span>
                         </button>
@@ -433,11 +433,11 @@ export default function VerseActionMenu({
                           onClick={() => setView('note')}
                           id="verse-action-note"
                           aria-label="Add note"
-                          className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] transition-all active:scale-95"
-                          style={{ height: 74, backgroundColor: actionBg, border: actionBorder }}
+                          className="flex flex-col items-center justify-center gap-1 rounded-[14px] transition-all active:scale-95"
+                          style={{ height: 56, backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <FileText className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
-                          <span className="text-[10px] font-medium" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Note</span>
+                          <FileText className="w-[16px] h-[16px]" strokeWidth={2.5} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
+                          <span className="text-[9px] font-semibold" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Note</span>
                         </button>
 
                         {/* Compare */}
@@ -445,11 +445,11 @@ export default function VerseActionMenu({
                           onClick={() => onCompare?.()}
                           id="verse-action-compare"
                           aria-label="Compare versions"
-                          className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] transition-all active:scale-95"
-                          style={{ height: 74, backgroundColor: actionBg, border: actionBorder }}
+                          className="flex flex-col items-center justify-center gap-1 rounded-[14px] transition-all active:scale-95"
+                          style={{ height: 56, backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <ArrowRightLeft className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
-                          <span className="text-[10px] font-medium" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Compare</span>
+                          <ArrowRightLeft className="w-[16px] h-[16px]" strokeWidth={2.5} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
+                          <span className="text-[9px] font-semibold" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Compare</span>
                         </button>
 
                         {/* Share */}
@@ -457,11 +457,11 @@ export default function VerseActionMenu({
                           onClick={() => onShare?.()}
                           id="verse-action-share"
                           aria-label="Share verse"
-                          className="flex flex-col items-center justify-center gap-1.5 rounded-[20px] transition-all active:scale-95"
-                          style={{ height: 74, backgroundColor: actionBg, border: actionBorder }}
+                          className="flex flex-col items-center justify-center gap-1 rounded-[14px] transition-all active:scale-95"
+                          style={{ height: 56, backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <Share2 className="w-[19px] h-[19px]" strokeWidth={2} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
-                          <span className="text-[10px] font-medium" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Share</span>
+                          <Share2 className="w-[16px] h-[16px]" strokeWidth={2.5} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
+                          <span className="text-[9px] font-semibold" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Share</span>
                         </button>
                       </div>
                     </>
@@ -582,7 +582,7 @@ export default function VerseActionMenu({
                   {/* ── Scrollable body ──────────────────────────────────── */}
                   <div className="flex-1 overflow-y-auto min-h-0 px-4">
                     {/* ── Label input ──────────────────────────────────── */}
-                    <form onSubmit={handleAddLabel} className="flex gap-2.5 mt-4 mb-5 shrink-0">
+                    <form onSubmit={handleAddLabel} className="flex gap-2 mt-3 mb-4 shrink-0">
                       <input
                         ref={labelInputRef}
                         type="text"
@@ -593,10 +593,10 @@ export default function VerseActionMenu({
                         aria-label="New label name"
                         className="flex-1 focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 transition-all"
                         style={{
-                          height: 52,
-                          borderRadius: 18,
-                          padding: '0 16px',
-                          fontSize: 16,
+                          height: 38,
+                          borderRadius: 12,
+                          padding: '0 12px',
+                          fontSize: 13,
                           backgroundColor: inputBg,
                           border: `1px solid ${inputBorder}`,
                           color: inputText,
@@ -608,25 +608,25 @@ export default function VerseActionMenu({
                         aria-label="Add label"
                         className="flex items-center justify-center shrink-0 active:scale-95 transition-all disabled:opacity-40"
                         style={{
-                          width: 52, height: 52,
-                          borderRadius: 16,
+                          width: 38, height: 38,
+                          borderRadius: 12,
                           backgroundColor: '#31C4BE',
-                          boxShadow: '0 10px 30px rgba(49,196,190,0.22)',
+                          boxShadow: '0 4px 12px rgba(49,196,190,0.22)',
                         }}
                       >
-                        <Plus className="w-[18px] h-[18px] text-white" strokeWidth={2.5} />
+                        <Plus className="w-[14px] h-[14px] text-white" strokeWidth={2.5} />
                       </button>
                     </form>
 
                     {/* ── Saved Labels section ─────────────────────────── */}
-                    <div className="mb-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: sectionTxt }}>
+                    <div className="mb-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: sectionTxt }}>
                         Saved Labels
                       </p>
                       {allUserLabels.length === 0 ? (
-                        <p className="text-[13px]" style={{ color: subText }}>No saved labels yet</p>
+                        <p className="text-[11px]" style={{ color: subText }}>No saved labels yet</p>
                       ) : (
-                        <div className="flex flex-wrap gap-2">
+                        <div className="flex flex-wrap gap-1.5">
                           {allUserLabels.map((label) => {
                             const isSelected = selectedLabels.includes(label);
                             return (
@@ -634,21 +634,21 @@ export default function VerseActionMenu({
                                 key={label}
                                 onClick={() => toggleLabel(label)}
                                 aria-selected={isSelected}
-                                className="flex items-center gap-2 transition-all active:scale-95"
+                                className="flex items-center gap-1.5 transition-all active:scale-95"
                                 style={{
-                                  height: 40,
+                                  height: 28,
                                   borderRadius: 999,
-                                  padding: '0 14px',
-                                  fontSize: 12,
+                                  padding: '0 10px',
+                                  fontSize: 11,
                                   fontWeight: 500,
                                   backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
                                   border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
                                   color: isSelected ? '#31C4BE' : labelText,
                                 }}
                               >
-                                {isSelected && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                                {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
                                 <span>{label}</span>
-                                {isSelected && <MinusCircle className="w-3.5 h-3.5 shrink-0 ml-auto" />}
+                                {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
                               </button>
                             );
                           })}
@@ -657,11 +657,11 @@ export default function VerseActionMenu({
                     </div>
 
                     {/* ── Suggestions section ──────────────────────────── */}
-                    <div className="mb-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-widest mb-2.5" style={{ color: sectionTxt }}>
+                    <div className="mb-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: sectionTxt }}>
                         Suggestions
                       </p>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="flex flex-wrap gap-1.5">
                         {SUGGESTED_LABELS.map((label) => {
                           const isSelected = selectedLabels.includes(label);
                           return (
@@ -669,21 +669,21 @@ export default function VerseActionMenu({
                               key={label}
                               onClick={() => toggleLabel(label)}
                               aria-selected={isSelected}
-                              className="flex items-center gap-2 transition-all active:scale-95"
+                              className="flex items-center gap-1.5 transition-all active:scale-95"
                               style={{
-                                height: 40,
+                                height: 28,
                                 borderRadius: 999,
-                                padding: '0 14px',
-                                fontSize: 12,
-                                fontWeight: 500,
-                                backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
-                                border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
-                                color: isSelected ? '#31C4BE' : labelText,
+                                  padding: '0 10px',
+                                  fontSize: 11,
+                                  fontWeight: 500,
+                                  backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
+                                  border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
+                                  color: isSelected ? '#31C4BE' : labelText,
                               }}
                             >
-                              {isSelected && <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />}
+                              {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
                               <span>{label}</span>
-                              {isSelected && <MinusCircle className="w-3.5 h-3.5 shrink-0 ml-auto" />}
+                              {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
                             </button>
                           );
                         })}
@@ -692,11 +692,11 @@ export default function VerseActionMenu({
 
                     {/* ── Private toggle ───────────────────────────────── */}
                     <div
-                      className="flex items-center gap-3 py-3.5 mb-4 rounded-[16px] px-4"
+                      className="flex items-center gap-2 py-2 px-3 mb-3 rounded-[12px]"
                       style={{ backgroundColor: actionBg, border: actionBorder }}
                     >
-                      <Lock className="w-4 h-4 shrink-0" style={{ color: subText }} />
-                      <span className="flex-1 text-[14px] font-medium" style={{ color: labelText }}>
+                      <Lock className="w-3.5 h-3.5 shrink-0" style={{ color: subText }} />
+                      <span className="flex-1 text-[12px] font-medium" style={{ color: labelText }}>
                         Private Save
                       </span>
                       <IOSToggle checked={isPrivate} onChange={setIsPrivate} isDark={dm} />
@@ -707,28 +707,28 @@ export default function VerseActionMenu({
                       <button
                         onClick={handleDeleteSave}
                         disabled={isDeleting}
-                        className="w-full flex items-center justify-center gap-2 py-3.5 rounded-[16px] mb-4 active:scale-95 transition-all disabled:opacity-60"
+                        className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-[12px] mb-3 active:scale-95 transition-all disabled:opacity-60"
                         style={{
                           backgroundColor: 'rgba(255,59,48,0.12)',
                           border: '1px solid rgba(255,59,48,0.18)',
                           color: '#FF3B30',
-                          fontSize: 14,
+                          fontSize: 12,
                           fontWeight: 600,
                         }}
                         aria-label="Delete saved verse"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-3.5 h-3.5" />
                         {isDeleting ? 'Deleting…' : 'Delete Saved Verse'}
                       </button>
                     )}
 
                     {/* bottom padding for scroll */}
-                    <div className="h-4 shrink-0" />
+                    <div className="h-3 shrink-0" />
                   </div>
 
                   {/* ── Sticky Save Button ───────────────────────────────── */}
                   <div
-                    className="px-4 pt-3 pb-5 shrink-0"
+                    className="px-4 pt-2.5 pb-4 shrink-0"
                     style={{ borderTop: headerBorder }}
                   >
                     <button
@@ -737,12 +737,12 @@ export default function VerseActionMenu({
                       id="save-verse-btn"
                       className="w-full flex items-center justify-center font-semibold active:scale-[0.98] transition-all disabled:opacity-60"
                       style={{
-                        height: 54,
-                        borderRadius: 20,
+                        height: 42,
+                        borderRadius: 12,
                         backgroundColor: '#31C4BE',
                         color: 'white',
-                        fontSize: 15,
-                        boxShadow: '0 10px 30px rgba(49,196,190,0.22)',
+                        fontSize: 13,
+                        boxShadow: '0 4px 12px rgba(49,196,190,0.22)',
                       }}
                       aria-label={isSavedVerse ? 'Update saved verse' : 'Save verse'}
                     >
@@ -794,7 +794,7 @@ export default function VerseActionMenu({
                     value={noteInput}
                     onChange={(e) => setNoteInput(e.target.value)}
                     placeholder="Write your thoughts here…"
-                    className="w-full flex-1 min-h-0 rounded-[18px] p-4 text-[15px] focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 resize-none mb-4 overflow-y-auto"
+                    className="w-full flex-1 min-h-0 rounded-[12px] p-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 resize-none mb-3 overflow-y-auto"
                     style={{
                       backgroundColor: inputBg,
                       border: `1px solid ${inputBorder}`,
@@ -805,12 +805,12 @@ export default function VerseActionMenu({
                     onClick={() => { onNote(noteInput); onClose(); }}
                     className="w-full font-semibold active:scale-[0.98] transition-all"
                     style={{
-                      height: 54,
-                      borderRadius: 20,
+                      height: 42,
+                      borderRadius: 12,
                       backgroundColor: '#31C4BE',
                       color: 'white',
-                      fontSize: 15,
-                      boxShadow: '0 10px 30px rgba(49,196,190,0.22)',
+                      fontSize: 13,
+                      boxShadow: '0 4px 12px rgba(49,196,190,0.22)',
                     }}
                   >
                     Save Note

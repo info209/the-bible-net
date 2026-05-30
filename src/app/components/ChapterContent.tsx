@@ -178,6 +178,14 @@ function ChapterContent({
        return; 
     }
 
+    // If selection mode is active, skip touch/mouse release tap triggers;
+    // standard onClick handles the entire element's click seamlessly.
+    if (selectedVerses.length > 0) {
+      touchStartPosRef.current = null;
+      isLongPressRef.current = false;
+      return;
+    }
+
     const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : (e as React.MouseEvent).clientX;
     const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : (e as React.MouseEvent).clientY;
     
@@ -186,14 +194,10 @@ function ChapterContent({
       Math.pow(clientY - touchStartPosRef.current.y, 2)
     );
     
-    // If not a long press and moved very little, it's a tap
+    // If not a long press and moved very little, it's a tap.
+    // When selection mode is inactive, a normal tap does nothing (requires hold).
     if (moveDist < 15) {
-      console.log(`[VersePress] Trigger tap for verse ${verseNum}`);
-      // Only the subsequent taps on the verse (post entering selection mode) should select/deselect.
-      // The first tap to enter selection mode should require the hold.
-      if (selectedVerses.length > 0) {
-        if (onVerseTap) onVerseTap(verseNum, e);
-      }
+      console.log(`[VersePress] Normal tap when inactive`);
     }
     
     touchStartPosRef.current = null;
@@ -208,6 +212,14 @@ function ChapterContent({
     }
     touchStartPosRef.current = null;
     isLongPressRef.current = false;
+  };
+
+  const handleVerseClick = (verseNum: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (selectedVerses.length > 0) {
+      console.log(`[VerseClick] Toggle selection for verse ${verseNum}`);
+      if (onVerseTap) onVerseTap(verseNum, e);
+    }
   };
 
   useEffect(() => {
@@ -333,6 +345,7 @@ function ChapterContent({
                 onTouchEnd={(e) => handlePressEnd(e, verse.number)}
                 onTouchCancel={handlePressCancel}
                 onPointerMove={handlePointerMove}
+                onClick={(e) => handleVerseClick(verse.number, e)}
                 style={{
                   color: theme.text,
                   backgroundColor: bgColor,
