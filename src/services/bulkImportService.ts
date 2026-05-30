@@ -67,10 +67,22 @@ export function parseFileBuffer(buffer: Buffer, filename: string): any[] {
 }
 
 // Normalize header keys (case-insensitive, trim whitespace)
+// Date cells parsed by xlsx with cellDates:true arrive as JS Date objects;
+// we convert them to YYYY-MM-DD using UTC components to avoid timezone shifts.
 function normalizeRow(raw: any): Record<string, string> {
     const result: Record<string, string> = {};
     for (const key of Object.keys(raw)) {
-        result[key.toLowerCase().trim().replace(/\s+/g, '_')] = String(raw[key] ?? '').trim();
+        const value = raw[key];
+        let normalized: string;
+        if (value instanceof Date) {
+            const y = value.getUTCFullYear();
+            const m = String(value.getUTCMonth() + 1).padStart(2, '0');
+            const d = String(value.getUTCDate()).padStart(2, '0');
+            normalized = `${y}-${m}-${d}`;
+        } else {
+            normalized = String(value ?? '').trim();
+        }
+        result[key.toLowerCase().trim().replace(/\s+/g, '_')] = normalized;
     }
     return result;
 }
@@ -108,16 +120,8 @@ export async function validateVerseRows(
         }
 
         let dateStr = dateRaw;
-        // Handle Excel date serial number
-        if (/^\d+$/.test(dateStr) && parseInt(dateStr) > 40000) {
-            const excelDate = XLSX.SSF.parse_date_code(parseInt(dateStr));
-            if (excelDate) {
-                const y = excelDate.y;
-                const m = String(excelDate.m).padStart(2, '0');
-                const d = String(excelDate.d).padStart(2, '0');
-                dateStr = `${y}-${m}-${d}`;
-            }
-        }
+        // Note: Excel date serial numbers are handled upstream in normalizeRow
+        // (cellDates:true converts them to Date objects which we format as YYYY-MM-DD).
 
         if (!isValidDate(dateStr)) {
             errors.push({ row: rowNum, date: dateStr, reason: `Invalid date format "${dateStr}". Use YYYY-MM-DD.` });
@@ -283,12 +287,8 @@ export async function validateDevotionalRows(
         }
 
         let dateStr = dateRaw;
-        if (/^\d+$/.test(dateStr) && parseInt(dateStr) > 40000) {
-            const excelDate = XLSX.SSF.parse_date_code(parseInt(dateStr));
-            if (excelDate) {
-                dateStr = `${excelDate.y}-${String(excelDate.m).padStart(2, '0')}-${String(excelDate.d).padStart(2, '0')}`;
-            }
-        }
+        // Note: Excel date serial numbers are handled upstream in normalizeRow
+        // (cellDates:true converts them to Date objects which we format as YYYY-MM-DD).
 
         if (!isValidDate(dateStr)) {
             errors.push({ row: rowNum, date: dateStr, reason: `Invalid date format "${dateStr}". Use YYYY-MM-DD.` });
