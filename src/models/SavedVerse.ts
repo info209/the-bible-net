@@ -18,6 +18,8 @@ export interface ISavedVerse extends Document {
 
   note: string;
 
+  version: string;
+
   isPrivate: boolean;
 
   createdAt: Date;
@@ -60,6 +62,11 @@ const SavedVerseSchema = new Schema<ISavedVerse>(
     note: {
       type: String,
       default: '',
+    },
+    version: {
+      type: String,
+      default: 'NKJV',
+      trim: true,
     },
     isPrivate: {
       type: Boolean,

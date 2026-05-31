@@ -26,6 +26,27 @@ export async function DELETE(
 
     await connectDB();
 
+    const item = await SavedItemRepository.getById(session.user.id as string, id);
+    if (item && item.type === 'note') {
+      try {
+        const bookId = item.metadata.bookId;
+        const chapter = item.metadata.chapter;
+        const verses = item.metadata.verses as number[] | undefined;
+        if (bookId && chapter && verses) {
+          const NoteModel = (await import('@/models/Note')).Note;
+          const mongoose = (await import('mongoose')).default;
+          await NoteModel.findOneAndDelete({
+            userId: new mongoose.Types.ObjectId(session.user.id as string),
+            'verses.bookId': bookId,
+            'verses.chapter': chapter,
+            'verses.verses': verses
+          });
+        }
+      } catch (err) {
+        console.error('[DELETE /api/user/save/[id]] Note delete sync error:', err);
+      }
+    }
+
     const deleted = await SavedItemRepository.unsaveItem(
       session.user.id as string,
       id

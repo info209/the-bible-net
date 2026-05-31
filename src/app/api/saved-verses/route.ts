@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserSession } from '@/lib/auth-helpers';
 import { connectDB } from '@/lib/db';
 import { SavedVerse } from '@/models/SavedVerse';
+import { Verse } from '@/models/Bible';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 
@@ -14,6 +15,7 @@ const createSchema = z.object({
   verseRangeText: z.string().optional().default(''),
   labels: z.array(z.string()).optional().default([]),
   note: z.string().optional().default(''),
+  version: z.string().optional().default('NKJV'),
   isPrivate: z.boolean().optional().default(false),
 });
 
@@ -53,9 +55,35 @@ export async function GET(req: NextRequest) {
       SavedVerse.countDocuments(filter),
     ]);
 
+    // Populate verse texts dynamically
+    const populatedItems = await Promise.all(
+      items.map(async (item: any) => {
+        try {
+          const verseDocs = await Verse.find({
+            versionCode: (item.version || 'NKJV').toUpperCase(),
+            bookName: item.bookName,
+            chapterNumber: item.chapter,
+            number: { $in: item.verses }
+          }).sort({ number: 1 }).lean();
+
+          const text = verseDocs.map(v => v.text).join(' ');
+          return {
+            ...item,
+            verseText: text || 'Verse text not found.'
+          };
+        } catch (e) {
+          console.error('[GET /api/saved-verses] Verse populate error:', e);
+          return {
+            ...item,
+            verseText: 'Failed to load verse text.'
+          };
+        }
+      })
+    );
+
     return NextResponse.json({
       success: true,
-      data: items,
+      data: populatedItems,
       pagination: { total, page, limit, hasMore: skip + items.length < total },
     });
   } catch (error) {
@@ -84,16 +112,16 @@ export async function POST(req: NextRequest) {
     await connectDB();
 
     const userId = new mongoose.Types.ObjectId(session.user.id as string);
-    const { bookId, bookName, chapter, verses, verseRangeText, labels, note, isPrivate } =
+    const { bookId, bookName, chapter, verses, verseRangeText, labels, note, version, isPrivate } =
       parsed.data;
 
-    // Upsert: one save per user per (bookId, chapter) — update verses/labels in place
+    // Upsert: one save per user per (bookId, chapter, verses)
     const sortedVerses = [...verses].sort((a, b) => a - b);
 
     const saved = await SavedVerse.findOneAndUpdate(
       { userId, bookId, chapter, verses: sortedVerses },
       {
-        $set: { bookName, verses: sortedVerses, verseRangeText, labels, note, isPrivate },
+        $set: { bookName, verses: sortedVerses, verseRangeText, labels, note, version, isPrivate },
         $setOnInsert: { userId, bookId, chapter, createdAt: new Date() },
       },
       { upsert: true, new: true }

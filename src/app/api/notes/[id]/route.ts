@@ -1,18 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getUserSession } from '@/lib/auth-helpers';
 import { connectDB } from '@/lib/db';
-import { SavedVerse } from '@/models/SavedVerse';
+import { Note } from '@/models/Note';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 
-const patchSchema = z.object({
+const patchNoteSchema = z.object({
+  noteText: z.string().optional(),
   labels: z.array(z.string()).optional(),
-  note: z.string().optional(),
-  version: z.string().optional(),
-  isPrivate: z.boolean().optional(),
+  verses: z.array(
+    z.object({
+      bookId: z.string(),
+      bookName: z.string(),
+      chapter: z.number().int().positive(),
+      verses: z.array(z.number().int().positive())
+    })
+  ).optional(),
+  version: z.string().optional()
 });
 
-// ─── PATCH /api/saved-verses/[id] ───────────────────────────────────────────
 export async function PATCH(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -29,7 +35,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const parsed = patchSchema.safeParse(body);
+    const parsed = patchNoteSchema.safeParse(body);
     if (!parsed.success) {
       return NextResponse.json(
         { success: false, error: parsed.error.issues[0].message },
@@ -39,7 +45,7 @@ export async function PATCH(
 
     await connectDB();
 
-    const updated = await SavedVerse.findOneAndUpdate(
+    const updated = await Note.findOneAndUpdate(
       {
         _id: new mongoose.Types.ObjectId(id),
         userId: new mongoose.Types.ObjectId(session.user.id as string),
@@ -54,12 +60,11 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
-    console.error('[PATCH /api/saved-verses/[id]]', error);
+    console.error('[PATCH /api/notes/[id]]', error);
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
-// ─── DELETE /api/saved-verses/[id] ──────────────────────────────────────────
 export async function DELETE(
   req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -77,7 +82,7 @@ export async function DELETE(
 
     await connectDB();
 
-    const deleted = await SavedVerse.findOneAndDelete({
+    const deleted = await Note.findOneAndDelete({
       _id: new mongoose.Types.ObjectId(id),
       userId: new mongoose.Types.ObjectId(session.user.id as string),
     });
@@ -88,7 +93,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true, message: 'Deleted' });
   } catch (error) {
-    console.error('[DELETE /api/saved-verses/[id]]', error);
+    console.error('[DELETE /api/notes/[id]]', error);
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
   }
 }
