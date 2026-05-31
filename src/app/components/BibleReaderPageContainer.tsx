@@ -1467,6 +1467,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       chapter={selectedChapter}
       version={displayVersionName || 'KJV'}
       book={displayBookName || 'Genesis'}
+      pageTransition={pageTransition}
+      onPageTransitionChange={setPageTransition}
       onChapterChange={setSelectedChapter}
       onBookChange={(bId: string) => {
         const bookObj = [...bibleBooksState['Old Testament'], ...bibleBooksState['New Testament']].find(b => b.id === bId || b.name === bId);

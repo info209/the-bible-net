@@ -97,6 +97,9 @@ const defaultContent = {
   ]
 };
 
+// Global in-memory cache to prevent fetching/flashing skeleton for preloaded chapters
+const chapterCache = new Map<string, { title: string; verses: { number: number; text: string }[] }>();
+
 function ChapterContent({ 
   book, chapter, font, fontSize, version = 'NKJV', 
   scrollToVerse, readingVerse, theme, selectedVerses = [], savedVerseIds = [], 
@@ -105,8 +108,12 @@ function ChapterContent({
   isSliderDragging = false,
   swipeActiveRef,
 }: ChapterContentProps) {
-  const [apiContent, setApiContent] = useState<{ title: string; verses: { number: number; text: string }[] } | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  // Check the cache synchronously to initialize state directly without a skeleton flash
+  const cacheKey = `${version}-${book}-${chapter}`;
+  const cached = chapterCache.get(cacheKey);
+
+  const [apiContent, setApiContent] = useState<{ title: string; verses: { number: number; text: string }[] } | null>(cached || null);
+  const [isLoading, setIsLoading] = useState(!cached);
   const [error, setError] = useState<string | null>(null);
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -242,6 +249,17 @@ function ChapterContent({
     let isMounted = true;
     const fetchContent = async () => {
       if (!book || !chapter || book === 'undefined' || !version) return;
+
+      const currentCacheKey = `${version}-${book}-${chapter}`;
+      const cachedData = chapterCache.get(currentCacheKey);
+      if (cachedData) {
+        if (isMounted) {
+          setApiContent(cachedData);
+          setIsLoading(false);
+        }
+        return;
+      }
+
       setIsLoading(true);
       setError(null);
       try {
@@ -249,10 +267,12 @@ function ChapterContent({
         const result = await response.json();
         if (isMounted) {
           if (result.success) {
-            setApiContent({
+            const data = {
               title: `${result.data.book.name} ${result.data.chapter.number}`,
               verses: result.data.verses
-            });
+            };
+            chapterCache.set(currentCacheKey, data);
+            setApiContent(data);
           } else {
             setError(result.error || 'Failed to fetch content');
             setApiContent(null);

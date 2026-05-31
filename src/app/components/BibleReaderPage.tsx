@@ -110,6 +110,8 @@ interface BibleReaderPageProps {
   isLoggedIn?: boolean;
   /** Labels the first selected verse is already saved under (enables saved-state UI) */
   existingSaveLabels?: string[] | null;
+  pageTransition?: 'slide' | 'curl' | 'fade' | 'scroll';
+  onPageTransitionChange?: (transition: 'slide' | 'curl' | 'fade' | 'scroll') => void;
 }
 
 export default function BibleReaderPage(props: BibleReaderPageProps) {
@@ -153,6 +155,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     onSliderDragEnd,
     isLoggedIn = false,
     existingSaveLabels = null,
+    pageTransition: propPageTransition,
+    onPageTransitionChange: propOnPageTransitionChange,
   } = props;
 
   const selectedBook = book;
@@ -225,7 +229,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [selectedFont, setSelectedFont] = useState('Times New Roman');
   const [fontSize, setFontSize] = useState(18); // Standard book reading size (18px)
   const [selectedTheme, setSelectedTheme] = useState<'light' | 'sepia' | 'cream' | 'dark'>('light');
-  const [pageTransition, setPageTransition] = useState<'slide' | 'curl' | 'fade' | 'scroll'>('slide'); // Changed to 'slide' as default
+  const [localPageTransition, setLocalPageTransition] = useState<'slide' | 'curl' | 'fade' | 'scroll'>('slide'); // Changed to 'slide' as default
+  const pageTransition = propPageTransition ?? localPageTransition;
+  const setPageTransition = propOnPageTransitionChange ?? setLocalPageTransition;
 
   // Load font size from localStorage on mount
   useEffect(() => {
@@ -587,40 +593,17 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const onDragStart = useCallback(() => {
     // Mark swipe as active so ChapterContent cancels long-press timer immediately
     isSwipingRef.current = true;
-    if (pageTransition === 'slide' || pageTransition === 'scroll') {
-      dragOffsetRef.current = 0;
-      setIsDragging(true);
-      setDragOffsetForRender(0);
-    }
-  }, [pageTransition]);
+  }, []);
 
   const onDragMove = useCallback((offset: number) => {
-    if (pageTransition !== 'slide' && pageTransition !== 'scroll') return;
-    dragOffsetRef.current = offset;
-    // Throttle re-renders to once per animation frame
-    if (rafRef.current === null) {
-      rafRef.current = requestAnimationFrame(() => {
-        setDragOffsetForRender(dragOffsetRef.current);
-        rafRef.current = null;
-      });
-    }
-  }, [pageTransition]);
+    // No-op: we run clean AnimatePresence transitions directly on drag end
+  }, []);
 
   const onDragEnd = useCallback((offset: number, velocity: number, isHorizontal: boolean) => {
     // Clear swiping flag
     isSwipingRef.current = false;
 
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-
-    if (!isHorizontal) {
-      setIsDragging(false);
-      setDragOffsetForRender(0);
-      dragOffsetRef.current = 0;
-      return;
-    }
+    if (!isHorizontal) return;
 
     const DIST_THRESHOLD = 60;   // px
     const VEL_THRESHOLD  = 0.45; // px/ms
@@ -636,24 +619,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         handlePrevious();
       }
     }
-
-    setIsDragging(false);
-    setDragOffsetForRender(0);
-    dragOffsetRef.current = 0;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isLastChapterOfBible, isFirstChapterOfBible, handleNext, handlePrevious, pageTransition]);
+  }, [isLastChapterOfBible, isFirstChapterOfBible, handleNext, handlePrevious]);
 
   const onDragCancel = useCallback(() => {
     // Clear swiping flag
     isSwipingRef.current = false;
-
-    if (rafRef.current !== null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-    setIsDragging(false);
-    setDragOffsetForRender(0);
-    dragOffsetRef.current = 0;
   }, []);
 
   const { containerRef: gestureContainerRef, cancel: cancelGesture } = useGestureNavigation(
@@ -756,43 +726,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   }, [selectedVerse]);
 
   // Scroll detection logic outsourced to BibleReaderPage2Container
-
-  // Trackpad swipe navigation (two-finger swipe on laptop trackpads)
-  useEffect(() => {
-    let swipeThreshold = 50; // Minimum deltaX to trigger navigation
-    let lastSwipeTime = 0;
-    const swipeDebounce = 800; // Prevent rapid navigation (ms)
-
-    const handleWheel = (e: WheelEvent) => {
-      // Only handle horizontal wheel events (two-finger swipes on trackpad)
-      // deltaX represents horizontal scrolling
-      const horizontalDelta = Math.abs(e.deltaX);
-      const verticalDelta = Math.abs(e.deltaY);
-
-      // Check if this is primarily a horizontal swipe
-      if (horizontalDelta > verticalDelta && horizontalDelta > swipeThreshold) {
-        const now = Date.now();
-
-        // Debounce to prevent multiple triggers
-        if (now - lastSwipeTime < swipeDebounce) {
-          return;
-        }
-
-        lastSwipeTime = now;
-
-        // Swipe right (deltaX positive) = go back to previous chapter
-        // Swipe left (deltaX negative) = go forward to next chapter
-        if (e.deltaX > 0) {
-          handlePrevious();
-        } else if (e.deltaX < 0) {
-          handleNext();
-        }
-      }
-    };
-
-    window.addEventListener('wheel', handleWheel, { passive: true });
-    return () => window.removeEventListener('wheel', handleWheel);
-  }, [selectedChapter, selectedBook]); // Re-bind when chapter/book changes
 
   const getBibleContent = () => {
     return verses;

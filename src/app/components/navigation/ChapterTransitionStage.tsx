@@ -88,22 +88,22 @@ function getScrollVariants(direction: 'next' | 'prev'): Variants {
   const d = direction === 'next' ? 1 : -1;
   return {
     initial: {
-      x: `${100 * d}%`,
+      y: `${100 * d}%`,
       opacity: 0.85,
     },
     animate: {
-      x: 0,
+      y: 0,
       opacity: 1,
       transition: {
-        x: { duration: 0.42, ease: IOS_EASE },
+        y: { duration: 0.42, ease: IOS_EASE },
         opacity: { duration: 0.22, ease: DECELERATE_EASE },
       },
     },
     exit: {
-      x: `${-60 * d}%`,
+      y: `${-60 * d}%`,
       opacity: 0.4,
       transition: {
-        x: { duration: 0.38, ease: ACCELERATE_EASE },
+        y: { duration: 0.38, ease: ACCELERATE_EASE },
         opacity: { duration: 0.3, ease: ACCELERATE_EASE },
       },
     },
