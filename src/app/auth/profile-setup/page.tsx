@@ -247,7 +247,7 @@ function ProfileSetupContent() {
                 
                 <button 
                     onClick={() => router.push('/home')}
-                    className="w-full text-slate-400 font-extrabold py-2 hover:text-slate-600 transition-colors text-sm"
+                    className="w-full text-slate-400 font-extrabold py-2 hover:text-slate-600 transition-colors text-s"
                 >
                     Skip for now
                 </button>

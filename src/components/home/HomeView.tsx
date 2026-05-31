@@ -250,24 +250,24 @@ export default function HomeView() {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.5, ease: "easeOut" }}
-      className="space-y-6 pt-2 pb-6 bg-transparent min-h-full px-0 overflow-hidden"
+      className="space-y-6 pt-0 pb-6 bg-transparent min-h-full px-0 overflow-hidden"
     >
       {/* Greeting - Figma Style */}
-      <div className="flex items-center space-x-3 animate-fade-in px-4">
-        <div className="flex items-center justify-center text-gray-800 text-2xl font-bold px-1">
+      <div className="flex items-center space-x-3 animate-fade-in px-4 mt-0.5">
+        <div className="flex items-center justify-center text-gray-800 text-2xl font-bold px-1 shrink-0">
           ✝
         </div>
-        <div>
-          <div className="flex items-center space-x-1.5 text-gray-600 text-sm">
-            <p>Shalom,</p>
-          </div>
-          <h2 className="text-xl font-bold text-gray-800">
-            {(session?.user as any)?.firstName || session?.user?.name || 'Believer'}
+        <div className="min-w-0 flex-1">
+          <h2 className="text-[19px] font-bold text-gray-800 flex items-baseline space-x-1.5 min-w-0">
+            <span className="text-gray-500 text-[14px] font-medium shrink-0">Shalom,</span>
+            <span className="truncate block max-w-full">
+              {(session?.user as any)?.firstName || session?.user?.name || 'Believer'}
+            </span>
           </h2>
         </div>
       </div>
 
-      {/* Profile Setup Banner (Preserved) */}
+      {/*Profile Setup Banner (Preserved)
       {status === 'authenticated' && (session?.user as any).onboardingCompleted === false && (
         <div className="px-4">
           <div className="bg-gradient-to-r from-teal-50 to-cyan-50 border border-teal-100 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between shadow-sm animate-fade-in gap-4 sm:gap-2">
@@ -287,7 +287,7 @@ export default function HomeView() {
             </button>
           </div>
         </div>
-      )}
+      )}*/}
 
       {/* Daily Verse Carousel (7-Day History) */}
       <div className="relative overflow-hidden mb-8 w-full">
@@ -628,6 +628,31 @@ export default function HomeView() {
         )}
       </div>
       */}
+
+      {/* Journals & Prayers Entry Point */}
+      <div className="px-4">
+        <div
+          onClick={() => router.push('/journals')}
+          className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-2xl p-6 shadow-md hover:shadow-lg hover:border-[#0B7A81]/30 dark:hover:border-[#0B7A81]/50 transition-all cursor-pointer flex items-center justify-between group"
+        >
+          <div className="flex items-center space-x-4">
+            <div className="bg-[#0B7A81]/10 dark:bg-[#0B7A81]/20 p-3.5 rounded-xl group-hover:scale-110 transition-transform">
+              <span className="text-3xl select-none">✍️</span>
+            </div>
+            <div>
+              <h3 className="text-lg font-bold text-gray-800 dark:text-[#F5F5F5] group-hover:text-[#0B7A81] transition-colors">
+                Journals & Prayers
+              </h3>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Write journals, keep track of personal prayers, checklist notes, and voice recordings.
+              </p>
+            </div>
+          </div>
+          <div className="text-[var(--color-primary-teal)] text-xl font-bold transition-transform group-hover:translate-x-1 p-2">
+            →
+          </div>
+        </div>
+      </div>
 
       {/* Community Prayer Wall - Figma Design */}
       <div className="px-4">

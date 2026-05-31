@@ -2,79 +2,51 @@ import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Prayer } from '@/models/Prayer';
+import { PersonalPrayer } from '@/models/PersonalPrayer';
 
-/**
- * @swagger
- * /api/prayers:
- *   get:
- *     summary: Fetch public prayer requests
- *     description: Retrieve a list of public prayer requests with filtering and sorting options.
- *     tags: [Prayers]
- *     parameters:
- *       - in: query
- *         name: limit
- *         schema: { type: integer, default: 20 }
- *         description: Number of prayers to return
- *       - in: query
- *         name: sort
- *         schema: { type: string, enum: [newest, trending] }
- *         description: Sort order (newest or most prayed for)
- *     responses:
- *       200:
- *         description: List of prayers retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items: { $ref: '#/components/schemas/Prayer' }
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- *   post:
- *     summary: Create a new prayer request
- *     description: Authenticated users can post a new prayer request.
- *     tags: [Prayers]
- *     security:
- *       - BearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [text]
- *             properties:
- *               text: { type: string, description: The prayer request content }
- *               isPublic: { type: boolean, default: true, description: Whether the prayer is visible on the wall }
- *               anonymous: { type: boolean, default: false, description: Whether to hide the user's name }
- *     responses:
- *       201:
- *         description: Prayer created successfully
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Prayer' }
- *       400:
- *         description: Missing text or invalid input
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- *       401:
- *         description: Unauthorized
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- *       500:
- *         description: Internal server error
- *         content:
- *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
- */
 export async function GET(req: Request) {
   try {
     await connectDB();
+    const session = await auth();
     const { searchParams } = new URL(req.url);
+    const personal = searchParams.get('personal') === 'true';
+
+    // ── PERSONAL PRIVATE PRAYERS ──
+    if (personal) {
+      if (!session?.user) {
+        return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+      }
+      const userId = (session.user as any).id;
+      const q = searchParams.get('q') || '';
+      const folderId = searchParams.get('folderId') || '';
+      const isPinned = searchParams.get('isPinned');
+      const isBookmarked = searchParams.get('isBookmarked');
+      const label = searchParams.get('label') || '';
+
+      const filter: any = { userId };
+      if (folderId) filter.folderId = folderId;
+      if (isPinned !== null && isPinned !== undefined) filter.isPinned = isPinned === 'true';
+      if (isBookmarked !== null && isBookmarked !== undefined) filter.isBookmarked = isBookmarked === 'true';
+      if (label) filter.labels = label;
+
+      if (q) {
+        const searchRegex = new RegExp(q, 'i');
+        filter.$or = [
+          { title: searchRegex },
+          { content: searchRegex },
+          { labels: searchRegex },
+          { 'verses.bookName': searchRegex }
+        ];
+      }
+
+      const personalPrayers = await PersonalPrayer.find(filter)
+        .sort({ isPinned: -1, updatedAt: -1 })
+        .populate('folderId', 'name');
+
+      return NextResponse.json({ success: true, data: personalPrayers });
+    }
+
+    // ── PUBLIC WALL COMMUNITY PRAYERS (Original Logic) ──
     const limit = parseInt(searchParams.get('limit') || '20');
     const sort = searchParams.get('sort') || 'newest';
 
@@ -92,9 +64,9 @@ export async function GET(req: Request) {
       .populate('userId', 'firstName lastName image');
 
     return NextResponse.json(prayers);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching prayers:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error', message: error.message }, { status: 500 });
   }
 }
 
@@ -107,6 +79,41 @@ export async function POST(req: Request) {
 
     await connectDB();
     const body = await req.json();
+    const { searchParams } = new URL(req.url);
+
+    // Differentiate Personal private prayers vs Public Wall Community prayers
+    const isPersonal =
+      searchParams.get('personal') === 'true' ||
+      body.personal === true ||
+      'title' in body;
+
+    // ── PERSONAL PRIVATE PRAYER CREATION ──
+    if (isPersonal) {
+      const { title, content, labels, verses, folderId, isPinned, isBookmarked } = body;
+
+      if (!title || typeof title !== 'string' || !title.trim()) {
+        return NextResponse.json({ success: false, error: 'Title is required' }, { status: 400 });
+      }
+
+      if (title.length > 120) {
+        return NextResponse.json({ success: false, error: 'Title cannot exceed 120 characters' }, { status: 400 });
+      }
+
+      const personalPrayer = await PersonalPrayer.create({
+        userId: (session.user as any).id,
+        title: title.trim(),
+        content: content || '',
+        labels: labels || [],
+        verses: verses || [],
+        folderId: folderId || undefined,
+        isPinned: !!isPinned,
+        isBookmarked: !!isBookmarked,
+      });
+
+      return NextResponse.json({ success: true, data: personalPrayer }, { status: 201 });
+    }
+
+    // ── PUBLIC WALL COMMUNITY PRAYER CREATION (Original Logic) ──
     const { text, isPublic, anonymous } = body;
 
     if (!text) {
@@ -121,8 +128,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(newPrayer, { status: 201 });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating prayer:', error);
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Internal server error', message: error.message }, { status: 500 });
   }
 }

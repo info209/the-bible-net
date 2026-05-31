@@ -233,7 +233,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const pageTransition = propPageTransition ?? localPageTransition;
   const setPageTransition = propOnPageTransitionChange ?? setLocalPageTransition;
 
-  // Load font size from localStorage on mount
+  // Load font size, theme, font family, and page transitions from localStorage on mount
   useEffect(() => {
     const savedSize = localStorage.getItem('bible-reader-font-size');
     if (savedSize) {
@@ -253,14 +253,47 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         }
       }
     }
+
+    const savedTheme = localStorage.getItem('bible-reader-theme');
+    if (savedTheme) {
+      setSelectedTheme(savedTheme as any);
+    }
+
+    const savedFont = localStorage.getItem('bible-reader-font');
+    if (savedFont) {
+      setSelectedFont(savedFont);
+    }
+
+    const savedTransition = localStorage.getItem('bible-reader-page-transition');
+    if (savedTransition) {
+      setLocalPageTransition(savedTransition as any);
+    }
   }, []);
 
-  // Save font size to localStorage on change
+  // Save changes to localStorage
   useEffect(() => {
     if ([14, 16, 18, 22].includes(fontSize)) {
       localStorage.setItem('bible-reader-font-size', fontSize.toString());
     }
   }, [fontSize]);
+
+  useEffect(() => {
+    if (selectedTheme) {
+      localStorage.setItem('bible-reader-theme', selectedTheme);
+    }
+  }, [selectedTheme]);
+
+  useEffect(() => {
+    if (selectedFont) {
+      localStorage.setItem('bible-reader-font', selectedFont);
+    }
+  }, [selectedFont]);
+
+  useEffect(() => {
+    if (localPageTransition) {
+      localStorage.setItem('bible-reader-page-transition', localPageTransition);
+    }
+  }, [localPageTransition]);
 
   // ─── Transition system (new hook-based, centralized) ─────────────────────
   const {
@@ -1647,7 +1680,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                           }}
                           className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
                             ? 'text-[var(--color-accent-rose)] font-medium'
-                            : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
+                            : `${selectedTheme === 'dark' ? 'text-white' : 'text-[var(--color-text-primary)]'} hover:text-[var(--color-accent-rose)]`
                             }`}
                         >
                           {bookName}
@@ -1681,7 +1714,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                           }}
                           className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
                             ? 'text-[var(--color-accent-rose)] font-medium'
-                            : 'text-[var(--color-text-primary)] hover:text-[var(--color-accent-rose)]'
+                            : `${selectedTheme === 'dark' ? 'text-white' : 'text-[var(--color-text-primary)]'} hover:text-[var(--color-accent-rose)]`
                             }`}
                         >
                           {bookName}
@@ -1736,7 +1769,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     }}
                     className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedChapter === chapter
                       ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
-                      : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
+                      : `${selectedTheme === 'dark' ? 'bg-[#2c2c2e] text-white hover:bg-[#3a3a3c]' : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'}`
                       }`}
                   >
                     {chapter.toString().padStart(2, '0')}
@@ -1801,7 +1834,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     }}
                     className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedVerse === verse
                       ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
-                      : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'
+                      : `${selectedTheme === 'dark' ? 'bg-[#2c2c2e] text-white hover:bg-[#3a3a3c]' : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'}`
                       }`}
                   >
                     {verse.toString().padStart(2, '0')}
@@ -1863,7 +1896,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                           : selectedTheme === 'dark' ? '#2c2c2e' : '#f1f3f3',
                         color: selectedVersion === version.name
                           ? '#E23744'
-                          : currentTheme.text,
+                          : selectedTheme === 'dark' ? '#ffffff' : currentTheme.text,
                       }}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>
@@ -1886,7 +1919,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                         backgroundColor: selectedVersion === version.name
                           ? '#fde8ea'
                           : selectedTheme === 'dark' ? '#2c2c2e' : '#f1f3f3',
-                        color: selectedVersion === version.name ? '#E23744' : currentTheme.text,
+                        color: selectedVersion === version.name ? '#E23744' : selectedTheme === 'dark' ? '#ffffff' : currentTheme.text,
                       }}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>
@@ -1909,7 +1942,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                         backgroundColor: selectedVersion === version.name
                           ? '#fde8ea'
                           : selectedTheme === 'dark' ? '#2c2c2e' : '#f1f3f3',
-                        color: selectedVersion === version.name ? '#E23744' : currentTheme.text,
+                        color: selectedVersion === version.name ? '#E23744' : selectedTheme === 'dark' ? '#ffffff' : currentTheme.text,
                       }}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>

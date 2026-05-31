@@ -318,6 +318,66 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const [showCompareSelector, setShowCompareSelector] = useState(false);
   const [tempComparisonIds, setTempComparisonIds] = useState<string[]>([]);
 
+  // Load preferences from localStorage on mount in Container
+  useEffect(() => {
+    const cachedVersionId = localStorage.getItem('bible-reader-version-id');
+    const cachedVersionName = localStorage.getItem('bible-reader-version-name');
+    const cachedBookId = localStorage.getItem('bible-reader-book-id');
+    const cachedBookName = localStorage.getItem('bible-reader-book-name');
+    const cachedChapter = localStorage.getItem('bible-reader-chapter');
+    const cachedTheme = localStorage.getItem('bible-reader-theme');
+    const cachedFont = localStorage.getItem('bible-reader-font');
+    const cachedSize = localStorage.getItem('bible-reader-font-size');
+    const cachedTransition = localStorage.getItem('bible-reader-page-transition');
+
+    if (cachedVersionId) setSelectedVersionId(cachedVersionId);
+    if (cachedVersionName) setDisplayVersionName(cachedVersionName);
+    if (cachedBookId) setSelectedBookId(cachedBookId);
+    if (cachedBookName) setDisplayBookName(cachedBookName);
+    if (cachedChapter) setSelectedChapter(parseInt(cachedChapter, 10) || 1);
+    if (cachedTheme) setSelectedTheme(cachedTheme as any);
+    if (cachedFont) setSelectedFont(cachedFont);
+    if (cachedSize) setFontSize(parseInt(cachedSize, 10) || 18);
+    if (cachedTransition) setPageTransition(cachedTransition as any);
+  }, []);
+
+  // Save selectors to localStorage when they change
+  useEffect(() => {
+    if (selectedVersionId) localStorage.setItem('bible-reader-version-id', selectedVersionId);
+  }, [selectedVersionId]);
+
+  useEffect(() => {
+    if (displayVersionName) localStorage.setItem('bible-reader-version-name', displayVersionName);
+  }, [displayVersionName]);
+
+  useEffect(() => {
+    if (selectedBookId) localStorage.setItem('bible-reader-book-id', selectedBookId);
+  }, [selectedBookId]);
+
+  useEffect(() => {
+    if (displayBookName) localStorage.setItem('bible-reader-book-name', displayBookName);
+  }, [displayBookName]);
+
+  useEffect(() => {
+    if (selectedChapter) localStorage.setItem('bible-reader-chapter', selectedChapter.toString());
+  }, [selectedChapter]);
+
+  useEffect(() => {
+    if (selectedTheme) localStorage.setItem('bible-reader-theme', selectedTheme);
+  }, [selectedTheme]);
+
+  useEffect(() => {
+    if (selectedFont) localStorage.setItem('bible-reader-font', selectedFont);
+  }, [selectedFont]);
+
+  useEffect(() => {
+    if (fontSize) localStorage.setItem('bible-reader-font-size', fontSize.toString());
+  }, [fontSize]);
+
+  useEffect(() => {
+    if (pageTransition) localStorage.setItem('bible-reader-page-transition', pageTransition);
+  }, [pageTransition]);
+
   // Compare mode handlers
   const handleToggleCompareVersion = (vId: string) => {
     setTempComparisonIds(prev => {
