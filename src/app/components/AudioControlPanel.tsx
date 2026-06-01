@@ -30,6 +30,7 @@ interface AudioControlPanelProps {
   onChapterChange?: (chapter: number) => void;
   onBookChange?: (direction: 'prev' | 'next') => void;
   isDark?: boolean;
+  selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
 }
 
 export default function AudioControlPanel({
@@ -59,7 +60,8 @@ export default function AudioControlPanel({
   selectedBook = '',
   onChapterChange,
   onBookChange,
-  isDark = false
+  isDark = false,
+  selectedTheme
 }: AudioControlPanelProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
@@ -146,17 +148,72 @@ export default function AudioControlPanel({
     : selectedVerse;
   const panelTitle = `${selectedBook || 'Bible'} ${selectedChapter}:${displayVerse}`;
 
-  // Premium dark/light themes variables
-  const dm = isDark;
-  const panelBg = dm ? '#000000' : 'rgba(255, 255, 255, 0.95)';
-  const panelBorder = dm ? 'rgba(255, 255, 255, 0.08)' : 'rgba(255, 255, 255, 0.4)';
-  const textPrimary = dm ? '#e5e7e7' : '#31393a';
-  const textSecondary = dm ? '#8e8e93' : '#7c7c7c';
-  const textTertiary = dm ? '#636366' : '#9ca3a3';
-  const btnBg = dm ? '#1c1c1e' : '#f2f2f2';
-  const pillBg = dm ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.88)';
-  const pillBorder = dm ? 'rgba(255, 255, 255, 0.05)' : 'rgba(255, 255, 255, 0.65)';
-  const sliderTrackBg = dm ? '#2c2c2e' : '#d9d9d9';
+  // Premium themes variables
+  const theme = selectedTheme || (isDark ? 'dark' : 'light');
+  const dm = theme === 'dark';
+  
+  const panelBg = {
+    light: 'rgba(255, 255, 255, 0.95)',
+    sepia: 'rgba(250, 240, 227, 0.97)',
+    cream: 'rgba(253, 246, 235, 0.97)',
+    dark: '#000000'
+  }[theme];
+
+  const panelBorder = {
+    light: 'rgba(49, 57, 58, 0.1)',
+    sepia: 'rgba(92, 74, 58, 0.15)',
+    cream: 'rgba(74, 63, 42, 0.15)',
+    dark: 'rgba(255, 255, 255, 0.08)'
+  }[theme];
+
+  const textPrimary = {
+    light: '#31393a',
+    sepia: '#5c4a3a',
+    cream: '#4a3f2a',
+    dark: '#e5e7e7'
+  }[theme];
+
+  const textSecondary = {
+    light: '#6b7280',
+    sepia: '#7d6855',
+    cream: '#6e5f46',
+    dark: '#8e8e93'
+  }[theme];
+
+  const textTertiary = {
+    light: '#9ca3a3',
+    sepia: '#927d6c',
+    cream: '#83745c',
+    dark: '#636366'
+  }[theme];
+
+  const btnBg = {
+    light: '#f1f3f3',
+    sepia: '#f2dec6',
+    cream: '#fcf0db',
+    dark: '#1c1c1e'
+  }[theme];
+
+  const pillBg = {
+    light: 'rgba(255, 255, 255, 0.88)',
+    sepia: 'rgba(250, 240, 227, 0.88)',
+    cream: 'rgba(253, 246, 235, 0.88)',
+    dark: 'rgba(255, 255, 255, 0.03)'
+  }[theme];
+
+  const pillBorder = {
+    light: 'rgba(49, 57, 58, 0.08)',
+    sepia: 'rgba(92, 74, 58, 0.1)',
+    cream: 'rgba(74, 63, 42, 0.1)',
+    dark: 'rgba(255, 255, 255, 0.05)'
+  }[theme];
+
+  const sliderTrackBg = {
+    light: '#d9d9d9',
+    sepia: '#e0c9a6',
+    cream: '#e5e5e5',
+    dark: '#2c2c2e'
+  }[theme];
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[100] pointer-events-none">

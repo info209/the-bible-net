@@ -726,6 +726,53 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
   };
 
+  const popupThemeConfig = {
+    light: {
+      bg: 'rgba(255, 255, 255, 0.95)',
+      solidBg: '#ffffff',
+      border: '1px solid rgba(49, 57, 58, 0.1)',
+      text: '#31393a',
+      subtext: '#6b7280',
+      itemHover: 'rgba(49, 57, 58, 0.05)',
+      divider: 'rgba(49, 57, 58, 0.1)',
+      selectedBg: '#f1f3f3',
+      selectedText: '#E23744',
+    },
+    sepia: {
+      bg: 'rgba(250, 240, 227, 0.97)',
+      solidBg: '#faf0e3',
+      border: '1px solid rgba(92, 74, 58, 0.15)',
+      text: '#5c4a3a',
+      subtext: '#7d6855',
+      itemHover: 'rgba(92, 74, 58, 0.08)',
+      divider: 'rgba(92, 74, 58, 0.15)',
+      selectedBg: '#f2dec6',
+      selectedText: '#D42C3A',
+    },
+    cream: {
+      bg: 'rgba(253, 246, 235, 0.97)',
+      solidBg: '#fdf6eb',
+      border: '1px solid rgba(74, 63, 42, 0.15)',
+      text: '#4a3f2a',
+      subtext: '#6e5f46',
+      itemHover: 'rgba(74, 63, 42, 0.08)',
+      divider: 'rgba(74, 63, 42, 0.15)',
+      selectedBg: '#fcf0db',
+      selectedText: '#E23744',
+    },
+    dark: {
+      bg: 'rgba(28, 28, 30, 0.97)',
+      solidBg: '#1c1c1e',
+      border: '1px solid rgba(255, 255, 255, 0.08)',
+      text: '#e5e7e7',
+      subtext: '#8e8e93',
+      itemHover: 'rgba(255, 255, 255, 0.08)',
+      divider: 'rgba(255, 255, 255, 0.08)',
+      selectedBg: '#2c2c2e',
+      selectedText: '#FF4757',
+    }
+  };
+
   const currentTheme = themeConfig[selectedTheme];
 
   // Reset selectedVerse when chapter or book changes - set to null so it doesn't auto-scroll
@@ -1566,8 +1613,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   <div
                     className="absolute right-0 top-full mt-2 z-[60] w-56 overflow-hidden rounded-xl shadow-lg backdrop-blur-xl backdrop-saturate-[180%]"
                     style={{
-                      backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.95)',
-                      border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.4)',
+                      backgroundColor: popupThemeConfig[selectedTheme].bg,
+                      border: popupThemeConfig[selectedTheme].border,
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -1578,7 +1625,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                           setShowSettingsMenu(true);
                         }}
                         className="w-full px-4 py-3 text-left text-sm font-medium transition-colors"
-                        style={{ color: currentTheme.text }}
+                        style={{ borderBottom: `1px solid ${popupThemeConfig[selectedTheme].divider}`, color: currentTheme.text }}
                       >
                         Fonts & Settings
                       </button>
@@ -1613,14 +1660,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       {showBookSelector && (
         <div
           className="fixed inset-0 z-[100]"
-          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.45)' }}
           onClick={() => setShowBookSelector(false)}
         >
           <div
             className="absolute left-1/2 -translate-x-1/2 top-20 rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)]"
             style={{
-              backgroundColor: selectedTheme === 'dark' ? '#1c1c1e' : '#ffffff',
-              border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+              backgroundColor: popupThemeConfig[selectedTheme].solidBg,
+              border: popupThemeConfig[selectedTheme].border,
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1636,23 +1683,23 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   </span>
                   <div
                     className="flex rounded-full p-0.5"
-                    style={{ backgroundColor: selectedTheme === 'dark' ? '#3a3a3c' : 'rgba(209,213,219,0.8)' }}
+                    style={{ backgroundColor: popupThemeConfig[selectedTheme].selectedBg }}
                   >
                     <button
                       onClick={() => setBookSortType('traditional')}
                       className="p-1.5 rounded-full transition-all"
-                      style={{ backgroundColor: bookSortType === 'traditional' ? (selectedTheme === 'dark' ? '#2c2c2e' : '#ffffff') : 'transparent' }}
+                      style={{ backgroundColor: bookSortType === 'traditional' ? popupThemeConfig[selectedTheme].solidBg : 'transparent' }}
                       aria-label="Traditional sort"
                     >
-                      <RiSortDesc className="size-4" style={{ color: bookSortType === 'traditional' ? 'var(--color-accent-rose)' : currentTheme.text }} />
+                      <RiSortDesc className="size-4" style={{ color: bookSortType === 'traditional' ? currentTheme.verseNumber : currentTheme.text }} />
                     </button>
                     <button
                       onClick={() => setBookSortType('alphabetical')}
                       className="p-1.5 rounded-full transition-all"
-                      style={{ backgroundColor: bookSortType === 'alphabetical' ? (selectedTheme === 'dark' ? '#2c2c2e' : '#ffffff') : 'transparent' }}
+                      style={{ backgroundColor: bookSortType === 'alphabetical' ? popupThemeConfig[selectedTheme].solidBg : 'transparent' }}
                       aria-label="Alphabetical sort"
                     >
-                      <RiSortAlphabetAsc className="size-4" style={{ color: bookSortType === 'alphabetical' ? 'var(--color-accent-rose)' : currentTheme.text }} />
+                      <RiSortAlphabetAsc className="size-4" style={{ color: bookSortType === 'alphabetical' ? currentTheme.verseNumber : currentTheme.text }} />
                     </button>
                   </div>
                 </div>
@@ -1668,11 +1715,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             </div>
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ backgroundColor: selectedTheme === 'dark' ? '#1c1c1e' : undefined }}>
+            <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ backgroundColor: popupThemeConfig[selectedTheme].solidBg }}>
               <div className="grid grid-cols-2 gap-8">
                 {/* Old Testament */}
                 <div>
-                  <h4 className="sticky top-0 mb-3 pt-2 pb-2 text-sm font-semibold z-10" style={{ backgroundColor: selectedTheme === 'dark' ? '#1c1c1e' : '#ffffff', color: currentTheme.text }}>Old Testament</h4>
+                  <h4 className="sticky top-0 mb-3 pt-2 pb-2 text-sm font-semibold z-10" style={{ backgroundColor: popupThemeConfig[selectedTheme].solidBg, color: currentTheme.text }}>Old Testament</h4>
                   <div className="space-y-2">
                     {(bookSortType === 'alphabetical'
                       ? [...books['Old Testament']].sort((a, b) => {
@@ -1693,9 +1740,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                             setSelectedChapter(1);
                           }}
                           className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
-                            ? 'text-[var(--color-accent-rose)] font-medium'
-                            : `${selectedTheme === 'dark' ? 'text-white' : 'text-[var(--color-text-primary)]'} hover:text-[var(--color-accent-rose)]`
+                            ? 'font-bold'
+                            : 'hover:opacity-80'
                             }`}
+                          style={{
+                            color: selectedBook === bookName
+                              ? currentTheme.verseNumber
+                              : currentTheme.text
+                          }}
                         >
                           {bookName}
                         </button>
@@ -1706,7 +1758,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
                 {/* New Testament */}
                 <div>
-                  <h4 className="sticky top-0 mb-3 pt-2 pb-2 text-sm font-semibold z-10" style={{ backgroundColor: selectedTheme === 'dark' ? '#1c1c1e' : '#ffffff', color: currentTheme.text }}>New Testament</h4>
+                  <h4 className="sticky top-0 mb-3 pt-2 pb-2 text-sm font-semibold z-10" style={{ backgroundColor: popupThemeConfig[selectedTheme].solidBg, color: currentTheme.text }}>New Testament</h4>
                   <div className="space-y-2">
                     {(bookSortType === 'alphabetical'
                       ? [...books['New Testament']].sort((a, b) => {
@@ -1727,9 +1779,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                             setSelectedChapter(1);
                           }}
                           className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
-                            ? 'text-[var(--color-accent-rose)] font-medium'
-                            : `${selectedTheme === 'dark' ? 'text-white' : 'text-[var(--color-text-primary)]'} hover:text-[var(--color-accent-rose)]`
+                            ? 'font-bold'
+                            : 'hover:opacity-80'
                             }`}
+                          style={{
+                            color: selectedBook === bookName
+                              ? currentTheme.verseNumber
+                              : currentTheme.text
+                          }}
                         >
                           {bookName}
                         </button>
@@ -1746,25 +1803,25 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       {showChapterSelector && (
         <div
           className="fixed inset-0 z-[100]"
-          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.45)' }}
           onClick={() => setShowChapterSelector(false)}
         >
           <div
             className="absolute left-1/2 -translate-x-1/2 top-20 rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)] backdrop-blur-3xl backdrop-saturate-[180%]"
             style={{
-              backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.85)',
-              border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+              backgroundColor: popupThemeConfig[selectedTheme].bg,
+              border: popupThemeConfig[selectedTheme].border,
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with Done button */}
-            <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${selectedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(49,57,58,0.1)'}` }}>
+            <div className="flex items-center justify-between p-4" style={{ borderBottom: popupThemeConfig[selectedTheme].border }}>
               <div className="w-16"></div>
               <h3 className="text-base font-normal" style={{ color: currentTheme.text }}>Select chapter</h3>
               <button
                 onClick={() => setShowChapterSelector(false)}
-                className="text-sm hover:text-[#E23744] transition-colors px-2"
-                style={{ color: currentTheme.text }}
+                className="text-sm hover:opacity-80 transition-opacity px-2"
+                style={{ color: currentTheme.verseNumber }}
               >
                 Done
               </button>
@@ -1782,9 +1839,17 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       setShowVerseSelector(true);
                     }}
                     className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedChapter === chapter
-                      ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
-                      : `${selectedTheme === 'dark' ? 'bg-[#2c2c2e] text-white hover:bg-[#3a3a3c]' : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'}`
+                      ? 'font-bold'
+                      : 'hover:opacity-80'
                       }`}
+                    style={{
+                      backgroundColor: selectedChapter === chapter
+                        ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
+                        : popupThemeConfig[selectedTheme].selectedBg,
+                      color: selectedChapter === chapter
+                        ? currentTheme.verseNumber
+                        : currentTheme.text,
+                    }}
                   >
                     {chapter.toString().padStart(2, '0')}
                   </button>
@@ -1798,26 +1863,26 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       {showVerseSelector && (
         <div
           className="fixed inset-0 z-[100]"
-          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.45)' }}
           onClick={() => setShowVerseSelector(false)}
         >
           <div
             className="absolute left-1/2 -translate-x-1/2 top-20 rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)] backdrop-blur-3xl backdrop-saturate-[180%]"
             style={{
-              backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.85)',
-              border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+              backgroundColor: popupThemeConfig[selectedTheme].bg,
+              border: popupThemeConfig[selectedTheme].border,
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header with Back and Done buttons */}
-            <div className="flex items-center justify-between p-4" style={{ borderBottom: `1px solid ${selectedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(49,57,58,0.1)'}` }}>
+            <div className="flex items-center justify-between p-4" style={{ borderBottom: popupThemeConfig[selectedTheme].border }}>
               <button
                 onClick={() => {
                   setShowVerseSelector(false);
                   setShowChapterSelector(true);
                 }}
-                className="flex items-center space-x-1 text-sm hover:text-[#E23744] transition-colors"
-                style={{ color: currentTheme.text }}
+                className="flex items-center space-x-1 text-sm hover:opacity-80 transition-opacity"
+                style={{ color: currentTheme.verseNumber }}
               >
                 <ChevronLeft className="size-4" />
                 <span>Back</span>
@@ -1828,8 +1893,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   setShowVerseSelector(false);
                   setShowChapterSelector(false);
                 }}
-                className="text-sm hover:text-[#E23744] transition-colors px-2"
-                style={{ color: currentTheme.text }}
+                className="text-sm hover:opacity-80 transition-opacity px-2"
+                style={{ color: currentTheme.verseNumber }}
               >
                 Done
               </button>
@@ -1847,9 +1912,17 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       setShowChapterSelector(false);
                     }}
                     className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedVerse === verse
-                      ? 'bg-[var(--color-accent-rose-lighter)] text-[var(--color-accent-rose)] font-medium'
-                      : `${selectedTheme === 'dark' ? 'bg-[#2c2c2e] text-white hover:bg-[#3a3a3c]' : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] hover:bg-[var(--color-gray-200)]'}`
+                      ? 'font-bold'
+                      : 'hover:opacity-80'
                       }`}
+                    style={{
+                      backgroundColor: selectedVerse === verse
+                        ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
+                        : popupThemeConfig[selectedTheme].selectedBg,
+                      color: selectedVerse === verse
+                        ? currentTheme.verseNumber
+                        : currentTheme.text,
+                    }}
                   >
                     {verse.toString().padStart(2, '0')}
                   </button>
@@ -1863,14 +1936,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       {showVersionSelector && (
         <div
           className="fixed inset-0 z-[100]"
-          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.45)' }}
           onClick={() => setShowVersionSelector(false)}
         >
           <div
             className="absolute left-1/2 -translate-x-1/2 top-20 rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)] backdrop-blur-3xl backdrop-saturate-[180%]"
             style={{
-              backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.85)',
-              border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+              backgroundColor: popupThemeConfig[selectedTheme].bg,
+              border: popupThemeConfig[selectedTheme].border,
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -1887,15 +1960,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 pb-4">
-              <h4 className="font-bold text-[#E23744] mb-4 text-sm">Bible Versions</h4>
-              <style>{`
-                .version-btn-dark { background: #2c2c2e !important; color: #e5e7e7 !important; }
-                .version-btn-dark:hover { background: #3a3a3c !important; }
-              `}</style>
+              <h4 className="font-bold mb-4 text-sm" style={{ color: currentTheme.verseNumber }}>Bible Versions</h4>
               <div className="space-y-3">
                 {/* English Section */}
                 <div className="space-y-2">
-                  <p className="text-sm mb-2 opacity-60" style={{ color: currentTheme.text }}>English</p>
+                  <p className="text-sm mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>English</p>
                   {(apiVersions || fallbackVersions).filter(v => v.language === 'English').map(version => (
                     <button
                       key={version.name}
@@ -1906,11 +1975,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       className="w-full text-left px-4 py-2.5 rounded transition-colors"
                       style={{
                         backgroundColor: selectedVersion === version.name
-                          ? '#fde8ea'
-                          : selectedTheme === 'dark' ? '#2c2c2e' : '#f1f3f3',
+                          ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
+                          : popupThemeConfig[selectedTheme].selectedBg,
                         color: selectedVersion === version.name
-                          ? '#E23744'
-                          : selectedTheme === 'dark' ? '#ffffff' : currentTheme.text,
+                          ? currentTheme.verseNumber
+                          : currentTheme.text,
                       }}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>
@@ -1920,7 +1989,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
                 {/* Telugu Section */}
                 <div className="space-y-2">
-                  <p className="text-sm mb-2 opacity-60" style={{ color: currentTheme.text }}>Telugu</p>
+                  <p className="text-sm mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>Telugu</p>
                   {(apiVersions || fallbackVersions).filter(v => v.language === 'Telugu').map(version => (
                     <button
                       key={version.name}
@@ -1931,9 +2000,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       className="w-full text-left px-4 py-2.5 rounded transition-colors"
                       style={{
                         backgroundColor: selectedVersion === version.name
-                          ? '#fde8ea'
-                          : selectedTheme === 'dark' ? '#2c2c2e' : '#f1f3f3',
-                        color: selectedVersion === version.name ? '#E23744' : selectedTheme === 'dark' ? '#ffffff' : currentTheme.text,
+                          ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
+                          : popupThemeConfig[selectedTheme].selectedBg,
+                        color: selectedVersion === version.name
+                          ? currentTheme.verseNumber
+                          : currentTheme.text,
                       }}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>
@@ -1943,7 +2014,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
                 {/* Hindi Section */}
                 <div className="space-y-2">
-                  <p className="text-sm mb-2 opacity-60" style={{ color: currentTheme.text }}>Hindi</p>
+                  <p className="text-sm mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>Hindi</p>
                   {(apiVersions || fallbackVersions).filter(v => v.language === 'Hindi').map(version => (
                     <button
                       key={version.name}
@@ -1954,9 +2025,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       className="w-full text-left px-4 py-2.5 rounded transition-colors"
                       style={{
                         backgroundColor: selectedVersion === version.name
-                          ? '#fde8ea'
-                          : selectedTheme === 'dark' ? '#2c2c2e' : '#f1f3f3',
-                        color: selectedVersion === version.name ? '#E23744' : selectedTheme === 'dark' ? '#ffffff' : currentTheme.text,
+                          ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
+                          : popupThemeConfig[selectedTheme].selectedBg,
+                        color: selectedVersion === version.name
+                          ? currentTheme.verseNumber
+                          : currentTheme.text,
                       }}
                     >
                       <div className="text-base font-medium">{version.fullName} ({version.name})</div>
@@ -1972,14 +2045,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       {showMusicSelector && (
         <div
           className="fixed inset-0 z-[100]"
-          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.45)' }}
           onClick={() => setShowMusicSelector(false)}
         >
           <div
             className="absolute top-20 left-4 right-4 sm:left-1/2 sm:-translate-x-1/2 backdrop-blur-3xl backdrop-saturate-[180%] rounded-lg sm:w-full sm:max-w-[400px] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)]"
             style={{
-              backgroundColor: selectedTheme === 'dark' ? 'rgba(28,28,30,0.97)' : 'rgba(255,255,255,0.85)',
-              border: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+              backgroundColor: popupThemeConfig[selectedTheme].bg,
+              border: popupThemeConfig[selectedTheme].border,
             }}
             onClick={(e) => e.stopPropagation()}
           >
@@ -2047,10 +2120,12 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   <button
                     key={track.id}
                     onClick={() => setSelectedMusic(track.id)}
-                    className={`w-full flex items-center justify-between p-3 rounded-lg transition-all ${selectedMusic === track.id
-                      ? 'bg-[#fde8ea]'
-                      : 'bg-transparent hover:bg-gray-50'
-                      }`}
+                    className="w-full flex items-center justify-between p-3 rounded-lg transition-all"
+                    style={{
+                      backgroundColor: selectedMusic === track.id
+                        ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
+                        : 'transparent',
+                    }}
                   >
                     {/* Left side - Thumbnail and name */}
                     <div className="flex items-center space-x-3">
@@ -2073,7 +2148,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       {/* Track name */}
                       <span
                         className="text-base"
-                        style={{ color: selectedMusic === track.id ? '#E23744' : currentTheme.text, fontWeight: selectedMusic === track.id ? 500 : 400 }}
+                        style={{ color: selectedMusic === track.id ? currentTheme.verseNumber : currentTheme.text, fontWeight: selectedMusic === track.id ? 500 : 400 }}
                       >
                         {track.name}
                       </span>
@@ -2096,7 +2171,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       {/* Audio Control Panel */}
       <AudioControlPanel
         isOpen={showAudioControls && showAudioControlPanel}
-        isDark={selectedTheme === 'dark'}
+        selectedTheme={selectedTheme}
         onClose={() => {
           setShowAudioControlPanel(false);
           setAudioPlayerState('default');
@@ -2165,21 +2240,21 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       {showTimerMenu && (
         <div
           className="fixed inset-0 z-[110]"
-          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.2)' }}
+          style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.45)' }}
           onClick={() => setShowTimerMenu(false)}
         >
           <div
             className="absolute bottom-0 left-0 right-0 backdrop-blur-3xl backdrop-saturate-[180%] rounded-t-[32px] shadow-[0px_8px_12px_6px_rgba(0,0,0,0.15),0px_4px_4px_0px_rgba(0,0,0,0.3)] max-w-[600px] mx-auto max-h-[70vh] overflow-hidden flex flex-col"
             style={{
-              backgroundColor: selectedTheme === 'dark' ? '#000000' : 'rgba(255,255,255,0.85)',
-              borderTop: selectedTheme === 'dark' ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(255,255,255,0.3)',
+              backgroundColor: popupThemeConfig[selectedTheme].bg,
+              borderTop: popupThemeConfig[selectedTheme].border,
             }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
             <div
               className="flex items-center justify-between px-6 py-4"
-              style={{ borderBottom: `1px solid ${selectedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}` }}
+              style={{ borderBottom: `1px solid ${popupThemeConfig[selectedTheme].divider}` }}
             >
               <button
                 onClick={() => setShowTimerMenu(false)}
@@ -2214,14 +2289,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     key={key}
                     onClick={() => setSelectedTimer(key)}
                     className="w-full flex items-center justify-between py-4"
-                    style={{ borderBottom: `1px solid ${selectedTheme === 'dark' ? 'rgba(255,255,255,0.08)' : '#e5e7eb'}` }}
+                    style={{ borderBottom: `1px solid ${popupThemeConfig[selectedTheme].divider}` }}
                   >
                     <span className="text-base" style={{ color: currentTheme.text }}>{label}</span>
                     <div
                       className="size-6 rounded-full border-2 transition-all"
                       style={{
-                        backgroundColor: selectedTimer === key ? '#E23744' : 'transparent',
-                        borderColor: selectedTimer === key ? '#E23744' : selectedTheme === 'dark' ? '#636366' : '#d1d5db',
+                        backgroundColor: selectedTimer === key ? currentTheme.verseNumber : 'transparent',
+                        borderColor: selectedTimer === key ? currentTheme.verseNumber : popupThemeConfig[selectedTheme].divider,
                       }}
                     />
                   </button>
@@ -2376,7 +2451,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         onClose={() => setShowSearch(false)}
         selectedVersion={selectedVersion}
         onNavigateToVerse={handleNavigateToVerse}
-        isDark={selectedTheme === 'dark'}
+        selectedTheme={selectedTheme}
       />
 
       {/* Compare Versions Modal */}
@@ -2387,7 +2462,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         selectedVersions={compareMode.selectedVersions}
         onToggleVersion={handleToggleCompareVersion}
         onStartCompare={handleStartCompare}
-        isDark={selectedTheme === 'dark'}
+        selectedTheme={selectedTheme}
       />
 
       {/* Compare Menu (when clicking compare icon in active mode) */}
@@ -2399,7 +2474,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         onRemoveVersion={handleRemoveCompareVersion}
         onAddVersion={handleAddCompareVersion}
         onExitCompare={handleExitCompare}
-        isDark={selectedTheme === 'dark'}
+        selectedTheme={selectedTheme}
       />
       <AnimatePresence>
         {showVerseActionMenu && selectedVerses.length > 0 && (
@@ -2423,7 +2498,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             onShare={() => onShareVerses?.()}
             onCompare={onCompareVerses}
             isLoggedIn={isLoggedIn}
-            isDark={selectedTheme === 'dark'}
+            selectedTheme={selectedTheme}
           />
         )}
       </AnimatePresence>

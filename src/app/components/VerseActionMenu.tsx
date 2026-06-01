@@ -55,6 +55,7 @@ export interface VerseActionMenuProps {
   onAddUserLabel?: (label: string) => Promise<void>;
   isLoggedIn?: boolean;
   isDark?: boolean;
+  selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -74,7 +75,14 @@ function formatVerses(bookName: string, chapter: number, selectedVerses: number[
 }
 
 // ─── Toggle component ────────────────────────────────────────────────────────
-function IOSToggle({ checked, onChange, isDark }: { checked: boolean; onChange: (v: boolean) => void; isDark: boolean }) {
+function IOSToggle({ checked, onChange, isDark, selectedTheme }: { checked: boolean; onChange: (v: boolean) => void; isDark: boolean; selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark' }) {
+  const theme = selectedTheme || (isDark ? 'dark' : 'light');
+  const uncheckedBg = {
+    light: '#E5E7EB',
+    sepia: '#e0c9a6',
+    cream: '#e5e5e5',
+    dark: '#2C2C2E'
+  }[theme];
   return (
     <button
       role="switch"
@@ -84,7 +92,7 @@ function IOSToggle({ checked, onChange, isDark }: { checked: boolean; onChange: 
       style={{
         width: 38, height: 22,
         borderRadius: 999,
-        backgroundColor: checked ? '#31C4BE' : (isDark ? '#2C2C2E' : '#E5E7EB'),
+        backgroundColor: checked ? '#31C4BE' : uncheckedBg,
       }}
     >
       <motion.div
@@ -122,6 +130,7 @@ export default function VerseActionMenu({
   onAddUserLabel,
   isLoggedIn = false,
   isDark = false,
+  selectedTheme,
 }: VerseActionMenuProps) {
   const [view, setView] = useState<'main' | 'save' | 'note' | 'highlight'>('main');
   const [paletteExpanded, setPaletteExpanded] = useState(false);
@@ -154,22 +163,107 @@ export default function VerseActionMenu({
     }
   }, [isOpen, existingHighlightColor, existingSaveLabels, existingSaveNote, existingSaveIsPrivate]);
 
-  // ── Dark-mode tokens ─────────────────────────────────────────────────────
-  const dm = isDark;
-  const sheetBg     = dm ? '#000000' : '#FFFFFF';
-  const dragBg      = dm ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.14)';
-  const labelText   = dm ? '#F5F5F7' : '#1C1C1E';
-  const subText     = '#8E8E93';
-  const inputBg     = dm ? '#111111' : '#F9FAFB';
-  const inputBorder = dm ? '#2C2C2E' : '#E5E7EB';
-  const inputText   = dm ? '#F5F5F7' : '#374151';
-  const headerBorder= dm ? '1px solid rgba(255,255,255,0.06)' : '1px solid rgba(0,0,0,0.04)';
-  const actionBg    = dm ? '#111111' : '#F9FAFB';
-  const actionBorder= dm ? '1px solid rgba(255,255,255,0.18)' : '1px solid rgba(0,0,0,0.06)';
-  const chipBg      = dm ? '#111111' : '#F3F4F6';
-  const chipBorder  = dm ? '1px solid rgba(255,255,255,0.18)' : '1px solid #E5E7EB';
-  const sectionTxt  = dm ? '#636366' : '#9CA3AF';
-  const backdropBg  = dm ? 'rgba(0,0,0,0.82)' : 'rgba(0,0,0,0.42)';
+  // ── Dynamic Themes tokens ────────────────────────────────────────────────
+  const theme = selectedTheme || (isDark ? 'dark' : 'light');
+  const dm = theme === 'dark';
+  
+  const sheetBg = {
+    light: '#FFFFFF',
+    sepia: '#faf0e3',
+    cream: '#fdf6eb',
+    dark: '#1c1c1e'
+  }[theme];
+
+  const dragBg = {
+    light: 'rgba(0,0,0,0.14)',
+    sepia: 'rgba(92, 74, 58, 0.15)',
+    cream: 'rgba(74, 63, 42, 0.15)',
+    dark: 'rgba(255,255,255,0.18)'
+  }[theme];
+
+  const labelText = {
+    light: '#1C1C1E',
+    sepia: '#5c4a3a',
+    cream: '#4a3f2a',
+    dark: '#F5F5F7'
+  }[theme];
+
+  const subText = {
+    light: '#8E8E93',
+    sepia: '#7d6855',
+    cream: '#6e5f46',
+    dark: '#8E8E93'
+  }[theme];
+
+  const inputBg = {
+    light: '#F9FAFB',
+    sepia: '#faf0e3',
+    cream: '#fdf6eb',
+    dark: '#111111'
+  }[theme];
+
+  const inputBorder = {
+    light: '#E5E7EB',
+    sepia: 'rgba(92, 74, 58, 0.15)',
+    cream: 'rgba(74, 63, 42, 0.15)',
+    dark: '#2C2C2E'
+  }[theme];
+
+  const inputText = {
+    light: '#374151',
+    sepia: '#5c4a3a',
+    cream: '#4a3f2a',
+    dark: '#F5F5F7'
+  }[theme];
+
+  const headerBorder = {
+    light: '1px solid rgba(0,0,0,0.04)',
+    sepia: '1px solid rgba(92, 74, 58, 0.12)',
+    cream: '1px solid rgba(74, 63, 42, 0.12)',
+    dark: '1px solid rgba(255,255,255,0.06)'
+  }[theme];
+
+  const actionBg = {
+    light: '#F9FAFB',
+    sepia: '#faf0e3',
+    cream: '#fdf6eb',
+    dark: '#111111'
+  }[theme];
+
+  const actionBorder = {
+    light: '1px solid rgba(0,0,0,0.06)',
+    sepia: '1px solid rgba(92, 74, 58, 0.15)',
+    cream: '1px solid rgba(74, 63, 42, 0.15)',
+    dark: '1px solid rgba(255,255,255,0.18)'
+  }[theme];
+
+  const chipBg = {
+    light: '#F3F4F6',
+    sepia: '#f2dec6',
+    cream: '#fcf0db',
+    dark: '#111111'
+  }[theme];
+
+  const chipBorder = {
+    light: '1px solid #E5E7EB',
+    sepia: '1px solid rgba(92, 74, 58, 0.15)',
+    cream: '1px solid rgba(74, 63, 42, 0.15)',
+    dark: '1px solid rgba(255,255,255,0.18)'
+  }[theme];
+
+  const sectionTxt = {
+    light: '#9CA3AF',
+    sepia: '#927d6c',
+    cream: '#83745c',
+    dark: '#636366'
+  }[theme];
+
+  const backdropBg = {
+    light: 'rgba(0,0,0,0.42)',
+    sepia: 'rgba(0,0,0,0.45)',
+    cream: 'rgba(0,0,0,0.45)',
+    dark: 'rgba(0,0,0,0.82)'
+  }[theme];
 
   // ── Label helpers ─────────────────────────────────────────────────────────
   const allUserLabels = userLabels.filter(
@@ -699,7 +793,7 @@ export default function VerseActionMenu({
                       <span className="flex-1 text-[12px] font-medium" style={{ color: labelText }}>
                         Private Save
                       </span>
-                      <IOSToggle checked={isPrivate} onChange={setIsPrivate} isDark={dm} />
+                      <IOSToggle checked={isPrivate} onChange={setIsPrivate} isDark={dm} selectedTheme={selectedTheme} />
                     </div>
 
                     {/* ── Delete button (if already saved) ────────────── */}

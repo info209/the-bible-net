@@ -56,31 +56,31 @@ export default function FontsSettingsModal({
     switch (selectedTheme) {
       case "dark":
         return {
-          bg: "#2e2e2e",
-          text: "#ffffff",
-          subText: "#b0b0b0",
-          border: "#444",
-          card: "#3a3a3a",
+          bg: "#1c1c1e",
+          text: "#e5e7e7",
+          subText: "#8e8e93",
+          border: "rgba(255,255,255,0.08)",
+          card: "#2c2c2e",
           accent: "var(--color-accent-rose)",
         };
 
       case "sepia":
         return {
-          bg: "#f5e6c8",
-          text: "#5b4636",
-          subText: "#8a6f5a",
-          border: "#e0c9a6",
-          card: "#f8ecd4",
+          bg: "#faf0e3",
+          text: "#5c4a3a",
+          subText: "#7d6855",
+          border: "rgba(92, 74, 58, 0.15)",
+          card: "#f2dec6",
           accent: "var(--color-accent-rose)",
         };
 
       case "cream":
         return {
-          bg: "#f8f6f1",
-          text: "#31393a",
-          subText: "#7c7c7c",
-          border: "#e5e5e5",
-          card: "#ffffff",
+          bg: "#fdf6eb",
+          text: "#4a3f2a",
+          subText: "#6e5f46",
+          border: "rgba(74, 63, 42, 0.15)",
+          card: "#fcf0db",
           accent: "var(--color-accent-rose)",
         };
 
@@ -88,9 +88,9 @@ export default function FontsSettingsModal({
         return {
           bg: "#ffffff",
           text: "#31393a",
-          subText: "#7c7c7c",
-          border: "#e5e5e5",
-          card: "#ffffff",
+          subText: "#6b7280",
+          border: "rgba(49, 57, 58, 0.1)",
+          card: "#f1f3f3",
           accent: "var(--color-accent-rose)",
         };
     }

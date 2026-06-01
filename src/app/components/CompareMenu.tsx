@@ -10,6 +10,7 @@ interface CompareMenuProps {
   onAddVersion: (versionName: string) => void;
   onExitCompare: () => void;
   isDark?: boolean;
+  selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
 }
 
 export default function CompareMenu({
@@ -21,24 +22,92 @@ export default function CompareMenu({
   onAddVersion,
   onExitCompare,
   isDark = false,
+  selectedTheme,
 }: CompareMenuProps) {
   if (!isOpen) return null;
 
   const availableVersions = versions.filter(v => !selectedVersions.includes(v.id));
   const canAddMore = selectedVersions.length < 4;
 
-  // Premium Dark Mode Styling Variables
-  const backdropBg = isDark ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.4)';
-  const backdropBlur = isDark ? 'blur(8px)' : 'blur(4px)';
-  const panelBg = isDark ? '#1c1c1e' : '#ffffff';
-  const borderCol = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)';
-  const textCol = isDark ? '#e5e7e7' : '#31393a';
-  const headingCol = isDark ? '#ffffff' : '#111827';
-  const subTextCol = isDark ? 'rgba(255,255,255,0.4)' : '#9ca3af';
-  const cardBg = isDark ? '#2c2c2e' : '#f9fafb';
-  const cardBorder = isDark ? 'rgba(255,255,255,0.04)' : '#f3f4f6';
-  const availableBtnBg = isDark ? '#2c2c2e' : '#ffffff';
-  const availableBtnBorder = isDark ? 'rgba(255,255,255,0.06)' : '#e5e7eb';
+  // Premium Themes Styling Variables
+  const theme = selectedTheme || (isDark ? 'dark' : 'light');
+  
+  const backdropBg = {
+    light: 'rgba(0,0,0,0.4)',
+    sepia: 'rgba(0,0,0,0.45)',
+    cream: 'rgba(0,0,0,0.45)',
+    dark: 'rgba(0,0,0,0.85)'
+  }[theme];
+
+  const backdropBlur = {
+    light: 'blur(4px)',
+    sepia: 'blur(4px)',
+    cream: 'blur(4px)',
+    dark: 'blur(8px)'
+  }[theme];
+
+  const panelBg = {
+    light: '#ffffff',
+    sepia: '#faf0e3',
+    cream: '#fdf6eb',
+    dark: '#1c1c1e'
+  }[theme];
+
+  const borderCol = {
+    light: 'rgba(0,0,0,0.1)',
+    sepia: 'rgba(92, 74, 58, 0.15)',
+    cream: 'rgba(74, 63, 42, 0.15)',
+    dark: 'rgba(255, 255, 255, 0.08)'
+  }[theme];
+
+  const textCol = {
+    light: '#31393a',
+    sepia: '#5c4a3a',
+    cream: '#4a3f2a',
+    dark: '#e5e7e7'
+  }[theme];
+
+  const headingCol = {
+    light: '#111827',
+    sepia: '#5c4a3a',
+    cream: '#4a3f2a',
+    dark: '#ffffff'
+  }[theme];
+
+  const subTextCol = {
+    light: '#9ca3af',
+    sepia: '#7d6855',
+    cream: '#6e5f46',
+    dark: 'rgba(255,255,255,0.4)'
+  }[theme];
+
+  const cardBg = {
+    light: '#f9fafb',
+    sepia: '#f2dec6',
+    cream: '#fcf0db',
+    dark: '#2c2c2e'
+  }[theme];
+
+  const cardBorder = {
+    light: '#f3f4f6',
+    sepia: 'rgba(92, 74, 58, 0.1)',
+    cream: 'rgba(74, 63, 42, 0.1)',
+    dark: 'rgba(255,255,255,0.04)'
+  }[theme];
+
+  const availableBtnBg = {
+    light: '#ffffff',
+    sepia: '#faf0e3',
+    cream: '#fdf6eb',
+    dark: '#2c2c2e'
+  }[theme];
+
+  const availableBtnBorder = {
+    light: '#e5e7eb',
+    sepia: 'rgba(92, 74, 58, 0.15)',
+    cream: 'rgba(74, 63, 42, 0.15)',
+    dark: 'rgba(255,255,255,0.06)'
+  }[theme];
 
   return (
     <AnimatePresence>

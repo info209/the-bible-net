@@ -18,6 +18,7 @@ interface BibleSearchProps {
   selectedVersion: string;
   onNavigateToVerse: (book: string, chapter: number, verse: number, version?: string) => void;
   isDark?: boolean;
+  selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
 }
 
 const SEARCH_HISTORY_KEY = 'bible_search_history';
@@ -29,6 +30,7 @@ export default function BibleSearch({
   selectedVersion,
   onNavigateToVerse,
   isDark = false,
+  selectedTheme,
 }: BibleSearchProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -169,17 +171,78 @@ export default function BibleSearch({
 
   if (!isOpen) return null;
 
-  // Premium Dark Mode Styling Variables
-  const backdropBg = isDark ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.3)';
-  const backdropBlur = isDark ? 'blur(8px)' : 'blur(4px)';
-  const modalBg = isDark ? 'rgba(28,28,30,0.95)' : 'rgba(255,255,255,0.85)';
-  const borderCol = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.3)';
-  const innerBorderCol = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
-  const textCol = isDark ? '#e5e7e7' : '#31393a';
-  const subTextCol = isDark ? 'rgba(255,255,255,0.4)' : '#6b7280';
-  const hoverBg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)';
-  const resultCardBorder = isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.06)';
-  const resultCardHover = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.02)';
+  // Premium Themes Styling Variables
+  const theme = selectedTheme || (isDark ? 'dark' : 'light');
+  
+  const backdropBg = {
+    light: 'rgba(0,0,0,0.3)',
+    sepia: 'rgba(0,0,0,0.45)',
+    cream: 'rgba(0,0,0,0.45)',
+    dark: 'rgba(0,0,0,0.85)'
+  }[theme];
+
+  const backdropBlur = {
+    light: 'blur(4px)',
+    sepia: 'blur(4px)',
+    cream: 'blur(4px)',
+    dark: 'blur(8px)'
+  }[theme];
+
+  const modalBg = {
+    light: 'rgba(255,255,255,0.85)',
+    sepia: 'rgba(250,240,227,0.97)',
+    cream: 'rgba(253, 246, 235, 0.97)',
+    dark: 'rgba(28,28,30,0.95)'
+  }[theme];
+
+  const borderCol = {
+    light: 'rgba(255,255,255,0.3)',
+    sepia: 'rgba(92, 74, 58, 0.15)',
+    cream: 'rgba(74, 63, 42, 0.15)',
+    dark: 'rgba(255, 255, 255, 0.08)'
+  }[theme];
+
+  const innerBorderCol = {
+    light: 'rgba(0,0,0,0.06)',
+    sepia: 'rgba(92, 74, 58, 0.12)',
+    cream: 'rgba(74, 63, 42, 0.12)',
+    dark: 'rgba(255, 255, 255, 0.06)'
+  }[theme];
+
+  const textCol = {
+    light: '#31393a',
+    sepia: '#5c4a3a',
+    cream: '#4a3f2a',
+    dark: '#e5e7e7'
+  }[theme];
+
+  const subTextCol = {
+    light: '#6b7280',
+    sepia: '#7d6855',
+    cream: '#6e5f46',
+    dark: 'rgba(255,255,255,0.4)'
+  }[theme];
+
+  const hoverBg = {
+    light: 'rgba(0,0,0,0.05)',
+    sepia: 'rgba(92, 74, 58, 0.08)',
+    cream: 'rgba(74, 63, 42, 0.08)',
+    dark: 'rgba(255,255,255,0.08)'
+  }[theme];
+
+  const resultCardBorder = {
+    light: 'rgba(0,0,0,0.06)',
+    sepia: 'rgba(92, 74, 58, 0.1)',
+    cream: 'rgba(74, 63, 42, 0.1)',
+    dark: 'rgba(255,255,255,0.05)'
+  }[theme];
+
+  const resultCardHover = {
+    light: 'rgba(0,0,0,0.02)',
+    sepia: 'rgba(92, 74, 58, 0.04)',
+    cream: 'rgba(74, 63, 42, 0.04)',
+    dark: 'rgba(255,255,255,0.04)'
+  }[theme];
 
   return (
     <div

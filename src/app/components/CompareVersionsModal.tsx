@@ -9,6 +9,7 @@ interface CompareVersionsModalProps {
   onToggleVersion: (versionName: string) => void;
   onStartCompare: () => void;
   isDark?: boolean;
+  selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
 }
 
 export default function CompareVersionsModal({
@@ -19,18 +20,56 @@ export default function CompareVersionsModal({
   onToggleVersion,
   onStartCompare,
   isDark = false,
+  selectedTheme,
 }: CompareVersionsModalProps) {
   const canCompare = selectedVersions.length >= 2 && selectedVersions.length <= 4;
 
   if (!isOpen) return null;
 
-  // Premium Dark Mode Styling Variables
-  const backdropBg = isDark ? 'rgba(0,0,0,0.85)' : 'rgba(0,0,0,0.4)';
-  const backdropBlur = isDark ? 'blur(8px)' : 'blur(4px)';
-  const modalBg = isDark ? '#1c1c1e' : '#ffffff';
-  const borderCol = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.1)';
-  const textCol = isDark ? '#e5e7e7' : '#31393a';
-  const subTextCol = isDark ? '#8e8e93' : '#7c7c7c';
+  // Premium Themes Styling Variables
+  const theme = selectedTheme || (isDark ? 'dark' : 'light');
+  
+  const backdropBg = {
+    light: 'rgba(0,0,0,0.4)',
+    sepia: 'rgba(0,0,0,0.45)',
+    cream: 'rgba(0,0,0,0.45)',
+    dark: 'rgba(0,0,0,0.85)'
+  }[theme];
+
+  const backdropBlur = {
+    light: 'blur(4px)',
+    sepia: 'blur(4px)',
+    cream: 'blur(4px)',
+    dark: 'blur(8px)'
+  }[theme];
+
+  const modalBg = {
+    light: '#ffffff',
+    sepia: '#faf0e3',
+    cream: '#fdf6eb',
+    dark: '#1c1c1e'
+  }[theme];
+
+  const borderCol = {
+    light: 'rgba(0,0,0,0.1)',
+    sepia: 'rgba(92, 74, 58, 0.15)',
+    cream: 'rgba(74, 63, 42, 0.15)',
+    dark: 'rgba(255, 255, 255, 0.08)'
+  }[theme];
+
+  const textCol = {
+    light: '#31393a',
+    sepia: '#5c4a3a',
+    cream: '#4a3f2a',
+    dark: '#e5e7e7'
+  }[theme];
+
+  const subTextCol = {
+    light: '#7c7c7c',
+    sepia: '#7d6855',
+    cream: '#6e5f46',
+    dark: '#8e8e93'
+  }[theme];
   
   return (
     <AnimatePresence>
@@ -95,17 +134,27 @@ export default function CompareVersionsModal({
                         let btnBorder = 'transparent';
 
                         if (isSelected) {
-                          btnBg = isDark ? 'rgba(226,55,68,0.15)' : '#fde8ea';
-                          btnText = isDark ? '#ff4757' : '#E23744';
-                          btnBorder = isDark ? 'rgba(255,71,87,0.3)' : 'rgba(226,55,68,0.15)';
+                          btnBg = theme === 'dark' ? 'rgba(255,71,87,0.15)' : 'rgba(226,55,68,0.1)';
+                          btnText = theme === 'dark' ? '#ff4757' : '#E23744';
+                          btnBorder = theme === 'dark' ? 'rgba(255,71,87,0.3)' : 'rgba(226,55,68,0.15)';
                         } else if (isDisabled) {
-                          btnBg = isDark ? '#1c1c1e' : '#f1f3f3';
-                          btnText = isDark ? 'rgba(255,255,255,0.2)' : 'rgba(49,57,58,0.3)';
-                          btnBorder = isDark ? 'rgba(255,255,255,0.04)' : 'transparent';
+                          btnBg = {
+                            light: '#f1f3f3',
+                            sepia: '#f2dec6',
+                            cream: '#fcf0db',
+                            dark: '#1c1c1e'
+                          }[theme];
+                          btnText = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(49,57,58,0.3)';
+                          btnBorder = theme === 'dark' ? 'rgba(255,255,255,0.04)' : 'transparent';
                         } else {
-                          btnBg = isDark ? '#2c2c2e' : '#f1f3f3';
+                          btnBg = {
+                            light: '#f1f3f3',
+                            sepia: '#f2dec6',
+                            cream: '#fcf0db',
+                            dark: '#2c2c2e'
+                          }[theme];
                           btnText = textCol;
-                          btnBorder = isDark ? 'rgba(255,255,255,0.05)' : 'transparent';
+                          btnBorder = theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'transparent';
                         }
 
                         return (
