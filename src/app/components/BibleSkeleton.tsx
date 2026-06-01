@@ -9,7 +9,7 @@ const Skeleton = ({ className, style }: { className?: string; style?: React.CSSP
 export const BookListSkeleton = () => (
   <div className="grid grid-cols-2 gap-8">
     <div>
-      <div className="h-4 w-24 bg-gray-100 rounded mb-4" />
+      <Skeleton className="h-4 w-24 mb-4" />
       <div className="space-y-3">
         {[1, 2, 3, 4, 5, 6].map(i => (
           <Skeleton key={i} className="h-6 w-full" />
@@ -17,7 +17,7 @@ export const BookListSkeleton = () => (
       </div>
     </div>
     <div>
-      <div className="h-4 w-24 bg-gray-100 rounded mb-4" />
+      <Skeleton className="h-4 w-24 mb-4" />
       <div className="space-y-3">
         {[1, 2, 3, 4, 5, 6].map(i => (
           <Skeleton key={i} className="h-6 w-full" />
@@ -74,9 +74,12 @@ export const ComparisonSkeleton = ({ theme }: { theme?: { bg: string } }) => {
   // Desktop skeleton - table layout
   return (
     <div className="w-full h-full flex flex-col" style={{ backgroundColor: theme?.bg }}>
-      <div className="sticky top-0 z-20 border-b border-gray-100 bg-white/95 backdrop-blur-md h-12 flex items-center px-4">
+      <div 
+        className="sticky top-0 z-20 border-b border-black/[0.06] dark:border-white/[0.06] backdrop-blur-md h-12 flex items-center px-4"
+        style={{ backgroundColor: theme?.bg ? `${theme.bg}e6` : undefined }}
+      >
         <div className="w-10 sm:w-12" />
-        <div className="flex-1 flex divide-x divide-gray-100">
+        <div className="flex-1 flex divide-x divide-black/[0.06] dark:divide-white/[0.06]">
           <div className="flex-1 px-3">
             <Skeleton className="h-4 w-16" />
           </div>
@@ -87,7 +90,7 @@ export const ComparisonSkeleton = ({ theme }: { theme?: { bg: string } }) => {
       </div>
       <div className="max-w-3xl mx-auto w-full px-4 mb-20">
         {[1, 2, 3, 4, 5].map((i) => (
-          <div key={i} className="flex divide-x divide-gray-100 border-b border-gray-50 h-32">
+          <div key={i} className="flex divide-x divide-black/[0.06] dark:divide-white/[0.06] border-b border-black/[0.03] dark:border-white/[0.03] h-32">
             <div className="w-10 sm:w-12 flex justify-center py-4">
               <Skeleton className="h-3 w-4" />
             </div>

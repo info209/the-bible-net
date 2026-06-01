@@ -468,13 +468,11 @@ html, body, #__next {
   }
 
   /* Skeleton Loading Animation */
-  @keyframes skeleton-load {
+  @keyframes skeleton-shimmer {
     0% {
-      background-color: #f2f2f2;
       background-position: -200% 0;
     }
     100% {
-      background-color: #e5e5e5;
       background-position: 200% 0;
     }
   }
@@ -482,12 +480,24 @@ html, body, #__next {
   .skeleton {
     background: linear-gradient(
       90deg,
-      #f2f2f2 0%,
-      #e5e5e5 50%,
-      #f2f2f2 100%
+      rgba(0, 0, 0, 0.06) 0%,
+      rgba(255, 255, 255, 0.5) 50%,
+      rgba(0, 0, 0, 0.06) 100%
     );
     background-size: 200% 100%;
-    animation: skeleton-load 1.5s infinite ease-in-out;
+    animation: skeleton-shimmer 1.6s infinite ease-in-out;
+    border-radius: var(--radius-sm, 6px);
+    display: inline-block;
+  }
+
+  .dark .skeleton {
+    background: linear-gradient(
+      90deg,
+      rgba(255, 255, 255, 0.08) 0%,
+      rgba(255, 255, 255, 0.22) 50%,
+      rgba(255, 255, 255, 0.08) 100%
+    );
+    background-size: 200% 100%;
   }
 
   /* Shimmer — used for in-panel navigation skeleton */
