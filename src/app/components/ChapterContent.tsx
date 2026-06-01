@@ -336,7 +336,8 @@ function ChapterContent({
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}
-      className="px-4 sm:px-6 py-6 sm:py-8 pb-[180px]"
+      className="px-4 sm:px-6 py-6 sm:py-8"
+      style={{ paddingBottom: 'var(--reading-bottom-padding, 80px)' }}
     >
       <div className="max-w-2xl mx-auto">
         <div className="mb-8">

@@ -355,7 +355,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     showTimerMenu || showSearch || showCompareSelector || showCompareMenu;
   const shouldLockBodyScroll = showBookSelector || showChapterSelector ||
     showVersionSelector || showMusicSelector ||
-    showSettingsMenu || showAudioControlPanel || showVerseSelector ||
+    showSettingsMenu || showVerseSelector ||
     showTimerMenu || showSearch || showCompareSelector || showCompareMenu;
 
   useEffect(() => {
@@ -1452,8 +1452,22 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
   }, [verses, audioDuration]);
 
+  // Dynamic bottom padding calculation to prevent bottom sheets and players from covering verses
+  const getDynamicBottomPadding = () => {
+    if (showVerseActionMenu && selectedVerses.length > 0) {
+      return "calc(35vh + 24px)";
+    }
+    if (showAudioControlPanel) {
+      return "calc(85dvh + 24px)";
+    }
+    if (showAudioControls && !isBlockingPopupOpen) {
+      return isReadingMode ? "100px" : "160px";
+    }
+    return isReadingMode ? "24px" : "80px";
+  };
+
   return (
-    <div className="min-h-screen flex flex-col pb-20 transition-colors duration-300" style={{ backgroundColor: currentTheme.bg, color: currentTheme.text, "--header-height": "60px" } as any}>
+    <div className="min-h-screen flex flex-col transition-colors duration-300" style={{ backgroundColor: currentTheme.bg, color: currentTheme.text, "--header-height": "60px", "--reading-bottom-padding": getDynamicBottomPadding() } as any}>
       {/* Main Header/Navbar - SCROLLS AWAY */}
       <AppHeader className="!static" />
 

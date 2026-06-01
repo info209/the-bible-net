@@ -159,10 +159,10 @@ export default function AudioControlPanel({
   const sliderTrackBg = dm ? '#2c2c2e' : '#d9d9d9';
 
   return (
-    <div className="fixed inset-0 z-[100] overlay-dark" onClick={onClose}>
+    <div className="fixed inset-x-0 bottom-0 z-[100] pointer-events-none">
       <div
         ref={panelRef}
-        className={`absolute bottom-0 left-0 right-0 rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto border-t max-h-[85dvh] flex flex-col overflow-hidden backdrop-blur-xl ${
+        className={`pointer-events-auto absolute bottom-0 left-0 right-0 rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto border-t max-h-[85dvh] flex flex-col overflow-hidden backdrop-blur-xl ${
           dm ? '' : 'glass-heavy bg-white/95'
         }`}
         style={{
