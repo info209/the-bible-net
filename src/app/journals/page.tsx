@@ -265,10 +265,9 @@ export default function JournalsPage() {
   const handleOpenKebabMenu = (e: React.MouseEvent, id: string, type: ItemType) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    const scrollY = window.scrollY || window.pageYOffset;
     
     setKebabPosition({
-      top: rect.bottom + scrollY + 4,
+      top: rect.bottom + 4,
       right: window.innerWidth - rect.right,
     });
     setActiveKebabId(id);

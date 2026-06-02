@@ -54,11 +54,10 @@ export default function SavedPage() {
   const handleOpenMenu = (e: React.MouseEvent, item: any) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    const scrollY = window.scrollY || window.pageYOffset;
     
     // Position menu below the ellipsis, right-aligned to it
     setMenuPosition({
-      top: rect.bottom + scrollY + 4,
+      top: rect.bottom + 4,
       right: window.innerWidth - rect.right,
     });
     setSelectedItemForMenu(item);

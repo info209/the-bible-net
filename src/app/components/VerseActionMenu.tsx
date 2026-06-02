@@ -167,6 +167,13 @@ export default function VerseActionMenu({
   const theme = selectedTheme || (isDark ? 'dark' : 'light');
   const dm = theme === 'dark';
   
+  const iconColor = {
+    light: '#000000',
+    sepia: '#5c4a3a',
+    cream: '#4a3f2a',
+    dark: '#FFFFFF'
+  }[theme];
+  
   const sheetBg = {
     light: '#FFFFFF',
     sepia: '#faf0e3',
@@ -349,8 +356,8 @@ export default function VerseActionMenu({
               borderRadius: '28px 28px 0 0',
               boxShadow: '0 -10px 40px rgba(0,0,0,0.18)',
               paddingBottom: 'env(safe-area-inset-bottom)',
-              height: '35vh',
-              maxHeight: '35vh',
+              height: '38vh',
+              maxHeight: '38vh',
               display: 'flex',
               flexDirection: 'column',
             }}
@@ -414,88 +421,25 @@ export default function VerseActionMenu({
                     </div>
                   ) : (
                     <>
-                      {/* ── Highlight palette ───────────────────────────── */}
-                      <AnimatePresence>
-                        {view === 'main' && (
-                          <motion.div
-                            key="palette-row"
-                            className="mb-2"
-                          >
-                            <div className="flex items-center gap-2.5 flex-wrap px-0.5 py-0.5">
-                              {displayColors.map((c, i) => (
-                                <button
-                                  key={c.id}
-                                  onClick={() => handleColorTap(c.id, i, displayColors.length)}
-                                  title={c.label}
-                                  aria-label={`Highlight ${c.label}`}
-                                  className="relative flex-shrink-0 active:scale-90 transition-transform"
-                                  style={{ width: 22, height: 22 }}
-                                >
-                                  {selectedColor === c.id && existingHighlightColor && (
-                                    <span
-                                      className="absolute rounded-full"
-                                      style={{
-                                        inset: -3,
-                                        border: `2px solid ${c.color}`,
-                                        borderRadius: '50%',
-                                      }}
-                                    />
-                                  )}
-                                  <span
-                                    className="absolute inset-0 rounded-full"
-                                    style={{ backgroundColor: c.color }}
-                                  />
-                                </button>
-                              ))}
-                              {existingHighlightColor && (
-                                <button
-                                  onClick={() => { onHighlight('none'); onClose(); }}
-                                  className="w-[22px] h-[22px] rounded-full flex items-center justify-center active:scale-90 transition-transform border"
-                                  style={{ borderColor: inputBorder, backgroundColor: chipBg, color: subText }}
-                                  title="Remove highlight"
-                                >
-                                  <X className="w-2.5 h-2.5" />
-                                </button>
-                              )}
-                              <button
-                                onClick={() => setPaletteExpanded((p) => !p)}
-                                className="w-[22px] h-[22px] rounded-full flex items-center justify-center active:scale-90 transition-transform border"
-                                style={{ backgroundColor: chipBg, borderColor: inputBorder, color: subText }}
-                                title="More colors"
-                              >
-                                <motion.span
-                                  animate={{ rotate: paletteExpanded ? 45 : 0 }}
-                                  transition={{ duration: 0.18 }}
-                                  className="flex items-center justify-center"
-                                >
-                                  <Plus className="w-2.5 h-2.5" />
-                                </motion.span>
-                              </button>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-
                       {/* ── Action Button Grid ──────────────────────────── */}
-                      <div className="grid grid-cols-5 gap-1.5">
+                      <div className="grid grid-cols-4 gap-2.5">
                         {/* Highlight */}
                         <button
                           onClick={() => setView('highlight')}
                           id="verse-action-highlight"
                           aria-label="Highlight verse"
-                          className="flex flex-col items-center justify-center gap-1 rounded-[14px] transition-all active:scale-95 animate-none"
+                          className="flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[18px] transition-all active:scale-95 animate-none"
                           style={{
-                            height: 56,
                             backgroundColor: existingHighlightColor ? 'rgba(49,196,190,0.16)' : actionBg,
                             border: existingHighlightColor ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
                           }}
                         >
                           <PenTool
-                            className="w-[16px] h-[16px]"
-                            strokeWidth={2.5}
-                            style={{ color: existingHighlightColor ? '#31C4BE' : (dm ? '#FFFFFF' : '#000000') }}
+                            className="w-[24px] h-[24px]"
+                            strokeWidth={2.2}
+                            style={{ color: existingHighlightColor ? '#31C4BE' : iconColor }}
                           />
-                          <span className="text-[9px] font-semibold" style={{ color: existingHighlightColor ? '#31C4BE' : (dm ? '#FFFFFF' : '#000000') }}>
+                          <span className="text-[10px] font-bold" style={{ color: existingHighlightColor ? '#31C4BE' : iconColor }}>
                             Highlight
                           </span>
                         </button>
@@ -505,19 +449,18 @@ export default function VerseActionMenu({
                           onClick={() => setView('save')}
                           id="verse-action-save"
                           aria-label="Save verse"
-                          className="flex flex-col items-center justify-center gap-1 rounded-[14px] transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[18px] transition-all active:scale-95"
                           style={{
-                            height: 56,
                             backgroundColor: isSavedVerse ? 'rgba(49,196,190,0.16)' : actionBg,
                             border: isSavedVerse ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
                           }}
                         >
                           {isSavedVerse ? (
-                            <BookmarkCheck className="w-[16px] h-[16px] text-[#31C4BE]" strokeWidth={2.5} />
+                            <BookmarkCheck className="w-[24px] h-[24px] text-[#31C4BE]" strokeWidth={2.2} />
                           ) : (
-                            <BookmarkPlus className="w-[16px] h-[16px]" strokeWidth={2.5} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
+                            <BookmarkPlus className="w-[24px] h-[24px]" strokeWidth={2.2} style={{ color: iconColor }} />
                           )}
-                          <span className="text-[9px] font-semibold" style={{ color: isSavedVerse ? '#31C4BE' : (dm ? '#FFFFFF' : '#000000') }}>
+                          <span className="text-[10px] font-bold" style={{ color: isSavedVerse ? '#31C4BE' : iconColor }}>
                             {isSavedVerse ? 'Saved' : 'Save'}
                           </span>
                         </button>
@@ -527,23 +470,11 @@ export default function VerseActionMenu({
                           onClick={() => setView('note')}
                           id="verse-action-note"
                           aria-label="Add note"
-                          className="flex flex-col items-center justify-center gap-1 rounded-[14px] transition-all active:scale-95"
-                          style={{ height: 56, backgroundColor: actionBg, border: actionBorder }}
+                          className="flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[18px] transition-all active:scale-95"
+                          style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <FileText className="w-[16px] h-[16px]" strokeWidth={2.5} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
-                          <span className="text-[9px] font-semibold" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Note</span>
-                        </button>
-
-                        {/* Compare */}
-                        <button
-                          onClick={() => onCompare?.()}
-                          id="verse-action-compare"
-                          aria-label="Compare versions"
-                          className="flex flex-col items-center justify-center gap-1 rounded-[14px] transition-all active:scale-95"
-                          style={{ height: 56, backgroundColor: actionBg, border: actionBorder }}
-                        >
-                          <ArrowRightLeft className="w-[16px] h-[16px]" strokeWidth={2.5} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
-                          <span className="text-[9px] font-semibold" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Compare</span>
+                          <FileText className="w-[24px] h-[24px]" strokeWidth={2.2} style={{ color: iconColor }} />
+                          <span className="text-[10px] font-bold" style={{ color: iconColor }}>Note</span>
                         </button>
 
                         {/* Share */}
@@ -551,11 +482,11 @@ export default function VerseActionMenu({
                           onClick={() => onShare?.()}
                           id="verse-action-share"
                           aria-label="Share verse"
-                          className="flex flex-col items-center justify-center gap-1 rounded-[14px] transition-all active:scale-95"
-                          style={{ height: 56, backgroundColor: actionBg, border: actionBorder }}
+                          className="flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[18px] transition-all active:scale-95"
+                          style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <Share2 className="w-[16px] h-[16px]" strokeWidth={2.5} style={{ color: dm ? '#FFFFFF' : '#000000' }} />
-                          <span className="text-[9px] font-semibold" style={{ color: dm ? '#FFFFFF' : '#000000' }}>Share</span>
+                          <Share2 className="w-[24px] h-[24px]" strokeWidth={2.2} style={{ color: iconColor }} />
+                          <span className="text-[10px] font-bold" style={{ color: iconColor }}>Share</span>
                         </button>
                       </div>
                     </>
@@ -580,7 +511,7 @@ export default function VerseActionMenu({
                   >
                     <button
                       onClick={() => setView('main')}
-                      className="p-1.5 -ml-1.5 transition-colors rounded-xl active:scale-95"
+                      className="relative z-20 p-1.5 -ml-1.5 transition-colors rounded-xl active:scale-95"
                       style={{ color: subText }}
                       aria-label="Back"
                     >
@@ -646,7 +577,7 @@ export default function VerseActionMenu({
                   >
                     <button
                       onClick={() => setView('main')}
-                      className="p-1.5 -ml-1.5 rounded-xl active:scale-95 transition-colors"
+                      className="relative z-20 p-1.5 -ml-1.5 rounded-xl active:scale-95 transition-colors"
                       style={{ color: subText }}
                       aria-label="Back to actions"
                     >
@@ -665,7 +596,7 @@ export default function VerseActionMenu({
                     </div>
                     <button
                       onClick={onClose}
-                      className="p-1.5 rounded-xl active:scale-95 transition-colors"
+                      className="relative z-20 p-1.5 rounded-xl active:scale-95 transition-colors"
                       style={{ color: subText }}
                       aria-label="Close"
                     >
@@ -864,7 +795,7 @@ export default function VerseActionMenu({
                   >
                     <button
                       onClick={() => setView('main')}
-                      className="p-1.5 -ml-1.5 transition-colors rounded-xl active:scale-95"
+                      className="relative z-20 p-1.5 -ml-1.5 transition-colors rounded-xl active:scale-95"
                       style={{ color: subText }}
                       aria-label="Back"
                     >

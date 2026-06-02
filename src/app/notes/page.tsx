@@ -105,10 +105,9 @@ export default function NotesPage() {
   const handleOpenMenu = (e: React.MouseEvent, note: any) => {
     e.stopPropagation();
     const rect = e.currentTarget.getBoundingClientRect();
-    const scrollY = window.scrollY || window.pageYOffset;
     
     setMenuPosition({
-      top: rect.bottom + scrollY + 4,
+      top: rect.bottom + 4,
       right: window.innerWidth - rect.right,
     });
     setSelectedNoteForMenu(note);
