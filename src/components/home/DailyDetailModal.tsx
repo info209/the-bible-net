@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Play, Pause } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface IDailyContent {
@@ -28,6 +28,8 @@ interface DailyDetailModalProps {
 
 export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, initialSection }: DailyDetailModalProps) {
     const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
+    const [isSpeaking, setIsSpeaking] = React.useState(false);
+    const [isPaused, setIsPaused] = React.useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
@@ -46,9 +48,111 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
         }
     }, [isOpen, initialIndex, initialSection]);
 
-    if (!isOpen || contents.length === 0) return null;
-
     const currentContent = contents[currentIndex];
+
+    const getNarrationText = React.useCallback(() => {
+        if (!currentContent) return '';
+        if (initialSection === 'verse') {
+            const parts = ['Daily Verse'];
+            if (currentContent.verseReference) parts.push(currentContent.verseReference);
+            if (currentContent.verse) parts.push(currentContent.verse);
+            return parts.join('. ');
+        } else if (initialSection === 'devotional') {
+            const parts = [];
+            if (currentContent.devotionalVerseRef) {
+                parts.push('Devotional Verse');
+                parts.push(currentContent.devotionalVerseRef);
+            }
+            if (currentContent.devotionalVerseText) {
+                parts.push(currentContent.devotionalVerseText);
+            }
+            if (currentContent.devotionalTitle) {
+                parts.push('Devotional Reading');
+                parts.push(currentContent.devotionalTitle);
+            }
+            if (currentContent.devotionalContent) {
+                parts.push(currentContent.devotionalContent);
+            }
+            if (currentContent.prayerContent) {
+                parts.push('Daily Prayer');
+                if (currentContent.prayerTitle) {
+                    parts.push(currentContent.prayerTitle);
+                }
+                parts.push(currentContent.prayerContent);
+            }
+            return parts.join('. ');
+        }
+        return '';
+    }, [currentContent, initialSection]);
+
+    const stopNarration = React.useCallback(() => {
+        if (typeof window !== 'undefined' && window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+        setIsSpeaking(false);
+        setIsPaused(false);
+    }, []);
+
+    const handlePlayPause = () => {
+        if (typeof window === 'undefined' || !window.speechSynthesis) return;
+
+        const synth = window.speechSynthesis;
+
+        if (isSpeaking) {
+            if (isPaused) {
+                synth.resume();
+                setIsPaused(false);
+            } else {
+                synth.pause();
+                setIsPaused(true);
+            }
+        } else {
+            // Cancel any active speech first
+            synth.cancel();
+
+            const textToSpeak = getNarrationText();
+            if (!textToSpeak) return;
+
+            const utterance = new SpeechSynthesisUtterance(textToSpeak);
+
+            utterance.onend = () => {
+                setIsSpeaking(false);
+                setIsPaused(false);
+            };
+
+            utterance.onerror = () => {
+                setIsSpeaking(false);
+                setIsPaused(false);
+            };
+
+            setIsSpeaking(true);
+            setIsPaused(false);
+            synth.speak(utterance);
+        }
+    };
+
+    // Stop speaking when day, content, or section changes
+    useEffect(() => {
+        stopNarration();
+    }, [currentIndex, initialSection, stopNarration]);
+
+    // Stop speaking when the modal is closed
+    useEffect(() => {
+        if (!isOpen) {
+            stopNarration();
+        }
+    }, [isOpen, stopNarration]);
+
+    // Cleanup on unmount
+    useEffect(() => {
+        return () => {
+            if (typeof window !== 'undefined' && window.speechSynthesis) {
+                window.speechSynthesis.cancel();
+            }
+        };
+    }, []);
+
+    if (!isOpen || contents.length === 0) return null;
     
     const getRelativeLabel = (dateStr: string) => {
         const todayStr = new Date().toISOString().split('T')[0];
@@ -88,17 +192,36 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                 )}
 
                 {/* Header */}
-                <div className="relative z-10 flex items-center p-4">
+                <div className="relative z-10 flex items-center justify-between p-4">
                     <button
                         onClick={onClose}
                         className="p-2 rounded-full shadow-sm bg-white/20 hover:bg-white/30 text-white transition-colors"
+                        aria-label="Back"
                     >
                         <ArrowLeft className="size-6" />
                     </button>
-                    <div className="flex-1 text-center pr-10">
+                    
+                    <div className="text-center flex-1">
                         <h2 className="text-white font-bold text-lg">{getRelativeLabel(currentContent.date)}</h2>
                         <p className="text-white/60 text-xs">{currentContent.date}</p>
                     </div>
+
+                    <button
+                        onClick={handlePlayPause}
+                        className={`p-2 rounded-full shadow-sm text-white transition-all flex items-center justify-center ${
+                            isSpeaking && !isPaused 
+                            ? 'bg-teal-500 hover:bg-teal-600 animate-pulse scale-105 shadow-teal-500/20' 
+                            : 'bg-white/20 hover:bg-white/30'
+                        }`}
+                        title={isSpeaking ? (isPaused ? 'Resume Narration' : 'Pause Narration') : 'Start Narration'}
+                        aria-label="Narrate"
+                    >
+                        {isSpeaking && !isPaused ? (
+                            <Pause className="size-6" />
+                        ) : (
+                            <Play className="size-6 ml-0.5" />
+                        )}
+                    </button>
                 </div>
 
                 {/* Top Carousel for Switching Days */}
