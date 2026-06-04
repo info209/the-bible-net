@@ -18,7 +18,7 @@ import { teluguBible, hindiBible } from './BibleData';
 import CompareVersionsModal from './CompareVersionsModal';
 import CompareMenu from './CompareMenu';
 import CompareView from './CompareView';
-import BibleSearch from './BibleSearch';
+import BibleSearchModal from './BibleSearchModal';
 
 import FontsSettingsModal, { ThemeType, TransitionType } from './FontsSettingsModal';
 import AudioFloatingPlayer from './AudioFloatingPlayer';
@@ -511,6 +511,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }
     }, 300);
+  };
+
+  // Navigate to book+chapter from book search mode
+  const handleNavigateToChapter = (book: string, chapter: number) => {
+    setSelectedBook(book);
+    setSelectedChapter(chapter);
+    setSelectedVerse(null);
+    setShowSearch(false);
   };
 
   // Compare mode handlers
@@ -2446,10 +2454,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       )}
 
       {/* Bible Search Modal */}
-      <BibleSearch
+      <BibleSearchModal
         isOpen={showSearch}
         onClose={() => setShowSearch(false)}
-        selectedVersion={selectedVersion}
+        activeVersionCode={selectedVersion}
+        onNavigateToChapter={handleNavigateToChapter}
         onNavigateToVerse={handleNavigateToVerse}
         selectedTheme={selectedTheme}
       />

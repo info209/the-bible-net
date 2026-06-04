@@ -237,10 +237,12 @@ const VerseSchema = new Schema<IVerse>({
     }
 }, { timestamps: true });
 
-// Define EXACTLY 3 indexes as required for optimized production performance on free tier
+// Core lookup indexes for free-tier optimized production
 VerseSchema.index({ versionCode: 1, bookName: 1, chapterNumber: 1, number: 1 });
 VerseSchema.index({ normalizedText: 'text', keywords: 'text', emotions: 'text', themes: 'text' });
 VerseSchema.index({ reference: 1 });
+// Emotion-based search index (Use Case 3)
+VerseSchema.index({ emotions: 1 });
 
 // --- Models ---
 // Prevent overwriting models in dev hot-reload

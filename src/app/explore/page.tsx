@@ -1,12 +1,11 @@
 import { Metadata } from 'next';
-// import ExplorePage from "../components/ExplorePage";
-import ComingSoonPage from "../components/ComingSoonPage";
+import ExplorePageClient from './ExplorePageClient';
 
 export const metadata: Metadata = {
-  title: "Explore",
+  title: 'Explore — The Bible Net',
+  description: 'Search every book, verse, and theme in the Bible. Find verses by emotion, exact reference, or book name.',
 };
 
 export default function Page() {
-  // return null;
-  return <ComingSoonPage variant="under-development" title="Explore" />;
+  return <ExplorePageClient />;
 }
