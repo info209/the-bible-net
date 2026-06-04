@@ -238,6 +238,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         verseRangeText,
         labels,
         note,
+        version: displayVersionName || undefined,
         isPrivate,
       });
     }

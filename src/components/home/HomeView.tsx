@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, User, BookOpen, Globe, ArrowLeft, Heart, MessageCircle, Share2, Maximize2, Pause, X } from 'lucide-react';
+import { Play, Heart, MessageCircle, Share2, Maximize2, Pause, X } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -11,11 +11,12 @@ import { useReadingProgress } from '@/lib/useReadingProgress';
 import { getRelativeTime } from '@/utils/time';
 import HomeSkeleton from '@/app/components/HomeSkeleton';
 import { DailyDetailModal } from './DailyDetailModal';
+import { PremiumCarousel } from './PremiumCarousel';
 
 export default function HomeView() {
-  const { data: session, status } = useSession();
+  const { data: session } = useSession();
   const router = useRouter();
-  const { latestProgress, allProgress, isLoading: progressLoading } = useReadingProgress();
+  const { isLoading: progressLoading } = useReadingProgress();
   const [audioPlaying, setAudioPlaying] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -298,30 +299,11 @@ export default function HomeView() {
 
       {/* Daily Verse Carousel (7-Day History) */}
       <div className="relative overflow-hidden mb-8 w-full">
-        <div className="overflow-hidden w-full rounded-2xl">
-          <motion.div
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.25}
-            onDragEnd={(e, info) => {
-              const swipeThreshold = 50;
-              const swipeVelocity = 500;
-              const offset = info.offset.x;
-              const velocity = info.velocity.x;
-
-              if (offset < -swipeThreshold || velocity < -swipeVelocity) {
-                if (currentVerseSlide < dailyVerses.length - 1) {
-                  setCurrentVerseSlide(prev => prev + 1);
-                }
-              } else if (offset > swipeThreshold || velocity > swipeVelocity) {
-                if (currentVerseSlide > 0) {
-                  setCurrentVerseSlide(prev => prev - 1);
-                }
-              }
-            }}
-            animate={{ x: `-${currentVerseSlide * 100}%` }}
-            transition={{ type: "spring", stiffness: 260, damping: 28 }}
-            className="flex w-full"
+        {dailyVerses.length > 0 ? (
+          <PremiumCarousel
+            activeIndex={currentVerseSlide}
+            onChange={setCurrentVerseSlide}
+            ariaLabel="Daily Verse Carousel"
           >
             {dailyVerses.map((content, index) => (
               <div key={content._id || index} className="w-full flex-shrink-0 select-none">
@@ -336,7 +318,7 @@ export default function HomeView() {
                   {/* Content */}
                   <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
                     <div>
-                      <p className="text-white/80 text-xs mb-1 uppercase tracking-wider">{getRelativeLabel(content.date)}'s Verse</p>
+                      <p className="text-white/80 text-xs mb-1 uppercase tracking-wider">{getRelativeLabel(content.date)}&apos;s Verse</p>
                       <h3 className="text-white text-xl font-bold truncate">{content.verseReference || 'Reference'}</h3>
                       <p className="text-white/90 text-xs">{content.version || 'KJV'}</p>
                     </div>
@@ -344,7 +326,7 @@ export default function HomeView() {
                     {/* Verse text - line clamped to prevent vertical growth */}
                     <div className="flex-1 flex items-center justify-center my-4 overflow-hidden">
                       <p className="text-white text-[16px] md:text-[18px] leading-relaxed font-serif italic text-justify line-clamp-5 overflow-hidden text-ellipsis w-full">
-                        "{content.verse || 'Verse text available soon...'}"
+                        &quot;{content.verse || 'Verse text available soon...'}&quot;
                       </p>
                     </div>
 
@@ -391,17 +373,13 @@ export default function HomeView() {
                 </div>
               </div>
             ))}
-
-            {dailyVerses.length === 0 && (
-              <div className="w-full flex-shrink-0 select-none">
-                <div className="rounded-none p-6 shadow-xl relative overflow-hidden h-[395px] flex items-center justify-center text-white" style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-                  <div className="absolute inset-0 bg-black/55" />
-                  <p className="relative z-10">No daily verses available yet.</p>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </div>
+          </PremiumCarousel>
+        ) : (
+          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[395px] flex items-center justify-center text-white" style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+            <div className="absolute inset-0 bg-black/55" />
+            <p className="relative z-10">No daily verses available yet.</p>
+          </div>
+        )}
 
         {/* Slide indicators */}
         {dailyVerses.length > 1 && (
@@ -420,30 +398,11 @@ export default function HomeView() {
 
       {/* Daily Devotional Carousel (7-Day History) */}
       <div className="relative overflow-hidden mb-6 w-full">
-        <div className="overflow-hidden w-full rounded-2xl">
-          <motion.div
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.25}
-            onDragEnd={(e, info) => {
-              const swipeThreshold = 50;
-              const swipeVelocity = 500;
-              const offset = info.offset.x;
-              const velocity = info.velocity.x;
-
-              if (offset < -swipeThreshold || velocity < -swipeVelocity) {
-                if (currentDevotionSlide < dailyDevotions.length - 1) {
-                  setCurrentDevotionSlide(prev => prev + 1);
-                }
-              } else if (offset > swipeThreshold || velocity > swipeVelocity) {
-                if (currentDevotionSlide > 0) {
-                  setCurrentDevotionSlide(prev => prev - 1);
-                }
-              }
-            }}
-            animate={{ x: `-${currentDevotionSlide * 100}%` }}
-            transition={{ type: "spring", stiffness: 260, damping: 28 }}
-            className="flex w-full"
+        {dailyDevotions.length > 0 ? (
+          <PremiumCarousel
+            activeIndex={currentDevotionSlide}
+            onChange={setCurrentDevotionSlide}
+            ariaLabel="Daily Devotional Carousel"
           >
             {dailyDevotions.map((content, index) => (
               <div key={content._id || index} className="w-full flex-shrink-0 select-none">
@@ -459,7 +418,7 @@ export default function HomeView() {
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0 pr-2">
                         <p className="text-xs mb-1 uppercase tracking-wider text-white/80">
-                          {getRelativeLabel(content.date)}'s Devotional
+                          {getRelativeLabel(content.date)}&apos;s Devotional
                         </p>
                         <h3 className="text-xl font-bold truncate text-white">
                           {content.devotionalTitle}
@@ -530,17 +489,13 @@ export default function HomeView() {
                 </div>
               </div>
             ))}
-
-            {dailyDevotions.length === 0 && (
-              <div className="w-full flex-shrink-0 select-none">
-                <div className="rounded-none p-6 shadow-xl relative overflow-hidden h-[360px] flex items-center justify-center text-white" style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-                  <div className="absolute inset-0 bg-black/55" />
-                  <p className="relative z-10">No daily devotionals available yet.</p>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </div>
+          </PremiumCarousel>
+        ) : (
+          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[360px] flex items-center justify-center text-white" style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
+            <div className="absolute inset-0 bg-black/55" />
+            <p className="relative z-10">No daily devotionals available yet.</p>
+          </div>
+        )}
 
         {/* Slide indicators */}
         {dailyDevotions.length > 1 && (
@@ -640,22 +595,26 @@ export default function HomeView() {
       <div className="px-4">
         <div
           onClick={() => router.push('/journals')}
-          className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-2xl p-6 shadow-md hover:shadow-lg hover:border-[#0B7A81]/30 dark:hover:border-[#0B7A81]/50 transition-all cursor-pointer flex items-center justify-between group"
+          className="relative overflow-hidden rounded-2xl p-6 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-between group min-h-[120px]"
+          style={{ backgroundImage: 'url(/banner_journal_and_prayers.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
         >
-          <div className="flex items-center space-x-4">
-            <div className="bg-[#0B7A81]/10 dark:bg-[#0B7A81]/20 p-3.5 rounded-xl group-hover:scale-110 transition-transform">
+          {/* Consistent dark overlay to ensure readability */}
+          <div className="absolute inset-0 bg-black/40 transition-colors group-hover:bg-black/30" />
+
+          <div className="relative z-10 flex items-center space-x-4">
+            <div className="bg-white/20 backdrop-blur-md p-3.5 rounded-xl group-hover:scale-110 transition-transform">
               <span className="text-3xl select-none">✍️</span>
             </div>
             <div>
-              <h3 className="text-lg font-bold text-gray-800 dark:text-[#F5F5F5] group-hover:text-[#0B7A81] transition-colors">
+              <h3 className="text-lg font-bold text-white group-hover:text-teal-200 transition-colors">
                 Journals & Prayers
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              <p className="text-xs text-white/95 mt-1 max-w-[240px] sm:max-w-md">
                 Write journals, keep track of personal prayers, checklist notes, and voice recordings.
               </p>
             </div>
           </div>
-          <div className="text-[var(--color-primary-teal)] text-xl font-bold transition-transform group-hover:translate-x-1 p-2">
+          <div className="relative z-10 text-white text-xl font-bold transition-transform group-hover:translate-x-1 p-2 bg-white/20 rounded-full backdrop-blur-sm size-10 flex items-center justify-center">
             →
           </div>
         </div>

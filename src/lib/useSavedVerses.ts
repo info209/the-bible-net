@@ -13,6 +13,7 @@ export interface SavedVerseClient {
   verseRangeText: string;
   labels: string[];
   note: string;
+  version?: string;
   isPrivate: boolean;
   createdAt: string;
   updatedAt: string;
@@ -26,6 +27,7 @@ export interface SaveVersePayload {
   verseRangeText: string;
   labels?: string[];
   note?: string;
+  version?: string;
   isPrivate?: boolean;
 }
 
@@ -193,6 +195,7 @@ export function useSavedVerses(): UseSavedVersesReturn {
       verseRangeText: payload.verseRangeText,
       labels: payload.labels ?? [],
       note: payload.note ?? '',
+      version: payload.version,
       isPrivate: payload.isPrivate ?? false,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

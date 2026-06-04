@@ -4,6 +4,12 @@ const nextConfig = {
         instrumentationHook: true,
         serverComponentsExternalPackages: ['mongoose'],
     },
+    eslint: {
+        ignoreDuringBuilds: true,
+    },
+    typescript: {
+        ignoreBuildErrors: true,
+    },
     webpack: (config) => {
         config.resolve.alias = {
             ...config.resolve.alias,

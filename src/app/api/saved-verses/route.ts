@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserSession } from '@/lib/auth-helpers';
 import { connectDB } from '@/lib/db';
 import { SavedVerse } from '@/models/SavedVerse';
-import { Verse } from '@/models/Bible';
+import { Verse, BibleVersion } from '@/models/Bible';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 
@@ -50,17 +50,32 @@ export async function GET(req: NextRequest) {
 
     const skip = (page - 1) * limit;
 
-    const [items, total] = await Promise.all([
+    const [items, total, activeVersions] = await Promise.all([
       SavedVerse.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
       SavedVerse.countDocuments(filter),
+      BibleVersion.find({}).select('abbreviation').lean(),
     ]);
+
+    const validAbbreviations = new Set(activeVersions.map((v: any) => v.abbreviation.toUpperCase()));
 
     // Populate verse texts dynamically
     const populatedItems = await Promise.all(
       items.map(async (item: any) => {
         try {
+          let versionCode = (item.version || '').toUpperCase();
+          if (!versionCode || !validAbbreviations.has(versionCode)) {
+            // Fallback: KJV if it exists, otherwise the first version found, otherwise default to KJV string
+            if (validAbbreviations.has('KJV')) {
+              versionCode = 'KJV';
+            } else if (activeVersions.length > 0) {
+              versionCode = activeVersions[0].abbreviation.toUpperCase();
+            } else {
+              versionCode = 'KJV';
+            }
+          }
+
           const verseDocs = await Verse.find({
-            versionCode: (item.version || 'NKJV').toUpperCase(),
+            versionCode,
             bookName: item.bookName,
             chapterNumber: item.chapter,
             number: { $in: item.verses }
@@ -69,6 +84,7 @@ export async function GET(req: NextRequest) {
           const text = verseDocs.map(v => v.text).join(' ');
           return {
             ...item,
+            version: versionCode, // Send normalized version back to client
             verseText: text || 'Verse text not found.'
           };
         } catch (e) {
