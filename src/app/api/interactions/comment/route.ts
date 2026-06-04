@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserSession } from '@/lib/auth-helpers';
 import { commentSchema } from '@/lib/validations/interaction';
 import { CommentRepository } from '@/repositories/commentRepository';
+import { connectDB } from '@/lib/db';
+import { Comment } from '@/models/Comment';
+import { DailyContent } from '@/models/DailyContent';
+import { Content } from '@/models/Content';
+import { User } from '@/models/User';
+import { DailyContentService } from '@/services/dailyContentService';
 
 /**
  * @swagger
@@ -121,10 +127,91 @@ export async function GET(req: NextRequest) {
     try {
         const { searchParams } = new URL(req.url);
         const contentId = searchParams.get('contentId');
-        const type = searchParams.get('type') as 'verse' | 'devotion';
+        const type = searchParams.get('type') as 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion';
 
-        if (!contentId || !type) {
-            return NextResponse.json({ error: 'contentId and type are required' }, { status: 400 });
+        if (!contentId) {
+            // Fetch current user's comments
+            const session = await getUserSession();
+            if (!session?.user?.id) {
+                return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+            }
+
+            await connectDB();
+
+            // Fetch user's preferred version
+            const user = await User.findById(session.user.id).lean();
+            const preferredVersion = (user as any)?.preferredBibleVersion || 'KJV';
+
+            // Fetch all comments for the user
+            const comments = await Comment.find({ userId: session.user.id })
+                .sort({ createdAt: -1 })
+                .lean();
+
+            // Populate content details
+            const enrichedComments = await Promise.all(
+                comments.map(async (comment: any) => {
+                    try {
+                        if (comment.contentType === 'daily-verse') {
+                            const daily = await DailyContent.findById(comment.contentId).lean();
+                            if (!daily) return null;
+
+                            const enriched = await DailyContentService.enrichWithVerseText(daily as any, preferredVersion);
+                            return {
+                                _id: comment._id,
+                                contentId: comment.contentId,
+                                contentType: comment.contentType,
+                                commentText: comment.commentText,
+                                createdAt: comment.createdAt,
+                                reference: enriched.verseReference,
+                                text: enriched.verse,
+                                date: enriched.date,
+                                version: preferredVersion,
+                            };
+                        } else if (comment.contentType === 'daily-devotion') {
+                            const daily = await DailyContent.findById(comment.contentId).lean();
+                            if (!daily) return null;
+
+                            const enriched = await DailyContentService.enrichWithVerseText(daily as any, preferredVersion);
+                            return {
+                                _id: comment._id,
+                                contentId: comment.contentId,
+                                contentType: comment.contentType,
+                                commentText: comment.commentText,
+                                createdAt: comment.createdAt,
+                                title: enriched.devotionalTitle,
+                                text: enriched.devotionalContent,
+                                verseRef: enriched.devotionalVerseRef,
+                                date: enriched.date,
+                            };
+                        } else if (comment.contentType === 'verse' || comment.contentType === 'devotion') {
+                            const content = await Content.findById(comment.contentId).lean();
+                            if (!content) return null;
+                            return {
+                                _id: comment._id,
+                                contentId: comment.contentId,
+                                contentType: comment.contentType,
+                                commentText: comment.commentText,
+                                createdAt: comment.createdAt,
+                                title: (content as any).title,
+                                reference: (content as any).reference,
+                                text: (content as any).text,
+                            };
+                        }
+                        return null;
+                    } catch (err) {
+                        console.error('Error enriching comment:', comment, err);
+                        return null;
+                    }
+                })
+            );
+
+            // Filter out nulls
+            const filteredComments = enrichedComments.filter(item => item !== null);
+            return NextResponse.json({ success: true, data: filteredComments });
+        }
+
+        if (!type) {
+            return NextResponse.json({ error: 'type is required when contentId is provided' }, { status: 400 });
         }
 
         const comments = await CommentRepository.getComments(contentId, type);

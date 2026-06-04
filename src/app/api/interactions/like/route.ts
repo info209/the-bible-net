@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionWithType } from '@/lib/auth-helpers';
+import { getSessionWithType, getUserSession } from '@/lib/auth-helpers';
 import { cookies } from 'next/headers';
 import { likeSchema } from '@/lib/validations/interaction';
 import { LikeRepository } from '@/repositories/likeRepository';
+import { connectDB } from '@/lib/db';
+import { Like } from '@/models/Like';
+import { DailyContent } from '@/models/DailyContent';
+import { Content } from '@/models/Content';
+import { User } from '@/models/User';
+import { DailyContentService } from '@/services/dailyContentService';
 
 
 /**
@@ -126,5 +132,112 @@ export async function POST(req: NextRequest) {
             error: 'Internal server error',
             message: process.env.NODE_ENV === 'development' ? error.message : undefined
         }, { status: 500 });
+    }
+}
+
+/**
+ * @swagger
+ * /api/interactions/like:
+ *   get:
+ *     summary: Get user's liked items
+ *     description: Retrieve all daily verses, daily devotionals, and other content liked by the currently logged-in user.
+ *     tags: [Interactions]
+ *     security:
+ *       - BearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of liked items retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success: { type: boolean, example: true }
+ *                 data: { type: array, items: { type: object } }
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Internal server error
+ */
+export async function GET(req: NextRequest) {
+    try {
+        const session = await getUserSession();
+        if (!session?.user?.id) {
+            return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
+        }
+
+        await connectDB();
+
+        // Fetch user's preferred version
+        const user = await User.findById(session.user.id).lean();
+        const preferredVersion = (user as any)?.preferredBibleVersion || 'KJV';
+
+        // Fetch all likes for the user
+        const likes = await Like.find({ userId: session.user.id })
+            .sort({ createdAt: -1 })
+            .lean();
+
+        // Populate content details
+        const enrichedLikes = await Promise.all(
+            likes.map(async (like: any) => {
+                try {
+                    if (like.contentType === 'daily-verse') {
+                        const daily = await DailyContent.findById(like.contentId).lean();
+                        if (!daily) return null;
+                        
+                        const enriched = await DailyContentService.enrichWithVerseText(daily as any, preferredVersion);
+                        return {
+                            _id: like._id,
+                            contentId: like.contentId,
+                            contentType: like.contentType,
+                            createdAt: like.createdAt,
+                            reference: enriched.verseReference,
+                            text: enriched.verse,
+                            date: enriched.date,
+                            version: preferredVersion,
+                        };
+                    } else if (like.contentType === 'daily-devotion') {
+                        const daily = await DailyContent.findById(like.contentId).lean();
+                        if (!daily) return null;
+
+                        const enriched = await DailyContentService.enrichWithVerseText(daily as any, preferredVersion);
+                        return {
+                            _id: like._id,
+                            contentId: like.contentId,
+                            contentType: like.contentType,
+                            createdAt: like.createdAt,
+                            title: enriched.devotionalTitle,
+                            text: enriched.devotionalContent,
+                            verseRef: enriched.devotionalVerseRef,
+                            date: enriched.date,
+                        };
+                    } else if (like.contentType === 'verse' || like.contentType === 'devotion') {
+                        const content = await Content.findById(like.contentId).lean();
+                        if (!content) return null;
+                        return {
+                            _id: like._id,
+                            contentId: like.contentId,
+                            contentType: like.contentType,
+                            createdAt: like.createdAt,
+                            title: (content as any).title,
+                            reference: (content as any).reference,
+                            text: (content as any).text,
+                        };
+                    }
+                    return null;
+                } catch (err) {
+                    console.error('Error enriching like:', like, err);
+                    return null;
+                }
+            })
+        );
+
+        // Filter out nulls
+        const data = enrichedLikes.filter(item => item !== null);
+
+        return NextResponse.json({ success: true, data });
+    } catch (error: any) {
+        console.error('Error in GET likes API:', error);
+        return NextResponse.json({ success: false, error: 'Internal server error' }, { status: 500 });
     }
 }

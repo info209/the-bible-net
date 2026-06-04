@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getUserSession } from '@/lib/auth-helpers';
 import { connectDB } from '@/lib/db';
 import { Prayer } from '@/models/Prayer';
 import { PersonalPrayer } from '@/models/PersonalPrayer';
@@ -7,7 +7,7 @@ import { PersonalPrayer } from '@/models/PersonalPrayer';
 export async function GET(req: Request) {
   try {
     await connectDB();
-    const session = await auth();
+    const session = await getUserSession();
     const { searchParams } = new URL(req.url);
     const personal = searchParams.get('personal') === 'true';
 
@@ -72,7 +72,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   try {
-    const session = await auth();
+    const session = await getUserSession();
     if (!session?.user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
