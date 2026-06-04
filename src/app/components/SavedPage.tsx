@@ -70,7 +70,8 @@ export default function SavedPage() {
     setMenuOpenId(null);
     const book = selectedItemForMenu.bookId || 'GEN';
     const ch = selectedItemForMenu.chapter || 1;
-    router.push(`/bible/NKJV/${book}/${ch}`);
+    const version = selectedItemForMenu.version || 'NKJV';
+    router.push(`/bible?version=${version}&book=${book}&chapter=${ch}`);
   };
 
   const handleOpenEditLabels = () => {

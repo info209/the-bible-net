@@ -254,13 +254,20 @@ export default function HomeView() {
     >
       {/* Greeting - Figma Style */}
       <div className="flex items-center space-x-3 animate-fade-in px-4 mt-0.5">
-        <div className="flex items-center justify-center text-gray-800 text-2xl font-bold px-1 shrink-0">
-          ✝
+        <div className="flex items-center justify-center shrink-0">
+          <svg
+            viewBox="0 0 24 24"
+            className="w-5 h-5 text-black"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <path d="M11 2h2v5h5v2h-5v13h-2V9H6V7h5V2z" />
+          </svg>
         </div>
         <div className="min-w-0 flex-1">
-          <h2 className="text-[19px] font-bold text-gray-800 flex items-baseline space-x-1.5 min-w-0">
-            <span className="text-gray-500 text-[14px] font-medium shrink-0">Shalom,</span>
-            <span className="truncate block max-w-full">
+          <h2 className="flex items-baseline space-x-1.5 min-w-0">
+            <span className="text-gray-800 text-[19px] font-bold shrink-0">Shalom,</span>
+            <span className="truncate block max-w-full text-gray-500 text-[14px] font-medium">
               {(session?.user as any)?.firstName || session?.user?.name || 'Believer'}
             </span>
           </h2>
@@ -585,8 +592,8 @@ export default function HomeView() {
                   style={{ width: `${latestProgress.completed ? 100 : (latestProgress.progressPercent || 0)}%` }}
                 />
               </div>
-              <button
-                onClick={() => router.push(`/bible/${latestProgress.versionId}/${latestProgress.bookId}/${latestProgress.chapter}`)}
+               <button
+                onClick={() => router.push(`/bible?version=${latestProgress.versionId}&book=${latestProgress.bookId}&chapter=${latestProgress.chapter}`)}
                 className="w-full py-2 bg-[#e6f0f1] text-[var(--color-primary-teal)] rounded-lg text-sm font-medium hover:bg-[#d0e5e7] transition-colors mt-2"
               >
                 Continue
@@ -604,7 +611,7 @@ export default function HomeView() {
                   </div>
                 </div>
                 <button
-                  onClick={() => router.push(`/bible/${allProgress[1].versionId}/${allProgress[1].bookId}/${allProgress[1].chapter}`)}
+                  onClick={() => router.push(`/bible?version=${allProgress[1].versionId}&book=${allProgress[1].bookId}&chapter=${allProgress[1].chapter}`)}
                   className="w-full py-2 bg-gray-50 text-gray-600 rounded-lg text-sm font-medium hover:bg-gray-100 transition-colors mt-2"
                 >
                   Read Again

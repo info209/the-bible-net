@@ -167,7 +167,7 @@ export default function HighlightsPage() {
                         <p className="text-xs text-gray-500 leading-snug truncate">{headerText}</p>
                       </div>
                       <CardKebabMenu
-                        onRead={() => router.push('/bible')}
+                        onRead={() => router.push(`/bible?version=${h.metadata?.versionId || 'NKJV'}&book=${h.metadata?.bookId || 'GEN'}&chapter=${h.metadata?.chapter || 1}`)}
                         onDelete={() => handleDelete(h._id, h.refId)}
                         onShare={() => {
                           if (navigator.share) {

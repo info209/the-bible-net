@@ -1,6 +1,6 @@
 "use client";
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ChevronDown, Home, Compass, Play, Pause, Music, MoreVertical, X,
   ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle,
@@ -113,6 +113,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
   // determine whether we are on bible page; if not, render only nav bar
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isBiblePage = isBibleReadingRoute(pathname);
 
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
@@ -429,15 +430,14 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   useEffect(() => {
     if (!isBibleReadingRoute(pathname)) return;
 
-    // Pattern: /bible/{version}/{book}/{chapter} or just /bible
-    const segments = pathname.split('/').filter(Boolean); // e.g., ["bible", "kjv", "genesis", "1"]
+    const queryVersion = searchParams ? searchParams.get('version') : null;
+    const queryBook = searchParams ? searchParams.get('book') : null;
+    const queryChapter = searchParams ? searchParams.get('chapter') : null;
 
-    if (segments.length >= 4) {
-      const [_, urlVersion, urlBook, urlChapter] = segments;
-
+    if (queryVersion || queryBook || queryChapter) {
       // Update version
-      if (urlVersion && displayVersionName !== urlVersion && urlVersion !== 'undefined') {
-        const matchingVer = bibleVersions.find(v => v.name === urlVersion || v.id === urlVersion);
+      if (queryVersion && displayVersionName !== queryVersion && queryVersion !== 'undefined') {
+        const matchingVer = bibleVersions.find(v => v.name === queryVersion || v.id === queryVersion);
         if (matchingVer) {
           setSelectedVersionId(matchingVer.id);
           setDisplayVersionName(matchingVer.name);
@@ -445,11 +445,10 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       }
 
       // Update book/chapter
-      if (urlBook && urlBook !== 'undefined') {
-        // Normalize book name to compare
-        const normalizedBook = urlBook.replace(/-/g, ' ');
+      if (queryBook && queryBook !== 'undefined') {
+        const normalizedBook = queryBook.replace(/-/g, ' ');
         const allBooks = [...bibleBooksState['Old Testament'], ...bibleBooksState['New Testament']];
-        const matchingBook = allBooks.find(b => b.name.toLowerCase() === normalizedBook.toLowerCase() || b.id === urlBook);
+        const matchingBook = allBooks.find(b => b.name.toLowerCase() === normalizedBook.toLowerCase() || b.id === queryBook);
 
         if (matchingBook && selectedBookId !== matchingBook.id) {
           setSelectedBookId(matchingBook.id);
@@ -457,18 +456,51 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         }
       }
 
-      if (urlChapter && parseInt(urlChapter) !== selectedChapter) {
-        setSelectedChapter(parseInt(urlChapter) || 1);
+      if (queryChapter && parseInt(queryChapter) !== selectedChapter) {
+        setSelectedChapter(parseInt(queryChapter) || 1);
       }
-    } else if (segments.length === 1 && latestProgress && !selectedBookId) {
-      // Just /bible opened - load latest progress if we haven't set a book yet
-      setSelectedVersionId(latestProgress.versionId);
-      setDisplayVersionName(latestProgress.versionName || null);
-      setSelectedBookId(latestProgress.bookId);
-      setDisplayBookName(latestProgress.bookName || 'Genesis');
-      setSelectedChapter(latestProgress.chapter);
+    } else {
+      // Pattern: /bible/{version}/{book}/{chapter} or just /bible
+      const segments = pathname.split('/').filter(Boolean); // e.g., ["bible", "kjv", "genesis", "1"]
+
+      if (segments.length >= 4) {
+        const [_, urlVersion, urlBook, urlChapter] = segments;
+
+        // Update version
+        if (urlVersion && displayVersionName !== urlVersion && urlVersion !== 'undefined') {
+          const matchingVer = bibleVersions.find(v => v.name === urlVersion || v.id === urlVersion);
+          if (matchingVer) {
+            setSelectedVersionId(matchingVer.id);
+            setDisplayVersionName(matchingVer.name);
+          }
+        }
+
+        // Update book/chapter
+        if (urlBook && urlBook !== 'undefined') {
+          // Normalize book name to compare
+          const normalizedBook = urlBook.replace(/-/g, ' ');
+          const allBooks = [...bibleBooksState['Old Testament'], ...bibleBooksState['New Testament']];
+          const matchingBook = allBooks.find(b => b.name.toLowerCase() === normalizedBook.toLowerCase() || b.id === urlBook);
+
+          if (matchingBook && selectedBookId !== matchingBook.id) {
+            setSelectedBookId(matchingBook.id);
+            setDisplayBookName(matchingBook.name);
+          }
+        }
+
+        if (urlChapter && parseInt(urlChapter) !== selectedChapter) {
+          setSelectedChapter(parseInt(urlChapter) || 1);
+        }
+      } else if (segments.length === 1 && latestProgress && !selectedBookId) {
+        // Just /bible opened - load latest progress if we haven't set a book yet
+        setSelectedVersionId(latestProgress.versionId);
+        setDisplayVersionName(latestProgress.versionName || null);
+        setSelectedBookId(latestProgress.bookId);
+        setDisplayBookName(latestProgress.bookName || 'Genesis');
+        setSelectedChapter(latestProgress.chapter);
+      }
     }
-  }, [pathname, bibleVersions]); // Removed state dependencies to prevent resetting user selection back to URL state
+  }, [pathname, searchParams, bibleVersions, bibleBooksState]); // Removed state dependencies to prevent resetting user selection back to URL state
 
   const isAnyPopupOpen = showBookSelector || showChapterSelector ||
     showVersionSelector || showMoreMenu ||
