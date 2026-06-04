@@ -592,31 +592,29 @@ export default function HomeView() {
       */}
 
       {/* Journals & Prayers Entry Point */}
-      <div className="px-4">
-        <div
-          onClick={() => router.push('/journals')}
-          className="relative overflow-hidden rounded-2xl p-6 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-between group min-h-[120px]"
-          style={{ backgroundImage: 'url(/banner_journal_and_prayers.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
-        >
-          {/* Consistent dark overlay to ensure readability */}
-          <div className="absolute inset-0 bg-black/40 transition-colors group-hover:bg-black/30" />
+      <div
+        onClick={() => router.push('/journals')}
+        className="relative overflow-hidden rounded-none p-6 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-between group min-h-[120px] w-full"
+        style={{ backgroundImage: 'url(/banner_journal_and_prayers.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+      >
+        {/* Consistent dark overlay to ensure readability */}
+        <div className="absolute inset-0 bg-black/40 transition-colors group-hover:bg-black/30" />
 
-          <div className="relative z-10 flex items-center space-x-4">
-            <div className="bg-white/20 backdrop-blur-md p-3.5 rounded-xl group-hover:scale-110 transition-transform">
-              <span className="text-3xl select-none">✍️</span>
-            </div>
-            <div>
-              <h3 className="text-lg font-bold text-white group-hover:text-teal-200 transition-colors">
-                Journals & Prayers
-              </h3>
-              <p className="text-xs text-white/95 mt-1 max-w-[240px] sm:max-w-md">
-                Write journals, keep track of personal prayers, checklist notes, and voice recordings.
-              </p>
-            </div>
+        <div className="relative z-10 flex items-center space-x-4">
+          <div className="bg-white/20 backdrop-blur-md p-3.5 rounded-xl group-hover:scale-110 transition-transform">
+            <span className="text-3xl select-none">✍️</span>
           </div>
-          <div className="relative z-10 text-white text-xl font-bold transition-transform group-hover:translate-x-1 p-2 bg-white/20 rounded-full backdrop-blur-sm size-10 flex items-center justify-center">
-            →
+          <div>
+            <h3 className="text-lg font-bold text-white group-hover:text-teal-200 transition-colors">
+              Journals & Prayers
+            </h3>
+            <p className="text-xs text-white/95 mt-1 max-w-[240px] sm:max-w-md">
+              Write journals, keep track of personal prayers, checklist notes, and voice recordings.
+            </p>
           </div>
+        </div>
+        <div className="relative z-10 text-white text-xl font-bold transition-transform group-hover:translate-x-1 p-2 bg-white/20 rounded-full backdrop-blur-sm size-10 flex items-center justify-center">
+          →
         </div>
       </div>
 

@@ -109,13 +109,16 @@ export class DailyContentRepository {
         return !!result;
     }
 
-    static async findAll(filter?: { year?: number; month?: number }, page = 1, limit = 50): Promise<{ data: IDailyContent[]; total: number }> {
+    static async findAll(filter?: { year?: number; month?: number; hasDevotional?: boolean }, page = 1, limit = 50): Promise<{ data: IDailyContent[]; total: number }> {
         const query: any = {};
         if (filter?.year) query.contentYear = filter.year;
         if (filter?.month) {
             const y = filter.year || new Date().getFullYear();
             const monthStr = String(filter.month).padStart(2, '0');
             query.date = { $gte: `${y}-${monthStr}-01`, $lte: `${y}-${monthStr}-31` };
+        }
+        if (filter?.hasDevotional) {
+            query.devotionalTitle = { $ne: "", $exists: true };
         }
 
         const [data, total] = await Promise.all([

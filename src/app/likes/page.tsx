@@ -3,7 +3,7 @@ import { getUserSession } from '@/lib/auth-helpers';
 import LikesPage from '@/app/components/LikesPage';
 
 export const metadata = {
-  title: 'Likes | The Bible Net',
+  title: 'Likes',
   description: 'Your liked Bible verses and daily devotionals.',
 };
 

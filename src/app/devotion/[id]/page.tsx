@@ -1,6 +1,21 @@
 import { ContentRepository } from '@/repositories/contentRepository';
 import { notFound } from 'next/navigation';
 import { Heart, MessageCircle, Share2, Play } from 'lucide-react';
+import { Metadata } from 'next';
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+    try {
+        const devotion = await ContentRepository.findById(params.id);
+        if (!devotion || devotion.type !== 'devotion') {
+            return { title: 'Devotional' };
+        }
+        return {
+            title: devotion.title || 'Daily Devotional',
+        };
+    } catch {
+        return { title: 'Daily Devotional' };
+    }
+}
 
 export default async function DevotionPage({ params }: { params: { id: string } }) {
     const devotion = await ContentRepository.findById(params.id);

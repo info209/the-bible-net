@@ -1,6 +1,11 @@
 import { adminAuth } from '@/lib/auth/admin';
 import { UserRole } from '@/types/user';
 import Link from 'next/link';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: "Content Management",
+};
 
 export default async function AdminContentPage() {
     const session = await adminAuth();

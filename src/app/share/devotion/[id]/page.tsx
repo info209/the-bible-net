@@ -1,6 +1,21 @@
 import { ContentRepository } from '@/repositories/contentRepository';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { Metadata } from 'next';
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+    try {
+        const devotion = await ContentRepository.findById(params.id);
+        if (!devotion || devotion.type !== 'devotion') {
+            return { title: 'Shared Devotional' };
+        }
+        return {
+            title: `Shared Devotional: ${devotion.title}`,
+        };
+    } catch {
+        return { title: 'Shared Devotional' };
+    }
+}
 
 export default async function ShareDevotionPage({ params }: { params: { id: string } }) {
     const devotion = await ContentRepository.findById(params.id);

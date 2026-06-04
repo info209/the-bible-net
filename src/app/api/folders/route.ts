@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getUserSession } from '@/lib/auth-helpers';
 import { connectDB } from '@/lib/db';
 import { UserFolder } from '@/models/UserFolder';
 
 export async function GET(req: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getUserSession();
     if (!session?.user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }
@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getUserSession();
     if (!session?.user) {
       return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 });
     }

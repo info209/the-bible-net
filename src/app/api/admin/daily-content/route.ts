@@ -18,11 +18,12 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const year = searchParams.get('year') ? parseInt(searchParams.get('year')!) : undefined;
         const month = searchParams.get('month') ? parseInt(searchParams.get('month')!) : undefined;
+        const hasDevotional = searchParams.get('hasDevotional') === 'true';
         const page = parseInt(searchParams.get('page') || '1', 10);
         const limit = parseInt(searchParams.get('limit') || '50', 10);
 
         const { data, total } = await DailyContentRepository.findAll(
-            { year, month },
+            { year, month, hasDevotional },
             page,
             limit
         );

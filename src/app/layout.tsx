@@ -4,7 +4,10 @@ import { Metadata, Viewport } from "next";
 import { Providers } from "@/components/Providers";
 
 export const metadata: Metadata = {
-  title: "The Bible Net",
+  title: {
+    default: "The Bible Net",
+    template: "%s | The Bible Net",
+  },
   description: "Read and explore the Bible",
   manifest: "/manifest.json",
   icons: {

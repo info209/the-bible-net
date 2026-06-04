@@ -38,9 +38,6 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
     const container = containerRef.current;
     if (!container) return;
 
-    // Capture the pointer to handle drag outside container boundaries
-    container.setPointerCapture(e.pointerId);
-
     startXRef.current = e.clientX;
     startYRef.current = e.clientY;
     startTimeRef.current = Date.now();
@@ -66,15 +63,16 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
       if (absX > 10 || absY > 10) {
         if (absX > absY) {
           isSwipeActionRef.current = true;
-        } else {
-          isSwipeActionRef.current = false;
-          // Cancel custom dragging & let native browser vertical scroll happen
+          // Capture the pointer to handle drag outside container boundaries now that horizontal swiping has started
           const container = containerRef.current;
           if (container) {
             try {
-              container.releasePointerCapture(e.pointerId);
+              container.setPointerCapture(e.pointerId);
             } catch {}
           }
+        } else {
+          isSwipeActionRef.current = false;
+          // Cancel custom dragging & let native browser vertical scroll happen
           isDraggingRef.current = false;
           return;
         }

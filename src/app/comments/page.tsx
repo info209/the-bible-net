@@ -3,7 +3,7 @@ import { getUserSession } from '@/lib/auth-helpers';
 import CommentsPage from '../components/CommentsPage';
 
 export const metadata = {
-  title: 'Comments | The Bible Net',
+  title: 'Comments',
   description: 'Your comments on Bible verses and daily devotionals.',
 };
 

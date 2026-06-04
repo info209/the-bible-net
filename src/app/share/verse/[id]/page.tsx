@@ -1,6 +1,21 @@
 import { ContentRepository } from '@/repositories/contentRepository';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import { Metadata } from 'next';
+
+export async function generateMetadata({ params }: { params: { id: string } }): Promise<Metadata> {
+    try {
+        const verse = await ContentRepository.findById(params.id);
+        if (!verse || verse.type !== 'verse') {
+            return { title: 'Shared Verse' };
+        }
+        return {
+            title: `Shared Verse: ${verse.reference || 'Daily Verse'}`,
+        };
+    } catch {
+        return { title: 'Shared Verse' };
+    }
+}
 
 export default async function ShareVersePage({ params }: { params: { id: string } }) {
     const verse = await ContentRepository.findById(params.id);

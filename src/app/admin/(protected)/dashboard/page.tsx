@@ -2,6 +2,11 @@ import { adminAuth } from '@/lib/auth/admin';
 import { UserRole } from '@/types/user';
 import { User } from '@/models/User';
 import dbConnect from '@/lib/db';
+import { Metadata } from 'next';
+
+export const metadata: Metadata = {
+    title: "Dashboard",
+};
 
 export default async function AdminDashboard() {
     await dbConnect();

@@ -4,7 +4,7 @@ import { Metadata } from 'next';
 const SwaggerClient = dynamic(() => import('@/components/SwaggerClient'), { ssr: false });
 
 export const metadata: Metadata = {
-    title: 'API Documentation | The Bible Net',
+    title: 'API Documentation',
     description: 'Interactive API documentation for The Bible Net application',
 };
 

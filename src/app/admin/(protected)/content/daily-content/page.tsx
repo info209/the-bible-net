@@ -77,6 +77,7 @@ export default function DailyContentManagement() {
                 limit: String(LIMIT),
                 year: String(yearFilter),
                 ...(monthFilter ? { month: String(monthFilter) } : {}),
+                ...(activeTab === 'devotional' ? { hasDevotional: 'true' } : {}),
             });
             const res = await fetch(`/api/admin/daily-content?${params}`);
             const result = await res.json();
@@ -89,7 +90,7 @@ export default function DailyContentManagement() {
         } finally {
             setLoading(false);
         }
-    }, [page, yearFilter, monthFilter]);
+    }, [page, yearFilter, monthFilter, activeTab]);
 
     useEffect(() => {
         if (activeTab === 'verse' || activeTab === 'devotional') {
@@ -233,7 +234,7 @@ export default function DailyContentManagement() {
                     return (
                         <button
                             key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
+                            onClick={() => { setActiveTab(tab.id); setPage(1); }}
                             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all whitespace-nowrap flex-shrink-0
                                 ${activeTab === tab.id
                                     ? 'bg-blue-600 text-white shadow-lg'
@@ -494,6 +495,30 @@ export default function DailyContentManagement() {
                                     </tbody>
                                 </table>
                             </div>
+                            
+                            {/* Pagination */}
+                            {total > LIMIT && (
+                                <div className="p-4 border-t border-white/5 flex items-center justify-between text-sm text-gray-400">
+                                    <span>Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of {total}</span>
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            onClick={() => setPage(p => Math.max(1, p - 1))}
+                                            disabled={page === 1}
+                                            className="p-1.5 hover:bg-white/5 rounded-lg disabled:opacity-40"
+                                        >
+                                            <ChevronLeft className="size-4" />
+                                        </button>
+                                        <span className="text-white font-medium">Page {page}</span>
+                                        <button
+                                            onClick={() => setPage(p => p + 1)}
+                                            disabled={page * LIMIT >= total}
+                                            className="p-1.5 hover:bg-white/5 rounded-lg disabled:opacity-40"
+                                        >
+                                            <ChevronRight className="size-4" />
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         )}
                     </div>
                 </div>
