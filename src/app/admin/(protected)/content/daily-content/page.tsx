@@ -456,69 +456,71 @@ export default function DailyContentManagement() {
                                 <p className="text-gray-500 text-sm">Loading...</p>
                             </div>
                         ) : (
-                            <div className="overflow-x-auto">
-                                <table className="w-full text-left border-collapse">
-                                    <thead>
-                                        <tr className="border-b border-white/5 text-gray-400 text-sm">
-                                            <th className="p-4 font-medium">Date</th>
-                                            <th className="p-4 font-medium">Key Verse</th>
-                                            <th className="p-4 font-medium">Title</th>
-                                            <th className="p-4 font-medium text-right">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-white/5 text-sm">
-                                        {filteredContents.filter(c => c.devotionalTitle).map(item => (
-                                            <tr key={item._id} className="hover:bg-white/[0.02] transition-colors group">
-                                                <td className="p-4 font-mono text-white font-medium">{item.date}</td>
-                                                <td className="p-4 text-pink-400 font-medium">{item.devotionalVerseRef || '—'}</td>
-                                                <td className="p-4 text-gray-300 max-w-xs truncate">{item.devotionalTitle}</td>
-                                                <td className="p-4 text-right">
-                                                    <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                        <Link
-                                                            href={`/admin/content/daily-content/manage?id=${item._id}`}
-                                                            className="text-blue-400 hover:text-blue-300 flex items-center gap-1 text-xs"
-                                                        >
-                                                            <Edit className="size-3.5" /> Edit
-                                                        </Link>
-                                                    </div>
-                                                </td>
+                            <>
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-left border-collapse">
+                                        <thead>
+                                            <tr className="border-b border-white/5 text-gray-400 text-sm">
+                                                <th className="p-4 font-medium">Date</th>
+                                                <th className="p-4 font-medium">Key Verse</th>
+                                                <th className="p-4 font-medium">Title</th>
+                                                <th className="p-4 font-medium text-right">Actions</th>
                                             </tr>
-                                        ))}
-                                        {filteredContents.filter(c => c.devotionalTitle).length === 0 && (
-                                            <tr>
-                                                <td colSpan={4} className="p-16 text-center text-gray-500">
-                                                    <Calendar className="size-10 mx-auto mb-3 opacity-30" />
-                                                    <p>No devotionals scheduled yet.</p>
-                                                </td>
-                                            </tr>
-                                        )}
-                                    </tbody>
-                                </table>
-                            </div>
-                            
-                            {/* Pagination */}
-                            {total > LIMIT && (
-                                <div className="p-4 border-t border-white/5 flex items-center justify-between text-sm text-gray-400">
-                                    <span>Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of {total}</span>
-                                    <div className="flex items-center gap-2">
-                                        <button
-                                            onClick={() => setPage(p => Math.max(1, p - 1))}
-                                            disabled={page === 1}
-                                            className="p-1.5 hover:bg-white/5 rounded-lg disabled:opacity-40"
-                                        >
-                                            <ChevronLeft className="size-4" />
-                                        </button>
-                                        <span className="text-white font-medium">Page {page}</span>
-                                        <button
-                                            onClick={() => setPage(p => p + 1)}
-                                            disabled={page * LIMIT >= total}
-                                            className="p-1.5 hover:bg-white/5 rounded-lg disabled:opacity-40"
-                                        >
-                                            <ChevronRight className="size-4" />
-                                        </button>
-                                    </div>
+                                        </thead>
+                                        <tbody className="divide-y divide-white/5 text-sm">
+                                            {filteredContents.filter(c => c.devotionalTitle).map(item => (
+                                                <tr key={item._id} className="hover:bg-white/[0.02] transition-colors group">
+                                                    <td className="p-4 font-mono text-white font-medium">{item.date}</td>
+                                                    <td className="p-4 text-pink-400 font-medium">{item.devotionalVerseRef || '—'}</td>
+                                                    <td className="p-4 text-gray-300 max-w-xs truncate">{item.devotionalTitle}</td>
+                                                    <td className="p-4 text-right">
+                                                        <div className="flex items-center justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                            <Link
+                                                                href={`/admin/content/daily-content/manage?id=${item._id}`}
+                                                                className="text-blue-400 hover:text-blue-300 flex items-center gap-1 text-xs"
+                                                            >
+                                                                <Edit className="size-3.5" /> Edit
+                                                            </Link>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {filteredContents.filter(c => c.devotionalTitle).length === 0 && (
+                                                <tr>
+                                                    <td colSpan={4} className="p-16 text-center text-gray-500">
+                                                        <Calendar className="size-10 mx-auto mb-3 opacity-30" />
+                                                        <p>No devotionals scheduled yet.</p>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
                                 </div>
-                            )}
+                                
+                                {/* Pagination */}
+                                {total > LIMIT && (
+                                    <div className="p-4 border-t border-white/5 flex items-center justify-between text-sm text-gray-400">
+                                        <span>Showing {(page - 1) * LIMIT + 1}–{Math.min(page * LIMIT, total)} of {total}</span>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => setPage(p => Math.max(1, p - 1))}
+                                                disabled={page === 1}
+                                                className="p-1.5 hover:bg-white/5 rounded-lg disabled:opacity-40"
+                                            >
+                                                <ChevronLeft className="size-4" />
+                                            </button>
+                                            <span className="text-white font-medium">Page {page}</span>
+                                            <button
+                                                onClick={() => setPage(p => p + 1)}
+                                                disabled={page * LIMIT >= total}
+                                                className="p-1.5 hover:bg-white/5 rounded-lg disabled:opacity-40"
+                                            >
+                                                <ChevronRight className="size-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
