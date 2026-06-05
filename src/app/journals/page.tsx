@@ -7,12 +7,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Search, SlidersHorizontal, Plus, MoreVertical,
   Pin, Bookmark, Check, X, Edit2, Trash2, Mic, Play, Pause,
-  Bold, Italic, List, ChevronUp, ChevronDown, CheckSquare,
-  SquareSquare, BookOpen, FolderPlus, Tag, Sliders, ChevronRight
+  Bold, Italic, List, ChevronUp, ChevronDown,
+  BookOpen, Sliders
 } from 'lucide-react';
 
-type Tab = 'All' | 'Journals' | 'Prayers' | string;
+type Tab = 'All' | 'Journals' | 'Prayers';
 type ItemType = 'journal' | 'prayer';
+type PrayerStatusFilter = 'All' | 'Active' | 'Prayed';
 
 const BIBLE_BOOKS = [
   'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
@@ -36,7 +37,6 @@ export default function JournalsPage() {
   // Lists & Collections
   const [journals, setJournals] = useState<any[]>([]);
   const [prayers, setPrayers] = useState<any[]>([]);
-  const [folders, setFolders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Tabs & Searching
@@ -45,19 +45,19 @@ export default function JournalsPage() {
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [sortBy, setSortBy] = useState<'pinned_recent' | 'recent'>('pinned_recent');
   
+  // Prayer-specific status filter (shown when Prayers tab is active)
+  const [prayerStatusFilter, setPrayerStatusFilter] = useState<PrayerStatusFilter>('All');
+
   // Advanced Filter state
   const [showFilterSheet, setShowFilterSheet] = useState(false);
   const [filterType, setFilterType] = useState<'all' | 'journal' | 'prayer'>('all');
   const [filterPinned, setFilterPinned] = useState<boolean | null>(null);
   const [filterBookmarked, setFilterBookmarked] = useState<boolean | null>(null);
-  const [filterFolderId, setFilterFolderId] = useState<string>('');
   const [filterDate, setFilterDate] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   // Bottom Sheets & Dialogs
   const [showFabSheet, setShowFabSheet] = useState(false);
-  const [showFolderSheet, setShowFolderSheet] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
-  const [showMoveSheet, setShowMoveSheet] = useState(false);
   
   // Multi-select Mode
   const [selectionMode, setSelectionMode] = useState(false);
@@ -68,11 +68,7 @@ export default function JournalsPage() {
   const [activeKebabType, setActiveKebabType] = useState<ItemType>('journal');
   const [kebabPosition, setKebabPosition] = useState<{ top: number; right: number } | null>(null);
 
-  // Folder Form
-  const [folderName, setFolderName] = useState('');
-  const [folderError, setFolderError] = useState('');
-
-  // Target item for deletion / movements
+  // Target item for deletion
   const [targetItem, setTargetItem] = useState<{ id: string; type: ItemType } | null>(null);
 
   // Editor states
@@ -149,19 +145,16 @@ export default function JournalsPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [journalsRes, prayersRes, foldersRes] = await Promise.all([
+      const [journalsRes, prayersRes] = await Promise.all([
         fetch('/api/journals'),
         fetch('/api/prayers?personal=true'),
-        fetch('/api/folders')
       ]);
 
       const jData = await journalsRes.json();
       const pData = await prayersRes.json();
-      const fData = await foldersRes.json();
 
       if (jData.success) setJournals(jData.data);
       if (pData.success) setPrayers(pData.data);
-      if (fData.success) setFolders(fData.data);
     } catch (err) {
       console.error('Error fetching data:', err);
       showToast('Error loading records');
@@ -170,39 +163,7 @@ export default function JournalsPage() {
     }
   };
 
-  // Folder creation action
-  const handleCreateFolder = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFolderError('');
-    const name = folderName.trim();
-    if (!name) {
-      setFolderError('Folder name is required');
-      return;
-    }
-    if (name.length > 50) {
-      setFolderError('Maximum 50 characters allowed');
-      return;
-    }
-
-    try {
-      const res = await fetch('/api/folders', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setFolders([...folders, data.data]);
-        setFolderName('');
-        setShowFolderSheet(false);
-        showToast(`Folder "${name}" created successfully`);
-      } else {
-        setFolderError(data.error || 'Failed to create folder');
-      }
-    } catch (err) {
-      setFolderError('Network error. Try again.');
-    }
-  };
+  // Folder creation action - REMOVED (folder creation no longer supported)
 
   // Card Toggling (Pin / Bookmark)
   const handleTogglePin = async (id: string, type: ItemType, currentPin: boolean, e?: React.MouseEvent) => {
@@ -544,10 +505,28 @@ export default function JournalsPage() {
     setShowDeleteSheet(true);
   };
 
-  const handleTriggerMoveFolder = (id: string, type: ItemType) => {
+  // Mark prayer as prayed (one-way, irreversible)
+  const handleMarkAsPrayed = async (id: string) => {
     setActiveKebabId(null);
-    setTargetItem({ id, type });
-    setShowMoveSheet(true);
+    // Optimistic update
+    setPrayers(prev => prev.map(p => p._id === id ? { ...p, status: 'prayed' } : p));
+    try {
+      const res = await fetch(`/api/prayers/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'prayed' })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        showToast('Failed to update prayer status');
+        fetchData(); // rollback
+      } else {
+        showToast('Prayer marked as Prayed 🙏');
+      }
+    } catch {
+      showToast('Network error');
+      fetchData(); // rollback
+    }
   };
 
   // Confirm Single Deletion
@@ -574,37 +553,6 @@ export default function JournalsPage() {
       showToast('Network error');
     } finally {
       setShowDeleteSheet(false);
-      setTargetItem(null);
-    }
-  };
-
-  // Move Single item to folder
-  const handleMoveToFolder = async (folderId: string) => {
-    if (!targetItem) return;
-    const { id, type } = targetItem;
-
-    try {
-      const endpoint = type === 'journal' ? `/api/journals/${id}` : `/api/prayers/${id}`;
-      const res = await fetch(endpoint, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ folderId: folderId || null })
-      });
-      const data = await res.json();
-      if (data.success) {
-        if (type === 'journal') {
-          setJournals(journals.map(j => j._id === id ? data.data : j));
-        } else {
-          setPrayers(prayers.map(p => p._id === id ? data.data : p));
-        }
-        showToast('Moved successfully');
-      } else {
-        showToast('Error moving item');
-      }
-    } catch (err) {
-      showToast('Network error');
-    } finally {
-      setShowMoveSheet(false);
       setTargetItem(null);
     }
   };
@@ -658,30 +606,6 @@ export default function JournalsPage() {
       setSelectedIds([]);
     } catch (err) {
       showToast('Error in batch pinning');
-      setLoading(false);
-    }
-  };
-
-  const handleBatchMove = async (folderId: string) => {
-    if (selectedIds.length === 0) return;
-    setLoading(true);
-    try {
-      await Promise.all(selectedIds.map(async (id) => {
-        const isJ = journals.some(j => j._id === id);
-        const endpoint = isJ ? `/api/journals/${id}` : `/api/prayers/${id}`;
-        await fetch(endpoint, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ folderId: folderId || null })
-        });
-      }));
-
-      showToast('Batch items moved successfully');
-      fetchData();
-      setSelectionMode(false);
-      setSelectedIds([]);
-    } catch (err) {
-      showToast('Error in batch moving');
       setLoading(false);
     }
   };
@@ -894,17 +818,18 @@ export default function JournalsPage() {
       list = prayers.map(item => ({ ...item, _itemType: 'prayer' as ItemType }));
     }
 
-    // Category chips navigation (Default tabs vs Folder lists)
+    // Category tab filtering
     if (activeTab === 'Journals') {
       list = list.filter(item => item._itemType === 'journal');
     } else if (activeTab === 'Prayers') {
       list = list.filter(item => item._itemType === 'prayer');
-    } else if (activeTab !== 'All') {
-      // User Folder filtering (Folder is activeTab name or folderId matches)
-      const targetFolder = folders.find(f => f.name === activeTab);
-      if (targetFolder) {
-        list = list.filter(item => (item.folderId?._id || item.folderId) === targetFolder._id);
+      // Apply prayer status sub-filter
+      if (prayerStatusFilter === 'Active') {
+        list = list.filter(item => !item.status || item.status === 'active');
+      } else if (prayerStatusFilter === 'Prayed') {
+        list = list.filter(item => item.status === 'prayed');
       }
+      // 'All' shows both active and prayed prayers
     }
 
     // Text search query matching: title, content, labels, or linked bible verses
@@ -925,9 +850,6 @@ export default function JournalsPage() {
     }
     if (filterBookmarked !== null) {
       list = list.filter(item => item.isBookmarked === filterBookmarked);
-    }
-    if (filterFolderId) {
-      list = list.filter(item => (item.folderId?._id || item.folderId) === filterFolderId);
     }
     
     // Date filter
@@ -954,7 +876,7 @@ export default function JournalsPage() {
     } else {
       return [...list].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
     }
-  }, [journals, prayers, activeTab, debouncedQuery, sortBy, folders, filterType, filterPinned, filterBookmarked, filterFolderId, filterDate]);
+  }, [journals, prayers, activeTab, debouncedQuery, sortBy, filterType, filterPinned, filterBookmarked, filterDate, prayerStatusFilter]);
 
   // Loading Skeleton
   if (!mounted || status === 'loading' || (loading && status === 'authenticated')) {
@@ -1050,16 +972,6 @@ export default function JournalsPage() {
                       <Pin className="w-[18px] h-[18px] text-[#0B7A81]" />
                     </button>
                     <button
-                      onClick={() => {
-                        setTargetItem({ id: 'batch', type: 'journal' });
-                        setShowMoveSheet(true);
-                      }}
-                      className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06]"
-                      title="Move Selected"
-                    >
-                      <FolderPlus className="w-[18px] h-[18px] text-[#0B7A81]" />
-                    </button>
-                    <button
                       onClick={handleBatchDelete}
                       className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06]"
                       title="Delete Selected"
@@ -1117,14 +1029,18 @@ export default function JournalsPage() {
               </div>
             </div>
 
-            {/* Category Chips Scrollbar */}
+            {/* Category Chips */}
             <div className="flex px-4 gap-2 overflow-x-auto scrollbar-none py-3 sticky top-[120px] bg-white dark:bg-[#000000] z-20 select-none">
-              {['All', 'Journals', 'Prayers', ...folders.map(f => f.name)].map((tabName) => {
+              {(['All', 'Journals', 'Prayers'] as Tab[]).map((tabName) => {
                 const isSelected = activeTab === tabName;
                 return (
                   <button
                     key={tabName}
-                    onClick={() => setActiveTab(tabName)}
+                    onClick={() => {
+                      setActiveTab(tabName);
+                      // Reset prayer sub-filter when leaving Prayers tab
+                      if (tabName !== 'Prayers') setPrayerStatusFilter('All');
+                    }}
                     className="h-8 px-4 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all flex items-center justify-center active:scale-95"
                     style={{
                       backgroundColor: isSelected ? '#0B7A81' : '#F1F2F3',
@@ -1135,15 +1051,27 @@ export default function JournalsPage() {
                   </button>
                 );
               })}
-              {/* Add folder chip button */}
-              <button
-                onClick={() => setShowFolderSheet(true)}
-                className="h-8 w-8 rounded-full bg-[#F1F2F3] text-[#666666] flex items-center justify-center shrink-0 active:scale-95 hover:bg-gray-200"
-                title="Create Folder"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
             </div>
+
+            {/* Prayer Status Sub-Filter (shown only when Prayers tab active) */}
+            {activeTab === 'Prayers' && (
+              <div className="flex px-4 gap-2 pb-2 bg-white dark:bg-[#000000] sticky top-[168px] z-10 select-none">
+                {(['All', 'Active', 'Prayed'] as PrayerStatusFilter[]).map((f) => (
+                  <button
+                    key={f}
+                    onClick={() => setPrayerStatusFilter(f)}
+                    className="h-7 px-3.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 transition-all active:scale-95 border"
+                    style={{
+                      backgroundColor: prayerStatusFilter === f ? (f === 'Prayed' ? '#6B7280' : '#0B7A81') : 'transparent',
+                      borderColor: prayerStatusFilter === f ? (f === 'Prayed' ? '#6B7280' : '#0B7A81') : '#D1D5DB',
+                      color: prayerStatusFilter === f ? '#FFFFFF' : '#6B7280',
+                    }}
+                  >
+                    {f === 'Active' ? '🔥 Active' : f === 'Prayed' ? '✓ Prayed' : 'All'}
+                  </button>
+                ))}
+              </div>
+            )}
 
             {/* Empty State */}
             {processedItems.length === 0 && (
@@ -1159,7 +1087,7 @@ export default function JournalsPage() {
             )}
 
             {/* Mixed Items List Grid */}
-            <main className="px-4 py-2 space-y-4 max-w-3xl mx-auto w-full">
+            <main className="px-4 py-2 space-y-4 max-w-5xl mx-auto w-full">
               {processedItems.map((item) => {
                 const isJ = item._itemType === 'journal';
                 
@@ -1193,7 +1121,9 @@ export default function JournalsPage() {
                           ? 'border-[#0B7A81] bg-[#F4FAFA] dark:bg-[#0B7A81]/10' 
                           : isJ
                             ? 'bg-white dark:bg-[#111111] border-[#E6E6E6] dark:border-white/[0.08]' 
-                            : 'bg-[#F4FAFA] dark:bg-[#111618] border-[#0B7A81]/20 dark:border-[#0B7A81]/25'
+                            : item.status === 'prayed'
+                              ? 'bg-gray-50 dark:bg-[#111111] border-gray-200 dark:border-white/[0.06] opacity-80'
+                              : 'bg-[#F4FAFA] dark:bg-[#111618] border-[#0B7A81]/20 dark:border-[#0B7A81]/25'
                       }`}
                     >
                       {/* Top Badges / Indicators */}
@@ -1208,10 +1138,14 @@ export default function JournalsPage() {
                             {isJ ? (item.type === 'checklist' ? 'Checklist' : item.type === 'audio' ? 'Voice' : 'Journal') : 'Prayer'}
                           </span>
                           
-                          {/* Folder Name Badge */}
-                          {item.folderId && (
-                            <span className="text-[10px] bg-slate-100 text-slate-500 dark:bg-white/[0.02] dark:text-slate-400 px-2 py-0.5 rounded-full font-bold">
-                              📁 {item.folderId.name || 'Folder'}
+                          {/* Prayer Status Badge */}
+                          {!isJ && (
+                            <span className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                              item.status === 'prayed'
+                                ? 'bg-gray-100 text-gray-500 dark:bg-white/[0.04] dark:text-gray-500'
+                                : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                            }`}>
+                              {item.status === 'prayed' ? '✓ Prayed' : '🔥 Active'}
                             </span>
                           )}
                         </div>
@@ -1374,7 +1308,7 @@ export default function JournalsPage() {
               </div>
             </header>
 
-            <div className="px-5 py-4 max-w-3xl mx-auto w-full space-y-5 flex-1 flex flex-col">
+            <div className="px-5 py-4 max-w-5xl mx-auto w-full space-y-5 flex-1 flex flex-col">
               
               {/* Type Switcher Selector (Only if Journal and in Create Mode) */}
               {editorType === 'journal' && editorMode === 'create' && (
@@ -1453,20 +1387,6 @@ export default function JournalsPage() {
                 )}
               </AnimatePresence>
 
-              {/* Folder Selector Dropdown */}
-              <div className="flex items-center space-x-2">
-                <span className="text-xs text-gray-400 font-semibold">📁 Folder:</span>
-                <select
-                  value={editFolderId}
-                  onChange={(e) => setEditFolderId(e.target.value)}
-                  className="text-xs bg-white dark:bg-[#111111] border border-[#E6E6E6] dark:border-white/[0.08] rounded-lg px-2.5 py-1 focus:outline-none focus:border-[#0B7A81]"
-                >
-                  <option value="">Unassigned</option>
-                  {folders.map(f => (
-                    <option key={f._id} value={f._id}>{f.name}</option>
-                  ))}
-                </select>
-              </div>
 
               {/* Title Input field */}
               <div className="relative">
@@ -1827,44 +1747,55 @@ export default function JournalsPage() {
 
       {/* ── KEBAB FLOATING POPOVER MENU (Single cards actions) ── */}
       <AnimatePresence>
-        {activeKebabId && kebabPosition && (
-          <div className="fixed inset-0 z-40" onClick={() => setActiveKebabId(null)}>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              style={{
-                position: 'absolute',
-                top: kebabPosition.top,
-                right: kebabPosition.right,
-              }}
-              className="w-[160px] bg-white dark:bg-[#111111] rounded-2xl shadow-xl border border-gray-100 dark:border-white/[0.08] py-1.5 overflow-hidden z-50"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => handleEditKebabItem(activeKebabId, activeKebabType)}
-                className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-gray-800 dark:text-gray-200"
+        {activeKebabId && kebabPosition && (() => {
+          const activePrayer = activeKebabType === 'prayer' 
+            ? prayers.find(p => p._id === activeKebabId) 
+            : null;
+          const isPrayed = activePrayer?.status === 'prayed';
+          return (
+            <div className="fixed inset-0 z-40" onClick={() => setActiveKebabId(null)}>
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                style={{
+                  position: 'absolute',
+                  top: kebabPosition.top,
+                  right: kebabPosition.right,
+                }}
+                className="w-[180px] bg-white dark:bg-[#111111] rounded-2xl shadow-xl border border-gray-100 dark:border-white/[0.08] py-1.5 overflow-hidden z-50"
+                onClick={(e) => e.stopPropagation()}
               >
-                <span>Edit Details</span>
-                <Edit2 className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => handleTriggerMoveFolder(activeKebabId, activeKebabType)}
-                className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-gray-800 dark:text-gray-200"
-              >
-                <span>Move to Folder</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-              <button
-                onClick={() => handleTriggerDelete(activeKebabId, activeKebabType)}
-                className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[#FF4D4F]"
-              >
-                <span>Delete</span>
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </motion.div>
-          </div>
-        )}
+                {/* Mark as Prayed — only for active prayers */}
+                {activeKebabType === 'prayer' && !isPrayed && (
+                  <button
+                    onClick={() => handleMarkAsPrayed(activeKebabId)}
+                    className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-emerald-600 dark:text-emerald-400"
+                  >
+                    <span>Mark as Prayed</span>
+                    <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                  </button>
+                )}
+                {/* Edit — for both prayer and journal */}
+                <button
+                  onClick={() => handleEditKebabItem(activeKebabId, activeKebabType)}
+                  className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-gray-800 dark:text-gray-200"
+                >
+                  <span>{activeKebabType === 'prayer' ? 'Edit Prayer' : 'Edit Journal'}</span>
+                  <Edit2 className="w-3.5 h-3.5" />
+                </button>
+                {/* Delete — for both */}
+                <button
+                  onClick={() => handleTriggerDelete(activeKebabId, activeKebabType)}
+                  className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[#FF4D4F]"
+                >
+                  <span>{activeKebabType === 'prayer' ? 'Delete Prayer' : 'Delete Journal'}</span>
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* ── CREATE FAB BOTTOM SHEET ── */}
@@ -1898,71 +1829,6 @@ export default function JournalsPage() {
                   <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Personal Prayer</span>
                 </button>
               </div>
-
-              <button
-                onClick={() => {
-                  setShowFabSheet(false);
-                  setShowFolderSheet(true);
-                }}
-                className="w-full py-3 bg-[#E8EFF0] text-[#0B7A81] rounded-xl text-xs font-bold text-center mt-2 hover:bg-opacity-95 active:scale-95"
-              >
-                📁 Create Folder
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
-      {/* ── CREATE FOLDER BOTTOM SHEET ── */}
-      <AnimatePresence>
-        {showFolderSheet && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-end justify-center" onClick={() => setShowFolderSheet(false)}>
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="bg-white dark:bg-[#111111] rounded-t-[32px] w-full max-w-lg p-6 shadow-2xl flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="w-[100px] h-[5px] bg-gray-300 dark:bg-white/[0.12] rounded-full mx-auto mb-5 select-none shrink-0" />
-              <h3 className="font-extrabold text-base text-gray-800 dark:text-[#F5F5F5] mb-1.5 text-center">Create Folder</h3>
-              <p className="text-xs text-gray-400 mb-4 text-center">Organize journals and prayers into unique folder categories.</p>
-
-              <form onSubmit={handleCreateFolder} className="space-y-4">
-                <div>
-                  <input
-                    type="text"
-                    placeholder="Folder Name (e.g. Family, Faith)"
-                    value={folderName}
-                    onChange={(e) => setFolderName(e.target.value.substring(0, 50))}
-                    className="w-full h-12 bg-gray-50 dark:bg-white/[0.02] border border-gray-300 dark:border-white/[0.08] rounded-xl px-4 text-sm focus:outline-none focus:border-[#0B7A81]"
-                  />
-                  <div className="flex justify-between items-center mt-1.5">
-                    <span className="text-[10px] text-red-500 font-semibold">{folderError}</span>
-                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">{folderName.length} / 50</span>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowFolderSheet(false);
-                      setFolderName('');
-                    }}
-                    className="flex-1 py-3 border border-gray-200 text-gray-500 rounded-xl text-xs font-semibold active:scale-95"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 py-3 bg-[#0B7A81] text-white rounded-xl text-xs font-semibold shadow-sm active:scale-95 hover:bg-[#086369]"
-                  >
-                    Create
-                  </button>
-                </div>
-              </form>
             </motion.div>
           </div>
         )}
@@ -2007,64 +1873,7 @@ export default function JournalsPage() {
         )}
       </AnimatePresence>
 
-      {/* ── MOVE TO FOLDER BOTTOM SHEET ── */}
-      <AnimatePresence>
-        {showMoveSheet && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-end justify-center" onClick={() => setShowMoveSheet(false)}>
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="bg-white dark:bg-[#111111] rounded-t-[32px] w-full max-w-lg p-6 shadow-2xl flex flex-col select-none"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="w-[100px] h-[5px] bg-gray-300 dark:bg-white/[0.12] rounded-full mx-auto mb-5 select-none shrink-0" />
-              <h3 className="font-extrabold text-base text-gray-800 dark:text-[#F5F5F5] mb-1.5 text-center">Move to Folder</h3>
-              <p className="text-xs text-gray-400 mb-4 text-center">Select folder destination</p>
 
-              <div className="max-h-[220px] overflow-y-auto space-y-1.5 mb-5 pr-1 scrollbar-none">
-                <button
-                  onClick={() => {
-                    if (targetItem?.id === 'batch') {
-                      handleBatchMove('');
-                    } else {
-                      handleMoveToFolder('');
-                    }
-                  }}
-                  className="w-full text-left p-3.5 bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 rounded-xl text-xs font-bold flex items-center justify-between border border-gray-100 dark:border-white/[0.04]"
-                >
-                  <span>Unassigned (Remove from folders)</span>
-                  <ChevronRight className="w-3.5 h-3.5 text-gray-400" />
-                </button>
-                {folders.map(f => (
-                  <button
-                    key={f._id}
-                    onClick={() => {
-                      if (targetItem?.id === 'batch') {
-                        handleBatchMove(f._id);
-                      } else {
-                        handleMoveToFolder(f._id);
-                      }
-                    }}
-                    className="w-full text-left p-3.5 bg-slate-50 dark:bg-white/[0.02] hover:bg-slate-100 rounded-xl text-xs font-bold flex items-center justify-between border border-gray-100 dark:border-white/[0.04]"
-                  >
-                    <span>📁 {f.name}</span>
-                    <ChevronRight className="w-3.5 h-3.5 text-[#0B7A81]" />
-                  </button>
-                ))}
-              </div>
-
-              <button
-                onClick={() => setShowMoveSheet(false)}
-                className="w-full py-3.5 border border-gray-200 text-gray-500 rounded-xl text-xs font-bold active:scale-95"
-              >
-                Cancel
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* ── ADVANCED FILTERS DIALOG SHEET ── */}
       <AnimatePresence>
@@ -2087,7 +1896,6 @@ export default function JournalsPage() {
                     setFilterType('all');
                     setFilterPinned(null);
                     setFilterBookmarked(null);
-                    setFilterFolderId('');
                     setFilterDate('all');
                     showToast('Filters cleared');
                   }}
@@ -2170,21 +1978,6 @@ export default function JournalsPage() {
                       <Bookmark className="w-3 h-3" /> Bookmarked
                     </button>
                   </div>
-                </div>
-
-                {/* Filter Folders */}
-                <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1.5">Folder Destination</span>
-                  <select
-                    value={filterFolderId}
-                    onChange={(e) => setFilterFolderId(e.target.value)}
-                    className="w-full text-xs bg-slate-50 dark:bg-white/[0.02] border border-[#E6E6E6] dark:border-white/[0.08] rounded-xl px-3 py-2.5 focus:outline-none"
-                  >
-                    <option value="">All Folder Categories</option>
-                    {folders.map(f => (
-                      <option key={f._id} value={f._id}>{f.name}</option>
-                    ))}
-                  </select>
                 </div>
 
                 {/* Filter Date updated */}

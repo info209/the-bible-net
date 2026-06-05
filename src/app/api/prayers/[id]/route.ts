@@ -23,7 +23,7 @@ export async function PATCH(
     }
 
     const body = await req.json();
-    const { title, content, labels, verses, folderId, isPinned, isBookmarked } = body;
+    const { title, content, labels, verses, folderId, isPinned, isBookmarked, status } = body;
 
     // Field updates
     if (title !== undefined) {
@@ -42,6 +42,10 @@ export async function PATCH(
     if (folderId !== undefined) prayer.folderId = folderId || undefined;
     if (isPinned !== undefined) prayer.isPinned = !!isPinned;
     if (isBookmarked !== undefined) prayer.isBookmarked = !!isBookmarked;
+    // Status is one-way: can only transition active → prayed, never back
+    if (status === 'prayed' && prayer.status !== 'prayed') {
+      (prayer as any).status = 'prayed';
+    }
 
     await prayer.save();
 

@@ -51,6 +51,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const isApiDocs = pathname.startsWith('/api-docs');
   const isAuthRoute = pathname.startsWith('/auth');
   const isBiblePage = isBibleReadingRoute(pathname);
+  const isJournalsPage = pathname.startsWith('/journals');
   const isProfileSubPage =
     pathname.startsWith('/saved') ||
     pathname.startsWith('/notes') ||
@@ -58,7 +59,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     pathname.startsWith('/likes') ||
     pathname.startsWith('/comments');
   const isPublicAppPage = pathname !== '/' && !isAdminRoute && !isApiDocs && !isAuthRoute;
-  const showAppHeader = isPublicAppPage && !isBiblePage && !isProfileSubPage;
+  const showAppHeader = isPublicAppPage && !isBiblePage && !isProfileSubPage && !isJournalsPage;
   const showBottomNav = isPublicAppPage && !isProfileSubPage;
 
   return (
@@ -76,7 +77,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       {/* Standard BottomNav for all app pages */}
       {showBottomNav && <BottomNav isVisible={!hideBottomNav} onNavigate={handleNavigate} />}
 
-      <main className={isPublicAppPage ? (isProfileSubPage ? "w-full" : "max-w-3xl mx-auto px-4 pb-24 pt-20") : ""}>
+      <main className={isPublicAppPage ? (isProfileSubPage ? "w-full" : isJournalsPage ? "w-full" : "max-w-3xl mx-auto px-4 pb-24 pt-20") : ""}>
         {children}
       </main>
     </>

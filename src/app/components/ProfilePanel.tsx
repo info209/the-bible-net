@@ -109,7 +109,7 @@ const VIEW_LABELS: Record<Exclude<ProfileView, null>, string> = {
 };
 
 // Which views show ComingSoon (undeveloped features)
-const COMING_SOON_VIEWS: ProfileView[] = ['journals', 'streaks', 'share', 'support'];
+const COMING_SOON_VIEWS: ProfileView[] = ['streaks', 'share', 'support'];
 
 export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: ProfilePanelProps) {
   const router = useRouter();
@@ -131,6 +131,13 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
   };
 
   const handleOpenView = (view: ProfileView) => {
+    // Journals & Prayers navigates to its own full-page module
+    if (view === 'journals') {
+      setActiveView(null);
+      onClose();
+      router.push('/journals');
+      return;
+    }
     setActiveView(view);
   };
 

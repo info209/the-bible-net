@@ -15,6 +15,7 @@ export interface IPersonalPrayer extends Document {
   folderId?: mongoose.Types.ObjectId;
   isPinned: boolean;
   isBookmarked: boolean;
+  status: 'active' | 'prayed';
   createdAt: Date;
   updatedAt: Date;
 }
@@ -63,6 +64,11 @@ const PersonalPrayerSchema = new Schema<IPersonalPrayer>(
     isBookmarked: {
       type: Boolean,
       default: false,
+    },
+    status: {
+      type: String,
+      enum: ['active', 'prayed'],
+      default: 'active',
     },
   },
   {
