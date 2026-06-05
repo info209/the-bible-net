@@ -310,7 +310,10 @@ export default function HomeView() {
                 {/* Daily Verse Card - consistent shared banner background */}
                 <div
                   className="rounded-none p-6 shadow-xl relative overflow-hidden h-[395px] flex flex-col"
-                  style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+                  style={content.backgroundImage
+                    ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                    : { background: 'linear-gradient(135deg, #0B7A81 0%, #14b8a6 50%, #2dd4bf 100%)' }
+                  }
                 >
                   {/* Consistent dark overlay */}
                   <div className="absolute inset-0 bg-black/55" />
@@ -375,8 +378,8 @@ export default function HomeView() {
             ))}
           </PremiumCarousel>
         ) : (
-          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[395px] flex items-center justify-center text-white" style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-            <div className="absolute inset-0 bg-black/55" />
+          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[395px] flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg, #0B7A81 0%, #14b8a6 50%, #2dd4bf 100%)' }}>
+            <div className="absolute inset-0 bg-black/20" />
             <p className="relative z-10">No daily verses available yet.</p>
           </div>
         )}
@@ -409,7 +412,12 @@ export default function HomeView() {
                 {/* Daily Devotional Card - consistent shared banner background */}
                 <div
                   className="rounded-none p-6 shadow-xl relative overflow-hidden h-[360px] flex flex-col justify-between"
-                  style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
+                  style={content.devotionalBackgroundImage
+                    ? { backgroundImage: `url(${content.devotionalBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                    : content.backgroundImage
+                      ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+                      : { background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 50%, #db2777 100%)' }
+                  }
                 >
                   {/* Consistent dark overlay */}
                   <div className="absolute inset-0 bg-black/55" />
@@ -491,8 +499,8 @@ export default function HomeView() {
             ))}
           </PremiumCarousel>
         ) : (
-          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[360px] flex items-center justify-center text-white" style={{ backgroundImage: 'url(/banner_bible.jpg)', backgroundSize: 'cover', backgroundPosition: 'center' }}>
-            <div className="absolute inset-0 bg-black/55" />
+          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[360px] flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 50%, #db2777 100%)' }}>
+            <div className="absolute inset-0 bg-black/20" />
             <p className="relative z-10">No daily devotionals available yet.</p>
           </div>
         )}
@@ -594,7 +602,7 @@ export default function HomeView() {
       {/* Journals & Prayers Entry Point */}
       <div
         onClick={() => router.push('/journals')}
-        className="relative overflow-hidden rounded-none p-6 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-between group min-h-[120px] w-full"
+        className="relative overflow-hidden rounded-2xl mx-4 p-6 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-between group min-h-[120px] w-[calc(100%-2rem)]"
         style={{ backgroundImage: 'url(/banner_journal_and_prayers.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
         {/* Consistent dark overlay to ensure readability */}
@@ -614,7 +622,7 @@ export default function HomeView() {
           </div>
         </div>
         <div className="relative z-10 text-white text-xl font-bold transition-transform group-hover:translate-x-1 p-2 bg-white/20 rounded-full backdrop-blur-sm size-10 flex items-center justify-center">
-          →
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
         </div>
       </div>
 
@@ -668,11 +676,9 @@ export default function HomeView() {
 
       {/* Footer Section - Figma Replica */}
       <footer className="w-full bg-white border-t border-gray-100/80 mt-12 py-10 px-6 flex flex-col items-center select-none">
-        {/* Logo Card */}
+        {/* Logo */}
         <div className="flex justify-center mb-6">
-          <div className="bg-[#24a0a4] px-5 py-3 rounded-xl shadow-sm w-fit select-none flex items-center justify-center">
-            <img src="/logo.svg" alt="The Bible Net" width={120} height={46} className="object-contain" />
-          </div>
+          <img src="/logo.svg" alt="The Bible Net" width={140} height={54} className="object-contain select-none" />
         </div>
 
         {/* Paragraph Text */}

@@ -959,7 +959,7 @@ export default function JournalsPage() {
   // Loading Skeleton
   if (!mounted || status === 'loading' || (loading && status === 'authenticated')) {
     return (
-      <div className="min-h-screen bg-[#F4F8F8] dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5]">
+      <div className="min-h-screen bg-white dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5]">
         <header className="h-[64px] px-4 flex items-center border-b border-gray-100 dark:border-white/[0.08] justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
@@ -987,7 +987,7 @@ export default function JournalsPage() {
   // Not logged in redirect visual
   if (!session?.user) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-[#F4F8F8] dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5]">
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-white dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5]">
         <div className="w-16 h-16 bg-[#0B7A81]/10 rounded-full flex items-center justify-center mb-4">
           <BookOpen className="w-8 h-8 text-[#0B7A81]" />
         </div>
@@ -1004,7 +1004,7 @@ export default function JournalsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F4F8F8] dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5] pb-24 relative select-none">
+    <div className="min-h-screen bg-white dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5] pb-24 relative select-none">
       <style dangerouslySetInnerHTML={{ __html: `
         [contenteditable]:empty:before {
           content: attr(data-placeholder);
@@ -1024,7 +1024,7 @@ export default function JournalsPage() {
             className="w-full flex flex-col"
           >
             {/* Header */}
-            <header className="h-[64px] px-4 flex items-center justify-between border-b border-[#E6E6E6] dark:border-white/[0.08] bg-[#F4F8F8] dark:bg-[#000000] sticky top-0 z-30">
+            <header className="h-[64px] px-4 flex items-center justify-between border-b border-[#E6E6E6] dark:border-white/[0.08] bg-white dark:bg-[#000000] sticky top-0 z-30">
               <div className="flex items-center space-x-1">
                 <button
                   onClick={() => router.back()}
@@ -1118,7 +1118,7 @@ export default function JournalsPage() {
             </div>
 
             {/* Category Chips Scrollbar */}
-            <div className="flex px-4 gap-2 overflow-x-auto scrollbar-none py-3 sticky top-[120px] bg-[#F4F8F8] dark:bg-[#000000] z-20 select-none">
+            <div className="flex px-4 gap-2 overflow-x-auto scrollbar-none py-3 sticky top-[120px] bg-white dark:bg-[#000000] z-20 select-none">
               {['All', 'Journals', 'Prayers', ...folders.map(f => f.name)].map((tabName) => {
                 const isSelected = activeTab === tabName;
                 return (
@@ -1320,9 +1320,9 @@ export default function JournalsPage() {
               <button
                 onClick={() => setShowFabSheet(true)}
                 style={{ boxShadow: '0 8px 24px rgba(11,122,129,0.25)' }}
-                className="fixed bottom-[88px] right-[20px] w-14 h-14 bg-[#0B7A81] text-white rounded-full flex items-center justify-center text-2xl font-bold shadow-lg active:scale-95 transition-all z-40"
+                className="fixed bottom-[88px] right-[20px] w-14 h-14 bg-[#0B7A81] text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all z-40"
               >
-                +
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
               </button>
             )}
           </motion.div>
@@ -1337,7 +1337,7 @@ export default function JournalsPage() {
             className="w-full flex flex-col min-h-screen pb-24"
           >
             {/* Editor Header */}
-            <header className="h-[64px] px-4 flex items-center justify-between border-b border-[#E6E6E6] dark:border-white/[0.08] bg-[#F4F8F8] dark:bg-[#000000] sticky top-0 z-30">
+            <header className="h-[64px] px-4 flex items-center justify-between border-b border-[#E6E6E6] dark:border-white/[0.08] bg-white dark:bg-[#000000] sticky top-0 z-30">
               <div className="flex items-center space-x-1">
                 <button
                   onClick={() => setIsEditing(false)}

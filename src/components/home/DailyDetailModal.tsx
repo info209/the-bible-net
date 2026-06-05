@@ -177,18 +177,20 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                 className="fixed inset-0 z-[100] flex flex-col bg-slate-900 overflow-hidden"
             >
                 {/* Dynamic Background Image */}
-                {currentContent.devotionalBackgroundImage ? (
+                {initialSection === 'devotional' && currentContent.devotionalBackgroundImage ? (
                     <div 
                         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700"
                         style={{ backgroundImage: `url(${currentContent.devotionalBackgroundImage})` }}
                     />
-                ) : currentContent.backgroundImage ? (
+                ) : initialSection === 'verse' && currentContent.backgroundImage ? (
                     <div 
                         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700"
                         style={{ backgroundImage: `url(${currentContent.backgroundImage})` }}
                     />
+                ) : initialSection === 'devotional' ? (
+                    <div className="absolute inset-0 z-0 transition-all duration-700" style={{ background: 'linear-gradient(135deg, #831843 0%, #db2777 50%, #f472b6 100%)' }} />
                 ) : (
-                    <div className="absolute inset-0 z-0 bg-gradient-to-br from-pink-900/60 to-rose-900/80 transition-all duration-700" />
+                    <div className="absolute inset-0 z-0 transition-all duration-700" style={{ background: 'linear-gradient(135deg, #0B7A81 0%, #14b8a6 50%, #2dd4bf 100%)' }} />
                 )}
 
                 {/* Header */}
