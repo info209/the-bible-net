@@ -58,6 +58,8 @@ export default function JournalsPage() {
   // Bottom Sheets & Dialogs
   const [showFabSheet, setShowFabSheet] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
+  const [showPrayedConfirm, setShowPrayedConfirm] = useState(false);
+  const [prayedTargetId, setPrayedTargetId] = useState<string | null>(null);
   
   // Multi-select Mode
   const [selectionMode, setSelectionMode] = useState(false);
@@ -237,7 +239,13 @@ export default function JournalsPage() {
 
   // Close kebab when clicking outside
   useEffect(() => {
-    const handleOutside = () => setActiveKebabId(null);
+    const handleOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('.kebab-trigger') || target.closest('.kebab-menu')) {
+        return;
+      }
+      setActiveKebabId(null);
+    };
     document.addEventListener('click', handleOutside);
     return () => document.removeEventListener('click', handleOutside);
   }, []);
@@ -409,18 +417,7 @@ export default function JournalsPage() {
     setEditChecklistItems(items);
   };
 
-  // Autosave support
-  const autosaveTimeoutRef = useRef<any>(null);
-  useEffect(() => {
-    if (!isEditing || editorMode !== 'edit' || !editorId) return;
-
-    if (autosaveTimeoutRef.current) clearTimeout(autosaveTimeoutRef.current);
-    autosaveTimeoutRef.current = setTimeout(() => {
-      saveOrUpdateEditor(true);
-    }, 2000); // 2 seconds debounce autosave
-
-    return () => clearTimeout(autosaveTimeoutRef.current);
-  }, [editTitle, editContent, editChecklistItems, editLabels, editVerses, editFolderId, editIsPinned, editIsBookmarked]);
+  // Autosave support removed as per user request
 
   // Main Editor Save Actions
   const saveOrUpdateEditor = async (isAutosave = false) => {
@@ -505,9 +502,19 @@ export default function JournalsPage() {
     setShowDeleteSheet(true);
   };
 
-  // Mark prayer as prayed (one-way, irreversible)
-  const handleMarkAsPrayed = async (id: string) => {
+  const handleTriggerMarkAsPrayed = (id: string) => {
     setActiveKebabId(null);
+    setPrayedTargetId(id);
+    setShowPrayedConfirm(true);
+  };
+
+  // Mark prayer as prayed (one-way, irreversible)
+  const handleConfirmMarkAsPrayed = async () => {
+    if (!prayedTargetId) return;
+    const id = prayedTargetId;
+    setShowPrayedConfirm(false);
+    setPrayedTargetId(null);
+
     // Optimistic update
     setPrayers(prev => prev.map(p => p._id === id ? { ...p, status: 'prayed' } : p));
     try {
@@ -878,6 +885,15 @@ export default function JournalsPage() {
     }
   }, [journals, prayers, activeTab, debouncedQuery, sortBy, filterType, filterPinned, filterBookmarked, filterDate, prayerStatusFilter]);
 
+  const activeKebabItem = useMemo(() => {
+    if (!activeKebabId) return null;
+    return activeKebabType === 'prayer'
+      ? prayers.find(p => p._id === activeKebabId)
+      : journals.find(j => j._id === activeKebabId);
+  }, [activeKebabId, activeKebabType, prayers, journals]);
+
+  const isActivePrayerPrayed = activeKebabType === 'prayer' && activeKebabItem?.status === 'prayed';
+
   // Loading Skeleton
   if (!mounted || status === 'loading' || (loading && status === 'authenticated')) {
     return (
@@ -1235,9 +1251,9 @@ export default function JournalsPage() {
                             </button>
                             <button
                               onClick={(e) => handleOpenKebabMenu(e, item._id, isJ ? 'journal' : 'prayer')}
-                              className="p-1 hover:text-gray-600"
+                              className="p-1 hover:text-gray-600 kebab-trigger"
                             >
-                              <MoreVertical className="w-4 h-4" />
+                              <MoreVertical className="w-4 h-4 pointer-events-none" />
                             </button>
                           </div>
                         )}
@@ -1285,10 +1301,7 @@ export default function JournalsPage() {
               </div>
 
               <div className="flex items-center space-x-2.5">
-                {/* Autosave subtle status */}
-                <span className="text-[10px] text-gray-400 italic">
-                  {editorMode === 'edit' ? 'Autosaved' : ''}
-                </span>
+                {/* Autosave subtle status removed */}
                 
                 {/* Header Actions */}
                 <button
@@ -1601,7 +1614,12 @@ export default function JournalsPage() {
 
                   {/* contentEditable Large Rich Canvas */}
                   <div
-                    ref={richTextRef}
+                    ref={(el) => {
+                      (richTextRef as any).current = el;
+                      if (el && el.innerHTML !== editContent) {
+                        el.innerHTML = editContent;
+                      }
+                    }}
                     contentEditable
                     onInput={(e) => setEditContent(e.currentTarget.innerHTML)}
                     data-placeholder="Start drafting content here..."
@@ -1747,55 +1765,56 @@ export default function JournalsPage() {
 
       {/* ── KEBAB FLOATING POPOVER MENU (Single cards actions) ── */}
       <AnimatePresence>
-        {activeKebabId && kebabPosition && (() => {
-          const activePrayer = activeKebabType === 'prayer' 
-            ? prayers.find(p => p._id === activeKebabId) 
-            : null;
-          const isPrayed = activePrayer?.status === 'prayed';
-          return (
-            <div className="fixed inset-0 z-40" onClick={() => setActiveKebabId(null)}>
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                style={{
-                  position: 'absolute',
-                  top: kebabPosition.top,
-                  right: kebabPosition.right,
-                }}
-                className="w-[180px] bg-white dark:bg-[#111111] rounded-2xl shadow-xl border border-gray-100 dark:border-white/[0.08] py-1.5 overflow-hidden z-50"
-                onClick={(e) => e.stopPropagation()}
+        {activeKebabId && kebabPosition && (
+          <motion.div 
+            key="kebab-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40" 
+            onClick={() => setActiveKebabId(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              style={{
+                position: 'absolute',
+                top: kebabPosition.top,
+                right: kebabPosition.right,
+              }}
+              className="kebab-menu w-[180px] bg-white dark:bg-[#111111] rounded-2xl shadow-xl border border-gray-100 dark:border-white/[0.08] py-1.5 overflow-hidden z-50"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Mark as Prayed — only for active prayers */}
+              {activeKebabType === 'prayer' && !isActivePrayerPrayed && (
+                <button
+                  onClick={() => handleTriggerMarkAsPrayed(activeKebabId)}
+                  className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-emerald-600 dark:text-emerald-400"
+                >
+                  <span>Mark as Prayed</span>
+                  <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                </button>
+              )}
+              {/* Edit — for both prayer and journal */}
+              <button
+                onClick={() => handleEditKebabItem(activeKebabId, activeKebabType)}
+                className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-gray-800 dark:text-gray-200"
               >
-                {/* Mark as Prayed — only for active prayers */}
-                {activeKebabType === 'prayer' && !isPrayed && (
-                  <button
-                    onClick={() => handleMarkAsPrayed(activeKebabId)}
-                    className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-emerald-600 dark:text-emerald-400"
-                  >
-                    <span>Mark as Prayed</span>
-                    <Check className="w-3.5 h-3.5" strokeWidth={3} />
-                  </button>
-                )}
-                {/* Edit — for both prayer and journal */}
-                <button
-                  onClick={() => handleEditKebabItem(activeKebabId, activeKebabType)}
-                  className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-gray-800 dark:text-gray-200"
-                >
-                  <span>{activeKebabType === 'prayer' ? 'Edit Prayer' : 'Edit Journal'}</span>
-                  <Edit2 className="w-3.5 h-3.5" />
-                </button>
-                {/* Delete — for both */}
-                <button
-                  onClick={() => handleTriggerDelete(activeKebabId, activeKebabType)}
-                  className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[#FF4D4F]"
-                >
-                  <span>{activeKebabType === 'prayer' ? 'Delete Prayer' : 'Delete Journal'}</span>
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </motion.div>
-            </div>
-          );
-        })()}
+                <span>{activeKebabType === 'prayer' ? 'Edit Prayer' : 'Edit Journal'}</span>
+                <Edit2 className="w-3.5 h-3.5" />
+              </button>
+              {/* Delete — for both */}
+              <button
+                onClick={() => handleTriggerDelete(activeKebabId, activeKebabType)}
+                className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[#FF4D4F]"
+              >
+                <span>{activeKebabType === 'prayer' ? 'Delete Prayer' : 'Delete Journal'}</span>
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       {/* ── CREATE FAB BOTTOM SHEET ── */}
@@ -1873,7 +1892,51 @@ export default function JournalsPage() {
         )}
       </AnimatePresence>
 
+      {/* ── MARK AS PRAYED CONFIRMATION DIALOG ── */}
+      <AnimatePresence>
+        {showPrayedConfirm && (
+          <div className="fixed inset-0 bg-black/45 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setShowPrayedConfirm(false)}>
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+              className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-2xl w-full max-w-sm p-6 shadow-2xl select-none"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col items-center text-center">
+                {/* Icon wrapper */}
+                <div className="w-12 h-12 bg-[#0B7A81]/10 dark:bg-[#0B7A81]/25 text-[#0B7A81] rounded-full flex items-center justify-center mb-4">
+                  <Check className="w-6 h-6" strokeWidth={3} />
+                </div>
+                
+                <h3 className="font-extrabold text-lg text-gray-900 dark:text-[#F5F5F5] mb-2">
+                  Mark as Prayed?
+                </h3>
+                
+                <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
+                  This action is <span className="font-semibold text-red-500">irreversible</span>. Once marked as prayed, this prayer will be archived in the "Prayed" category and cannot be moved back to active status.
+                </p>
 
+                <div className="flex w-full gap-3">
+                  <button
+                    onClick={() => setShowPrayedConfirm(false)}
+                    className="flex-1 py-2.5 border border-gray-200 dark:border-white/[0.08] text-gray-500 dark:text-gray-400 rounded-xl text-xs font-bold active:scale-95 transition-all hover:bg-gray-50 dark:hover:bg-white/[0.02]"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmMarkAsPrayed}
+                    className="flex-1 py-2.5 bg-[#0B7A81] hover:bg-[#086369] text-white rounded-xl text-xs font-bold active:scale-95 shadow-sm transition-all"
+                  >
+                    Yes, Proceed
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ── ADVANCED FILTERS DIALOG SHEET ── */}
       <AnimatePresence>
