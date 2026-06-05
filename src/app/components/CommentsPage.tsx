@@ -24,7 +24,11 @@ interface CommentItem {
   version?: string;
 }
 
-export default function CommentsPage() {
+interface CommentsPageProps {
+  onBack?: () => void;
+}
+
+export default function CommentsPage({ onBack }: CommentsPageProps = {}) {
   const router = useRouter();
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -135,7 +139,7 @@ export default function CommentsPage() {
       {/* ── Header ─────────────────────────────────────────── */}
       <header className="px-4 pt-4 pb-5 flex items-center bg-[#F4F8F8] dark:bg-[#0D0D0D] sticky top-0 z-30">
         <button
-          onClick={() => router.back()}
+          onClick={() => onBack ? onBack() : router.back()}
           className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center active:bg-gray-200/50 dark:active:bg-white/[0.06] transition-colors"
           aria-label="Go back"
         >

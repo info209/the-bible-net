@@ -43,15 +43,23 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     router.push(`/${page}`);
   };
 
+
   if (!mounted) return <>{children}</>;
+
 
   const isAdminRoute = pathname.startsWith('/admin');
   const isApiDocs = pathname.startsWith('/api-docs');
   const isAuthRoute = pathname.startsWith('/auth');
   const isBiblePage = isBibleReadingRoute(pathname);
-  const isProfileSubPage = pathname.startsWith('/saved') || pathname.startsWith('/notes') || pathname.startsWith('/highlights');
+  const isProfileSubPage =
+    pathname.startsWith('/saved') ||
+    pathname.startsWith('/notes') ||
+    pathname.startsWith('/highlights') ||
+    pathname.startsWith('/likes') ||
+    pathname.startsWith('/comments');
   const isPublicAppPage = pathname !== '/' && !isAdminRoute && !isApiDocs && !isAuthRoute;
-  const showAppHeader = isPublicAppPage && !isBiblePage;
+  const showAppHeader = isPublicAppPage && !isBiblePage && !isProfileSubPage;
+  const showBottomNav = isPublicAppPage && !isProfileSubPage;
 
   return (
     <>
@@ -66,9 +74,9 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       {isBiblePage && <BibleReaderPageContainer onNavigate={handleNavigate} />}
       
       {/* Standard BottomNav for all app pages */}
-      {isPublicAppPage && <BottomNav isVisible={!hideBottomNav} onNavigate={handleNavigate} />}
+      {showBottomNav && <BottomNav isVisible={!hideBottomNav} onNavigate={handleNavigate} />}
 
-      <main className={isPublicAppPage ? (isProfileSubPage ? "pb-24 pt-16 w-full" : "max-w-3xl mx-auto px-4 pb-24 pt-20") : ""}>
+      <main className={isPublicAppPage ? (isProfileSubPage ? "w-full" : "max-w-3xl mx-auto px-4 pb-24 pt-20") : ""}>
         {children}
       </main>
     </>
