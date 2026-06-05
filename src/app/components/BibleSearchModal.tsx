@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { FiSearch } from 'react-icons/fi';
-import { X, Clock, Trash2, BookOpen, ChevronRight, Heart } from 'lucide-react';
+import { X, Clock, Trash2, BookOpen, ChevronRight, Heart, Loader2 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -108,32 +108,38 @@ function useThemeVars(theme: 'light' | 'sepia' | 'cream' | 'dark') {
     return {
         backdropBg: { light: 'rgba(0,0,0,0.3)', sepia: 'rgba(0,0,0,0.45)', cream: 'rgba(0,0,0,0.45)', dark: 'rgba(0,0,0,0.85)' }[theme],
         backdropBlur: 'blur(6px)',
-        modalBg: { light: 'rgba(255,255,255,0.92)', sepia: 'rgba(250,240,227,0.97)', cream: 'rgba(253,246,235,0.97)', dark: 'rgba(24,24,26,0.97)' }[theme],
-        borderCol: { light: 'rgba(255,255,255,0.3)', sepia: 'rgba(92,74,58,0.15)', cream: 'rgba(74,63,42,0.15)', dark: 'rgba(255,255,255,0.1)' }[theme],
+        modalBg: { light: 'rgba(255,255,255,0.97)', sepia: 'rgba(250,240,227,0.98)', cream: 'rgba(253,246,235,0.98)', dark: 'rgba(24,24,26,0.98)' }[theme],
+        borderCol: { light: 'rgba(0,0,0,0.08)', sepia: 'rgba(92,74,58,0.15)', cream: 'rgba(74,63,42,0.15)', dark: 'rgba(255,255,255,0.1)' }[theme],
         innerBorder: { light: 'rgba(0,0,0,0.07)', sepia: 'rgba(92,74,58,0.12)', cream: 'rgba(74,63,42,0.12)', dark: 'rgba(255,255,255,0.07)' }[theme],
         textCol: { light: '#1f2937', sepia: '#5c4a3a', cream: '#4a3f2a', dark: '#e5e7e7' }[theme],
         subText: { light: '#6b7280', sepia: '#7d6855', cream: '#6e5f46', dark: 'rgba(255,255,255,0.42)' }[theme],
         hoverBg: { light: 'rgba(0,0,0,0.04)', sepia: 'rgba(92,74,58,0.07)', cream: 'rgba(74,63,42,0.07)', dark: 'rgba(255,255,255,0.07)' }[theme],
-        cardBg: { light: 'rgba(0,0,0,0.015)', sepia: 'rgba(92,74,58,0.04)', cream: 'rgba(74,63,42,0.04)', dark: 'rgba(255,255,255,0.04)' }[theme],
-        cardBorder: { light: 'rgba(0,0,0,0.07)', sepia: 'rgba(92,74,58,0.1)', cream: 'rgba(74,63,42,0.1)', dark: 'rgba(255,255,255,0.07)' }[theme],
+        cardBg: { light: '#ffffff', sepia: 'rgba(92,74,58,0.04)', cream: 'rgba(74,63,42,0.04)', dark: 'rgba(255,255,255,0.04)' }[theme],
+        cardBorder: { light: 'rgba(0,0,0,0.08)', sepia: 'rgba(92,74,58,0.1)', cream: 'rgba(74,63,42,0.1)', dark: 'rgba(255,255,255,0.07)' }[theme],
         chipBg: { light: '#f3f4f6', sepia: 'rgba(92,74,58,0.1)', cream: 'rgba(74,63,42,0.09)', dark: 'rgba(255,255,255,0.09)' }[theme],
         chipBorder: { light: '#e5e7eb', sepia: 'rgba(92,74,58,0.2)', cream: 'rgba(74,63,42,0.2)', dark: 'rgba(255,255,255,0.12)' }[theme],
+        inputBg: { light: 'rgba(0,0,0,0.03)', sepia: 'rgba(92,74,58,0.05)', cream: 'rgba(74,63,42,0.05)', dark: 'rgba(255,255,255,0.05)' }[theme],
         accent: '#E23744',
         accentLight: 'rgba(226,55,68,0.12)',
     };
 }
 
 // ---------------------------------------------------------------------------
-// Sub-components
+// Skeleton loaders
 // ---------------------------------------------------------------------------
 
 function SkeletonBook() {
     return (
-        <div className="p-4 animate-pulse">
-            <div className="h-6 w-32 rounded-lg bg-gray-200 dark:bg-gray-700 mb-4" />
-            <div className="flex gap-2 flex-wrap">
-                {Array.from({ length: 12 }).map((_, i) => (
-                    <div key={i} className="h-9 w-10 rounded-lg bg-gray-200 dark:bg-gray-700" />
+        <div className="p-4 animate-pulse space-y-4">
+            <div className="flex items-center gap-2">
+                <div className="h-5 w-5 rounded bg-gray-200" />
+                <div className="h-6 w-32 rounded-lg bg-gray-200" />
+                <div className="h-4 w-20 rounded-full bg-gray-100" />
+            </div>
+            <div className="h-3 w-40 rounded bg-gray-100" />
+            <div className="flex gap-2">
+                {Array.from({ length: 10 }).map((_, i) => (
+                    <div key={i} className="flex-shrink-0 w-11 h-11 rounded-xl bg-gray-200" />
                 ))}
             </div>
         </div>
@@ -143,17 +149,10 @@ function SkeletonBook() {
 function SkeletonVerse() {
     return (
         <div className="p-4 animate-pulse space-y-3">
-            <div className="h-5 w-28 rounded bg-gray-200 dark:bg-gray-700" />
-            <div className="space-y-2">
-                <div className="h-4 w-full rounded bg-gray-100 dark:bg-gray-800" />
-                <div className="h-4 w-5/6 rounded bg-gray-100 dark:bg-gray-800" />
-                <div className="h-4 w-3/4 rounded bg-gray-100 dark:bg-gray-800" />
-            </div>
-            <div className="flex gap-2 pt-1">
-                {['NIV','NKJV','ESV'].map(v => (
-                    <div key={v} className="h-8 w-14 rounded-full bg-gray-200 dark:bg-gray-700" />
-                ))}
-            </div>
+            <div className="h-3 w-20 rounded bg-gray-200" />
+            <div className="h-4 w-full rounded bg-gray-100" />
+            <div className="h-4 w-5/6 rounded bg-gray-100" />
+            <div className="h-4 w-3/4 rounded bg-gray-100" />
         </div>
     );
 }
@@ -162,10 +161,10 @@ function SkeletonList({ count = 4 }: { count?: number }) {
     return (
         <div className="p-4 space-y-3 animate-pulse">
             {Array.from({ length: count }).map((_, i) => (
-                <div key={i} className="p-3 rounded-xl border border-gray-100 dark:border-gray-800 space-y-2">
-                    <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" />
-                    <div className="h-3 w-full rounded bg-gray-100 dark:bg-gray-800" />
-                    <div className="h-3 w-4/5 rounded bg-gray-100 dark:bg-gray-800" />
+                <div key={i} className="p-3 rounded-xl border border-gray-100 space-y-2">
+                    <div className="h-4 w-24 rounded bg-gray-200" />
+                    <div className="h-3 w-full rounded bg-gray-100" />
+                    <div className="h-3 w-4/5 rounded bg-gray-100" />
                 </div>
             ))}
         </div>
@@ -187,7 +186,6 @@ function BookModeView({
 }) {
     const chipRowRef = useRef<HTMLDivElement>(null);
 
-    // Scroll focus chapter into view
     useEffect(() => {
         if (data.focusChapter && chipRowRef.current) {
             const chip = chipRowRef.current.querySelector(
@@ -207,23 +205,20 @@ function BookModeView({
                 </h2>
                 <span
                     className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest"
-                    style={{
-                        backgroundColor: t.accentLight,
-                        color: t.accent,
-                    }}
+                    style={{ backgroundColor: t.accentLight, color: t.accent }}
                 >
                     {data.testament === 'OT' ? 'Old Testament' : 'New Testament'}
                 </span>
             </div>
             <p className="text-xs mb-4" style={{ color: t.subText }}>
-                {data.totalChapters} chapter{data.totalChapters !== 1 ? 's' : ''} — tap to open
+                {data.totalChapters} chapter{data.totalChapters !== 1 ? 's' : ''} · tap to open
             </p>
 
-            {/* Chapter chips — horizontal scroll, virtualized via overflow */}
+            {/* Chapter chips — horizontal scroll */}
             <div
                 ref={chipRowRef}
                 className="flex gap-2 overflow-x-auto pb-2"
-                style={{ scrollbarWidth: 'none', WebkitOverflowScrolling: 'touch' }}
+                style={{ scrollbarWidth: 'none' }}
             >
                 {data.chapters.map(ch => {
                     const isFocus = ch === data.focusChapter;
@@ -235,7 +230,7 @@ function BookModeView({
                             className="flex-shrink-0 w-11 h-11 rounded-xl text-sm font-bold transition-all duration-150 hover:scale-105 active:scale-95"
                             style={{
                                 backgroundColor: isFocus ? t.accent : t.chipBg,
-                                color: isFocus ? '#fff' : t.textCol,
+                                color: isFocus ? '#ffffff' : t.textCol,
                                 border: `1.5px solid ${isFocus ? t.accent : t.chipBorder}`,
                                 boxShadow: isFocus ? '0 2px 8px rgba(226,55,68,0.35)' : 'none',
                             }}
@@ -266,12 +261,9 @@ function ExactVerseModeView({
 }) {
     return (
         <div className="p-4">
-            {/* Reference heading */}
-            <p className="text-xs font-bold uppercase tracking-widest mb-1" style={{ color: t.accent }}>
+            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: t.accent }}>
                 {data.reference}
             </p>
-
-            {/* Verse text */}
             <blockquote
                 className="text-base leading-relaxed mb-4 pl-3 border-l-2"
                 style={{ color: t.textCol, borderColor: t.accent }}
@@ -279,7 +271,6 @@ function ExactVerseModeView({
                 {data.text}
             </blockquote>
 
-            {/* Version selector pills */}
             {data.availableVersions.length > 0 && (
                 <div className="mb-4">
                     <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: t.subText }}>
@@ -295,7 +286,7 @@ function ExactVerseModeView({
                                     className="px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-150 hover:scale-105 active:scale-95"
                                     style={{
                                         backgroundColor: isActive ? t.accent : t.chipBg,
-                                        color: isActive ? '#fff' : t.textCol,
+                                        color: isActive ? '#ffffff' : t.textCol,
                                         border: `1.5px solid ${isActive ? t.accent : t.chipBorder}`,
                                     }}
                                 >
@@ -307,7 +298,6 @@ function ExactVerseModeView({
                 </div>
             )}
 
-            {/* Emotion / theme tags */}
             {(data.emotions.length > 0 || data.themes.length > 0) && (
                 <div className="flex flex-wrap gap-1.5 mb-4">
                     {[...data.emotions, ...data.themes].slice(0, 6).map(tag => (
@@ -322,11 +312,10 @@ function ExactVerseModeView({
                 </div>
             )}
 
-            {/* Read Full Chapter CTA */}
             <button
                 onClick={onReadChapter}
                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-bold transition-all duration-150 hover:opacity-90 active:scale-[0.98]"
-                style={{ backgroundColor: t.accent, color: '#fff' }}
+                style={{ backgroundColor: t.accent, color: '#ffffff' }}
             >
                 <BookOpen size={15} />
                 Read Full Chapter
@@ -350,66 +339,38 @@ function EmotionModeView({
     onVerseClick: (ref: string, versionCode: string) => void;
 }) {
     const emoji = EMOTION_EMOJI[data.emotion] ?? '📖';
-
     return (
         <div className="p-4">
-            {/* Header */}
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">{emoji}</span>
                 <div>
-                    <h2 className="text-base font-bold capitalize" style={{ color: t.textCol }}>
-                        {data.emotion}
-                    </h2>
-                    <p className="text-xs" style={{ color: t.subText }}>
-                        {data.total} verse{data.total !== 1 ? 's' : ''} found
-                    </p>
+                    <h2 className="text-base font-bold capitalize" style={{ color: t.textCol }}>{data.emotion}</h2>
+                    <p className="text-xs" style={{ color: t.subText }}>{data.total} verse{data.total !== 1 ? 's' : ''} found</p>
                 </div>
             </div>
-
-            {/* Verse list */}
             <div className="space-y-3">
                 {data.results.map((r, i) => (
                     <button
                         key={`${r.verseId}-${i}`}
                         onClick={() => onVerseClick(r.reference, r.versionCode)}
-                        className="w-full text-left p-3.5 rounded-xl border transition-all duration-150 hover:scale-[1.01] active:scale-[0.99] flex gap-3"
-                        style={{
-                            backgroundColor: t.cardBg,
-                            borderColor: t.cardBorder,
-                        }}
+                        className="w-full text-left p-3.5 rounded-xl border flex gap-3 transition-all duration-150 hover:scale-[1.01] active:scale-[0.99]"
+                        style={{ backgroundColor: t.cardBg, borderColor: t.cardBorder }}
                     >
-                        <Heart
-                            size={14}
-                            className="flex-shrink-0 mt-1"
-                            style={{ color: t.accent }}
-                        />
+                        <Heart size={14} className="flex-shrink-0 mt-1" style={{ color: t.accent }} />
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-bold" style={{ color: t.accent }}>
-                                    {r.reference}
-                                </span>
+                                <span className="text-xs font-bold" style={{ color: t.accent }}>{r.reference}</span>
                                 {r.versionCode && (
-                                    <span
-                                        className="text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-widest font-bold"
-                                        style={{
-                                            borderColor: t.chipBorder,
-                                            color: t.subText,
-                                        }}
-                                    >
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-widest font-bold"
+                                        style={{ borderColor: t.chipBorder, color: t.subText }}>
                                         {r.versionCode}
                                     </span>
                                 )}
                             </div>
-                            <p
-                                className="text-xs leading-relaxed line-clamp-3"
-                                style={{ color: t.textCol }}
-                            >
-                                {r.text}
-                            </p>
+                            <p className="text-xs leading-relaxed line-clamp-3" style={{ color: t.textCol }}>{r.text}</p>
                         </div>
                     </button>
                 ))}
-
                 {data.total === 0 && (
                     <p className="text-center py-8 text-sm" style={{ color: t.subText }}>
                         No verses tagged with "{data.emotion}" found yet.
@@ -421,7 +382,7 @@ function EmotionModeView({
 }
 
 // ---------------------------------------------------------------------------
-// Hybrid / full-text result list
+// Hybrid Mode UI
 // ---------------------------------------------------------------------------
 
 function HybridModeView({
@@ -437,8 +398,8 @@ function HybridModeView({
 }) {
     const highlightText = (text: string, q: string) => {
         if (!q.trim()) return text;
-        const terms = q.toLowerCase().split(/\s+/).filter(t => t.length > 1);
-        const escaped = terms.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+        const terms = q.toLowerCase().split(/\s+/).filter(w => w.length > 1);
+        const escaped = terms.map(w => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
         let out = text;
         for (const term of escaped) {
             out = out.replace(
@@ -449,13 +410,15 @@ function HybridModeView({
         return out;
     };
 
-    if (data.results.length === 0) return (
-        <div className="text-center py-12" style={{ color: t.subText }}>
-            <FiSearch size={40} className="mx-auto mb-3 opacity-20" />
-            <p className="text-sm font-semibold">No results for "{query}"</p>
-            <p className="text-xs mt-1">Try a different keyword or check spelling</p>
-        </div>
-    );
+    if (data.results.length === 0) {
+        return (
+            <div className="text-center py-12" style={{ color: t.subText }}>
+                <FiSearch size={40} className="mx-auto mb-3 opacity-20" />
+                <p className="text-sm font-semibold">No results for "{query}"</p>
+                <p className="text-xs mt-1">Try a different keyword or check spelling</p>
+            </div>
+        );
+    }
 
     return (
         <div className="p-4 space-y-3">
@@ -464,8 +427,8 @@ function HybridModeView({
             </p>
             {data.results.slice(0, 50).map((r, i) => (
                 <button
-                    key={`${r.book.name}-${r.chapter.number}-${r.number}-${i}`}
-                    onClick={() => onVerseClick(r.book.name, r.chapter.number, r.number, r.version?.abbreviation)}
+                    key={`${r.book?.name}-${r.chapter?.number}-${r.number}-${i}`}
+                    onClick={() => onVerseClick(r.book?.name, r.chapter?.number, r.number, r.version?.abbreviation)}
                     className="w-full text-left p-3.5 rounded-xl border flex gap-3 transition-all duration-150 hover:scale-[1.01] active:scale-[0.99]"
                     style={{ backgroundColor: t.cardBg, borderColor: t.cardBorder }}
                 >
@@ -473,19 +436,16 @@ function HybridModeView({
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                             <span className="text-xs font-bold" style={{ color: t.accent }}>
-                                {r.book.name} {r.chapter.number}:{r.number}
+                                {r.book?.name} {r.chapter?.number}:{r.number}
                             </span>
                             {r.version?.abbreviation && (
-                                <span
-                                    className="text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-widest font-bold"
-                                    style={{ borderColor: t.chipBorder, color: t.subText }}
-                                >
+                                <span className="text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-widest font-bold"
+                                    style={{ borderColor: t.chipBorder, color: t.subText }}>
                                     {r.version.abbreviation}
                                 </span>
                             )}
                         </div>
-                        <p
-                            className="text-xs leading-relaxed line-clamp-3"
+                        <p className="text-xs leading-relaxed line-clamp-3"
                             style={{ color: t.textCol }}
                             dangerouslySetInnerHTML={{ __html: highlightText(r.text, query) }}
                         />
@@ -514,14 +474,17 @@ export default function BibleSearchModal({
 
     const [query, setQuery] = useState('');
     const [searchData, setSearchData] = useState<SearchData>(null);
-    const [isSearching, setIsSearching] = useState(false);
+    // isLoading tracks only the FIRST load (no previous data) to show skeletons
+    const [isLoading, setIsLoading] = useState(false);
+    // isRefreshing is true while loading new data when old data already exists
+    const [isRefreshing, setIsRefreshing] = useState(false);
     const [history, setHistory] = useState<string[]>([]);
 
     const inputRef = useRef<HTMLInputElement>(null);
     const debounceRef = useRef<NodeJS.Timeout | null>(null);
     const abortRef = useRef<AbortController | null>(null);
 
-    // Load history
+    // Load history on mount
     useEffect(() => {
         try {
             const saved = localStorage.getItem(SEARCH_HISTORY_KEY);
@@ -529,66 +492,93 @@ export default function BibleSearchModal({
         } catch { /* noop */ }
     }, []);
 
-    // Focus input when opened
+    // Focus input when modal opens; reset when it closes
     useEffect(() => {
         if (isOpen) {
             setTimeout(() => inputRef.current?.focus(), 80);
         } else {
+            // Abort any in-flight request
+            abortRef.current?.abort();
+            abortRef.current = null;
+            if (debounceRef.current) clearTimeout(debounceRef.current);
             setQuery('');
             setSearchData(null);
+            setIsLoading(false);
+            setIsRefreshing(false);
         }
     }, [isOpen]);
 
-    // Debounced search
+    // Core search function — safe to call directly
     const doSearch = useCallback(async (q: string) => {
-        if (!q || q.trim().length < 2) {
+        const trimmed = q.trim();
+        if (!trimmed || trimmed.length < 2) {
             setSearchData(null);
+            setIsLoading(false);
+            setIsRefreshing(false);
             return;
         }
 
-        // Cancel previous request
+        // Abort any previous in-flight request
         abortRef.current?.abort();
-        abortRef.current = new AbortController();
+        const controller = new AbortController();
+        abortRef.current = controller;
 
-        setIsSearching(true);
         try {
-            const params = new URLSearchParams({ q: q.trim(), limit: '50' });
+            const params = new URLSearchParams({ q: trimmed, limit: '50' });
             if (activeVersionCode) params.set('versionCode', activeVersionCode);
 
             const res = await fetch(`/api/v1/bible/search?${params}`, {
-                signal: abortRef.current.signal,
+                signal: controller.signal,
             });
             const json = await res.json();
 
-            if (json.success) {
+            if (json.success && json.data) {
                 setSearchData(json.data as SearchData);
             } else {
                 setSearchData(null);
             }
         } catch (e: any) {
             if (e.name !== 'AbortError') {
-                console.error('Search failed:', e);
+                console.error('BibleSearch fetch error:', e);
                 setSearchData(null);
             }
+            // On AbortError, keep existing searchData intact — don't clear it
         } finally {
-            setIsSearching(false);
+            // Only clear loading flags if this request was NOT aborted
+            if (!controller.signal.aborted) {
+                setIsLoading(false);
+                setIsRefreshing(false);
+            }
         }
     }, [activeVersionCode]);
 
+    // Debounce effect — re-runs when query or doSearch changes
     useEffect(() => {
         if (debounceRef.current) clearTimeout(debounceRef.current);
-        if (!query.trim() || query.trim().length < 2) {
+
+        const trimmed = query.trim();
+        if (!trimmed || trimmed.length < 2) {
             setSearchData(null);
-            setIsSearching(false);
+            setIsLoading(false);
+            setIsRefreshing(false);
             return;
         }
-        setIsSearching(true);
+
+        // Show skeleton on first search, spinner on re-search
+        if (searchData === null) {
+            setIsLoading(true);
+        } else {
+            setIsRefreshing(true);
+        }
+
         debounceRef.current = setTimeout(() => doSearch(query), DEBOUNCE_MS);
+
         return () => {
             if (debounceRef.current) clearTimeout(debounceRef.current);
         };
-    }, [query, doSearch]);
+    }, [query, doSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
+    // History helpers
     const addHistory = (q: string) => {
         if (!q.trim()) return;
         const next = [q, ...history.filter(h => h !== q)].slice(0, MAX_HISTORY);
@@ -601,38 +591,26 @@ export default function BibleSearchModal({
         try { localStorage.removeItem(SEARCH_HISTORY_KEY); } catch { /* noop */ }
     };
 
-    const handleHistoryClick = (q: string) => {
-        setQuery(q);
-        addHistory(q);
-    };
-
     const clearQuery = () => {
         setQuery('');
         setSearchData(null);
         inputRef.current?.focus();
     };
 
-    // ── Navigation callbacks ──────────────────────────────────────────────
-
+    // Navigation handlers
     const handleChapterTap = (chapter: number) => {
-        if (searchData?.mode === 'book') {
-            addHistory(query);
-            onNavigateToChapter((searchData as BookSearchResult).book, chapter);
-            onClose();
-        }
+        const data = searchData as BookSearchResult;
+        addHistory(query);
+        onNavigateToChapter(data.book, chapter);
+        onClose();
     };
 
-    const handleVersionChange = async (versionCode: string) => {
+    const handleVersionChange = (versionCode: string) => {
         if (searchData?.mode !== 'exact') return;
         const ev = searchData as ExactVerseResult;
-        // Find the text for this version in already-fetched alternates
         const match = ev.availableVersions.find(v => v.versionCode === versionCode);
         if (match) {
-            setSearchData({
-                ...ev,
-                text: match.text,
-                versionCode: match.versionCode,
-            });
+            setSearchData({ ...ev, text: match.text, versionCode: match.versionCode });
         }
     };
 
@@ -645,7 +623,6 @@ export default function BibleSearchModal({
     };
 
     const handleEmotionVerseClick = (reference: string, versionCode: string) => {
-        // Parse "Book chapter:verse" from reference
         const m = reference.match(/^(.+?)\s+(\d+):(\d+)$/);
         if (m) {
             addHistory(query);
@@ -660,24 +637,32 @@ export default function BibleSearchModal({
         onClose();
     };
 
-    // ── Render ────────────────────────────────────────────────────────────
-
     if (!isOpen) return null;
+
+    // Determine what content area shows
+    const hasQuery = query.trim().length >= 2;
+    const showSkeleton = isLoading && !searchData;
 
     return (
         <div
-            className="fixed inset-0 z-[200] flex items-start justify-center transition-all duration-300"
+            className="fixed inset-0 z-[200] flex items-start justify-center"
             style={{ backgroundColor: t.backdropBg, backdropFilter: t.backdropBlur }}
             onClick={onClose}
         >
             <div
-                className="absolute top-14 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-[620px] rounded-2xl shadow-2xl max-h-[82vh] flex flex-col overflow-hidden border backdrop-blur-3xl"
+                className="absolute top-14 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-[620px] rounded-2xl shadow-2xl max-h-[82vh] flex flex-col overflow-hidden border"
                 style={{ backgroundColor: t.modalBg, borderColor: t.borderCol }}
                 onClick={e => e.stopPropagation()}
             >
-                {/* ── Search input bar ─────────────────────────────────── */}
-                <div className="p-4 flex items-center gap-3 border-b" style={{ borderColor: t.innerBorder }}>
-                    <FiSearch size={18} style={{ color: t.subText, flexShrink: 0 }} />
+                {/* ── Search input bar ────────────────────────────────── */}
+                <div
+                    className="flex items-center gap-3 px-4 py-3 border-b"
+                    style={{ borderColor: t.innerBorder, backgroundColor: t.modalBg }}
+                >
+                    {isRefreshing
+                        ? <Loader2 size={18} className="animate-spin flex-shrink-0" style={{ color: t.accent }} />
+                        : <FiSearch size={18} style={{ color: t.subText, flexShrink: 0 }} />
+                    }
                     <input
                         ref={inputRef}
                         type="text"
@@ -685,15 +670,18 @@ export default function BibleSearchModal({
                         onChange={e => setQuery(e.target.value)}
                         onKeyDown={e => {
                             if (e.key === 'Enter' && query.trim()) {
+                                if (debounceRef.current) clearTimeout(debounceRef.current);
                                 addHistory(query.trim());
                                 doSearch(query.trim());
                             }
                             if (e.key === 'Escape') onClose();
                         }}
                         placeholder="Search books, John 3:16, joy, fear…"
-                        className="flex-1 bg-transparent outline-none text-sm"
+                        className="flex-1 bg-transparent outline-none text-sm font-medium"
                         style={{ color: t.textCol }}
                         autoComplete="off"
+                        autoCorrect="off"
+                        spellCheck={false}
                     />
                     {query && (
                         <button
@@ -715,19 +703,21 @@ export default function BibleSearchModal({
                     </button>
                 </div>
 
-                {/* ── Scrollable content area ───────────────────────────── */}
+                {/* ── Content area ────────────────────────────────────── */}
                 <div className="flex-1 overflow-y-auto overscroll-contain">
 
-                    {/* Loading state */}
-                    {isSearching && !searchData && (
+                    {/* First-load skeleton */}
+                    {showSkeleton && (
                         <>
                             <SkeletonBook />
                             <SkeletonVerse />
                         </>
                     )}
 
-                    {/* Book mode */}
-                    {!isSearching && searchData?.mode === 'book' && (
+                    {/* ── Mode-specific views — shown whenever data exists ── */}
+                    {/* Note: NOT gated by isLoading/isRefreshing so results always show */}
+
+                    {searchData?.mode === 'book' && (
                         <BookModeView
                             data={searchData as BookSearchResult}
                             theme={t}
@@ -735,8 +725,7 @@ export default function BibleSearchModal({
                         />
                     )}
 
-                    {/* Exact verse mode */}
-                    {!isSearching && searchData?.mode === 'exact' && (
+                    {searchData?.mode === 'exact' && (
                         <ExactVerseModeView
                             data={searchData as ExactVerseResult}
                             theme={t}
@@ -745,8 +734,7 @@ export default function BibleSearchModal({
                         />
                     )}
 
-                    {/* Emotion mode */}
-                    {!isSearching && searchData?.mode === 'emotion' && (
+                    {searchData?.mode === 'emotion' && (
                         <EmotionModeView
                             data={searchData as EmotionResult}
                             theme={t}
@@ -754,8 +742,7 @@ export default function BibleSearchModal({
                         />
                     )}
 
-                    {/* Hybrid / full-text mode */}
-                    {!isSearching && searchData?.mode === 'hybrid' && (
+                    {searchData?.mode === 'hybrid' && (
                         <HybridModeView
                             data={searchData as HybridResult}
                             theme={t}
@@ -764,27 +751,34 @@ export default function BibleSearchModal({
                         />
                     )}
 
-                    {/* Search history (when no query is entered) */}
-                    {!query && history.length > 0 && (
+                    {/* ── No-results state (query present, search done, nothing found) ── */}
+                    {hasQuery && !isLoading && !searchData && (
+                        <div className="text-center py-12" style={{ color: t.subText }}>
+                            <FiSearch size={40} className="mx-auto mb-3 opacity-20" />
+                            <p className="text-sm font-semibold">No results for "{query.trim()}"</p>
+                            <p className="text-xs mt-1">Try a different keyword or check spelling</p>
+                        </div>
+                    )}
+
+                    {/* ── Search history (empty query state) ── */}
+                    {!hasQuery && history.length > 0 && (
                         <div className="p-4">
                             <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: t.subText }}>
-                                    Recent
-                                </h3>
+                                <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: t.subText }}>Recent</h3>
                                 <button
                                     onClick={clearHistory}
-                                    className="flex items-center gap-1 text-xs font-bold transition-colors"
+                                    className="flex items-center gap-1 text-xs font-bold"
                                     style={{ color: t.accent }}
                                 >
                                     <Trash2 size={12} /> Clear
                                 </button>
                             </div>
-                            <div className="space-y-1">
+                            <div className="space-y-0.5">
                                 {history.map((item, idx) => (
                                     <button
                                         key={idx}
-                                        onClick={() => handleHistoryClick(item)}
-                                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors"
+                                        onClick={() => setQuery(item)}
+                                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left"
                                         style={{ color: t.textCol }}
                                         onMouseEnter={e => (e.currentTarget.style.backgroundColor = t.hoverBg)}
                                         onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
@@ -797,8 +791,8 @@ export default function BibleSearchModal({
                         </div>
                     )}
 
-                    {/* Empty state */}
-                    {!query && history.length === 0 && (
+                    {/* ── Empty state (no query, no history) ── */}
+                    {!hasQuery && history.length === 0 && (
                         <div className="py-16 text-center px-8" style={{ color: t.subText }}>
                             <FiSearch size={44} className="mx-auto mb-4 opacity-20" />
                             <p className="text-sm font-semibold mb-1">Search the Bible</p>
