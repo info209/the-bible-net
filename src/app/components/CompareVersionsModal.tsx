@@ -45,8 +45,8 @@ export default function CompareVersionsModal({
 
   const modalBg = {
     light: '#ffffff',
-    sepia: '#faf0e3',
-    cream: '#fdf6eb',
+    sepia: '#f5e6c8',
+    cream: '#f8f6f1',
     dark: '#1c1c1e'
   }[theme];
 

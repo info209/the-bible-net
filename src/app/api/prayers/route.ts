@@ -4,6 +4,8 @@ import { connectDB } from '@/lib/db';
 import { Prayer } from '@/models/Prayer';
 import { PersonalPrayer } from '@/models/PersonalPrayer';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   try {
     await connectDB();
@@ -40,8 +42,7 @@ export async function GET(req: Request) {
       }
 
       const personalPrayers = await PersonalPrayer.find(filter)
-        .sort({ isPinned: -1, updatedAt: -1 })
-        .populate('folderId', 'name');
+        .sort({ isPinned: -1, updatedAt: -1 });
 
       return NextResponse.json({ success: true, data: personalPrayers });
     }

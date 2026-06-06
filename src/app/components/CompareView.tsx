@@ -21,12 +21,12 @@ const themeConfig = {
     verseNumber: '#E23744'
   },
   sepia: {
-    bg: '#f5e6d3',
+    bg: '#f5e6c8',
     text: '#5c4a3a',
     verseNumber: '#D42C3A'
   },
   cream: {
-    bg: '#fef3e2',
+    bg: '#f8f6f1',
     text: '#4a3f2a',
     verseNumber: '#E23744'
   },

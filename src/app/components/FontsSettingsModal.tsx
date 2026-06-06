@@ -66,7 +66,7 @@ export default function FontsSettingsModal({
 
       case "sepia":
         return {
-          bg: "#faf0e3",
+          bg: "#f5e6c8",
           text: "#5c4a3a",
           subText: "#7d6855",
           border: "rgba(92, 74, 58, 0.15)",
@@ -76,7 +76,7 @@ export default function FontsSettingsModal({
 
       case "cream":
         return {
-          bg: "#fdf6eb",
+          bg: "#f8f6f1",
           text: "#4a3f2a",
           subText: "#6e5f46",
           border: "rgba(74, 63, 42, 0.15)",

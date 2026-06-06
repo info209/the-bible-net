@@ -3,6 +3,8 @@ import { getUserSession } from '@/lib/auth-helpers';
 import { connectDB } from '@/lib/db';
 import { Journal } from '@/models/Journal';
 
+export const dynamic = 'force-dynamic';
+
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }

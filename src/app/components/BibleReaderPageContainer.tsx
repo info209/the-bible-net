@@ -1412,12 +1412,12 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       verseNumber: '#db6175'
     },
     sepia: {
-      bg: '#f5e6d3',
+      bg: '#f5e6c8',
       text: '#5c4a3a',
       verseNumber: '#c44a61'
     },
     cream: {
-      bg: '#fef3e2',
+      bg: '#f8f6f1',
       text: '#4a3f2a',
       verseNumber: '#d4596d'
     },

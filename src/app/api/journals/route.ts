@@ -3,6 +3,8 @@ import { getUserSession } from '@/lib/auth-helpers';
 import { connectDB } from '@/lib/db';
 import { Journal } from '@/models/Journal';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: NextRequest) {
   try {
     const session = await getUserSession();
@@ -53,8 +55,7 @@ export async function GET(req: NextRequest) {
 
     // Fetch journals: pinned first, then by updatedAt
     const journals = await Journal.find(filter)
-      .sort({ isPinned: -1, updatedAt: -1 })
-      .populate('folderId', 'name');
+      .sort({ isPinned: -1, updatedAt: -1 });
 
     return NextResponse.json({ success: true, data: journals });
   } catch (error: any) {

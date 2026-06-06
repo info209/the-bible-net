@@ -176,8 +176,8 @@ export default function VerseActionMenu({
   
   const sheetBg = {
     light: '#FFFFFF',
-    sepia: '#faf0e3',
-    cream: '#fdf6eb',
+    sepia: '#f5e6c8',
+    cream: '#f8f6f1',
     dark: '#1c1c1e'
   }[theme];
 
@@ -204,8 +204,8 @@ export default function VerseActionMenu({
 
   const inputBg = {
     light: '#F9FAFB',
-    sepia: '#faf0e3',
-    cream: '#fdf6eb',
+    sepia: '#f5e6c8',
+    cream: '#f8f6f1',
     dark: '#111111'
   }[theme];
 
@@ -232,8 +232,8 @@ export default function VerseActionMenu({
 
   const actionBg = {
     light: '#F9FAFB',
-    sepia: '#faf0e3',
-    cream: '#fdf6eb',
+    sepia: '#f5e6c8',
+    cream: '#f8f6f1',
     dark: '#111111'
   }[theme];
 
