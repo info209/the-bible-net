@@ -3,6 +3,7 @@ import { getUserSession } from '@/lib/auth-helpers';
 import { connectDB } from '@/lib/db';
 import { SavedVerse } from '@/models/SavedVerse';
 import { Verse, BibleVersion } from '@/models/Bible';
+import { BibleService } from '@/services/bibleService';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 
@@ -58,33 +59,21 @@ export async function GET(req: NextRequest) {
 
     const validAbbreviations = new Set(activeVersions.map((v: any) => v.abbreviation.toUpperCase()));
 
-    // Populate verse texts dynamically
+    // Populate verse texts dynamically using robust BibleService helper
     const populatedItems = await Promise.all(
       items.map(async (item: any) => {
         try {
-          let versionCode = (item.version || '').toUpperCase();
-          if (!versionCode || !validAbbreviations.has(versionCode)) {
-            // Fallback: KJV if it exists, otherwise the first version found, otherwise default to KJV string
-            if (validAbbreviations.has('KJV')) {
-              versionCode = 'KJV';
-            } else if (activeVersions.length > 0) {
-              versionCode = activeVersions[0].abbreviation.toUpperCase();
-            } else {
-              versionCode = 'KJV';
-            }
-          }
+          const text = await BibleService.findVersesText(
+            item.version || 'NKJV',
+            item.bookId || '',
+            item.bookName || '',
+            item.chapter,
+            item.verses
+          );
 
-          const verseDocs = await Verse.find({
-            versionCode,
-            bookName: item.bookName,
-            chapterNumber: item.chapter,
-            number: { $in: item.verses }
-          }).sort({ number: 1 }).lean();
-
-          const text = verseDocs.map(v => v.text).join(' ');
           return {
             ...item,
-            version: versionCode, // Send normalized version back to client
+            version: (item.version || 'NKJV').toUpperCase(), // Send normalized version back to client
             verseText: text || 'Verse text not found.'
           };
         } catch (e) {

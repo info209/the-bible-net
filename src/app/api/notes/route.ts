@@ -3,6 +3,7 @@ import { getUserSession } from '@/lib/auth-helpers';
 import { connectDB } from '@/lib/db';
 import { Note } from '@/models/Note';
 import { Verse } from '@/models/Bible';
+import { BibleService } from '@/services/bibleService';
 import mongoose from 'mongoose';
 import { z } from 'zod';
 
@@ -49,20 +50,20 @@ export async function GET(req: NextRequest) {
       Note.countDocuments(filter),
     ]);
 
-    // Populate verse texts dynamically
+    // Populate verse texts dynamically using robust BibleService helper
     const populatedItems = await Promise.all(
       items.map(async (item: any) => {
         try {
           const versesWithText = await Promise.all(
             (item.verses || []).map(async (vRef: any) => {
-              const verseDocs = await Verse.find({
-                versionCode: (item.version || 'NKJV').toUpperCase(),
-                bookName: vRef.bookName,
-                chapterNumber: vRef.chapter,
-                number: { $in: vRef.verses }
-              }).sort({ number: 1 }).lean();
+              const text = await BibleService.findVersesText(
+                item.version || 'NKJV',
+                vRef.bookId || '',
+                vRef.bookName || '',
+                vRef.chapter,
+                vRef.verses
+              );
 
-              const text = verseDocs.map(v => v.text).join(' ');
               return {
                 ...vRef,
                 verseText: text || 'Verse text not found.'

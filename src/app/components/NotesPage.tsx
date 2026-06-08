@@ -373,14 +373,6 @@ export default function NotesPage({ onBack }: NotesPageProps = {}) {
                   Notes
                 </h1>
               </div>
-
-              {/* Add Note Button */}
-              <button
-                onClick={handleOpenNewNote}
-                className="h-9 px-4 bg-[#0B7A81] text-white rounded-full text-[13px] font-[500] flex items-center gap-1 shadow-sm active:bg-[#086369]"
-              >
-                <Plus className="w-4 h-4" /> Add Note
-              </button>
             </header>
 
             {/* Filter Tabs */}
@@ -413,7 +405,7 @@ export default function NotesPage({ onBack }: NotesPageProps = {}) {
                   </div>
                   <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100">No notes yet</h3>
                   <p className="text-xs text-gray-400 max-w-xs mt-1">
-                    Tap Add Note or long press a verse in the Bible reader to start writing.
+                    Long press a verse in the Bible reader to start writing.
                   </p>
                 </div>
               ) : (

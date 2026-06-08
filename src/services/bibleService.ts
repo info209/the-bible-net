@@ -646,5 +646,102 @@ export class BibleService {
         // Finalize status
         await BibleVersion.findByIdAndUpdate(versionId, { status: 'active', importProgress: 100 });
     }
+
+    /**
+     * Find text of verses in a highly robust manner, resolving target version
+     * and books with language/abbreviation/order-based fallbacks.
+     */
+    static async findVersesText(
+        versionCode: string,
+        bookId: string,
+        bookName: string,
+        chapter: number,
+        verses: number[]
+    ): Promise<string> {
+        try {
+            if (!verses || verses.length === 0) return '';
+
+            // 1. Resolve target version
+            let versionDoc = await BibleVersion.findOne({
+                abbreviation: versionCode.toUpperCase()
+            }).lean();
+
+            // Fallback: search for active version or default NKJV/KJV if requested version not active/found
+            if (!versionDoc) {
+                versionDoc = await BibleVersion.findOne({ abbreviation: 'NKJV' }).lean() ||
+                             await BibleVersion.findOne({ abbreviation: 'KJV' }).lean() ||
+                             await BibleVersion.findOne({ isActive: true }).lean() ||
+                             await BibleVersion.findOne({}).lean();
+            }
+
+            if (!versionDoc) {
+                console.warn(`[findVersesText] No bible version found in DB`);
+                return '';
+            }
+
+            const targetVersionId = versionDoc._id;
+
+            // 2. Resolve book document under this version
+            let bookDoc = await Book.findOne({
+                version: targetVersionId,
+                $or: [
+                    { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } },
+                    { name: { $regex: new RegExp(`^${bookId.replace(/-/g, ' ')}$`, 'i') } },
+                    { name: { $regex: new RegExp(`^${bookName.replace(/-/g, ' ')}$`, 'i') } },
+                    { abbreviation: { $regex: new RegExp(`^${bookName}$`, 'i') } }
+                ]
+            }).lean();
+
+            // Fallback: If not found, find equivalent book index/order across any version, and lookup by order in target version
+            if (!bookDoc) {
+                const anyBookDoc = await Book.findOne({
+                    $or: [
+                        { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } },
+                        { name: { $regex: new RegExp(`^${bookId.replace(/-/g, ' ')}$`, 'i') } },
+                        { name: { $regex: new RegExp(`^${bookName.replace(/-/g, ' ')}$`, 'i') } },
+                        { abbreviation: { $regex: new RegExp(`^${bookName}$`, 'i') } }
+                    ]
+                }).lean();
+
+                if (anyBookDoc) {
+                    bookDoc = await Book.findOne({
+                        version: targetVersionId,
+                        order: anyBookDoc.order
+                    }).lean();
+                }
+            }
+
+            if (!bookDoc) {
+                console.warn(`[findVersesText] Book not resolved for bookId: ${bookId}, bookName: ${bookName}`);
+                return '';
+            }
+
+            // 3. Find the verses
+            const verseDocs = await Verse.find({
+                version: targetVersionId,
+                book: bookDoc._id,
+                chapterNumber: chapter,
+                number: { $in: verses }
+            }).sort({ number: 1 }).lean();
+
+            if (verseDocs && verseDocs.length > 0) {
+                return verseDocs.map(v => v.text).join(' ');
+            }
+
+            // 4. Denormalized string-matching fallback
+            const fallbackDocs = await Verse.find({
+                versionCode: versionDoc.abbreviation,
+                bookName: bookDoc.name,
+                chapterNumber: chapter,
+                number: { $in: verses }
+            }).sort({ number: 1 }).lean();
+
+            return fallbackDocs.map(v => v.text).join(' ');
+        } catch (error) {
+            console.error('[findVersesText] Error fetching verse text:', error);
+            return '';
+        }
+    }
 }
+
 

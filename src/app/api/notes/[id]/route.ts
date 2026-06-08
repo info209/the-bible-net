@@ -58,6 +58,37 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
     }
 
+    // Synchronize note update back to SavedItem collection
+    if (updated.verses && updated.verses.length > 0) {
+      try {
+        const SavedItemModel = (await import('@/models/SavedItem')).SavedItem;
+        const bookId = updated.verses[0].bookId;
+        const chapter = updated.verses[0].chapter;
+        const verses = updated.verses[0].verses;
+        const version = updated.version || 'NKJV';
+
+        await SavedItemModel.findOneAndUpdate(
+          {
+            userId: new mongoose.Types.ObjectId(session.user.id as string),
+            type: 'note',
+            'metadata.bookId': bookId,
+            'metadata.chapter': chapter,
+            'metadata.verses': verses
+          },
+          {
+            $set: {
+              'metadata.content': updated.noteText,
+              'metadata.labels': updated.labels,
+              'metadata.versionId': version,
+              updatedAt: new Date()
+            }
+          }
+        );
+      } catch (err) {
+        console.error('[PATCH /api/notes/[id]] SavedItem sync error:', err);
+      }
+    }
+
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     console.error('[PATCH /api/notes/[id]]', error);
@@ -89,6 +120,26 @@ export async function DELETE(
 
     if (!deleted) {
       return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 });
+    }
+
+    // Synchronize note deletion back to SavedItem collection
+    if (deleted.verses && deleted.verses.length > 0) {
+      try {
+        const SavedItemModel = (await import('@/models/SavedItem')).SavedItem;
+        const bookId = deleted.verses[0].bookId;
+        const chapter = deleted.verses[0].chapter;
+        const verses = deleted.verses[0].verses;
+
+        await SavedItemModel.findOneAndDelete({
+          userId: new mongoose.Types.ObjectId(session.user.id as string),
+          type: 'note',
+          'metadata.bookId': bookId,
+          'metadata.chapter': chapter,
+          'metadata.verses': verses
+        });
+      } catch (err) {
+        console.error('[DELETE /api/notes/[id]] SavedItem sync error:', err);
+      }
     }
 
     return NextResponse.json({ success: true, message: 'Deleted' });
