@@ -1543,6 +1543,17 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const existingSaveIsPrivate = existingSaveData?.isPrivate ?? false;
   const savedVerseId = existingSaveData?._id ?? null;
 
+  // Derive existing note data for the selected verses
+  const existingNoteData = useMemo(() => {
+    if (selectedVerses.length === 0 || !selectedBookId) return null;
+    const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
+    const refId = `${selectedBookId}_${selectedChapter}_${sortedVerses.join('-')}_${selectedVersionId}`;
+    return userNotes.find(n => n.refId === refId) ?? null;
+  }, [selectedVerses, selectedBookId, selectedChapter, selectedVersionId, userNotes]);
+
+  const existingNoteText = existingNoteData?.metadata?.content ?? null;
+  const existingNoteLabels = existingNoteData?.metadata?.labels ?? null;
+
   // ── Saved verse IDs for current chapter (for bookmark icons in text) ───
   const savedVerseIds = useMemo(() => {
     if (!selectedBookId) return [];
@@ -1621,7 +1632,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         };
         processHighlights();
       }}
-      onSaveNote={(verses: number[], note: string) => {
+      onSaveNote={(verses: number[], note: string, labels: string[]) => {
         if (!session?.user || verses.length === 0) return;
         const processNotes = async () => {
           const refId = `${selectedBookId}_${selectedChapter}_${verses.join('-')}_${selectedVersionId}`;
@@ -1642,16 +1653,17 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
                 verses: verses,
                 versionId: selectedVersionId || undefined,
                 versionName: displayVersionName || undefined,
-                content: note
+                content: note,
+                labels
               }
             });
             // Update local state
             setUserNotes(prev => {
               const existing = prev.find(n => n.refId === refId);
               if (existing) {
-                return prev.map(n => n.refId === refId ? { ...n, metadata: { ...n.metadata, content: note } } : n);
+                return prev.map(n => n.refId === refId ? { ...n, metadata: { ...n.metadata, content: note, labels } } : n);
               }
-              return [...prev, { refId, metadata: { bookId: selectedBookId, bookName: displayBookName, chapter: selectedChapter, verses, versionId: selectedVersionId, versionName: displayVersionName, content: note } }];
+              return [...prev, { refId, metadata: { bookId: selectedBookId, bookName: displayBookName, chapter: selectedChapter, verses, versionId: selectedVersionId, versionName: displayVersionName, content: note, labels } }];
             });
           }
         };
@@ -1678,6 +1690,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       existingSaveLabels={existingSaveLabels}
       existingSaveNote={existingSaveNote}
       existingSaveIsPrivate={existingSaveIsPrivate}
+      existingNoteText={existingNoteText}
+      existingNoteLabels={existingNoteLabels}
       savedVerseId={savedVerseId}
       savedVerseIds={savedVerseIds}
       userLabels={userLabels}

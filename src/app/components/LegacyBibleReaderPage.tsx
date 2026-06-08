@@ -224,7 +224,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     setSelectedVerses([]);
   };
 
-  const onVerseMenuNote = async (note: string) => {
+  const onVerseMenuNote = async (note: string, labels?: string[]) => {
     if (!session?.user || selectedVerses.length === 0) return;
 
     // A note can cover multiple verses? Usually notes are per verse or per selection.
@@ -238,7 +238,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         chapter: selectedChapter,
         verses: selectedVerses,
         versionId: selectedVersionId || undefined,
-        content: note
+        content: note,
+        labels: labels || []
       }
     });
     setSelectedVerses([]);

@@ -85,7 +85,7 @@ interface BibleReaderPageProps {
   onVerseLongPress?: (verseNumber: number, e?: React.MouseEvent | React.TouchEvent) => void;
   onVerseTap?: (verseNumber: number, e?: React.MouseEvent | React.TouchEvent) => void;
   onSaveHighlight?: (verses: number[], color: string) => void;
-  onSaveNote?: (verses: number[], note: string) => void;
+  onSaveNote?: (verses: number[], note: string, labels: string[]) => void;
   onPlayAudio?: () => void;
   onPauseAudio?: () => void;
   onCompareVerses?: () => void;
@@ -110,6 +110,8 @@ interface BibleReaderPageProps {
   isLoggedIn?: boolean;
   /** Labels the first selected verse is already saved under (enables saved-state UI) */
   existingSaveLabels?: string[] | null;
+  existingNoteText?: string | null;
+  existingNoteLabels?: string[] | null;
   pageTransition?: 'slide' | 'curl' | 'fade' | 'scroll';
   onPageTransitionChange?: (transition: 'slide' | 'curl' | 'fade' | 'scroll') => void;
 }
@@ -155,6 +157,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     onSliderDragEnd,
     isLoggedIn = false,
     existingSaveLabels = null,
+    existingNoteText = null,
+    existingNoteLabels = null,
     pageTransition: propPageTransition,
     onPageTransitionChange: propOnPageTransitionChange,
   } = props;
@@ -962,8 +966,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     readNextVerse(verses, fromVerse - 1);
   };
 
-  const readNextVerse = (verses: any[], index: number) => {
+  const readNextVerse = async (verses: any[], index: number) => {
     console.log('readNextVerse called with index:', index, 'of', verses.length, 'verses');
+
+    // Find language tag from active version
+    const currentVersionObj = (apiVersions || fallbackVersions).find(
+      v => v.name === selectedVersion || v.id === selectedVersion
+    );
+    const lang = currentVersionObj?.language;
+    const utteranceLang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
 
     // At the beginning of each chapter, announce the book name and chapter number
     if (index === 0 && verses.length > 0) {
@@ -973,6 +984,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       const announcementUtterance = new SpeechSynthesisUtterance(chapterAnnouncement);
       announcementUtterance.rate = playbackSpeed;
       announcementUtterance.pitch = 1;
+      announcementUtterance.lang = 'en-US'; // Announcement text is always in English
       const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
       announcementUtterance.volume = constrainedVolume;
       console.log('[Volume] Setting announcement volume to:', constrainedVolume);
@@ -1021,6 +1033,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         const verseUtterance = new SpeechSynthesisUtterance(verseText);
         verseUtterance.rate = playbackSpeed;
         verseUtterance.pitch = 1;
+        verseUtterance.lang = utteranceLang;
         const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
         verseUtterance.volume = constrainedVolume;
         console.log('[Volume] Setting verse utterance volume to:', constrainedVolume);
@@ -1147,13 +1160,32 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       // Fetch verses for the next chapter using the nextBook/nextChapter variables
       // (not getBibleContent() which uses state that hasn't updated yet)
-      let bibleData = mockBibleContent;
-      if (selectedVersion === 'TELBSI') {
-        bibleData = teluguBible as any;
-      } else if (selectedVersion === 'HINBSI') {
-        bibleData = hindiBible as any;
+      let nextChapterVerses: any[] = [];
+      const versionId = currentVersionObj?.id || selectedVersion;
+
+      // Find book ID
+      const allBooksList = [...(books?.['Old Testament'] || []), ...(books?.['New Testament'] || [])];
+      const currentBookObj = allBooksList.find(b => b.name === nextBook || b.id === nextBook);
+      const nextBookId = currentBookObj?.id || nextBook;
+
+      if (versionId === 'TELBSI') {
+        nextChapterVerses = (teluguBible as any)[nextBook]?.[nextChapter]?.verses || [];
+      } else if (versionId === 'HINBSI') {
+        nextChapterVerses = (hindiBible as any)[nextBook]?.[nextChapter]?.verses || [];
+      } else if (versionId === 'NKJV' || versionId === 'KJV' || versionId === 'NASB' || versionId === 'AMP') {
+        nextChapterVerses = (mockBibleContent as any)[nextBook]?.[nextChapter]?.verses || [];
+      } else {
+        // Fetch from API for dynamic custom versions
+        try {
+          const response = await fetch(`/api/v1/bible/${versionId}/${nextBookId}/${nextChapter}`);
+          const result = await response.json();
+          if (result.success && result.data && result.data.verses) {
+            nextChapterVerses = result.data.verses;
+          }
+        } catch (err) {
+          console.error('[Auto-Advance] Failed to fetch next chapter verses from API:', err);
+        }
       }
-      const nextChapterVerses = bibleData[nextBook]?.[nextChapter]?.verses || [];
 
       console.log('Auto-advance: Fetched', nextChapterVerses.length, 'verses for', nextBook, nextChapter);
 
@@ -1221,6 +1253,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     const utterance = new SpeechSynthesisUtterance(verseText);
     utterance.rate = playbackSpeed;
     utterance.pitch = 1;
+    utterance.lang = utteranceLang;
     const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
     utterance.volume = constrainedVolume;
     console.log('[Volume] Setting reading utterance volume to:', constrainedVolume);
@@ -2497,13 +2530,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             existingSaveLabels={existingSaveLabels}
             existingSaveNote={existingSaveNote}
             existingSaveIsPrivate={existingSaveIsPrivate}
+            existingNoteText={existingNoteText}
+            existingNoteLabels={existingNoteLabels}
             savedVerseId={savedVerseId}
             userLabels={userLabels}
             onAddUserLabel={onAddUserLabel}
             onHighlight={(color) => onSaveHighlight?.(selectedVerses, color)}
             onSave={(labels, note, isPrivate) => onSaveVerses?.(labels, note, isPrivate)}
             onDelete={onDeleteSavedVerse}
-            onNote={(note) => onSaveNote?.(selectedVerses, note)}
+            onNote={(note, labels) => onSaveNote?.(selectedVerses, note, labels)}
             onShare={() => onShareVerses?.()}
             onCompare={onCompareVerses}
             isLoggedIn={isLoggedIn}

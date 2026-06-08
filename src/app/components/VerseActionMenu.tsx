@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
 import Link from 'next/link';
 import {
   BookmarkPlus, FileText, Plus, X, ChevronLeft,
@@ -39,7 +39,7 @@ export interface VerseActionMenuProps {
   onHighlight: (color: string) => void | Promise<void>;
   onSave: (labels: string[], note: string, isPrivate: boolean) => void | Promise<void>;
   onDelete?: () => void | Promise<void>;
-  onNote: (note: string) => void | Promise<void>;
+  onNote: (note: string, labels: string[]) => void | Promise<void>;
   onCompare?: () => void;
   onShare?: () => void;
   existingHighlightColor?: string | null;
@@ -47,6 +47,8 @@ export interface VerseActionMenuProps {
   existingSaveLabels?: string[] | null;
   existingSaveNote?: string | null;
   existingSaveIsPrivate?: boolean;
+  existingNoteText?: string | null;
+  existingNoteLabels?: string[] | null;
   /** The _id of the existing save (if it exists) */
   savedVerseId?: string | null;
   /** DB-persisted user labels */
@@ -125,6 +127,8 @@ export default function VerseActionMenu({
   existingSaveLabels = null,
   existingSaveNote = null,
   existingSaveIsPrivate = false,
+  existingNoteText = null,
+  existingNoteLabels = null,
   savedVerseId = null,
   userLabels = [],
   onAddUserLabel,
@@ -133,6 +137,7 @@ export default function VerseActionMenu({
   selectedTheme,
 }: VerseActionMenuProps) {
   const [view, setView] = useState<'main' | 'save' | 'note' | 'highlight'>('main');
+  const dragControls = useDragControls();
   const [paletteExpanded, setPaletteExpanded] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>(existingHighlightColor || 'yellow');
 
@@ -161,7 +166,7 @@ export default function VerseActionMenu({
       setIsSaving(false);
       setIsDeleting(false);
     }
-  }, [isOpen, existingHighlightColor, existingSaveLabels, existingSaveNote, existingSaveIsPrivate]);
+  }, [isOpen, existingHighlightColor, existingSaveLabels, existingSaveNote, existingSaveIsPrivate, existingNoteText, existingNoteLabels]);
 
   // ── Dynamic Themes tokens ────────────────────────────────────────────────
   const theme = selectedTheme || (isDark ? 'dark' : 'light');
@@ -347,6 +352,8 @@ export default function VerseActionMenu({
             exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 320 }}
             drag="y"
+            dragControls={dragControls}
+            dragListener={false}
             dragConstraints={{ top: 0 }}
             dragElastic={0.18}
             onDragEnd={handleDragEnd}
@@ -364,7 +371,11 @@ export default function VerseActionMenu({
             data-bottom-sheet="true"
           >
             {/* ── Drag Handle ───────────────────────────────────────────── */}
-            <div className="flex items-center justify-center pt-3 pb-0 cursor-grab active:cursor-grabbing">
+            <div
+              onPointerDown={(e) => dragControls.start(e)}
+              style={{ touchAction: 'none' }}
+              className="flex items-center justify-center pt-3 pb-3 cursor-grab active:cursor-grabbing"
+            >
               <div className="w-9 h-1 rounded-full" style={{ backgroundColor: dragBg }} />
             </div>
 
@@ -446,7 +457,11 @@ export default function VerseActionMenu({
 
                         {/* Save */}
                         <button
-                          onClick={() => setView('save')}
+                          onClick={() => {
+                            setSelectedLabels(existingSaveLabels ?? []);
+                            setNoteInput(existingSaveNote ?? '');
+                            setView('save');
+                          }}
                           id="verse-action-save"
                           aria-label="Save verse"
                           className="flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[18px] transition-all active:scale-95"
@@ -467,7 +482,11 @@ export default function VerseActionMenu({
 
                         {/* Note */}
                         <button
-                          onClick={() => setView('note')}
+                          onClick={() => {
+                            setSelectedLabels(existingNoteLabels ?? []);
+                            setNoteInput(existingNoteText ?? '');
+                            setView('note');
+                          }}
                           id="verse-action-note"
                           aria-label="Add note"
                           className="flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[18px] transition-all active:scale-95"
@@ -715,17 +734,6 @@ export default function VerseActionMenu({
                       </div>
                     </div>
 
-                    {/* ── Private toggle ───────────────────────────────── */}
-                    <div
-                      className="flex items-center gap-2 py-2 px-3 mb-3 rounded-[12px]"
-                      style={{ backgroundColor: actionBg, border: actionBorder }}
-                    >
-                      <Lock className="w-3.5 h-3.5 shrink-0" style={{ color: subText }} />
-                      <span className="flex-1 text-[12px] font-medium" style={{ color: labelText }}>
-                        Private Save
-                      </span>
-                      <IOSToggle checked={isPrivate} onChange={setIsPrivate} isDark={dm} selectedTheme={selectedTheme} />
-                    </div>
 
                     {/* ── Delete button (if already saved) ────────────── */}
                     {isSavedVerse && onDelete && (
@@ -785,12 +793,12 @@ export default function VerseActionMenu({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: 20 }}
                   transition={{ duration: 0.15 }}
-                  className="flex flex-col flex-1 min-h-0 px-4 pb-5"
+                  className="flex flex-col flex-1 min-h-0"
                   style={{ height: '100%' }}
                 >
                   {/* Header */}
                   <div
-                    className="flex items-center pt-3 mb-4 shrink-0"
+                    className="flex items-center px-4 pt-3 shrink-0"
                     style={{ borderBottom: headerBorder, paddingBottom: 12 }}
                   >
                     <button
@@ -812,34 +820,165 @@ export default function VerseActionMenu({
                         {formattedVerses}
                       </p>
                     </div>
+                    <button
+                      onClick={onClose}
+                      className="relative z-20 p-1.5 rounded-xl active:scale-95 transition-colors"
+                      style={{ color: subText }}
+                      aria-label="Close"
+                    >
+                      <X className="size-4" />
+                    </button>
                   </div>
 
-                  <textarea
-                    autoFocus
-                    value={noteInput}
-                    onChange={(e) => setNoteInput(e.target.value)}
-                    placeholder="Write your thoughts here…"
-                    className="w-full flex-1 min-h-0 rounded-[12px] p-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 resize-none mb-3 overflow-y-auto"
-                    style={{
-                      backgroundColor: inputBg,
-                      border: `1px solid ${inputBorder}`,
-                      color: inputText,
-                    }}
-                  />
-                  <button
-                    onClick={() => { onNote(noteInput); onClose(); }}
-                    className="w-full font-semibold active:scale-[0.98] transition-all"
-                    style={{
-                      height: 42,
-                      borderRadius: 12,
-                      backgroundColor: '#31C4BE',
-                      color: 'white',
-                      fontSize: 13,
-                      boxShadow: '0 4px 12px rgba(49,196,190,0.22)',
-                    }}
+                  {/* Scrollable body */}
+                  <div className="flex-1 overflow-y-auto min-h-0 px-4">
+                    <textarea
+                      autoFocus
+                      value={noteInput}
+                      onChange={(e) => setNoteInput(e.target.value)}
+                      placeholder="Write your thoughts here…"
+                      className="w-full rounded-[12px] p-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 resize-none mt-3 mb-4 shrink-0"
+                      style={{
+                        height: 110,
+                        backgroundColor: inputBg,
+                        border: `1px solid ${inputBorder}`,
+                        color: inputText,
+                      }}
+                    />
+
+                    {/* Label input */}
+                    <form onSubmit={handleAddLabel} className="flex gap-2 mb-4 shrink-0">
+                      <input
+                        ref={labelInputRef}
+                        type="text"
+                        value={labelInput}
+                        onChange={(e) => setLabelInput(e.target.value)}
+                        maxLength={MAX_LABEL_LENGTH}
+                        placeholder="Create new label..."
+                        aria-label="New label name"
+                        className="flex-1 focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 transition-all"
+                        style={{
+                          height: 38,
+                          borderRadius: 12,
+                          padding: '0 12px',
+                          fontSize: 13,
+                          backgroundColor: inputBg,
+                          border: `1px solid ${inputBorder}`,
+                          color: inputText,
+                        }}
+                      />
+                      <button
+                        type="submit"
+                        disabled={!labelInput.trim()}
+                        aria-label="Add label"
+                        className="flex items-center justify-center shrink-0 active:scale-95 transition-all disabled:opacity-40"
+                        style={{
+                          width: 38, height: 38,
+                          borderRadius: 12,
+                          backgroundColor: '#31C4BE',
+                          boxShadow: '0 4px 12px rgba(49,196,190,0.22)',
+                        }}
+                      >
+                        <Plus className="w-[14px] h-[14px] text-white" strokeWidth={2.5} />
+                      </button>
+                    </form>
+
+                    {/* Saved Labels section */}
+                    <div className="mb-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: sectionTxt }}>
+                        Saved Labels
+                      </p>
+                      {allUserLabels.length === 0 ? (
+                        <p className="text-[11px]" style={{ color: subText }}>No saved labels yet</p>
+                      ) : (
+                        <div className="flex flex-wrap gap-1.5">
+                          {allUserLabels.map((label) => {
+                            const isSelected = selectedLabels.includes(label);
+                            return (
+                              <button
+                                key={label}
+                                onClick={() => toggleLabel(label)}
+                                aria-selected={isSelected}
+                                className="flex items-center gap-1.5 transition-all active:scale-95"
+                                style={{
+                                  height: 28,
+                                  borderRadius: 999,
+                                  padding: '0 10px',
+                                  fontSize: 11,
+                                  fontWeight: 500,
+                                  backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
+                                  border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
+                                  color: isSelected ? '#31C4BE' : labelText,
+                                }}
+                              >
+                                {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
+                                <span>{label}</span>
+                                {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Suggestions section */}
+                    <div className="mb-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: sectionTxt }}>
+                        Suggestions
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {SUGGESTED_LABELS.map((label) => {
+                          const isSelected = selectedLabels.includes(label);
+                          return (
+                            <button
+                              key={label}
+                              onClick={() => toggleLabel(label)}
+                              aria-selected={isSelected}
+                              className="flex items-center gap-1.5 transition-all active:scale-95"
+                              style={{
+                                height: 28,
+                                borderRadius: 999,
+                                padding: '0 10px',
+                                fontSize: 11,
+                                fontWeight: 500,
+                                backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
+                                border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
+                                color: isSelected ? '#31C4BE' : labelText,
+                              }}
+                            >
+                              {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
+                              <span>{label}</span>
+                              {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* bottom padding for scroll */}
+                    <div className="h-3 shrink-0" />
+                  </div>
+
+                  {/* Sticky Save Note Button */}
+                  <div
+                    className="px-4 pt-2.5 pb-4 shrink-0"
+                    style={{ borderTop: headerBorder }}
                   >
-                    Save Note
-                  </button>
+                    <button
+                      onClick={() => { onNote(noteInput, selectedLabels); onClose(); }}
+                      className="w-full flex items-center justify-center font-semibold active:scale-[0.98] transition-all"
+                      style={{
+                        height: 42,
+                        borderRadius: 12,
+                        backgroundColor: '#31C4BE',
+                        color: 'white',
+                        fontSize: 13,
+                        boxShadow: '0 4px 12px rgba(49,196,190,0.22)',
+                      }}
+                    >
+                      Save Note
+                    </button>
+                  </div>
                 </motion.div>
               )}
             </AnimatePresence>

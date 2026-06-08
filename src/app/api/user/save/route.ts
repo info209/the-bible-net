@@ -45,6 +45,7 @@ export async function POST(req: NextRequest) {
         const chapter = (metadata.chapter as number) || 1;
         const verses = (metadata.verses as number[]) || [];
         const version = (metadata.versionId as string) || 'NKJV';
+        const labels = (metadata.labels as string[]) || [];
 
         if (bookId && noteText) {
           const NoteModel = (await import('@/models/Note')).Note;
@@ -60,11 +61,11 @@ export async function POST(req: NextRequest) {
               $set: {
                 noteText,
                 version,
+                labels,
                 updatedAt: new Date()
               },
               $setOnInsert: {
                 userId: new mongoose.Types.ObjectId(session.user.id as string),
-                labels: [],
                 verses: [{ bookId, bookName, chapter, verses }],
                 createdAt: new Date()
               }

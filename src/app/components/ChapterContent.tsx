@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState, useRef, PointerEvent, memo } from 'react';
 import { motion } from 'framer-motion';
-import { Bookmark } from 'lucide-react';
+import { Bookmark, FileText } from 'lucide-react';
 import BibleSkeleton from './BibleSkeleton';
 import { teluguBible, hindiBible } from './BibleData';
 
@@ -400,9 +400,7 @@ function ChapterContent({
                 >
                   {verse.text}
                   {hasNote && (
-                    <span className="ml-2 inline-flex items-center justify-center">
-                      <span className="size-2 bg-red-500 rounded-full shadow-[0_0_8px_rgba(239,68,68,0.5)]" />
-                    </span>
+                    <FileText className="w-[14px] h-[14px] ml-1.5 inline-block text-[var(--color-accent-rose)] fill-none" />
                   )}
                   {isSavedVerse && (
                     <Bookmark className="w-[14px] h-[14px] ml-1.5 inline-block fill-current text-[#31C4BE]" />
