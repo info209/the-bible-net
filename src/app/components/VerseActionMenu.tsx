@@ -832,22 +832,8 @@ export default function VerseActionMenu({
 
                   {/* Scrollable body */}
                   <div className="flex-1 overflow-y-auto min-h-0 px-4">
-                    <textarea
-                      autoFocus
-                      value={noteInput}
-                      onChange={(e) => setNoteInput(e.target.value)}
-                      placeholder="Write your thoughts here…"
-                      className="w-full rounded-[12px] p-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 resize-none mt-3 mb-4 shrink-0"
-                      style={{
-                        height: 110,
-                        backgroundColor: inputBg,
-                        border: `1px solid ${inputBorder}`,
-                        color: inputText,
-                      }}
-                    />
-
                     {/* Label input */}
-                    <form onSubmit={handleAddLabel} className="flex gap-2 mb-4 shrink-0">
+                    <form onSubmit={handleAddLabel} className="flex gap-2 mt-3 mb-4 shrink-0">
                       <input
                         ref={labelInputRef}
                         type="text"
@@ -922,7 +908,7 @@ export default function VerseActionMenu({
                     </div>
 
                     {/* Suggestions section */}
-                    <div className="mb-3">
+                    <div className="mb-4">
                       <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: sectionTxt }}>
                         Suggestions
                       </p>
@@ -954,6 +940,20 @@ export default function VerseActionMenu({
                         })}
                       </div>
                     </div>
+
+                    <textarea
+                      autoFocus
+                      value={noteInput}
+                      onChange={(e) => setNoteInput(e.target.value)}
+                      placeholder="Write your thoughts here…"
+                      className="w-full rounded-[12px] p-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 resize-none mb-4 shrink-0"
+                      style={{
+                        height: 110,
+                        backgroundColor: inputBg,
+                        border: `1px solid ${inputBorder}`,
+                        color: inputText,
+                      }}
+                    />
 
                     {/* bottom padding for scroll */}
                     <div className="h-3 shrink-0" />
