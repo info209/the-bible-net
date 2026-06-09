@@ -1502,6 +1502,22 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     };
   }, [audioPlaying, playbackSpeed, audioDuration, selectedTimer]);
 
+  // Pause narration and stop progress timer when the browser is minimized or tab is switched
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden && audioPlaying) {
+        console.log('[Visibility Effect] Page hidden while audio playing, pausing narration');
+        pauseNarration();
+        setAudioPlaying(false);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [audioPlaying, currentReadingVerse, selectedVerse]);
+
   // Reset progress tracker when chapter changes
   useEffect(() => {
     console.log('[Chapter Change Effect] Book:', selectedBook, 'Chapter:', selectedChapter);
