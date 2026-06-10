@@ -176,19 +176,19 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
       case 'saved':
         return (
           <div className={commonScrollClass}>
-            <SavedPage onBack={handleBackToMenu} />
+            <SavedPage onBack={handleBackToMenu} onClose={handleClose} />
           </div>
         );
       case 'notes':
         return (
           <div className={commonScrollClass}>
-            <NotesPage onBack={handleBackToMenu} />
+            <NotesPage onBack={handleBackToMenu} onClose={handleClose} />
           </div>
         );
       case 'highlights':
         return (
           <div className={commonScrollClass}>
-            <HighlightsPage onBack={handleBackToMenu} />
+            <HighlightsPage onBack={handleBackToMenu} onClose={handleClose} />
           </div>
         );
       case 'comments':

@@ -27,9 +27,10 @@ const BIBLE_BOOKS = [
 
 interface NotesPageProps {
   onBack?: () => void;
+  onClose?: () => void;
 }
 
-export default function NotesPage({ onBack }: NotesPageProps = {}) {
+export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -126,6 +127,30 @@ export default function NotesPage({ onBack }: NotesPageProps = {}) {
     setNoteVerses([]);
     setNoteVersion('NKJV');
     setIsEditing(true);
+  };
+
+  const handleReadNote = (note: any) => {
+    setMenuOpenId(null);
+    const firstVerse = note.verses?.[0];
+    if (!firstVerse) return;
+
+    const book = firstVerse.bookId || 'GEN';
+    const ch = firstVerse.chapter || 1;
+    const version = note.version || 'NKJV';
+    const verses = firstVerse.verses;
+    const verseNum = Array.isArray(verses) && verses.length > 0 ? verses[0] : null;
+
+    const query = new URLSearchParams({
+      version,
+      book,
+      chapter: String(ch),
+    });
+    if (verseNum != null) {
+      query.set('verse', String(verseNum));
+    }
+
+    router.push(`/bible?${query.toString()}`);
+    if (onClose) onClose();
   };
 
   const handleOpenEditNote = (note: any) => {
@@ -428,9 +453,7 @@ export default function NotesPage({ onBack }: NotesPageProps = {}) {
                             <p className="text-[14px] font-[400] text-[#333333] dark:text-gray-300 leading-snug">
                               You have made a note on <span className="font-[700] text-[#111111] dark:text-white">{refStr}</span>
                             </p>
-                            <p className="text-[12px] font-[400] text-[#666666] dark:text-gray-400 mt-0.5">
-                              ({note.version || 'NKJV'})
-                            </p>
+                            {/* Removed parenthesized version/Mongo ID */}
                             
                             {/* Label Row */}
                             <div className="flex items-center gap-1.5 mt-2">
@@ -605,7 +628,7 @@ export default function NotesPage({ onBack }: NotesPageProps = {}) {
                       >
                         <X className="w-4 h-4" />
                       </button>
-                      <span className="text-[20px] font-[500] text-[#0B7A81]">{r}({noteVersion})</span>
+                      <span className="text-[20px] font-[500] text-[#0B7A81]">{r}</span>
                       <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 italic">
                         "{vRef.verseText || 'For he spake of the temple of his body.'}"
                       </p>
@@ -714,6 +737,14 @@ export default function NotesPage({ onBack }: NotesPageProps = {}) {
               className="w-[150px] bg-white dark:bg-[#202020] rounded-[12px] shadow-[0_4px_20px_rgba(0,0,0,0.12)] border border-gray-100 dark:border-white/[0.08] py-1.5 overflow-hidden z-50"
               onClick={(e) => e.stopPropagation()}
             >
+              <button
+                onClick={() => handleReadNote(selectedNoteForMenu)}
+                disabled={!selectedNoteForMenu?.verses?.length}
+                className="w-full h-[44px] px-4 flex items-center justify-between text-[14px] font-[500] hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors active:bg-gray-100/50 text-gray-800 dark:text-gray-200 disabled:opacity-40"
+              >
+                <span>Read</span>
+                <BookOpen className="w-4 h-4" />
+              </button>
               <button
                 onClick={() => handleOpenEditNote(selectedNoteForMenu)}
                 className="w-full h-[44px] px-4 flex items-center justify-between text-[14px] font-[500] hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors active:bg-gray-100/50 text-gray-800 dark:text-gray-200"

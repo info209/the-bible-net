@@ -434,8 +434,9 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     const queryVersion = searchParams ? searchParams.get('version') : null;
     const queryBook = searchParams ? searchParams.get('book') : null;
     const queryChapter = searchParams ? searchParams.get('chapter') : null;
+    const queryVerse = searchParams ? searchParams.get('verse') : null;
 
-    if (queryVersion || queryBook || queryChapter) {
+    if (queryVersion || queryBook || queryChapter || queryVerse) {
       // Update version
       if (queryVersion && displayVersionName !== queryVersion && queryVersion !== 'undefined') {
         const matchingVer = bibleVersions.find(v => v.name === queryVersion || v.id === queryVersion);
@@ -459,6 +460,12 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
       if (queryChapter && parseInt(queryChapter) !== selectedChapter) {
         setSelectedChapter(parseInt(queryChapter) || 1);
+      }
+
+      if (queryVerse) {
+        setSelectedVerse(parseInt(queryVerse) || 1);
+      } else {
+        setSelectedVerse(null);
       }
     } else {
       // Pattern: /bible/{version}/{book}/{chapter} or just /bible
@@ -1571,6 +1578,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       chapter={selectedChapter}
       version={displayVersionName || 'KJV'}
       book={displayBookName || 'Genesis'}
+      scrollToVerse={selectedVerse}
       pageTransition={pageTransition}
       onPageTransitionChange={setPageTransition}
       onChapterChange={setSelectedChapter}

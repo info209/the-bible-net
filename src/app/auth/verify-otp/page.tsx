@@ -64,6 +64,31 @@ function VerifyOTPContent() {
                 const data = await res.json();
                 setError(data.error || 'Verification failed');
             } else {
+                // Try auto-login if registration credentials are in sessionStorage
+                if (typeof window !== 'undefined') {
+                    const tempEmail = sessionStorage.getItem('temp_register_email');
+                    const tempPassword = sessionStorage.getItem('temp_register_password');
+                    if (tempEmail && tempPassword) {
+                        try {
+                            const { signIn } = await import('next-auth/react');
+                            const loginRes = await signIn('credentials', {
+                                email: tempEmail,
+                                password: tempPassword,
+                                redirect: false,
+                            });
+                            sessionStorage.removeItem('temp_register_email');
+                            sessionStorage.removeItem('temp_register_password');
+
+                            if (loginRes && !loginRes.error) {
+                                router.push('/home');
+                                router.refresh();
+                                return;
+                            }
+                        } catch (signInErr) {
+                            console.error('Auto-login failed:', signInErr);
+                        }
+                    }
+                }
                 router.push('/home');
             }
         } catch (err) {

@@ -22,9 +22,122 @@ const TABS = [
 
 interface HighlightsPageProps {
   onBack?: () => void;
+  onClose?: () => void;
 }
 
-export default function HighlightsPage({ onBack }: HighlightsPageProps = {}) {
+function formatVersesList(verses: number[]): string {
+  if (!verses || verses.length === 0) return '';
+  const sorted = [...verses].sort((a, b) => a - b);
+  const ranges: string[] = [];
+  let start = sorted[0], end = start;
+  for (let i = 1; i <= sorted.length; i++) {
+    if (i < sorted.length && sorted[i] === end + 1) {
+      end = sorted[i];
+    } else {
+      ranges.push(start === end ? `${start}` : `${start}-${end}`);
+      if (i < sorted.length) {
+        start = sorted[i];
+        end = start;
+      }
+    }
+  }
+  return ranges.join(', ');
+}
+
+function groupHighlights(items: any[]): any[] {
+  const tempGroups: {
+    key: string;
+    items: any[];
+  }[] = [];
+
+  for (const item of items) {
+    if (item.type !== 'highlight') {
+      tempGroups.push({ key: 'other', items: [item] });
+      continue;
+    }
+
+    const { bookId, chapter, versionId, color } = item.metadata || {};
+    const itemTime = item.createdAt ? new Date(item.createdAt).getTime() : Date.now();
+
+    let foundGroup = false;
+    for (const g of tempGroups) {
+      if (g.key === 'other') continue;
+      const firstInGroup = g.items[0];
+      const gMeta = firstInGroup.metadata || {};
+      
+      if (
+        gMeta.bookId === bookId &&
+        gMeta.chapter === chapter &&
+        gMeta.versionId === versionId &&
+        gMeta.color === color
+      ) {
+        const isCloseTime = g.items.some(gi => {
+          const giTime = gi.createdAt ? new Date(gi.createdAt).getTime() : Date.now();
+          return Math.abs(giTime - itemTime) <= 5000;
+        });
+
+        if (isCloseTime) {
+          g.items.push(item);
+          foundGroup = true;
+          break;
+        }
+      }
+    }
+
+    if (!foundGroup) {
+      tempGroups.push({
+        key: `${bookId}_${chapter}_${versionId}_${color}`,
+        items: [item],
+      });
+    }
+  }
+
+  return tempGroups.map(g => {
+    if (g.key === 'other') {
+      return g.items[0];
+    }
+
+    if (g.items.length === 1) {
+      const item = g.items[0];
+      return {
+        ...item,
+        ids: [item._id],
+        refIds: [item.refId],
+      };
+    }
+
+    const sortedGroupItems = [...g.items].sort((a, b) => {
+      const vA = a.metadata?.verse || 0;
+      const vB = b.metadata?.verse || 0;
+      return vA - vB;
+    });
+
+    const first = sortedGroupItems[0];
+    const verses = sortedGroupItems.map(i => i.metadata?.verse).filter(v => v != null);
+    const ids = sortedGroupItems.map(i => i._id);
+    const refIds = sortedGroupItems.map(i => i.refId);
+
+    const combinedContent = sortedGroupItems
+      .map(i => i.metadata?.content)
+      .filter(Boolean)
+      .join(' ');
+
+    return {
+      _id: first._id,
+      ids,
+      refIds,
+      type: 'highlight',
+      createdAt: first.createdAt,
+      metadata: {
+        ...first.metadata,
+        verses,
+        content: combinedContent,
+      }
+    };
+  });
+}
+
+export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps = {}) {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [highlights, setHighlights] = useState<any[]>([]);
@@ -42,16 +155,16 @@ export default function HighlightsPage({ onBack }: HighlightsPageProps = {}) {
       .finally(() => setIsLoading(false));
   }, [session, status]);
 
-  const handleDelete = async (id: string, refId: string) => {
-    setHighlights(prev => prev.filter(h => h._id !== id));
+  const handleDelete = async (ids: string[], refIds: string[]) => {
+    setHighlights(prev => prev.filter(h => !ids.includes(h._id)));
     try {
-      await fetch('/api/user/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ type: 'highlight', refId, metadata: {} })
-      });
+      await Promise.all(
+        ids.map(id =>
+          fetch(`/api/user/save/${id}`, { method: 'DELETE' })
+        )
+      );
     } catch (err) {
-      console.error("Failed to delete highlight:", err);
+      console.error("Failed to delete highlights:", err);
     }
   };
 
@@ -141,14 +254,22 @@ export default function HighlightsPage({ onBack }: HighlightsPageProps = {}) {
         ) : (
           <AnimatePresence>
             <div className="space-y-3">
-              {highlights.map((h) => {
+              {groupHighlights(highlights).map((h) => {
                 const colorId = h.metadata?.color as string | undefined;
                 const hex = colorId ? (HIGHLIGHT_COLOR_MAP[colorId] ?? colorId) : '#FFD234';
                 const book = (h.metadata?.bookName ?? h.metadata?.bookId ?? '—') as string;
                 const chapter = h.metadata?.chapter;
-                const verse = h.metadata?.verse;
+                
+                const versesArr = Array.isArray(h.metadata?.verses)
+                  ? h.metadata.verses
+                  : h.metadata?.verse != null
+                    ? [h.metadata.verse]
+                    : [];
+                
+                const formattedVerses = versesArr.length > 0 ? formatVersesList(versesArr) : '';
+                const ref = [book, chapter != null && formattedVerses ? `${chapter}:${formattedVerses}` : null].filter(Boolean).join(' ');
+                
                 const version = (h.metadata?.versionName ?? h.metadata?.versionId ?? '') as string;
-                const ref = [book, chapter != null && verse != null ? `${chapter}:${verse}` : null].filter(Boolean).join(' ');
                 const content = (h.metadata as any)?.content as string | undefined;
 
                 const headerText = `You have saved ${ref}${version ? ` (${version})` : ''}`;
@@ -173,8 +294,19 @@ export default function HighlightsPage({ onBack }: HighlightsPageProps = {}) {
                         <p className="text-xs text-gray-500 leading-snug truncate">{headerText}</p>
                       </div>
                       <CardKebabMenu
-                        onRead={() => router.push(`/bible?version=${h.metadata?.versionId || 'NKJV'}&book=${h.metadata?.bookId || 'GEN'}&chapter=${h.metadata?.chapter || 1}`)}
-                        onDelete={() => handleDelete(h._id, h.refId)}
+                        onRead={() => {
+                          const query = new URLSearchParams({
+                            version: h.metadata?.versionId || 'NKJV',
+                            book: h.metadata?.bookId || 'GEN',
+                            chapter: String(h.metadata?.chapter || 1),
+                          });
+                          if (versesArr.length > 0) {
+                            query.set('verse', String(versesArr[0]));
+                          }
+                          router.push(`/bible?${query.toString()}`);
+                          if (onClose) onClose();
+                        }}
+                        onDelete={() => handleDelete(h.ids || [h._id], h.refIds || [h.refId])}
                         onShare={() => {
                           if (navigator.share) {
                             navigator.share({ title: ref, text: content ?? ref }).catch(() => {});

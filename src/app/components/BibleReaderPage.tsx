@@ -114,6 +114,7 @@ interface BibleReaderPageProps {
   existingNoteLabels?: string[] | null;
   pageTransition?: 'slide' | 'curl' | 'fade' | 'scroll';
   onPageTransitionChange?: (transition: 'slide' | 'curl' | 'fade' | 'scroll') => void;
+  scrollToVerse?: number | null;
 }
 
 export default function BibleReaderPage(props: BibleReaderPageProps) {
@@ -161,6 +162,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     existingNoteLabels = null,
     pageTransition: propPageTransition,
     onPageTransitionChange: propOnPageTransitionChange,
+    scrollToVerse,
   } = props;
 
   const selectedBook = book;
@@ -787,11 +789,20 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   const currentTheme = themeConfig[selectedTheme];
 
+  // Sync local selectedVerse with scrollToVerse prop when it changes
+  useEffect(() => {
+    if (scrollToVerse !== undefined) {
+      setSelectedVerse(scrollToVerse);
+    }
+  }, [scrollToVerse]);
+
   // Reset selectedVerse when chapter or book changes - set to null so it doesn't auto-scroll
   useEffect(() => {
     // Clear selected verse so chapter opens at the top naturally
-    setSelectedVerse(null);
-  }, [selectedBook, selectedChapter]);
+    if (!scrollToVerse) {
+      setSelectedVerse(null);
+    }
+  }, [selectedBook, selectedChapter, scrollToVerse]);
 
   // Handle verse navigation during narration.
   // NOTE: This effect is intentionally skipped during slider drag (isSeekingRef.current === true).

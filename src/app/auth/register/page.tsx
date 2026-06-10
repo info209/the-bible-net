@@ -44,7 +44,10 @@ export default function RegisterStep1() {
                 setError(data.error || 'Registration failed');
             } else {
                 // Success - go to step 2 (OTP)
-                // Store userId in localStorage or use searchParams
+                if (typeof window !== 'undefined') {
+                    sessionStorage.setItem('temp_register_email', formData.email);
+                    sessionStorage.setItem('temp_register_password', formData.password);
+                }
                 router.push(`/auth/verify-otp?userId=${data.data.userId}&email=${encodeURIComponent(data.data.email)}`);
             }
         } catch (err: any) {

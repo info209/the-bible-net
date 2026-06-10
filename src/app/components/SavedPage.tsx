@@ -15,9 +15,10 @@ const TABS: FilterTab[] = ['All', 'Bible', 'Journals', 'Reading plans'];
 
 interface SavedPageProps {
   onBack?: () => void;
+  onClose?: () => void;
 }
 
-export default function SavedPage({ onBack }: SavedPageProps = {}) {
+export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
   const router = useRouter();
   const { savedVerses, isLoading: versesLoading, updateSavedVerse, deleteSavedVerse } = useSavedVerses();
   const { savedItems, isLoading: itemsLoading, unsaveItem } = useSavedItems();
@@ -75,7 +76,20 @@ export default function SavedPage({ onBack }: SavedPageProps = {}) {
     const book = selectedItemForMenu.bookId || 'GEN';
     const ch = selectedItemForMenu.chapter || 1;
     const version = selectedItemForMenu.version || 'NKJV';
-    router.push(`/bible?version=${version}&book=${book}&chapter=${ch}`);
+    const verses = selectedItemForMenu.verses;
+    const verseNum = Array.isArray(verses) && verses.length > 0 ? verses[0] : null;
+
+    const query = new URLSearchParams({
+      version,
+      book,
+      chapter: String(ch),
+    });
+    if (verseNum != null) {
+      query.set('verse', String(verseNum));
+    }
+
+    router.push(`/bible?${query.toString()}`);
+    if (onClose) onClose();
   };
 
   const handleOpenEditLabels = () => {
