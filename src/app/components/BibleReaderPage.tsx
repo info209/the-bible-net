@@ -199,12 +199,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const repeatModeRef = useRef<'none' | 'chapter' | 'verse'>(repeatMode);
   useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
 
-  useEffect(() => {
-    if (!showAudioControls) {
-      setShowAudioControlPanel(false);
-      setAudioPlayerState('default');
-    }
-  }, [showAudioControls]);
 
   const handleRepeatModeToggle = () => {
     // Functional update avoids stale-closure on rapid taps.
@@ -227,6 +221,16 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   });
   const [showCompareSelector, setShowCompareSelector] = useState(false);
   const [showCompareMenu, setShowCompareMenu] = useState(false);
+
+  const shouldShowAudio = showAudioControls && !compareMode.isActive;
+
+  useEffect(() => {
+    if (!shouldShowAudio) {
+      setShowAudioControlPanel(false);
+      setAudioPlayerState('default');
+      stopNarration();
+    }
+  }, [shouldShowAudio]);
 
   // Book sorting state
   const [bookSortType, setBookSortType] = useState<'traditional' | 'alphabetical'>('traditional');
@@ -1575,7 +1579,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     if (showAudioControlPanel) {
       return "calc(85dvh + 24px)";
     }
-    if (showAudioControls && !isBlockingPopupOpen) {
+    if (shouldShowAudio && !isBlockingPopupOpen) {
       return isReadingMode ? "100px" : "160px";
     }
     return isReadingMode ? "24px" : "80px";
@@ -2238,7 +2242,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       {/* Audio Control Panel */}
       <AudioControlPanel
-        isOpen={showAudioControls && showAudioControlPanel}
+        isOpen={shouldShowAudio && showAudioControlPanel}
         selectedTheme={selectedTheme}
         onClose={() => {
           setShowAudioControlPanel(false);
@@ -2462,7 +2466,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       </div>
 
       {/* Audio Controls Floating Button — hidden when any popup or selector is open */}
-      {showAudioControls && !isBlockingPopupOpen && !showAudioControlPanel && !showSettingsMenu && (
+      {shouldShowAudio && !isBlockingPopupOpen && !showAudioControlPanel && !showSettingsMenu && (
         <AudioFloatingPlayer
           playerState={audioPlayerState}
           isReadingMode={isReadingMode}

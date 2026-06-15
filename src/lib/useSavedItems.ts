@@ -40,9 +40,18 @@ export function useSavedItems(): UseSavedItemsReturn {
   // Prevent concurrent requests for the same item
   const pendingRef = useRef<Set<string>>(new Set());
 
-  // Fetch all saved items once the user session is confirmed
+  const userId = session?.user?.id as string | undefined;
+
+  // Fetch all saved items once the user session is confirmed,
+  // and re-fetch whenever the authenticated user's identity changes.
   useEffect(() => {
-    if (status !== 'authenticated') return;
+    if (status === 'unauthenticated') {
+      // Clear any data cached from a previous user
+      setSavedItems([]);
+      return;
+    }
+
+    if (status !== 'authenticated' || !userId) return;
 
     const fetchSaved = async () => {
       setIsLoading(true);
@@ -60,8 +69,9 @@ export function useSavedItems(): UseSavedItemsReturn {
       }
     };
 
+    setSavedItems([]);
     fetchSaved();
-  }, [status]);
+  }, [status, userId]);
 
   const isSaved = useCallback(
     (type: SavedItemType, refId: string) =>

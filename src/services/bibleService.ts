@@ -716,19 +716,35 @@ export class BibleService {
                 return '';
             }
 
-            // 3. Find the verses
-            const verseDocs = await Verse.find({
-                version: targetVersionId,
+            // 3. Resolve the Chapter document — Verse.chapter is an ObjectId ref,
+            //    not a plain integer. Using chapterNumber (denormalized) is unreliable
+            //    because it is often absent in non-English (Hindi, Telugu) imports.
+            const chapterDoc = await Chapter.findOne({
                 book: bookDoc._id,
-                chapterNumber: chapter,
-                number: { $in: verses }
-            }).sort({ number: 1 }).lean();
+                number: chapter,
+            }).lean();
 
-            if (verseDocs && verseDocs.length > 0) {
-                return verseDocs.map(v => v.text).join(' ');
+            if (!chapterDoc) {
+                console.warn(`[findVersesText] Chapter ${chapter} not found for book ${bookDoc.name} in version ${versionDoc.abbreviation}`);
+                // Fall through to denormalized fallbacks below
             }
 
-            // 4. Denormalized string-matching fallback
+            // 3a. Primary lookup via ObjectId refs — works for all languages
+            if (chapterDoc) {
+                const verseDocs = await Verse.find({
+                    version: targetVersionId,
+                    book: bookDoc._id,
+                    chapter: chapterDoc._id,
+                    number: { $in: verses }
+                }).sort({ number: 1 }).lean();
+
+                if (verseDocs && verseDocs.length > 0) {
+                    return verseDocs.map(v => v.text).join(' ');
+                }
+            }
+
+            // 4. Denormalized string-matching fallback (for legacy documents that
+            //    have versionCode / bookName / chapterNumber pre-populated)
             const fallbackDocs = await Verse.find({
                 versionCode: versionDoc.abbreviation,
                 bookName: bookDoc.name,
@@ -736,7 +752,26 @@ export class BibleService {
                 number: { $in: verses }
             }).sort({ number: 1 }).lean();
 
-            return fallbackDocs.map(v => v.text).join(' ');
+            if (fallbackDocs && fallbackDocs.length > 0) {
+                return fallbackDocs.map(v => v.text).join(' ');
+            }
+
+            // 5. Last-resort: broaden the query to any chapter document belonging
+            //    to this book/version with the right chapter number, in case the
+            //    Chapter document was linked to a different Book instance during
+            //    an import (e.g. cross-version chapter mismatch).
+            if (chapterDoc) {
+                const broadDocs = await Verse.find({
+                    chapter: chapterDoc._id,
+                    number: { $in: verses }
+                }).sort({ number: 1 }).lean();
+
+                if (broadDocs && broadDocs.length > 0) {
+                    return broadDocs.map(v => v.text).join(' ');
+                }
+            }
+
+            return '';
         } catch (error) {
             console.error('[findVersesText] Error fetching verse text:', error);
             return '';

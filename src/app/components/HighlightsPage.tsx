@@ -146,14 +146,23 @@ export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps 
 
   useEffect(() => {
     if (status === 'loading') return;
-    if (!session?.user) { setIsLoading(false); return; }
 
+    // Clear stale highlights when user signs out
+    if (status === 'unauthenticated' || !session?.user) {
+      setHighlights([]);
+      setIsLoading(false);
+      return;
+    }
+
+    // Re-fetch whenever the authenticated user's ID changes
+    setHighlights([]);
+    setIsLoading(true);
     fetch('/api/user/saved-items?type=highlight')
       .then(r => r.json())
       .then(d => { if (d.success) setHighlights(d.data); })
       .catch(console.error)
       .finally(() => setIsLoading(false));
-  }, [session, status]);
+  }, [status, session?.user?.id]);
 
   const handleDelete = async (ids: string[], refIds: string[]) => {
     setHighlights(prev => prev.filter(h => !ids.includes(h._id)));

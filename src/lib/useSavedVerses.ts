@@ -102,8 +102,8 @@ export function useSavedVerses(): UseSavedVersesReturn {
   const [userLabels, setUserLabels] = useState<string[]>([]);
   const [isLabelsLoading, setIsLabelsLoading] = useState(false);
   const pendingRef = useRef<Set<string>>(new Set());
-  // Guards against double-fetching when status is already 'authenticated' on mount
-  const hasFetchedRef = useRef(false);
+  // Track which user's data is currently loaded to detect user switches
+  const loadedForUserRef = useRef<string | null>(null);
 
   const fetchSavedVerses = useCallback(async () => {
     setIsLoading(true);
@@ -133,17 +133,31 @@ export function useSavedVerses(): UseSavedVersesReturn {
     }
   }, []);
 
+  const userId = session?.user?.id as string | undefined;
+
   useEffect(() => {
-    // Fires when status becomes 'authenticated' (normal login flow), OR
-    // immediately on mount if Next-Auth already restored the session from
-    // cookie (e.g. page refresh / navigation back) — hasFetchedRef prevents
-    // a duplicate fetch if both happen in the same lifecycle.
-    if (status !== 'authenticated') return;
-    if (hasFetchedRef.current) return;
-    hasFetchedRef.current = true;
+    // If the user is not authenticated, clear any cached data from a previous session
+    if (status === 'unauthenticated') {
+      if (loadedForUserRef.current !== null) {
+        setSavedVerses([]);
+        setUserLabels([]);
+        loadedForUserRef.current = null;
+      }
+      return;
+    }
+
+    if (status !== 'authenticated' || !userId) return;
+
+    // Re-fetch whenever the logged-in user changes (e.g. sign-out then sign-in as a different user)
+    if (loadedForUserRef.current === userId) return;
+    loadedForUserRef.current = userId;
+
+    // Clear stale data from the previous user before loading the new user's data
+    setSavedVerses([]);
+    setUserLabels([]);
     fetchSavedVerses();
     fetchUserLabels();
-  }, [status, fetchSavedVerses, fetchUserLabels]);
+  }, [status, userId, fetchSavedVerses, fetchUserLabels]);
 
   const isSaved = useCallback(
     (bookId: string, chapter: number, verses: number[]): boolean => {

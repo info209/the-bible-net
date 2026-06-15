@@ -121,6 +121,11 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const [selectedChapter, setSelectedChapter] = useState(1);
   const [selectedVersionId, setSelectedVersionId] = useState<string | null>(null);
   const [displayVersionName, setDisplayVersionName] = useState<string | null>(null);
+
+  // Hydration guard: tracks whether the active version has already been resolved
+  // from a canonical source (localStorage, URL params, or latestProgress).
+  // Prevents subsequent API responses from overriding the user's persisted preference.
+  const versionHydrated = useRef(false);
   const [showBookSelector, setShowBookSelector] = useState(false);
   const [showChapterSelector, setShowChapterSelector] = useState(false);
   const [showVersionSelector, setShowVersionSelector] = useState(false);
@@ -332,7 +337,12 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     const cachedSize = localStorage.getItem('bible-reader-font-size');
     const cachedTransition = localStorage.getItem('bible-reader-page-transition');
 
-    if (cachedVersionId) setSelectedVersionId(cachedVersionId);
+    if (cachedVersionId) {
+      setSelectedVersionId(cachedVersionId);
+      // Mark as hydrated immediately (synchronous ref write) so the
+      // async fetchVersions closure sees it before it completes.
+      versionHydrated.current = true;
+    }
     if (cachedVersionName) setDisplayVersionName(cachedVersionName);
     if (cachedBookId) setSelectedBookId(cachedBookId);
     if (cachedBookName) setDisplayBookName(cachedBookName);
@@ -437,12 +447,14 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     const queryVerse = searchParams ? searchParams.get('verse') : null;
 
     if (queryVersion || queryBook || queryChapter || queryVerse) {
-      // Update version
+      // Update version — URL params are always an explicit user navigation, so
+      // they may override even an already-hydrated version.
       if (queryVersion && displayVersionName !== queryVersion && queryVersion !== 'undefined') {
         const matchingVer = bibleVersions.find(v => v.name === queryVersion || v.id === queryVersion);
         if (matchingVer) {
           setSelectedVersionId(matchingVer.id);
           setDisplayVersionName(matchingVer.name);
+          versionHydrated.current = true;
         }
       }
 
@@ -474,12 +486,13 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       if (segments.length >= 4) {
         const [_, urlVersion, urlBook, urlChapter] = segments;
 
-        // Update version
+        // Update version — path-based deep links are explicit navigation.
         if (urlVersion && displayVersionName !== urlVersion && urlVersion !== 'undefined') {
           const matchingVer = bibleVersions.find(v => v.name === urlVersion || v.id === urlVersion);
           if (matchingVer) {
             setSelectedVersionId(matchingVer.id);
             setDisplayVersionName(matchingVer.name);
+            versionHydrated.current = true;
           }
         }
 
@@ -499,13 +512,15 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         if (urlChapter && parseInt(urlChapter) !== selectedChapter) {
           setSelectedChapter(parseInt(urlChapter) || 1);
         }
-      } else if (segments.length === 1 && latestProgress && !selectedBookId) {
-        // Just /bible opened - load latest progress if we haven't set a book yet
+      } else if (segments.length === 1 && latestProgress && !versionHydrated.current) {
+        // Just /bible opened - restore latest progress only if nothing has been
+        // hydrated yet (localStorage takes precedence over progress store).
         setSelectedVersionId(latestProgress.versionId);
         setDisplayVersionName(latestProgress.versionName || null);
         setSelectedBookId(latestProgress.bookId);
         setDisplayBookName(latestProgress.bookName || 'Genesis');
         setSelectedChapter(latestProgress.chapter);
+        versionHydrated.current = true;
       }
     }
   }, [pathname, searchParams, bibleVersions, bibleBooksState]); // Removed state dependencies to prevent resetting user selection back to URL state
@@ -591,10 +606,14 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
             language: v.language === 'en' ? 'English' : v.language === 'te' ? 'Telugu' : v.language === 'hi' ? 'Hindi' : v.language
           }));
           setBibleVersions(mappedVersions);
-          if (mappedVersions.length > 0 && !selectedVersionId) {
+          // Only apply the KJV default if no version has been resolved yet.
+          // Using the ref (not state) avoids the stale-closure problem:
+          // the ref always reflects the latest value even inside an async callback.
+          if (mappedVersions.length > 0 && !versionHydrated.current) {
             const kjvVersion = mappedVersions.find((v: any) => v.name === 'KJV' || v.name === 'KJV-BSI') || mappedVersions[0];
             setSelectedVersionId(kjvVersion.id);
             setDisplayVersionName(kjvVersion.name);
+            versionHydrated.current = true;
           }
         }
       } catch (err) {

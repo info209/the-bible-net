@@ -85,12 +85,18 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
   };
 
   useEffect(() => {
-    if (status === 'authenticated') {
-      fetchNotes();
-    } else if (status === 'unauthenticated') {
+    if (status === 'unauthenticated') {
+      // Clear any data cached from a previous user session
+      setNotes([]);
       setIsLoading(false);
+      return;
     }
-  }, [status]);
+    if (status === 'authenticated' && session?.user?.id) {
+      // Clear stale data before re-fetching for this user
+      setNotes([]);
+      fetchNotes();
+    }
+  }, [status, session?.user?.id]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
