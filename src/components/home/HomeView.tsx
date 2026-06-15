@@ -683,11 +683,11 @@ export default function HomeView() {
 
         {/* Paragraph Text */}
         <p className="text-gray-500 text-sm leading-relaxed text-center max-w-sm mb-8 px-2 font-normal">
-          Lorem ipsum dolor sit amet, consectetur adipiscing elit. In volutpat enim a odio sagittis pretium ut vitae diam.
+          Helping you discover God's truth and deepen your faith daily.
         </p>
 
         {/* Links Grid */}
-        <div className="grid grid-cols-2 gap-x-12 gap-y-3.5 text-sm text-gray-400 font-medium mb-10 w-full max-w-[280px]">
+        {/* <div className="grid grid-cols-2 gap-x-12 gap-y-3.5 text-sm text-gray-400 font-medium mb-10 w-full max-w-[280px]">
           <div className="flex flex-col space-y-3 items-start">
             <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
             <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
@@ -700,7 +700,7 @@ export default function HomeView() {
             <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
             <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
           </div>
-        </div>
+        </div> */}
 
         {/* Social Icons */}
         <div className="flex items-center justify-center gap-8 mb-4">

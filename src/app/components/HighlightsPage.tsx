@@ -281,7 +281,7 @@ export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps 
                 const version = (h.metadata?.versionName ?? h.metadata?.versionId ?? '') as string;
                 const content = (h.metadata as any)?.content as string | undefined;
 
-                const headerText = `You have saved ${ref}${version ? ` (${version})` : ''}`;
+                const headerText = `You have highlighted ${ref}${version ? ` (${version})` : ''}`;
 
                 return (
                   <motion.div

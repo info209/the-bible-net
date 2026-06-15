@@ -1,12 +1,11 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { MoreVertical, BookOpen, Pencil, GitCompare, Share2, Trash2 } from 'lucide-react';
+import { MoreVertical, BookOpen, Pencil, Share2, Trash2 } from 'lucide-react';
 
 interface CardKebabMenuProps {
   onRead?: () => void;
   onEdit?: () => void;
-  onCompare?: () => void;
   onShare?: () => void;
   onDelete?: () => void;
 }
@@ -14,7 +13,6 @@ interface CardKebabMenuProps {
 export default function CardKebabMenu({
   onRead,
   onEdit,
-  onCompare,
   onShare,
   onDelete,
 }: CardKebabMenuProps) {
@@ -33,11 +31,10 @@ export default function CardKebabMenu({
   }, [open]);
 
   const items = [
-    { label: 'Read',          icon: BookOpen,   action: onRead,    color: 'text-gray-700' },
-    { label: 'Edit',          icon: Pencil,     action: onEdit,    color: 'text-gray-700' },
-    { label: 'Compare Verse', icon: GitCompare, action: onCompare, color: 'text-gray-700' },
-    { label: 'Share',         icon: Share2,     action: onShare,   color: 'text-gray-700' },
-    { label: 'Delete',        icon: Trash2,     action: onDelete,  color: 'text-red-500'  },
+    { label: 'Read',   icon: BookOpen, action: onRead,   color: 'text-gray-700' },
+    { label: 'Edit',   icon: Pencil,   action: onEdit,   color: 'text-gray-700' },
+    { label: 'Share',  icon: Share2,   action: onShare,  color: 'text-gray-700' },
+    { label: 'Delete', icon: Trash2,   action: onDelete, color: 'text-red-500'  },
   ].filter(i => i.action); // only show items with handlers
 
   return (

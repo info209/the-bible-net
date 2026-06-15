@@ -2,8 +2,8 @@
 
 import { Globe, Menu, User, LogIn, UserPlus } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useState, useEffect } from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ProfilePanel from './ProfilePanel';
 import {
@@ -11,14 +11,8 @@ import {
   DropdownMenuContent,
   DropdownMenuGroup,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
 
 
 interface AppHeaderProps {
@@ -29,39 +23,11 @@ interface AppHeaderProps {
 export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
   const { data: session } = useSession();
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false);
-  const [isLangOpen, setIsLangOpen] = useState(false);
   const router = useRouter();
-  const pathname = usePathname();
-  const [currentLocale, setCurrentLocale] = useState('en');
-
-  const languages = [
-    { code: 'en', name: 'English', label: 'En', flag: '🇺🇸' },
-    { code: 'hi', name: 'हिन्दी', label: 'Hi', flag: '🇮🇳' },
-    { code: 'es', name: 'Español', label: 'Es', flag: '🇪🇸' },
-  ];
-
-  // Read locale from cookie on mount
-  useEffect(() => {
-    const cookies = document.cookie.split('; ');
-    const localeCookie = cookies.find(row => row.startsWith('NEXT_LOCALE='));
-    if (localeCookie) {
-      setCurrentLocale(localeCookie.split('=')[1]);
-    }
-  }, []);
-
-  const changeLanguage = (code: string) => {
-    document.cookie = `NEXT_LOCALE=${code}; path=/; max-age=31536000`;
-    setCurrentLocale(code);
-    setIsLangOpen(false);
-    router.refresh();
-  };
 
   const navigateTo = (path: string) => {
     router.push(path);
   };
-
-  // Capitalize the first letter for the label
-  const localeLabel = currentLocale.charAt(0).toUpperCase() + currentLocale.slice(1);
 
   return (
     <header className={`fixed top-0 left-0 right-0 z-50 h-16 glass-teal flex justify-center w-full shadow-sm border-b border-white/10 ${className || ''}`}>
@@ -76,42 +42,11 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
 
         {/* Action Buttons (Right Aligned with Content) */}
         <div className="flex justify-end items-center gap-3 text-white">
-          {/* Language Selector */}
-          <Popover open={isLangOpen} onOpenChange={setIsLangOpen}>
-            <PopoverTrigger asChild>
-              <button className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/30 cursor-pointer hover:bg-white/10 active:scale-95 transition-all">
-                <span className="text-[14px] font-medium">{localeLabel}</span>
-                <Globe className="size-4 opacity-90" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent
-              align="end"
-              sideOffset={8}
-              className="w-48 rounded-xl border-none bg-white p-0 shadow-2xl overflow-hidden"
-            >
-              <p className="px-4 py-2.5 text-[10px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50">
-                Select Language
-              </p>
-              {languages.map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => changeLanguage(lang.code)}
-                  className={`w-full flex items-center justify-between px-4 py-3 text-sm transition-all duration-150 ${currentLocale === lang.code
-                      ? 'bg-primary-teal-subtle text-primary-teal font-bold'
-                      : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-lg leading-none">{lang.flag}</span>
-                    <span>{lang.name}</span>
-                  </div>
-                  {currentLocale === lang.code && (
-                    <div className="w-2 h-2 rounded-full bg-primary-teal" />
-                  )}
-                </button>
-              ))}
-            </PopoverContent>
-          </Popover>
+          {/* Language Selector (disabled – English only) */}
+          <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/30 opacity-70 cursor-default pointer-events-none select-none">
+            <Globe className="size-4 opacity-90" />
+            <span className="text-[14px] font-medium">English</span>
+          </div>
 
           {/* User Account & Menu */}
           {session?.user ? (
@@ -172,4 +107,3 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
     </header>
   );
 }
-

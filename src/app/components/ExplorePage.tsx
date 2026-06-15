@@ -1,3 +1,19 @@
+'use client';
+
+import ComingSoonPage from './ComingSoonPage';
+
+export default function ExplorePage() {
+  return (
+    <ComingSoonPage
+      variant="coming-soon"
+      title="Explore"
+      showBackButton={false}
+    />
+  );
+}
+
+/* ─── Previous Explore UI (commented out) ────────────────────────────────────
+
 import { TrendingUp, Users, Video, Calendar, Star, BookOpen, Heart, MessageCircle } from 'lucide-react';
 
 export default function ExplorePage() {
@@ -81,13 +97,11 @@ export default function ExplorePage() {
 
   return (
     <div className="space-y-6 pb-6 bg-white min-h-full">
-      {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-800 mb-2">Explore</h1>
         <p className="text-gray-600">Discover inspiring content and connect with the community</p>
       </div>
 
-      {/* Search bar */}
       <div className="relative">
         <input
           type="text"
@@ -99,7 +113,6 @@ export default function ExplorePage() {
         </button>
       </div>
 
-      {/* Trending Section */}
       <div className="space-y-4">
         <div className="flex items-center space-x-2">
           <TrendingUp className="size-6 text-[var(--color-accent-rose)]" />
@@ -108,20 +121,18 @@ export default function ExplorePage() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {featuredPlans.map((plan, i) => (
             <div key={i} className="group relative h-80 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all cursor-pointer">
-              <img 
+              <img
                 src={plan.image}
                 alt={plan.title}
                 className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
               />
               <div className={`absolute inset-0 bg-gradient-to-t ${plan.color} opacity-60`} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
-              
               <div className="absolute top-4 right-4">
                 <span className="bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full text-xs font-bold text-gray-800">
                   {plan.category}
                 </span>
               </div>
-
               <div className="absolute inset-0 p-6 flex flex-col justify-end">
                 <h3 className="text-white text-2xl font-bold mb-3">{plan.title}</h3>
                 <div className="flex items-center space-x-4 text-white/90 text-sm mb-4">
@@ -143,7 +154,6 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      {/* Live Events */}
       <div className="space-y-4">
         <div className="flex items-center space-x-2">
           <Video className="size-6 text-red-500" />
@@ -177,7 +187,6 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      {/* Popular Topics */}
       <div className="space-y-4">
         <div className="flex items-center space-x-2">
           <Star className="size-6 text-amber-500" />
@@ -197,7 +206,6 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      {/* Featured Devotionals */}
       <div className="space-y-4">
         <div className="flex items-center space-x-2">
           <BookOpen className="size-6 text-[var(--color-primary-teal)]" />
@@ -207,7 +215,7 @@ export default function ExplorePage() {
           {devotionals.map((devotional, i) => (
             <div key={i} className="bg-white rounded-xl overflow-hidden shadow-md hover:shadow-xl transition-all cursor-pointer">
               <div className="h-48 overflow-hidden">
-                <img 
+                <img
                   src={devotional.image}
                   alt={devotional.title}
                   className="w-full h-full object-cover hover:scale-110 transition-transform duration-500"
@@ -231,7 +239,6 @@ export default function ExplorePage() {
         </div>
       </div>
 
-      {/* Community Section */}
       <div className="bg-gradient-to-br from-indigo-100 via-purple-100 to-pink-100 rounded-2xl p-6 shadow-xl">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center space-x-2">
@@ -243,7 +250,7 @@ export default function ExplorePage() {
           </span>
         </div>
         <p className="text-gray-700 mb-6">
-          Connect with fellow believers, share your journey, and grow together in faith. 
+          Connect with fellow believers, share your journey, and grow together in faith.
           Join discussions, prayer groups, and Bible study sessions.
         </p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -270,3 +277,5 @@ export default function ExplorePage() {
     </div>
   );
 }
+
+─────────────────────────────────────────────────────────────────────────── */

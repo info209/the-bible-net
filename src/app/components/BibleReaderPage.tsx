@@ -1702,7 +1702,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                         Fonts & Settings
                       </button>
 
-                      <div className="flex items-center justify-between gap-4 px-4 py-3 transition-colors">
+                      {/* <div className="flex items-center justify-between gap-4 px-4 py-3 transition-colors"> */}
                         <span className="text-sm font-medium" style={{ color: currentTheme.text }}>Hide footnotes</span>
                         <button
                           onClick={(e) => {
@@ -1718,7 +1718,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                               }`}
                           />
                         </button>
-                      </div>
+                      {/* </div> */}
                     </div>
                   </div>
                 )}

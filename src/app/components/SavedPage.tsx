@@ -9,9 +9,9 @@ import {
 import { useSavedVerses, SavedVerseClient } from '@/lib/useSavedVerses';
 import { useSavedItems, SavedItemClient } from '@/lib/useSavedItems';
 
-type FilterTab = 'All' | 'Bible' | 'Journals' | 'Reading plans';
+type FilterTab = 'All' | 'Bible' | 'Reading plans';
 
-const TABS: FilterTab[] = ['All', 'Bible', 'Journals', 'Reading plans'];
+const TABS: FilterTab[] = ['All', 'Bible', 'Reading plans'];
 
 interface SavedPageProps {
   onBack?: () => void;
@@ -204,9 +204,6 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
   const filteredData = useMemo(() => {
     if (activeTab === 'Bible') {
       return savedVerses;
-    }
-    if (activeTab === 'Journals') {
-      return savedItems.filter(item => item.type === 'journal');
     }
     if (activeTab === 'Reading plans') {
       return savedItems.filter(item => item.type === 'reading_plan');
