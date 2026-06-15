@@ -16,7 +16,7 @@ const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
 const TABS = [
   { id: 'all',    label: 'All' },
   { id: 'bible',  label: 'Bible' },
-  { id: 'journal', label: 'Journals' },
+  // { id: 'journal', label: 'Journals' },
   { id: 'reading_plan', label: 'Reading plans' },
 ];
 

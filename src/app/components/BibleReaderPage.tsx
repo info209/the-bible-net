@@ -1703,7 +1703,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       </button>
 
                       {/* <div className="flex items-center justify-between gap-4 px-4 py-3 transition-colors"> */}
-                        <span className="text-sm font-medium" style={{ color: currentTheme.text }}>Hide footnotes</span>
+                        {/* <span className="text-sm font-medium" style={{ color: currentTheme.text }}>Hide footnotes</span>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -1717,7 +1717,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                             className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-white transition-transform ${hideFootnotes ? 'translate-x-5' : 'translate-x-0'
                               }`}
                           />
-                        </button>
+                        </button> */}
                       {/* </div> */}
                     </div>
                   </div>

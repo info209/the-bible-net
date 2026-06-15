@@ -8,9 +8,9 @@ import {
   ArrowLeft, MoreVertical, Tag, MessageSquare, Plus, Check, X, FileText, Trash2, Edit2, Bookmark, BookOpen
 } from 'lucide-react';
 
-type FilterTab = 'All' | 'Bible' | 'Journals' | 'Reading plans';
+type FilterTab = 'All' | 'Bible' | 'Reading plans';
 
-const TABS: FilterTab[] = ['All', 'Bible', 'Journals', 'Reading plans'];
+const TABS: FilterTab[] = ['All', 'Bible', 'Reading plans'];
 
 // Bible Books List for adding verses
 const BIBLE_BOOKS = [
@@ -333,9 +333,9 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
     if (activeTab === 'Bible') {
       return notes.filter(n => n.verses && n.verses.length > 0);
     }
-    if (activeTab === 'Journals') {
-      return notes.filter(n => n.labels.includes('journal') || n.labels.includes('Journal'));
-    }
+    // if (activeTab === 'Journals') {
+    //   return notes.filter(n => n.labels.includes('journal') || n.labels.includes('Journal'));
+    // }
     if (activeTab === 'Reading plans') {
       return notes.filter(n => n.labels.includes('reading') || n.labels.includes('plan'));
     }
