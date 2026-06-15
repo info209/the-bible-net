@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { ChevronLeft, Highlighter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardKebabMenu from '@/app/components/CardKebabMenu';
+import LibraryPageHeader from './LibraryPageHeader';
 
 const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
   yellow: '#FFD234', green: '#4CD964', blue: '#34AADC',
@@ -179,36 +180,17 @@ export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps 
 
   const handleBack = () => onBack ? onBack() : router.back();
 
-  /* ── Loading skeleton ── */
-  if (status === 'loading' || (isLoading && status === 'authenticated')) {
-    return (
-      <div className="min-h-screen bg-[#f4f8f9]">
-        <header className="sticky top-0 z-40 bg-white shadow-sm pt-2">
-          <div className="flex items-center gap-3 px-4 py-3.5">
-            <button onClick={handleBack} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100">
-              <ChevronLeft className="size-5 text-gray-700" />
-            </button>
-            <h1 className="text-lg font-bold text-gray-900">Highlights</h1>
-          </div>
-        </header>
-        <main className="px-4 py-4 max-w-2xl mx-auto space-y-3">
-          {[1,2,3,4].map(n => <div key={n} className="h-28 bg-white rounded-2xl border border-gray-100 animate-pulse" />)}
-        </main>
-      </div>
-    );
-  }
-
   /* ── Not signed in ── */
-  if (!session?.user) {
+  if (status === 'unauthenticated' || (status !== 'loading' && !session?.user)) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-[#f4f8f9]">
-        <div className="w-16 h-16 bg-[#e8f6f7] rounded-full flex items-center justify-center mb-4">
-          <Highlighter className="w-7 h-7 text-[#41ADB0]" strokeWidth={1.5} />
+      <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-[#F4F8F8] dark:bg-[#0D0D0D]">
+        <div className="w-16 h-16 bg-[#0B7A81]/10 rounded-full flex items-center justify-center mb-4">
+          <Highlighter className="w-7 h-7 text-[#0B7A81]" strokeWidth={1.5} />
         </div>
-        <h2 className="text-lg font-bold text-gray-900 mb-1">Sign in to see your highlights</h2>
+        <h2 className="text-lg font-bold text-[#111111] dark:text-white mb-1">Sign in to see your highlights</h2>
         <p className="text-sm text-gray-400 mb-6">Your highlighted verses will appear here.</p>
         <button onClick={() => router.push('/auth/signin')}
-          className="px-6 py-2.5 bg-[#41ADB0] text-white rounded-full text-sm font-semibold shadow-md">
+          className="px-6 py-2.5 bg-[#0B7A81] text-white rounded-full text-sm font-semibold shadow-md active:bg-[#095f64]">
           Sign In
         </button>
       </div>
@@ -217,46 +199,49 @@ export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps 
 
   /* ── Main render ── */
   return (
-    <div className="min-h-screen bg-[#f4f8f9] pb-24">
+    <div className="min-h-screen bg-[#F4F8F8] dark:bg-[#0D0D0D] pb-10">
       {/* Header */}
-      <header className="sticky top-0 z-40 bg-white shadow-sm pt-2">
-        <div className="flex items-center gap-3 px-4 py-3.5">
-          <button onClick={handleBack} className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100">
-            <ChevronLeft className="size-5 text-gray-700" />
-          </button>
-          <h1 className="text-lg font-bold text-gray-900">Highlights</h1>
-        </div>
+      <LibraryPageHeader title="Highlights" onBack={handleBack} />
 
-        {/* Pill Tabs */}
-        <div className="flex gap-2 px-4 pb-3 overflow-x-auto scrollbar-none">
-          {TABS.map(({ id, label }) => {
-            const isActive = activeTab === id;
-            return (
-              <button
-                key={id}
-                onClick={() => setActiveTab(id)}
-                className={`px-4 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap transition-all ${
-                  isActive
-                    ? 'bg-[#e0f4f4] text-[#41ADB0]'
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                }`}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-      </header>
+      {/* Pill Tabs */}
+      <div className="flex px-4 gap-3 overflow-x-auto scrollbar-none pb-4 bg-[#F4F8F8] dark:bg-[#0D0D0D]">
+        {TABS.map(({ id, label }) => {
+          const isActive = activeTab === id;
+          return (
+            <button
+              key={id}
+              onClick={() => setActiveTab(id)}
+              className="h-8 px-4 rounded-[999px] text-[13px] font-[500] whitespace-nowrap shrink-0 transition-all flex items-center justify-center"
+              style={{
+                backgroundColor: isActive ? '#FFFFFF' : '#F1F2F3',
+                border: isActive ? '1px solid #0B7A81' : 'none',
+                color: isActive ? '#0B7A81' : '#6D6D6D',
+              }}
+            >
+              {label}
+            </button>
+          );
+        })}
+      </div>
 
       <main className="px-4 py-4 max-w-2xl mx-auto">
-        {highlights.length === 0 ? (
+        {status === 'loading' || (isLoading && status === 'authenticated') ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map(n => (
+              <div
+                key={n}
+                className="h-[180px] w-full rounded-2xl bg-white dark:bg-[#111111] border border-[#D7D7D7] dark:border-white/[0.04] animate-pulse"
+              />
+            ))}
+          </div>
+        ) : highlights.length === 0 ? (
           /* Empty state */
-          <div className="flex flex-col items-center justify-center py-24 text-center">
-            <div className="w-20 h-20 bg-[#f0f9fa] rounded-full flex items-center justify-center mb-5">
-              <Highlighter className="w-9 h-9 text-[#41ADB0]/50" strokeWidth={1.5} />
+          <div className="flex flex-col items-center justify-center py-20 text-center">
+            <div className="w-16 h-16 rounded-full bg-[#0B7A81]/10 flex items-center justify-center mb-4">
+              <Highlighter className="w-8 h-8 text-[#0B7A81]" strokeWidth={1.5} />
             </div>
-            <h3 className="text-base font-semibold text-gray-800">No highlights yet</h3>
-            <p className="mt-1.5 text-sm text-gray-400 max-w-xs leading-relaxed">
+            <h3 className="text-base font-semibold text-gray-800 dark:text-gray-100">No highlights yet</h3>
+            <p className="text-xs text-gray-400 max-w-xs mt-1">
               Long press any verse in the Bible reader and pick a colour.
             </p>
           </div>
@@ -290,7 +275,7 @@ export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps 
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, x: -16 }}
                     transition={{ duration: 0.18 }}
-                    className="bg-white rounded-2xl border border-gray-100 shadow-sm px-4 py-4"
+                    className="bg-white dark:bg-[#151515] border border-[#D7D7D7] dark:border-white/[0.08] rounded-[16px] p-4 flex flex-col relative transition-shadow hover:shadow-sm"
                   >
                     {/* Top row: header text + kebab */}
                     <div className="flex items-start justify-between gap-2 mb-1.5">
@@ -300,7 +285,7 @@ export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps 
                           className="w-3.5 h-3.5 rounded-full flex-shrink-0 border border-white shadow-sm"
                           style={{ backgroundColor: hex }}
                         />
-                        <p className="text-xs text-gray-500 leading-snug truncate">{headerText}</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-snug truncate">{headerText}</p>
                       </div>
                       <CardKebabMenu
                         onRead={() => {
@@ -326,7 +311,7 @@ export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps 
 
                     {/* Middle: content preview */}
                     {content && (
-                      <p className="text-sm text-gray-600 leading-relaxed line-clamp-3 mb-2">{content}</p>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed line-clamp-3 mb-2">{content}</p>
                     )}
 
                     {/* Bottom: verse reference in highlight colour */}

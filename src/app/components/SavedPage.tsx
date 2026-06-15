@@ -3,8 +3,9 @@
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import LibraryPageHeader from './LibraryPageHeader';
 import {
-  ArrowLeft, MoreVertical, Tag, Eye, EyeOff, BookOpen, Share2, Trash2, Check, X, Bookmark, ExternalLink
+  MoreVertical, Tag, Eye, EyeOff, BookOpen, Share2, Trash2, Check, X, Bookmark, ExternalLink
 } from 'lucide-react';
 import { useSavedVerses, SavedVerseClient } from '@/lib/useSavedVerses';
 import { useSavedItems, SavedItemClient } from '@/lib/useSavedItems';
@@ -218,18 +219,7 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
     <div className="min-h-screen bg-[#F4F8F8] dark:bg-[#0D0D0D] pb-10">
       
       {/* ── Header ─────────────────────────────────────────── */}
-      <header className="px-4 pt-4 pb-5 flex items-center bg-[#F4F8F8] dark:bg-[#0D0D0D] sticky top-0 z-30">
-        <button
-          onClick={() => onBack ? onBack() : router.back()}
-          className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center active:bg-gray-200/50 dark:active:bg-white/[0.06] transition-colors"
-          aria-label="Go back"
-        >
-          <ArrowLeft className="w-5 h-5 text-[#111111] dark:text-white" strokeWidth={2} />
-        </button>
-        <h1 className="ml-2 text-[18px] font-[600] leading-[24px] text-[#111111] dark:text-white">
-          Saved
-        </h1>
-      </header>
+      <LibraryPageHeader title="Saved" onBack={() => onBack ? onBack() : router.back()} />
 
       {/* ── Filter Tabs ─────────────────────────────────────────── */}
       <div className="flex px-4 gap-3 overflow-x-auto scrollbar-none pb-4 bg-[#F4F8F8] dark:bg-[#0D0D0D]">

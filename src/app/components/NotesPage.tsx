@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, MoreVertical, Tag, MessageSquare, Plus, Check, X, FileText, Trash2, Edit2, Bookmark, BookOpen
 } from 'lucide-react';
+import LibraryPageHeader from './LibraryPageHeader';
 
 type FilterTab = 'All' | 'Bible' | 'Reading plans';
 
@@ -349,25 +350,8 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
     return notes;
   }, [activeTab, notes]);
 
-  /* ── Loader ── */
-  if (status === 'loading' || (isLoading && status === 'authenticated')) {
-    return (
-      <div className="min-h-screen bg-[#F4F8F8] dark:bg-[#0D0D0D]">
-        <header className="px-4 pt-4 pb-5 flex items-center bg-[#F4F8F8] dark:bg-[#0D0D0D]">
-          <div className="w-10 h-10 bg-gray-200 animate-pulse rounded-full" />
-          <div className="h-6 w-24 bg-gray-200 animate-pulse rounded-md ml-3" />
-        </header>
-        <main className="px-4 py-4 max-w-2xl mx-auto space-y-4">
-          {[1, 2, 3].map(n => (
-            <div key={n} className="h-32 bg-white rounded-2xl border border-gray-100 animate-pulse" />
-          ))}
-        </main>
-      </div>
-    );
-  }
-
   /* ── Not Signed In ── */
-  if (!session?.user) {
+  if (status === 'unauthenticated' || (status !== 'loading' && !session?.user)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-[#F4F8F8] dark:bg-[#0D0D0D]">
         <div className="w-16 h-16 bg-[#0B7A81]/10 rounded-full flex items-center justify-center mb-4">
@@ -398,20 +382,7 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
             exit={{ opacity: 0 }}
           >
             {/* Header */}
-            <header className="px-4 pt-4 pb-5 flex items-center justify-between bg-[#F4F8F8] dark:bg-[#0D0D0D] sticky top-0 z-30">
-              <div className="flex items-center">
-                <button
-                  onClick={() => onBack ? onBack() : router.back()}
-                  className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center active:bg-gray-200/50 dark:active:bg-white/[0.06] transition-colors"
-                  aria-label="Go back"
-                >
-                  <ArrowLeft className="w-5 h-5 text-[#111111] dark:text-white" strokeWidth={2} />
-                </button>
-                <h1 className="ml-2 text-[18px] font-[600] leading-[24px] text-[#111111] dark:text-white">
-                  Notes
-                </h1>
-              </div>
-            </header>
+            <LibraryPageHeader title="Notes" onBack={() => onBack ? onBack() : router.back()} />
 
             {/* Filter Tabs */}
             <div className="flex px-4 gap-3 overflow-x-auto scrollbar-none pb-4 bg-[#F4F8F8] dark:bg-[#0D0D0D]">
@@ -436,7 +407,16 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
 
             {/* Notes List */}
             <main className="px-5 mt-3 max-w-2xl mx-auto space-y-5">
-              {filteredNotes.length === 0 ? (
+              {status === 'loading' || (isLoading && status === 'authenticated') ? (
+                <div className="space-y-4">
+                  {[1, 2, 3].map(n => (
+                    <div
+                      key={n}
+                      className="h-[180px] w-full rounded-2xl bg-white dark:bg-[#111111] border border-[#D7D7D7] dark:border-white/[0.04] animate-pulse"
+                    />
+                  ))}
+                </div>
+              ) : filteredNotes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <div className="w-16 h-16 rounded-full bg-[#0B7A81]/10 flex items-center justify-center mb-4">
                     <FileText className="w-8 h-8 text-[#0B7A81]" />
