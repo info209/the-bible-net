@@ -66,21 +66,21 @@ export default function FontsSettingsModal({
 
       case "sepia":
         return {
-          bg: "#f5e6c8",
+          bg: "#F7EFED",
           text: "#5c4a3a",
           subText: "#7d6855",
           border: "rgba(92, 74, 58, 0.15)",
-          card: "#f2dec6",
+          card: "#EDE3E1",
           accent: "var(--color-accent-rose)",
         };
 
       case "cream":
         return {
-          bg: "#f8f6f1",
+          bg: "#FEF6EB",
           text: "#4a3f2a",
           subText: "#6e5f46",
           border: "rgba(74, 63, 42, 0.15)",
-          card: "#fcf0db",
+          card: "#F5E8D5",
           accent: "var(--color-accent-rose)",
         };
 
@@ -189,8 +189,8 @@ export default function FontsSettingsModal({
           <div className="flex justify-between items-center w-full px-2">
             {([
               { id: "light", icon: Sun,      bg: "#ffffff", iconColor: "#f59e0b", label: "Light" },
-              { id: "sepia", icon: Coffee,   bg: "#f5e6c8", iconColor: "#92400e", label: "Sepia" },
-              { id: "cream", icon: CloudSun, bg: "#f8f6f1", iconColor: "#b45309", label: "Cream" },
+              { id: "sepia", icon: Coffee,   bg: "#F7EFED", iconColor: "#92400e", label: "Sepia" },
+              { id: "cream", icon: CloudSun, bg: "#FEF6EB", iconColor: "#b45309", label: "Cream" },
               { id: "dark",  icon: Moon,     bg: "#2e2e2e", iconColor: "#c4b5fd", label: "Dark" },
             ] as const).map(({ id, icon: Icon, bg, iconColor, label }) => {
               const active = selectedTheme === id;

@@ -70,3 +70,89 @@ export const BIBLE_BOOKS = [
 export function getBookDetails(order: number) {
     return BIBLE_BOOKS.find(b => b.order === order);
 }
+
+/**
+ * Canonical Telugu book names keyed by the English book name.
+ * Source: పాత నిబంధన + క్రొత్త నిబంధన (Telugu Bible / పవిత్ర గ్రంథము)
+ */
+export const TELUGU_BOOK_NAMES: Record<string, string> = {
+  // Old Testament
+  'Genesis':          'ఆదికాండము',
+  'Exodus':           'నిర్గమకాండము',
+  'Leviticus':        'లేవీయకాండము',
+  'Numbers':          'సంఖ్యాకాండము',
+  'Deuteronomy':      'ద్వితీయోపదేశకాండము',
+  'Joshua':           'యెహోషువ',
+  'Judges':           'న్యాయాధిపతులు',
+  'Ruth':             'రూతు',
+  '1 Samuel':         '1 సమూయేలు',
+  '2 Samuel':         '2 సమూయేలు',
+  '1 Kings':          '1 రాజులు',
+  '2 Kings':          '2 రాజులు',
+  '1 Chronicles':     '1 దినవృత్తాంతములు',
+  '2 Chronicles':     '2 దినవృత్తాంతములు',
+  'Ezra':             'ఎజ్రా',
+  'Nehemiah':         'నెహెమ్యా',
+  'Esther':           'ఎస్తేరు',
+  'Job':              'యోబు',
+  'Psalms':           'కీర్తనల గ్రంథము',
+  'Proverbs':         'సామెతలు',
+  'Ecclesiastes':     'ప్రసంగి',
+  'Song of Solomon':  'పరమగీతము',
+  'Isaiah':           'యెషయా',
+  'Jeremiah':         'యిర్మీయా',
+  'Lamentations':     'విలాపవాక్యములు',
+  'Ezekiel':          'యెహెజ్కేలు',
+  'Daniel':           'దానియేలు',
+  'Hosea':            'హోషేయ',
+  'Joel':             'యోవేలు',
+  'Amos':             'ఆమోసు',
+  'Obadiah':          'ఓబద్యా',
+  'Jonah':            'యోనా',
+  'Micah':            'మీకా',
+  'Nahum':            'నహూము',
+  'Habakkuk':         'హబక్కూకు',
+  'Zephaniah':        'జెఫన్యా',
+  'Haggai':           'హగ్గయి',
+  'Zechariah':        'జెకర్యా',
+  'Malachi':          'మలాకీ',
+  // New Testament
+  'Matthew':          'మత్తయి',
+  'Mark':             'మార్కు',
+  'Luke':             'లూకా',
+  'John':             'యోహాను',
+  'Acts':             'అపొస్తలుల కార్యములు',
+  'Romans':           'రోమీయులకు',
+  '1 Corinthians':    '1 కొరింథీయులకు',
+  '2 Corinthians':    '2 కొరింథీయులకు',
+  'Galatians':        'గలతీయులకు',
+  'Ephesians':        'ఎఫెసీయులకు',
+  'Philippians':      'ఫిలిప్పీయులకు',
+  'Colossians':       'కొలొస్సయులకు',
+  '1 Thessalonians':  '1 థెస్సలొనీకయులకు',
+  '2 Thessalonians':  '2 థెస్సలొనీకయులకు',
+  '1 Timothy':        '1 తిమోతికి',
+  '2 Timothy':        '2 తిమోతికి',
+  'Titus':            'తీతుకు',
+  'Philemon':         'ఫిలేమోనుకు',
+  'Hebrews':          'హెబ్రీయులకు',
+  'James':            'యాకోబు',
+  '1 Peter':          '1 పేతురు',
+  '2 Peter':          '2 పేతురు',
+  '1 John':           '1 యోహాను',
+  '2 John':           '2 యోహాను',
+  '3 John':           '3 యోహాను',
+  'Jude':             'యూదా',
+  'Revelation':       'ప్రకటన గ్రంథము',
+};
+
+/**
+ * Given an English book name and a language, returns the localized display name.
+ * Falls back to the English name if no mapping exists.
+ */
+export function getLocalizedBookName(englishName: string, language: string): string {
+  if (language === 'Telugu') {
+    return TELUGU_BOOK_NAMES[englishName] ?? englishName;
+  }
+  return englishName;
+}

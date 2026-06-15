@@ -33,6 +33,7 @@ import VerseActionMenu from './VerseActionMenu';
 import AudioControlPanel from './AudioControlPanel';
 import { useReadingProgress } from '@/lib/useReadingProgress';
 import { teluguBible, hindiBible } from './BibleData';
+import { BIBLE_BOOKS, TELUGU_BOOK_NAMES } from '@/utils/bibleBooks';
 import {
   Dialog,
   DialogContent,
@@ -641,16 +642,34 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         const result = await response.json();
         if (result.success) {
           const books = result.data;
+
+          // Determine if this version is Telugu so we can localize book names
+          const selectedVerObj = bibleVersions.find((v: any) => v.id === selectedVersionId);
+          const isTeluguVersion = selectedVerObj?.language === 'Telugu';
+
+          // Helper: resolve a display name for a DB book record
+          const resolveDisplayName = (b: any): string => {
+            if (!isTeluguVersion) return b.name;
+            // Look up canonical English name by order, then map to Telugu
+            const canonical = BIBLE_BOOKS.find(bb => bb.order === b.order);
+            if (canonical && TELUGU_BOOK_NAMES[canonical.name]) {
+              return TELUGU_BOOK_NAMES[canonical.name];
+            }
+            // Fallback: try direct English key match
+            if (TELUGU_BOOK_NAMES[b.name]) return TELUGU_BOOK_NAMES[b.name];
+            return b.name;
+          };
+
           // Enhanced filtering to handle missing testament field
           const ot = books.filter((b: any) => {
             if (b.testament) return b.testament === 'OT';
             return b.order <= 39; // Traditional OT count
-          }).map((b: any) => ({ id: b._id, name: b.name }));
+          }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name }));
 
           const nt = books.filter((b: any) => {
             if (b.testament) return b.testament === 'NT';
             return b.order > 39; // Traditional NT start
-          }).map((b: any) => ({ id: b._id, name: b.name }));
+          }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name }));
 
           setBibleBooksState({
             'Old Testament': ot,
@@ -661,7 +680,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
           if (!selectedBookId) {
             if (ot.length > 0) {
-              const genesisBook = ot.find((b: any) => b.name === 'Genesis') || ot[0];
+              // For Telugu, Genesis is first OT book
+              const genesisBook = ot[0];
               setSelectedBookId(genesisBook.id);
               setDisplayBookName(genesisBook.name);
             } else if (nt.length > 0) {
@@ -669,11 +689,13 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
               setDisplayBookName(nt[0].name);
             }
           } else {
-            // Version switched: find the equivalent book ID in the newly fetched books
-            const matchingBook = allNewBooks.find((b: any) => b.name === displayBookName);
+            // Version switched: find equivalent book by English name or localized name
+            const matchingBook = allNewBooks.find(
+              (b: any) => b.name === displayBookName || (b as any).englishName === displayBookName
+            );
             if (matchingBook) {
               setSelectedBookId(matchingBook.id);
-              // displayBookName remains the same
+              setDisplayBookName(matchingBook.name);
             } else if (allNewBooks.length > 0) {
               setSelectedBookId(allNewBooks[0].id);
               setDisplayBookName(allNewBooks[0].name);

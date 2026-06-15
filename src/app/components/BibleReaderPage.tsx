@@ -728,12 +728,12 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       verseNumber: '#E23744'
     },
     sepia: {
-      bg: '#f5e6c8',
+      bg: '#F7EFED',
       text: '#5c4a3a',
       verseNumber: '#D42C3A'
     },
     cream: {
-      bg: '#f8f6f1',
+      bg: '#FEF6EB',
       text: '#4a3f2a',
       verseNumber: '#E23744'
     },
@@ -757,25 +757,25 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       selectedText: '#E23744',
     },
     sepia: {
-      bg: 'rgba(245, 230, 200, 0.97)',
-      solidBg: '#f5e6c8',
+      bg: 'rgba(247, 239, 237, 0.97)',
+      solidBg: '#F7EFED',
       border: '1px solid rgba(92, 74, 58, 0.15)',
       text: '#5c4a3a',
       subtext: '#7d6855',
       itemHover: 'rgba(92, 74, 58, 0.08)',
       divider: 'rgba(92, 74, 58, 0.15)',
-      selectedBg: '#f2dec6',
+      selectedBg: '#EDE3E1',
       selectedText: '#D42C3A',
     },
     cream: {
-      bg: 'rgba(248, 246, 241, 0.97)',
-      solidBg: '#f8f6f1',
+      bg: 'rgba(254, 246, 235, 0.97)',
+      solidBg: '#FEF6EB',
       border: '1px solid rgba(74, 63, 42, 0.15)',
       text: '#4a3f2a',
       subtext: '#6e5f46',
       itemHover: 'rgba(74, 63, 42, 0.08)',
       divider: 'rgba(74, 63, 42, 0.15)',
-      selectedBg: '#fcf0db',
+      selectedBg: '#F5E8D5',
       selectedText: '#E23744',
     },
     dark: {

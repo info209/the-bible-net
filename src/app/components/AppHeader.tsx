@@ -45,7 +45,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
           {/* Language Selector (disabled – English only) */}
           <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/30 opacity-70 cursor-default pointer-events-none select-none">
             <Globe className="size-4 opacity-90" />
-            <span className="text-[14px] font-medium">English</span>
+            <span className="text-[14px] font-medium">En</span>
           </div>
 
           {/* User Account & Menu */}

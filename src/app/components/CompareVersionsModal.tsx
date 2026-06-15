@@ -45,8 +45,8 @@ export default function CompareVersionsModal({
 
   const modalBg = {
     light: '#ffffff',
-    sepia: '#f5e6c8',
-    cream: '#f8f6f1',
+    sepia: '#F7EFED',
+    cream: '#FEF6EB',
     dark: '#1c1c1e'
   }[theme];
 
@@ -140,8 +140,8 @@ export default function CompareVersionsModal({
                         } else if (isDisabled) {
                           btnBg = {
                             light: '#f1f3f3',
-                            sepia: '#f2dec6',
-                            cream: '#fcf0db',
+                            sepia: '#EDE3E1',
+                            cream: '#F5E8D5',
                             dark: '#1c1c1e'
                           }[theme];
                           btnText = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(49,57,58,0.3)';
@@ -149,8 +149,8 @@ export default function CompareVersionsModal({
                         } else {
                           btnBg = {
                             light: '#f1f3f3',
-                            sepia: '#f2dec6',
-                            cream: '#fcf0db',
+                            sepia: '#EDE3E1',
+                            cream: '#F5E8D5',
                             dark: '#2c2c2e'
                           }[theme];
                           btnText = textCol;
