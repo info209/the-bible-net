@@ -362,7 +362,7 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
               {[
                 { label: 'Read', icon: BookOpen, action: handleRead },
                 { label: 'Edit', icon: Tag, action: handleOpenEditLabels },
-                { label: 'Compare verse', icon: ExternalLink, action: handleOpenCompare },
+                // { label: 'Compare verse', icon: ExternalLink, action: handleOpenCompare },
                 { label: 'Share', icon: Share2, action: handleShare },
                 { label: 'Delete', icon: Trash2, action: handleDelete, isDelete: true },
               ].map((item, idx) => {

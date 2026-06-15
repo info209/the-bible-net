@@ -108,6 +108,13 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const cachedVersion = localStorage.getItem('bible-reader-version-name');
+    if (cachedVersion) {
+      setNoteVersion(cachedVersion);
+    }
+  }, []);
+
   const showToast = (msg: string) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3000);
@@ -219,7 +226,7 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
       });
       const json = await res.json();
       
-      const textRes = await fetch(`/api/saved-verses?bookId=${bookId}&chapter=${pickerChapter}`);
+      const textRes = await fetch(`/api/saved-verses?bookId=${bookId}&chapter=${pickerChapter}&version=${noteVersion}`);
       const textJson = await textRes.json();
       if (textJson.success && textJson.data.length > 0) {
         const match = textJson.data.find((v: any) => v.verses.includes(Number(pickerVerse)));

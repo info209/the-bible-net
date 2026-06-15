@@ -2,7 +2,7 @@
 
 import { Globe, Menu, User, LogIn, UserPlus } from 'lucide-react';
 import { useSession } from 'next-auth/react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import ProfilePanel from './ProfilePanel';
@@ -24,6 +24,19 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
   const { data: session } = useSession();
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('profile') === 'true') {
+        setIsProfilePanelOpen(true);
+        // Clean up the URL parameter without reloading
+        const url = new URL(window.location.href);
+        url.searchParams.delete('profile');
+        window.history.replaceState({}, '', url.pathname + url.search);
+      }
+    }
+  }, []);
 
   const navigateTo = (path: string) => {
     router.push(path);

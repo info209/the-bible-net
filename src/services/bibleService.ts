@@ -662,9 +662,15 @@ export class BibleService {
             if (!verses || verses.length === 0) return '';
 
             // 1. Resolve target version
-            let versionDoc = await BibleVersion.findOne({
-                abbreviation: versionCode.toUpperCase()
-            }).lean();
+            let versionDoc = null;
+            if (versionCode && mongoose.Types.ObjectId.isValid(versionCode)) {
+                versionDoc = await BibleVersion.findById(versionCode).lean();
+            }
+            if (!versionDoc && versionCode) {
+                versionDoc = await BibleVersion.findOne({
+                    abbreviation: versionCode.toUpperCase()
+                }).lean();
+            }
 
             // Fallback: search for active version or default NKJV/KJV if requested version not active/found
             if (!versionDoc) {

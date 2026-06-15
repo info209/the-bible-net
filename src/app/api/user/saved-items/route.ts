@@ -4,6 +4,7 @@ import { SavedItemRepository } from '@/repositories/savedItemRepository';
 import { connectDB } from '@/lib/db';
 import { SavedItemType } from '@/models/SavedItem';
 import { BibleService } from '@/services/bibleService';
+import { BibleVersion } from '@/models/Bible';
 
 const VALID_TYPES: SavedItemType[] = ['bible', 'journal', 'reading_plan', 'highlight', 'note'];
 
@@ -34,6 +35,10 @@ export async function GET(req: NextRequest) {
 
     await connectDB();
 
+    // Fetch all versions to build a map of ObjectId to abbreviation
+    const versions = await BibleVersion.find({}).select('abbreviation').lean();
+    const versionMap = new Map(versions.map((v: any) => [v._id.toString(), v.abbreviation]));
+
     const result = await SavedItemRepository.getSavedItems(
       session.user.id as string,
       type,
@@ -47,8 +52,11 @@ export async function GET(req: NextRequest) {
       result.items.map(async (item: any) => {
         if (item.type === 'highlight' && item.metadata) {
           try {
+            const versionId = item.metadata.versionId as string;
+            const versionName = item.metadata.versionName as string || (versionId ? versionMap.get(versionId) : null) || 'NKJV';
+
             const text = await BibleService.findVersesText(
-              (item.metadata.versionId as string) || 'NKJV',
+              versionId || versionName || 'NKJV',
               (item.metadata.bookId as string) || '',
               (item.metadata.bookName as string) || '',
               (item.metadata.chapter as number) || 1,
@@ -58,6 +66,7 @@ export async function GET(req: NextRequest) {
               ...item,
               metadata: {
                 ...item.metadata,
+                versionName: versionName,
                 content: text || 'Verse text not found.'
               }
             };

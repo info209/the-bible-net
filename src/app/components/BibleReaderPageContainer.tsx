@@ -227,27 +227,17 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
     const verseRangeText = buildVerseRangeText(displayBookName || '', selectedChapter, sortedVerses);
 
-    if (labels.length === 0) {
-      // No labels selected — check if we should delete
-      const existing = selectedBookId
-        ? getSavedVerse(selectedBookId, selectedChapter, sortedVerses)
-        : undefined;
-      if (existing) {
-        await deleteSavedVerse(existing._id);
-      }
-    } else {
-      await saveVerse({
-        bookId: selectedBookId || '',
-        bookName: displayBookName || '',
-        chapter: selectedChapter,
-        verses: sortedVerses,
-        verseRangeText,
-        labels,
-        note,
-        version: displayVersionName || undefined,
-        isPrivate,
-      });
-    }
+    await saveVerse({
+      bookId: selectedBookId || '',
+      bookName: displayBookName || '',
+      chapter: selectedChapter,
+      verses: sortedVerses,
+      verseRangeText,
+      labels,
+      note,
+      version: displayVersionName || undefined,
+      isPrivate,
+    });
     setSelectedVerses([]);
   };
 

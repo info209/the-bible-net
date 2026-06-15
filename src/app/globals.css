@@ -510,3 +510,11 @@ html, body, #__next {
     animation: shimmer 1.4s ease-in-out infinite;
   }
 }
+
+@supports (-webkit-touch-callout: none) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
     const bookId = searchParams.get('bookId');
     const chapter = searchParams.get('chapter');
     const label = searchParams.get('label');
+    const versionParam = searchParams.get('version');
     const isPrivate = searchParams.get('isPrivate');
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
     const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '50')));
@@ -45,6 +46,9 @@ export async function GET(req: NextRequest) {
     if (bookId) filter.bookId = bookId;
     if (chapter) filter.chapter = parseInt(chapter);
     if (label) filter.labels = label; // matches arrays containing this label
+    if (versionParam) {
+      filter.version = { $regex: new RegExp(`^${versionParam}$`, 'i') };
+    }
     if (isPrivate !== null && isPrivate !== undefined) {
       filter.isPrivate = isPrivate === 'true';
     }
