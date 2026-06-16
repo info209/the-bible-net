@@ -639,13 +639,29 @@ export default function HomeView() {
               prayers.map((request) => (
                 <div key={request._id} className="bg-white/80 backdrop-blur-sm rounded-lg p-4 hover:bg-white transition-colors">
                   <div className="flex items-start space-x-3">
-                    <div className="size-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold uppercase">
-                      {(request.anonymous ? 'A' : (request.userId?.firstName?.[0] || 'U'))}
-                    </div>
+                    {!request.anonymous && request.userId?.image ? (
+                      <img
+                        src={request.userId.image}
+                        alt={request.userId.firstName || 'User'}
+                        className="size-10 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="size-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold uppercase text-xs">
+                        {request.anonymous 
+                          ? 'A' 
+                          : request.userId 
+                            ? `${request.userId.firstName?.[0] || ''}${request.userId.lastName?.[0] || ''}`.toUpperCase() || 'U'
+                            : 'U'
+                        }
+                      </div>
+                    )}
                     <div className="flex-1">
                       <div className="flex items-center justify-between mb-1">
                         <p className="font-semibold text-gray-800">
-                          {request.anonymous ? 'Anonymous' : `${request.userId?.firstName} ${request.userId?.lastName?.[0]}.`}
+                          {request.anonymous 
+                            ? 'Anonymous' 
+                            : `${request.userId?.firstName || 'User'}${request.userId?.lastName?.[0] ? ' ' + request.userId.lastName[0] + '.' : ''}`
+                          }
                         </p>
                         <span className="text-xs text-gray-500">{getRelativeTime(request.createdAt)}</span>
                       </div>

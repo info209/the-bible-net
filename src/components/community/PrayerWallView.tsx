@@ -248,12 +248,28 @@ export default function PrayerWallView() {
                   </div>
 
                   <div className="flex items-center space-x-3 mb-4">
-                    <div className="size-11 rounded-full bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center text-white font-extrabold uppercase shadow-inner text-sm ring-2 ring-white">
-                      {prayer.anonymous ? 'A' : (prayer.userId?.firstName?.[0] || 'U')}
-                    </div>
+                    {!prayer.anonymous && prayer.userId?.image ? (
+                      <img
+                        src={prayer.userId.image}
+                        alt={prayer.userId.firstName || 'User'}
+                        className="size-11 rounded-full object-cover ring-2 ring-white shadow-inner"
+                      />
+                    ) : (
+                      <div className="size-11 rounded-full bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center text-white font-extrabold uppercase shadow-inner text-sm ring-2 ring-white">
+                        {prayer.anonymous 
+                          ? 'A' 
+                          : prayer.userId 
+                            ? `${prayer.userId.firstName?.[0] || ''}${prayer.userId.lastName?.[0] || ''}`.toUpperCase() || 'U'
+                            : 'U'
+                        }
+                      </div>
+                    )}
                     <div>
                       <h4 className="font-bold text-gray-900 leading-none mb-1">
-                        {prayer.anonymous ? 'Anonymous' : `${prayer.userId?.firstName} ${prayer.userId?.lastName?.[0] || ''}`}
+                        {prayer.anonymous 
+                          ? 'Anonymous' 
+                          : `${prayer.userId?.firstName || 'User'}${prayer.userId?.lastName?.[0] ? ' ' + prayer.userId.lastName[0] : ''}`
+                        }
                       </h4>
                       <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
                         {new Date(prayer.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}

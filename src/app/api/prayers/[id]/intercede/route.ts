@@ -75,7 +75,7 @@ export async function POST(
         $inc: { intercessionCount: 1 }
       },
       { new: true }
-    );
+    ).populate('userId', 'firstName lastName image');
 
     return NextResponse.json(updatedPrayer);
   } catch (error) {
