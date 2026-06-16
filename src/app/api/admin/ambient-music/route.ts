@@ -49,45 +49,29 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/admin/ambient-music
- * Upload a new ambient music track.
+ * Register a new ambient music track by storing metadata in DB.
  */
 export async function POST(req: NextRequest) {
+    let filePathToDeleteOnError: string | null = null;
     try {
         const authContext = await getAuthContext();
         if (!authContext.userId || (authContext.role !== UserRole.SUPER_ADMIN && authContext.role !== UserRole.SUB_ADMIN)) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const formData = await req.formData();
-        const file = formData.get('file') as File | null;
-        const label = formData.get('label') as string | null;
+        const body = await req.json();
+        const { label, file_path } = body;
+        filePathToDeleteOnError = file_path;
 
         // 1. Validate mandatory fields
         if (!label || label.trim() === '') {
             return NextResponse.json({ success: false, error: 'Label is mandatory' }, { status: 400 });
         }
-        if (!file) {
-            return NextResponse.json({ success: false, error: 'Music file is mandatory' }, { status: 400 });
+        if (!file_path || file_path.trim() === '') {
+            return NextResponse.json({ success: false, error: 'File path is mandatory' }, { status: 400 });
         }
 
-        // 2. Validate file type and extension
-        const ext = path.extname(file.name).toLowerCase();
-        if (!AMBIENT_MUSIC_CONFIG.SUPPORTED_EXTENSIONS.includes(ext) && !AMBIENT_MUSIC_CONFIG.SUPPORTED_MIME_TYPES.includes(file.type)) {
-            return NextResponse.json({
-                success: false,
-                error: `Unsupported file type. Only ${AMBIENT_MUSIC_CONFIG.SUPPORTED_EXTENSIONS.join(', ')} formats are allowed.`
-            }, { status: 400 });
-        }
-
-        // 3. Validate file size
-        if (file.size > AMBIENT_MUSIC_CONFIG.MAX_FILE_SIZE) {
-            return NextResponse.json({
-                success: false,
-                error: `File size exceeds the limit of ${AMBIENT_MUSIC_CONFIG.MAX_FILE_SIZE / (1024 * 1024)}MB.`
-            }, { status: 400 });
-        }
-
-        // 4. Validate duplicate label
+        // 2. Validate duplicate label
         const { data: duplicateTrack, error: duplicateCheckError } = await authContext.supabase
             .from('ambient_music')
             .select('id')
@@ -105,7 +89,7 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
-        // 5. Check maximum track count limit
+        // 3. Check maximum track count limit
         const { count, error: countError } = await authContext.supabase
             .from('ambient_music')
             .select('*', { count: 'exact', head: true });
@@ -121,46 +105,24 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
-        // 6. Generate path and upload to Storage
-        const cleanBase = sanitizeFilename(path.basename(file.name, ext));
-        const timestamp = Date.now();
-        const randomId = Math.random().toString(36).substring(2, 8);
-        const filePath = `ambient-music/${timestamp}-${randomId}-${cleanBase}${ext}`;
-        const buffer = Buffer.from(await file.arrayBuffer());
-
-        const { error: uploadError } = await authContext.supabase.storage
-            .from('ambient-music')
-            .upload(filePath, buffer, {
-                contentType: file.type || 'audio/mpeg',
-                upsert: false
-            });
-
-        if (uploadError) {
-            throw uploadError;
-        }
-
-        // 7. Insert metadata in Database
+        // 4. Insert metadata in Database
         const { data: insertedRecord, error: insertError } = await authContext.supabase
             .from('ambient_music')
             .insert({
                 label: label.trim(),
-                file_path: filePath,
+                file_path: file_path,
                 created_by: authContext.userId
             })
             .select()
             .single();
 
         if (insertError) {
-            // Rollback Storage Upload if database entry fails
-            await authContext.supabase.storage
-                .from('ambient-music')
-                .remove([filePath]);
             throw insertError;
         }
 
         const { data: { publicUrl } } = authContext.supabase.storage
             .from('ambient-music')
-            .getPublicUrl(filePath);
+            .getPublicUrl(file_path);
 
         return NextResponse.json({
             success: true,
@@ -173,7 +135,20 @@ export async function POST(req: NextRequest) {
             }
         });
     } catch (error: any) {
-        console.error('POST ambient music upload error:', error);
+        console.error('POST ambient music metadata error:', error);
+        
+        // Clean up the uploaded storage file if database operation failed
+        if (filePathToDeleteOnError) {
+            try {
+                const authContext = await getAuthContext();
+                await authContext.supabase.storage
+                    .from('ambient-music')
+                    .remove([filePathToDeleteOnError]);
+            } catch (cleanupErr) {
+                console.error('Failed to clean up orphaned storage file after error:', cleanupErr);
+            }
+        }
+        
         return NextResponse.json({ success: false, error: error.message || 'Upload failed' }, { status: 500 });
     }
 }
