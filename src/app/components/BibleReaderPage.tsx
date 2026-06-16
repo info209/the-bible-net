@@ -82,8 +82,8 @@ interface BibleReaderPageProps {
   onBookChange?: (book: string) => void;
   onVersionChange?: (ver: string) => void;
   selectedVerses?: number[];
-  onVerseLongPress?: (verseNumber: number, e?: React.MouseEvent | React.TouchEvent) => void;
-  onVerseTap?: (verseNumber: number, e?: React.MouseEvent | React.TouchEvent) => void;
+  onVerseLongPress?: (verseNumber: number, e?: React.PointerEvent) => void;
+  onVerseTap?: (verseNumber: number, e?: React.PointerEvent) => void;
   onSaveHighlight?: (verses: number[], color: string) => void;
   onSaveNote?: (verses: number[], note: string, labels: string[]) => void;
   onPlayAudio?: () => void;
@@ -418,6 +418,31 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const isSeekingRef = useRef(false);
   // Stores whether audio was playing when a drag started so we can auto-resume on release.
   const wasPlayingBeforeDragRef = useRef(false);
+
+  // Holds a user-facing error message when no TTS voice is available for the selected language
+  const [ttsVoiceError, setTtsVoiceError] = useState<string | null>(null);
+  // Available voices — populated asynchronously by the browser
+  const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
+
+  // Load voices (browsers fire onvoiceschanged asynchronously)
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    const loadVoices = () => setAvailableVoices(window.speechSynthesis.getVoices());
+    loadVoices();
+    window.speechSynthesis.onvoiceschanged = loadVoices;
+    return () => { if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null; };
+  }, []);
+
+  // Helper: find the best available voice for a BCP-47 lang tag (e.g. 'te-IN')
+  const findVoiceForLang = (langTag: string): SpeechSynthesisVoice | null => {
+    if (!availableVoices.length) return null;
+    const prefix = langTag.split('-')[0].toLowerCase();
+    return (
+      availableVoices.find(v => v.lang.toLowerCase() === langTag.toLowerCase()) ??
+      availableVoices.find(v => v.lang.toLowerCase().startsWith(prefix + '-') || v.lang.toLowerCase() === prefix) ??
+      null
+    );
+  };
 
   // Timer state for time-based narration
   const narrationTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -946,6 +971,28 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       return;
     }
 
+    // ── Voice availability check ───────────────────────────────────────────────────
+    const currentVersionObj = (apiVersions || fallbackVersions).find(
+      v => v.name === selectedVersion || v.id === selectedVersion
+    );
+    const lang = currentVersionObj?.language;
+    const targetLang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
+    const isNonEnglish = targetLang !== 'en-US';
+
+    if (isNonEnglish) {
+      const matchedVoice = findVoiceForLang(targetLang);
+      if (!matchedVoice) {
+        const langLabel = lang === 'Telugu' ? 'Telugu' : lang === 'Hindi' ? 'Hindi' : lang;
+        setTtsVoiceError(
+          `${langLabel} voice is not available on this device/browser. ` +
+          `Please install a ${langLabel} TTS voice or use a mobile browser.`
+        );
+        return;
+      }
+    }
+    // Clear any previous error since the voice is available
+    setTtsVoiceError(null);
+
     // Stop any ongoing narration
     window.speechSynthesis.cancel();
 
@@ -1033,17 +1080,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         const verseNumber = verse.number;
         const verseText = verse.text;
 
-        setSelectedVerse(verseNumber);
-
-        // Scroll to the verse being read — suppressed while slider is being dragged
-        setTimeout(() => {
-          if (isUserInteractingRef.current || isDraggingRef.current) return;
-          const verseElement = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verseNumber}`);
-          if (verseElement) {
-            verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }, 100);
-
         // Create speech utterance for the verse
         const verseUtterance = new SpeechSynthesisUtterance(verseText);
         verseUtterance.rate = playbackSpeed;
@@ -1053,12 +1089,26 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         verseUtterance.volume = constrainedVolume;
         console.log('[Volume] Setting verse utterance volume to:', constrainedVolume);
 
-        // Highlight verse IMMEDIATELY before starting speech
-        setCurrentReadingVerse(verseNumber);
-        console.log('Setting currentReadingVerse to:', verseNumber);
+        // Auto-select voice for non-English languages
+        if (utteranceLang !== 'en-US') {
+          const autoVoice = findVoiceForLang(utteranceLang);
+          if (autoVoice) verseUtterance.voice = autoVoice;
+        }
 
+        // Highlight and scroll ONLY when speech actually starts
         verseUtterance.onstart = () => {
           console.log('Speech started for verse:', verseNumber);
+          setSelectedVerse(verseNumber);
+          setCurrentReadingVerse(verseNumber);
+          console.log('Setting currentReadingVerse to:', verseNumber);
+
+          // Scroll to the verse being read — suppressed while slider is being dragged
+          if (!isUserInteractingRef.current && !isDraggingRef.current) {
+            const verseElement = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verseNumber}`);
+            if (verseElement) {
+              verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+          }
         };
 
         verseUtterance.onend = () => {
@@ -1253,17 +1303,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     const verseNumber = verse.number;
     const verseText = verse.text;
 
-    setSelectedVerse(verseNumber);
-
-    // Scroll to the verse being read — suppressed while slider is being dragged
-    setTimeout(() => {
-      if (isUserInteractingRef.current || isDraggingRef.current) return;
-      const verseElement = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verseNumber}`);
-      if (verseElement) {
-        verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
-    }, 100);
-
     // Create speech utterance
     const utterance = new SpeechSynthesisUtterance(verseText);
     utterance.rate = playbackSpeed;
@@ -1273,15 +1312,25 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     utterance.volume = constrainedVolume;
     console.log('[Volume] Setting reading utterance volume to:', constrainedVolume);
 
-    // Highlight verse IMMEDIATELY before starting speech
-    setCurrentReadingVerse(verseNumber);
-    console.log('Setting currentReadingVerse to:', verseNumber);
+    // Auto-select voice for non-English languages
+    if (utteranceLang !== 'en-US') {
+      const autoVoice = findVoiceForLang(utteranceLang);
+      if (autoVoice) utterance.voice = autoVoice;
+    }
 
-    // Keep verse highlighted when speech starts
+    // Highlight verse and scroll ONLY when speech actually starts (prevents fake-playback)
     utterance.onstart = () => {
-      // Ensure highlight is set even if there was a delay
+      setSelectedVerse(verseNumber);
       setCurrentReadingVerse(verseNumber);
       console.log('Speech started for verse:', verseNumber);
+
+      // Scroll to the verse being read — suppressed while slider is being dragged
+      if (!isUserInteractingRef.current && !isDraggingRef.current) {
+        const verseElement = document.getElementById(`verse-${selectedBook}-${selectedChapter}-${verseNumber}`);
+        if (verseElement) {
+          verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }
 
       // Update progress based on verse completion
       const totalVerses = verses.length;
@@ -1562,6 +1611,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       console.log('[Chapter Change Effect] Auto-advance detected - skipping restart, narration will continue');
     }
   }, [selectedBook, selectedChapter]);
+
+  // Clear voice error when version changes (user may switch to English which has voices)
+  useEffect(() => {
+    setTtsVoiceError(null);
+  }, [selectedVersion]);
 
   // Sync audioDuration when verses load asynchronously
   useEffect(() => {
@@ -2464,6 +2518,39 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           )}
         </ChapterTransitionStage>
       </div>
+
+      {/* TTS Voice Unavailable Error Toast */}
+      {ttsVoiceError && (
+        <div
+          className="fixed bottom-28 left-1/2 -translate-x-1/2 z-[200] w-[calc(100%-2rem)] max-w-sm pointer-events-auto"
+          role="alert"
+        >
+          <div
+            className="flex items-start gap-3 rounded-2xl px-4 py-3 shadow-2xl"
+            style={{
+              backgroundColor: selectedTheme === 'dark' ? '#1c1c1e' : '#fff',
+              border: '1px solid rgba(226,55,68,0.3)',
+            }}
+          >
+            <span className="text-xl mt-0.5 shrink-0">🔇</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold" style={{ color: '#E23744' }}>
+                Voice Not Available
+              </p>
+              <p className="text-xs mt-0.5 leading-relaxed" style={{ color: selectedTheme === 'dark' ? '#8e8e93' : '#6b7280' }}>
+                {ttsVoiceError}
+              </p>
+            </div>
+            <button
+              onClick={() => setTtsVoiceError(null)}
+              className="shrink-0 p-1 rounded-full hover:bg-gray-100/20 transition-colors"
+              aria-label="Dismiss"
+            >
+              <X className="size-4" style={{ color: selectedTheme === 'dark' ? '#8e8e93' : '#9ca3af' }} />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Audio Controls Floating Button — hidden when any popup or selector is open */}
       {shouldShowAudio && !isBlockingPopupOpen && !showAudioControlPanel && !showSettingsMenu && (

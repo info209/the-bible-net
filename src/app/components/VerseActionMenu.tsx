@@ -363,7 +363,7 @@ export default function VerseActionMenu({
               borderRadius: '28px 28px 0 0',
               boxShadow: '0 -10px 40px rgba(0,0,0,0.18)',
               paddingBottom: 'env(safe-area-inset-bottom)',
-              height: '38vh',
+              height: 'auto',
               maxHeight: '38vh',
               display: 'flex',
               flexDirection: 'column',

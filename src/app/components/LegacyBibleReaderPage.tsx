@@ -157,7 +157,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
 
 
-  const handleVerseLongPress = useCallback((verseNum: number, e?: React.MouseEvent | React.TouchEvent) => {
+  const handleVerseLongPress = useCallback((verseNum: number, e?: React.PointerEvent) => {
     if (e) e.stopPropagation();
     setSelectedVerses(prev => {
       if (prev.includes(verseNum)) return prev;
@@ -165,7 +165,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     });
   }, []);
 
-  const handleVerseTap = useCallback((verseNum: number, e?: React.MouseEvent | React.TouchEvent) => {
+  const handleVerseTap = useCallback((verseNum: number, e?: React.PointerEvent) => {
     if (e) e.stopPropagation();
     if (verseNum === 0) {
       setSelectedVerses([]);

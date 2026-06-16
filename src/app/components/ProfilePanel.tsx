@@ -131,11 +131,11 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
   };
 
   const handleOpenView = (view: ProfileView) => {
-    // Journals & Prayers navigates to its own full-page module
+    // Journals & Prayers navigates to its own full-page module.
+    // We intentionally keep the drawer open so the browser history retains
+    // the correct state — back button on journals returns here via ?source=profile.
     if (view === 'journals') {
-      setActiveView(null);
-      onClose();
-      router.push('/journals');
+      router.push('/journals?source=profile');
       return;
     }
     setActiveView(view);

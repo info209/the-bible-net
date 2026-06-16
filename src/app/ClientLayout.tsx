@@ -77,7 +77,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       {/* Standard BottomNav for all app pages */}
       {showBottomNav && <BottomNav isVisible={!hideBottomNav} onNavigate={handleNavigate} />}
 
-      <main className={isPublicAppPage ? (isProfileSubPage ? "w-full" : isJournalsPage ? "w-full" : "max-w-3xl mx-auto px-4 pb-24 pt-20") : ""}>
+      <main className={isPublicAppPage ? (isProfileSubPage ? "w-full" : isJournalsPage ? "max-w-3xl mx-auto" : "max-w-3xl mx-auto px-4 pb-24 pt-20") : ""}>
         {children}
       </main>
     </>

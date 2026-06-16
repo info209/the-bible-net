@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -30,6 +30,8 @@ const BIBLE_BOOKS = [
 export default function JournalsPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const navigationSource = searchParams.get('source'); // 'profile' | null
 
   // Lifecycle
   const [mounted, setMounted] = useState(false);
@@ -965,7 +967,15 @@ export default function JournalsPage() {
             <header className="h-[64px] px-4 flex items-center justify-between border-b border-[#E6E6E6] dark:border-white/[0.08] bg-white dark:bg-[#000000] sticky top-0 z-30">
               <div className="flex items-center space-x-1">
                 <button
-                  onClick={() => router.back()}
+                  onClick={() => {
+                    if (navigationSource === 'profile') {
+                      // Return to the home page with ?profile=true so AppHeader
+                      // re-opens the profile drawer automatically.
+                      router.push('/home?profile=true');
+                    } else {
+                      router.back();
+                    }
+                  }}
                   className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06] transition-colors"
                   aria-label="Go back"
                 >

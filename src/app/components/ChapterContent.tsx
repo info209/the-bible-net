@@ -29,8 +29,8 @@ interface ChapterContentProps {
   readingVerse?: number | null;
   selectedVerses?: number[];
   savedVerseIds?: number[];
-  onVerseLongPress?: (verseNumber: number, e?: React.MouseEvent | React.TouchEvent) => void;
-  onVerseTap?: (verseNumber: number, e?: React.MouseEvent | React.TouchEvent) => void;
+  onVerseLongPress?: (verseNumber: number, e?: React.PointerEvent) => void;
+  onVerseTap?: (verseNumber: number, e?: React.PointerEvent) => void;
   highlights?: any[];
   notes?: any[];
   theme: {
@@ -120,18 +120,18 @@ function ChapterContent({
   const touchStartPosRef = useRef<{x: number, y: number} | null>(null);
   const isLongPressRef = useRef(false);
 
-  const handlePressStart = (e: React.MouseEvent | React.TouchEvent, verseNum: number) => {
-    // Only handle left click for mouse
-    if ('button' in e && e.button !== 0) return;
+  const handlePointerDown = (e: React.PointerEvent, verseNum: number) => {
+    // Only handle primary pointer button (left mouse button or first touch point)
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
 
     // If a horizontal swipe is in progress, don't start a long-press at all.
-    // isSwipingRef is updated synchronously by the gesture hook — no re-render needed.
     if (swipeActiveRef?.current) return;
 
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    // Capture pointer so we receive pointerup/pointermove even if cursor leaves the element
+    // This is critical: after a long press fires, the user can release anywhere and it works.
+    try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch (_) {}
 
-    touchStartPosRef.current = { x: clientX, y: clientY };
+    touchStartPosRef.current = { x: e.clientX, y: e.clientY };
 
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -183,53 +183,57 @@ function ChapterContent({
     }
   };
 
-  const handlePressEnd = (e: React.MouseEvent | React.TouchEvent, verseNum: number) => {
+  const handlePointerUp = (e: React.PointerEvent, verseNum: number) => {
     const isLong = isLongPressRef.current;
-    
-    console.log(`[VersePress] End verse ${verseNum}. WasLong: ${isLong}`);
 
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
-    
+
     if (!touchStartPosRef.current) return;
 
     if (isLong) {
-       touchStartPosRef.current = null;
-       isLongPressRef.current = false;
-       return; 
+      // Long press already fired — selection is active. Release anywhere is fine.
+      touchStartPosRef.current = null;
+      isLongPressRef.current = false;
+      return;
     }
 
-    // If selection mode is active, skip touch/mouse release tap triggers;
-    // standard onClick handles the entire element's click seamlessly.
+    // If selection mode is active, a regular tap toggles the verse via onClick.
     if (selectedVerses.length > 0) {
       touchStartPosRef.current = null;
       isLongPressRef.current = false;
       return;
     }
 
-    const clientX = 'changedTouches' in e ? e.changedTouches[0].clientX : (e as React.MouseEvent).clientX;
-    const clientY = 'changedTouches' in e ? e.changedTouches[0].clientY : (e as React.MouseEvent).clientY;
-    
-    const moveDist = Math.sqrt(
-      Math.pow(clientX - touchStartPosRef.current.x, 2) + 
-      Math.pow(clientY - touchStartPosRef.current.y, 2)
-    );
-    
-    // If not a long press and moved very little, it's a tap.
-    // When selection mode is inactive, a normal tap does nothing (requires hold).
-    if (moveDist < 15) {
-      console.log(`[VersePress] Normal tap when inactive`);
-    }
-    
+    // Short press when selection mode is inactive — do nothing.
     touchStartPosRef.current = null;
     isLongPressRef.current = false;
   };
 
-  const handlePressCancel = () => {
+  /**
+   * onPointerLeave — fires when the pointer physically exits the element bounds.
+   * ONLY cancel the timer here if the long press has NOT yet triggered.
+   * If it already fired (isLongPressRef.current === true), the verse stays selected.
+   */
+  const handlePointerLeave = (e: React.PointerEvent) => {
+    if (isLongPressRef.current) {
+      // Long press already fired — leaving the element must not cancel selection.
+      return;
+    }
+    // Threshold not reached yet — cancel the timer so the cursor leaving before
+    // 600 ms doesn't accidentally trigger selection.
     if (longPressTimerRef.current) {
-      console.log(`[VersePress] Cancel: Press interrupted`);
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    touchStartPosRef.current = null;
+  };
+
+  const handlePointerCancel = () => {
+    // Always clean up on cancel (e.g. browser interruption, scroll takeover).
+    if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
       longPressTimerRef.current = null;
     }
@@ -241,7 +245,7 @@ function ChapterContent({
     e.stopPropagation();
     // Only handle clicks in selection mode — prevents accidental selection
     if (selectedVerses.length > 0) {
-      if (onVerseTap) onVerseTap(verseNum, e);
+      if (onVerseTap) onVerseTap(verseNum, e as unknown as React.PointerEvent);
     }
   };
 
@@ -375,12 +379,10 @@ function ChapterContent({
                 key={verse.number}
                 id={`verse-${book}-${chapter}-${verse.number}`}
                 className="relative transition-all duration-200 rounded px-2 py-1 select-none cursor-pointer hover:bg-black/[0.02] scroll-mt-[120px]"
-                onMouseDown={(e) => handlePressStart(e, verse.number)}
-                onMouseUp={(e) => handlePressEnd(e, verse.number)}
-                onMouseLeave={handlePressCancel}
-                onTouchStart={(e) => handlePressStart(e, verse.number)}
-                onTouchEnd={(e) => handlePressEnd(e, verse.number)}
-                onTouchCancel={handlePressCancel}
+                onPointerDown={(e) => handlePointerDown(e, verse.number)}
+                onPointerUp={(e) => handlePointerUp(e, verse.number)}
+                onPointerLeave={handlePointerLeave}
+                onPointerCancel={handlePointerCancel}
                 onPointerMove={handlePointerMove}
                 onClick={(e) => handleVerseClick(verse.number, e)}
                 style={{

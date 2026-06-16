@@ -139,6 +139,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const [ttsPlaying, setTtsPlaying] = useState(false);
   const [ttsPaused, setTtsPaused] = useState(false);
   const [isSliderDragging, setIsSliderDragging] = useState(false);
+  // Holds a user-facing error message when TTS cannot start (e.g. no Telugu voice installed)
+  const [ttsVoiceError, setTtsVoiceError] = useState<string | null>(null);
 
   // Stable refs — avoid stale closures in utterance event handlers
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
@@ -176,7 +178,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
 
 
-  const handleVerseLongPress = useCallback((verseNum: number, e?: React.MouseEvent | React.TouchEvent) => {
+  const handleVerseLongPress = useCallback((verseNum: number, e?: React.PointerEvent) => {
     if (e) e.stopPropagation();
     setSelectedVerses(prev => {
       if (prev.includes(verseNum)) return prev;
@@ -184,7 +186,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     });
   }, []);
 
-  const handleVerseTap = useCallback((verseNum: number, e?: React.MouseEvent | React.TouchEvent) => {
+  const handleVerseTap = useCallback((verseNum: number, e?: React.PointerEvent) => {
     if (e) e.stopPropagation();
     if (verseNum === 0) {
       setSelectedVerses([]);
@@ -420,7 +422,13 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
 
   // Book/Chapter state from API
-  const [bibleBooksState, setBibleBooksState] = useState<{ 'Old Testament': { id: string, name: string }[], 'New Testament': { id: string, name: string }[] }>({ 'Old Testament': bibleBooks['Old Testament'].map(n => ({ id: n, name: n })), 'New Testament': bibleBooks['New Testament'].map(n => ({ id: n, name: n })) });
+  const [bibleBooksState, setBibleBooksState] = useState<{
+    'Old Testament': { id: string; name: string; englishName?: string; abbreviation?: string }[];
+    'New Testament': { id: string; name: string; englishName?: string; abbreviation?: string }[];
+  }>({
+    'Old Testament': bibleBooks['Old Testament'].map(n => ({ id: n, name: n })),
+    'New Testament': bibleBooks['New Testament'].map(n => ({ id: n, name: n }))
+  });
   const [currentBookChapters, setCurrentBookChapters] = useState<number>(bookChapters['Genesis']);
   const [isLoadingBooks, setIsLoadingBooks] = useState(false);
 
@@ -452,12 +460,21 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       // Update book/chapter
       if (queryBook && queryBook !== 'undefined') {
         const normalizedBook = queryBook.replace(/-/g, ' ');
-        const allBooks = [...bibleBooksState['Old Testament'], ...bibleBooksState['New Testament']];
-        const matchingBook = allBooks.find(b => b.name.toLowerCase() === normalizedBook.toLowerCase() || b.id === queryBook);
+        const matchingBook = allBooks.find(b => 
+          b.name.toLowerCase() === normalizedBook.toLowerCase() || 
+          b.abbreviation?.toLowerCase() === normalizedBook.toLowerCase() || 
+          b.id === queryBook
+        );
 
-        if (matchingBook && selectedBookId !== matchingBook.id) {
-          setSelectedBookId(matchingBook.id);
-          setDisplayBookName(matchingBook.name);
+        if (matchingBook) {
+          if (selectedBookId !== matchingBook.id) {
+            setSelectedBookId(matchingBook.id);
+            setDisplayBookName(matchingBook.name);
+          }
+        } else {
+          // Fallback to setting directly, to be resolved once version-specific books load
+          setSelectedBookId(queryBook);
+          setDisplayBookName(queryBook);
         }
       }
 
@@ -491,12 +508,20 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         if (urlBook && urlBook !== 'undefined') {
           // Normalize book name to compare
           const normalizedBook = urlBook.replace(/-/g, ' ');
-          const allBooks = [...bibleBooksState['Old Testament'], ...bibleBooksState['New Testament']];
-          const matchingBook = allBooks.find(b => b.name.toLowerCase() === normalizedBook.toLowerCase() || b.id === urlBook);
+          const matchingBook = allBooks.find(b => 
+            b.name.toLowerCase() === normalizedBook.toLowerCase() || 
+            b.abbreviation?.toLowerCase() === normalizedBook.toLowerCase() || 
+            b.id === urlBook
+          );
 
-          if (matchingBook && selectedBookId !== matchingBook.id) {
-            setSelectedBookId(matchingBook.id);
-            setDisplayBookName(matchingBook.name);
+          if (matchingBook) {
+            if (selectedBookId !== matchingBook.id) {
+              setSelectedBookId(matchingBook.id);
+              setDisplayBookName(matchingBook.name);
+            }
+          } else {
+            setSelectedBookId(urlBook);
+            setDisplayBookName(urlBook);
           }
         }
 
@@ -654,12 +679,12 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
           const ot = books.filter((b: any) => {
             if (b.testament) return b.testament === 'OT';
             return b.order <= 39; // Traditional OT count
-          }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name }));
+          }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name, abbreviation: b.abbreviation }));
 
           const nt = books.filter((b: any) => {
             if (b.testament) return b.testament === 'NT';
             return b.order > 39; // Traditional NT start
-          }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name }));
+          }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name, abbreviation: b.abbreviation }));
 
           setBibleBooksState({
             'Old Testament': ot,
@@ -679,9 +704,13 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
               setDisplayBookName(nt[0].name);
             }
           } else {
-            // Version switched: find equivalent book by English name or localized name
+            // Version switched: find equivalent book by English name, localized name, abbreviation, or book ID
             const matchingBook = allNewBooks.find(
-              (b: any) => b.name === displayBookName || (b as any).englishName === displayBookName
+              (b: any) => b.name?.toLowerCase() === displayBookName.toLowerCase() || 
+                          (b as any).englishName?.toLowerCase() === displayBookName.toLowerCase() ||
+                          b.abbreviation?.toLowerCase() === displayBookName.toLowerCase() ||
+                          b.id === selectedBookId ||
+                          b.id === displayBookName
             );
             if (matchingBook) {
               setSelectedBookId(matchingBook.id);
@@ -999,6 +1028,22 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     fetchData();
   }, [session?.user, selectedBookId, selectedChapter]);
 
+  // ── Helper: find the best available voice for a given BCP-47 lang tag ────────
+  // Returns the first voice whose lang starts with the target prefix (e.g. 'te' matches 'te-IN'),
+  // or null if none is installed. We intentionally do NOT fall back to a different language
+  // voice so that missing-voice failures surface cleanly.
+  const findVoiceForLang = useCallback((langTag: string): SpeechSynthesisVoice | null => {
+    if (!availableVoices.length) return null;
+    const prefix = langTag.split('-')[0].toLowerCase(); // e.g. 'te', 'hi', 'en'
+    return (
+      // Exact match first
+      availableVoices.find(v => v.lang.toLowerCase() === langTag.toLowerCase()) ??
+      // Then prefix match (e.g. 'te-IN' matches voice with lang 'te')
+      availableVoices.find(v => v.lang.toLowerCase().startsWith(prefix + '-') || v.lang.toLowerCase() === prefix) ??
+      null
+    );
+  }, [availableVoices]);
+
   const speakAtIndex = useCallback((index: number) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
     if (isCleaningUpRef.current) return;
@@ -1021,19 +1066,52 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       return;
     }
 
+    // ── Voice availability check ────────────────────────────────────────────────
+    // Determine the required language for this version
+    const lang = bibleVersions.find(v => v.id === selectedVersionId)?.language;
+    const targetLang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
+    const isNonEnglish = targetLang !== 'en-US';
+
+    // If the user hasn't manually chosen a voice AND the version is non-English,
+    // verify that the browser has a voice for the target language.
+    // We skip this check for English because virtually all browsers have English voices.
+    if (isNonEnglish && !ttsVoice) {
+      const matchedVoice = findVoiceForLang(targetLang);
+      if (!matchedVoice) {
+        // No voice installed — abort playback and show a clear message
+        ttsPlayingRef.current = false;
+        setTtsPlaying(false);
+        setTtsPaused(false);
+        setCurrentVerse(null);
+        const langLabel = lang === 'Telugu' ? 'Telugu' : lang === 'Hindi' ? 'Hindi' : lang;
+        setTtsVoiceError(
+          `${langLabel} voice is not available on this device/browser. ` +
+          `Please install a ${langLabel} TTS voice or use a mobile browser.`
+        );
+        return;
+      }
+    }
+
     window.speechSynthesis.cancel(); // cancel any lingering utterance
 
     const verse = currentChapterVerses[index];
     const utterance = new SpeechSynthesisUtterance(verse.text);
 
-    // Language
-    const lang = bibleVersions.find(v => v.id === selectedVersionId)?.language;
-    utterance.lang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
+    // Set language
+    utterance.lang = targetLang;
 
     // Settings from state at call time (not stale refs)
     utterance.rate = ttsRate;
     utterance.volume = ttsVolume;
-    if (ttsVoice) utterance.voice = ttsVoice;
+
+    // Voice: prefer user-selected voice; otherwise auto-select by language
+    if (ttsVoice) {
+      utterance.voice = ttsVoice;
+    } else if (isNonEnglish) {
+      // We already confirmed a voice exists above
+      const autoVoice = findVoiceForLang(targetLang);
+      if (autoVoice) utterance.voice = autoVoice;
+    }
 
     utterance.onstart = () => {
       if (isCleaningUpRef.current) return;
@@ -1060,11 +1138,12 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       ttsPlayingRef.current = false;
       setTtsPlaying(false);
       setTtsPaused(false);
+      setCurrentVerse(null);
     };
 
     utteranceRef.current = utterance;
     window.speechSynthesis.speak(utterance);
-  }, [currentChapterVerses, bibleVersions, selectedVersionId]);
+  }, [currentChapterVerses, bibleVersions, selectedVersionId, ttsVoice, ttsRate, ttsVolume, findVoiceForLang]);
 
   // Sync volume/rate changes with active utterance instantly
   useEffect(() => {
@@ -1099,6 +1178,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
   const startTTS = useCallback((fromIndex?: number) => {
     if (typeof window === 'undefined' || !window.speechSynthesis) return;
+    // Clear any previous voice error when user explicitly starts playback
+    setTtsVoiceError(null);
     const idx = fromIndex ?? ttsIndexRef.current;
     ttsPlayingRef.current = true;
     ttsPausedRef.current = false;
@@ -1262,6 +1343,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     setTtsPlaying(false);
     setTtsPaused(false);
     setCurrentVerse(null);
+    setTtsVoiceError(null);
   }, [selectedBookId, selectedChapter, selectedVersionId]);
 
   // Cleanup on unmount
