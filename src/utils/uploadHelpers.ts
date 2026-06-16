@@ -1,7 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import { cookies } from 'next/headers';
-import { adminAuth } from '@/lib/auth/admin';
-import { auth as userAuth } from '@/lib/auth';
+import { getUserSession, getAdminSession } from '@/lib/auth-helpers';
 import path from 'path';
 
 export interface AuthContext {
@@ -14,7 +13,7 @@ export interface AuthContext {
 /**
  * Resolves the authentication context for the current request.
  * Attempts to retrieve a Supabase Auth session first, and falls back to 
- * NextAuth admin and user sessions sequentially if no Supabase user is found.
+ * NextAuth user and admin sessions sequentially if no Supabase user is found.
  */
 export async function getAuthContext(): Promise<AuthContext> {
     const cookieStore = await cookies();
@@ -37,8 +36,23 @@ export async function getAuthContext(): Promise<AuthContext> {
     }
     
     try {
-        // Check NextAuth admin session as fallback
-        const adminSession = await adminAuth();
+        // Check NextAuth user session
+        const userSession = await getUserSession();
+        if (userSession?.user) {
+            return {
+                userId: userSession.user.id || null,
+                role: userSession.user.role || 'USER',
+                supabase,
+                user: null
+            };
+        }
+    } catch (e) {
+        console.error('User NextAuth check error:', e);
+    }
+
+    try {
+        // Check NextAuth admin session
+        const adminSession = await getAdminSession();
         if (adminSession?.user) {
             return {
                 userId: adminSession.user.id || null,
@@ -49,21 +63,6 @@ export async function getAuthContext(): Promise<AuthContext> {
         }
     } catch (e) {
         console.error('Admin NextAuth check error:', e);
-    }
-
-    try {
-        // Check NextAuth user session as fallback
-        const uAuth = await userAuth();
-        if (uAuth?.user) {
-            return {
-                userId: uAuth.user.id || null,
-                role: (uAuth.user as any).role || 'USER',
-                supabase,
-                user: null
-            };
-        }
-    } catch (e) {
-        console.error('User NextAuth check error:', e);
     }
 
     return {
