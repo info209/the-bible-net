@@ -602,7 +602,7 @@ export default function HomeView() {
       {/* Journals & Prayers Entry Point */}
       <div
         onClick={() => router.push('/journals')}
-        className="relative overflow-hidden rounded-2xl mx-4 p-6 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-between group min-h-[120px] w-full"
+        className="relative overflow-hidden rounded-2xl p-6 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-between group min-h-[120px] w-full"
         style={{ backgroundImage: 'url(/banner_journal_and_prayers.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
         {/* Consistent dark overlay to ensure readability */}
