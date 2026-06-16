@@ -88,14 +88,51 @@ export default function MediaGalleryPage() {
 
         setUploading(true);
         try {
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('label', label.trim());
+            // 1. Fetch signed upload URL and unique file path
+            const urlRes = await fetch('/api/admin/ambient-music/upload-url', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    filename: file.name,
+                    contentType: file.type,
+                }),
+            });
 
+            const urlData = await urlRes.json();
+            if (!urlData.success) {
+                throw new Error(urlData.error || 'Failed to generate signed upload URL.');
+            }
+
+            const { signedUrl, filePath } = urlData;
+
+            // 2. Upload file directly to Supabase storage via PUT
+            const uploadRes = await fetch(signedUrl, {
+                method: 'PUT',
+                body: file,
+                headers: {
+                    'Content-Type': file.type,
+                },
+            });
+
+            if (!uploadRes.ok) {
+                const errText = await uploadRes.text();
+                throw new Error(errText || 'Failed to upload audio file to storage.');
+            }
+
+            // 3. Register the metadata in Database
             const res = await fetch('/api/admin/ambient-music', {
                 method: 'POST',
-                body: formData,
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    label: label.trim(),
+                    file_path: filePath,
+                }),
             });
+
             const data = await res.json();
             if (data.success) {
                 toast.success('Ambient track uploaded successfully!');
@@ -105,8 +142,8 @@ export default function MediaGalleryPage() {
             } else {
                 setError(data.error || 'Upload failed.');
             }
-        } catch (e) {
-            setError('Upload failed. Please try again.');
+        } catch (e: any) {
+            setError(e.message || 'Upload failed. Please try again.');
         } finally {
             setUploading(false);
         }
