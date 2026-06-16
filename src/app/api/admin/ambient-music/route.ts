@@ -83,6 +83,13 @@ export async function POST(req: NextRequest) {
         }
 
         if (duplicateTrack) {
+            if (file_path) {
+                try {
+                    await authContext.supabase.storage.from('ambient-music').remove([file_path]);
+                } catch (cleanupErr) {
+                    console.error('Failed to clean up file after duplicate label check:', cleanupErr);
+                }
+            }
             return NextResponse.json({
                 success: false,
                 error: 'Duplicate labels are not allowed. Please choose a different label.'
@@ -99,19 +106,37 @@ export async function POST(req: NextRequest) {
         }
 
         if (count !== null && count >= AMBIENT_MUSIC_CONFIG.MAX_TRACKS) {
+            if (file_path) {
+                try {
+                    await authContext.supabase.storage.from('ambient-music').remove([file_path]);
+                } catch (cleanupErr) {
+                    console.error('Failed to clean up file after max tracks check:', cleanupErr);
+                }
+            }
             return NextResponse.json({
                 success: false,
                 error: `Maximum upload limit of ${AMBIENT_MUSIC_CONFIG.MAX_TRACKS} tracks reached. Delete an existing track to upload a new one.`
             }, { status: 400 });
         }
 
-        // 4. Insert metadata in Database
+        // 4. Resolve Supabase user ID if logged in (UUID vs MongoDB ObjectID check)
+        let createdByUuid: string | null = null;
+        try {
+            const { data: { user } } = await authContext.supabase.auth.getUser();
+            if (user) {
+                createdByUuid = user.id;
+            }
+        } catch (e) {
+            console.error('Failed to get Supabase user UUID:', e);
+        }
+
+        // 5. Insert metadata in Database
         const { data: insertedRecord, error: insertError } = await authContext.supabase
             .from('ambient_music')
             .insert({
                 label: label.trim(),
                 file_path: file_path,
-                created_by: authContext.userId
+                created_by: createdByUuid // Uses UUID from Supabase or null (avoiding MongoDB ID UUID validation error)
             })
             .select()
             .single();
