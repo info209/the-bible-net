@@ -2,6 +2,7 @@ import "./globals.css"
 import ClientLayout from "./ClientLayout";
 import { Metadata, Viewport } from "next";
 import { Providers } from "@/components/Providers";
+import { Toaster } from "@/app/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: {
@@ -33,6 +34,7 @@ export default function RootLayout({
           <ClientLayout>
             {children}
           </ClientLayout>
+          <Toaster />
         </Providers>
       </body>
     </html>

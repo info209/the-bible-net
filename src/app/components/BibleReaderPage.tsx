@@ -19,6 +19,7 @@ import CompareVersionsModal from './CompareVersionsModal';
 import CompareMenu from './CompareMenu';
 import CompareView from './CompareView';
 import BibleSearchModal from './BibleSearchModal';
+import { useAmbientMusicStore } from '@/stores/useAmbientMusicStore';
 
 import FontsSettingsModal, { ThemeType, TransitionType } from './FontsSettingsModal';
 import AudioFloatingPlayer from './AudioFloatingPlayer';
@@ -179,7 +180,30 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [audioControlExpanded, setAudioControlExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showMusicSelector, setShowMusicSelector] = useState(false);
-  const [selectedMusic, setSelectedMusic] = useState<string | null>('none');
+  const {
+    currentTrack,
+    isPlaying: ambientPlaying,
+    tracks: ambientTracks,
+    loading: loadingAmbient,
+    fetchTracks,
+    play: playAmbient,
+    pause: pauseAmbient,
+    stop: stopAmbient,
+    togglePlay: toggleAmbientPlay,
+    restoreSession: restoreAmbientSession
+  } = useAmbientMusicStore();
+
+  useEffect(() => {
+    if (showMusicSelector) {
+      fetchTracks();
+    }
+  }, [showMusicSelector, fetchTracks]);
+
+  useEffect(() => {
+    restoreAmbientSession();
+  }, [restoreAmbientSession]);
+
+  const selectedMusic = currentTrack ? currentTrack.id : 'none';
   const [musicLoopMode, setMusicLoopMode] = useState<'shuffle' | 'repeat-all' | 'repeat-one'>('shuffle');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
@@ -461,23 +485,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       default: return 0;
     }
   };
-
-  // Music tracks
-  const musicTracks = [
-    { id: 'none', name: 'None', thumbnail: null },
-    { id: 'music1', name: 'Music 1', thumbnail: 'https://images.unsplash.com/photo-1686109616991-1acaf4fa7199?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHJpc3RpYW4lMjBjcm9zcyUyMGdvbGRlbnxlbnwxfHx8fDE3NzAwMzE3ODV8MA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music2', name: 'Music 2', thumbnail: 'https://images.unsplash.com/photo-1507126882445-434b04530d1a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3aGl0ZSUyMGRvdmUlMjBmbHlpbmd8ZW58MXx8fHwxNzcwMDMxNzg2fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music3', name: 'Music 3', thumbnail: 'https://images.unsplash.com/photo-1605238721408-3876d8fd3942?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiaWJsZSUyMG9wZW4lMjBsaWdodHxlbnwxfHx8fDE3Njk5MjA2OTV8MA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music4', name: 'Music 4', thumbnail: 'https://images.unsplash.com/photo-1575516662637-99214ea59f23?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcmF5aW5nJTIwaGFuZHMlMjBzcGlyaXR1YWx8ZW58MXx8fHwxNzcwMDMxNzg3fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music5', name: 'Music 5', thumbnail: 'https://images.unsplash.com/photo-1550541231-56ddb7f844ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHVyY2glMjBzdGFpbmVkJTIwZ2xhc3N8ZW58MXx8fHwxNzcwMDMxNzg3fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music6', name: 'Music 6', thumbnail: 'https://images.unsplash.com/photo-1705608604329-49335be66661?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHJpc3RpYW4lMjB3b3JzaGlwJTIwY2FuZGxlfGVufDF8fHx8MTc3MDAzMTc4OHww&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music7', name: 'Music 7', thumbnail: 'https://images.unsplash.com/photo-1686109616991-1acaf4fa7199?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHJpc3RpYW4lMjBjcm9zcyUyMGdvbGRlbnxlbnwxfHx8fDE3NzAwMzE3ODV8MA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music8', name: 'Music 8', thumbnail: 'https://images.unsplash.com/photo-1507126882445-434b04530d1a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3aGl0ZSUyMGRvdmUlMjBmbHlpbmd8ZW58MXx8fHwxNzcwMDMxNzg2fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music9', name: 'Music 9', thumbnail: 'https://images.unsplash.com/photo-1605238721408-3876d8fd3942?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxiaWJsZSUyMG9wZW4lMjBsaWdodHxlbnwxfHx8fDE3Njk5MjA2OTV8MA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music10', name: 'Music 10', thumbnail: 'https://images.unsplash.com/photo-1575516662637-99214ea59f23?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxwcmF5aW5nJTIwaGFuZHMlMjBzcGlyaXR1YWx8ZW58MXx8fHwxNzcwMDMxNzg3fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music11', name: 'Music 11', thumbnail: 'https://images.unsplash.com/photo-1550541231-56ddb7f844ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHVyY2glMjBzdGFpbmVkJTIwZ2xhc3N8ZW58MXx8fHwxNzcwMDMxNzg3fDA&ixlib=rb-4.1.0&q=80&w=1080' },
-    { id: 'music12', name: 'Music 12', thumbnail: 'https://images.unsplash.com/photo-1705608604329-49335be66661?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjaHJpc3RpYW4lMjB3b3JzaGlwJTIwY2FuZGxlfGVufDF8fHx8MTc3MDAzMTc4OHww&ixlib=rb-4.1.0&q=80&w=1080' },
-  ];
 
   // Helper functions for navigation
   const allBooks = [...books['Old Testament'], ...books['New Testament']].map(b => typeof b === 'string' ? b : b.name);
@@ -2187,7 +2194,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               {/* Empty left side for alignment */}
               <div className="w-10"></div>
 
-              {/* Right side - Shuffle/Loop, Play, and Close buttons */}
+              {/* Right side - Shuffle/Loop, Play/Pause, Stop and Close buttons */}
               <div className="flex items-center space-x-2">
                 {/* Loop/Shuffle/Repeat Toggle */}
                 <button
@@ -2208,25 +2215,45 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   )}
                 </button>
 
-                {/* Play button */}
+                {/* Play/Pause button */}
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    if (selectedMusic && selectedMusic !== 'none') {
-                      setAudioPlaying(!audioPlaying);
+                    if (currentTrack) {
+                      if (ambientPlaying) {
+                        pauseAmbient();
+                      } else {
+                        playAmbient(currentTrack);
+                      }
                     }
                   }}
-                  disabled={!selectedMusic || selectedMusic === 'none'}
+                  disabled={!currentTrack}
                   className={`p-2 rounded-full transition-colors ${
-                    selectedMusic && selectedMusic !== 'none' ? 'cursor-pointer' : 'opacity-40 cursor-not-allowed'
+                    currentTrack ? 'cursor-pointer hover:bg-black/5' : 'opacity-40 cursor-not-allowed'
                   }`}
+                  title={ambientPlaying ? "Pause ambient music" : "Play ambient music"}
                 >
-                  {audioPlaying ? (
+                  {ambientPlaying ? (
                     <Pause className="size-5 text-[var(--color-primary-teal)] fill-current" />
                   ) : (
                     <Play className="size-5 text-[var(--color-primary-teal)] fill-current" />
                   )}
                 </button>
+
+                {/* Stop button */}
+                {currentTrack && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      stopAmbient();
+                    }}
+                    className="p-2 rounded-full transition-colors cursor-pointer hover:bg-black/5 flex items-center justify-center"
+                    style={{ color: currentTheme.text }}
+                    title="Stop ambient music"
+                  >
+                    <div className="size-3.5 border-2 border-current bg-current rounded-sm" />
+                  </button>
+                )}
 
                 {/* Close button */}
                 <button
@@ -2241,54 +2268,65 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
             {/* Content - Music list (max 5 tracks visible) */}
             <div className="overflow-y-auto px-4 pb-4 max-h-[360px]">
-              <div className="space-y-3">
-                {musicTracks.map((track) => (
-                  <button
-                    key={track.id}
-                    onClick={() => setSelectedMusic(track.id)}
-                    className="w-full flex items-center justify-between p-3 rounded-lg transition-all"
-                    style={{
-                      backgroundColor: selectedMusic === track.id
-                        ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
-                        : 'transparent',
-                    }}
-                  >
-                    {/* Left side - Thumbnail and name */}
-                    <div className="flex items-center space-x-3">
-                      {/* Thumbnail with play icon overlay for selected track */}
-                      <div className="size-12 rounded-full overflow-hidden bg-black flex-shrink-0 relative">
-                        {track.thumbnail ? (
-                          <img src={track.thumbnail} alt={track.name} className="size-full object-cover" />
-                        ) : (
-                          <div className="size-full bg-black" />
-                        )}
+              {loadingAmbient ? (
+                <div className="flex flex-col items-center justify-center py-10 space-y-2">
+                  <div className="size-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: `${currentTheme.text} transparent ${currentTheme.text} transparent` }} />
+                  <span className="text-sm opacity-60" style={{ color: currentTheme.text }}>Loading ambient music...</span>
+                </div>
+              ) : ambientTracks.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-12 px-6 text-center space-y-4">
+                  <div className="size-16 rounded-full bg-black/5 flex items-center justify-center">
+                    <Music className="size-8 opacity-40" style={{ color: currentTheme.text }} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-base font-semibold text-center" style={{ color: currentTheme.text }}>No ambient music available right now.</p>
+                    <p className="text-sm opacity-65 text-center" style={{ color: currentTheme.text }}>Please check back later.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {ambientTracks.map((track) => (
+                    <button
+                      key={track.id}
+                      onClick={() => toggleAmbientPlay(track)}
+                      className="w-full flex items-center justify-between p-3.5 rounded-xl transition-all hover:bg-black/5"
+                      style={{
+                        backgroundColor: currentTrack?.id === track.id
+                          ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.12)' : 'rgba(226, 55, 68, 0.08)')
+                          : 'transparent',
+                      }}
+                    >
+                      {/* Left side: Play/Pause icon + Label */}
+                      <div className="flex items-center space-x-3.5">
+                        <div className="flex-shrink-0" style={{ color: currentTrack?.id === track.id ? currentTheme.verseNumber : currentTheme.text }}>
+                          {currentTrack?.id === track.id && ambientPlaying ? (
+                            <Pause className="size-5 fill-current" />
+                          ) : (
+                            <Play className="size-5 fill-current" />
+                          )}
+                        </div>
 
-                        {/* Play icon overlay for selected music */}
-                        {selectedMusic === track.id && track.id !== 'none' && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                            <Play className="size-5 text-white fill-current" />
-                          </div>
-                        )}
+                        <span
+                          className="text-base text-left truncate max-w-[200px]"
+                          style={{ 
+                            color: currentTrack?.id === track.id ? currentTheme.verseNumber : currentTheme.text,
+                            fontWeight: currentTrack?.id === track.id ? 600 : 400 
+                          }}
+                        >
+                          {track.label}
+                        </span>
                       </div>
 
-                      {/* Track name */}
-                      <span
-                        className="text-base"
-                        style={{ color: selectedMusic === track.id ? currentTheme.verseNumber : currentTheme.text, fontWeight: selectedMusic === track.id ? 500 : 400 }}
-                      >
-                        {track.name}
-                      </span>
-                    </div>
-
-                    {/* Right side - Equalizer indicator */}
-                    {selectedMusic === track.id && track.id !== 'none' ? (
-                      <EqualizerIcon className="text-[#E23744] h-5" />
-                    ) : (
-                      <div className="w-5" />
-                    )}
-                  </button>
-                ))}
-              </div>
+                      {/* Right side: Equalizer indicator */}
+                      <div className="flex items-center space-x-2">
+                        {currentTrack?.id === track.id && ambientPlaying && (
+                          <EqualizerIcon className="h-4 text-rose-500" />
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
