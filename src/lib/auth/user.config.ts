@@ -33,6 +33,7 @@ export const userAuthConfig: NextAuthConfig = {
                 token.country = (user as any).country;
                 token.preferredLanguage = (user as any).preferredLanguage;
                 token.preferredBibleVersion = (user as any).preferredBibleVersion;
+                token.image = user.image;
             }
             if (trigger === 'update' && session?.user) {
                 token.onboardingCompleted = session.user.onboardingCompleted ?? token.onboardingCompleted;
@@ -42,6 +43,7 @@ export const userAuthConfig: NextAuthConfig = {
                 token.country = session.user.country ?? token.country;
                 token.preferredLanguage = session.user.preferredLanguage ?? token.preferredLanguage;
                 token.preferredBibleVersion = session.user.preferredBibleVersion ?? token.preferredBibleVersion;
+                token.image = session.user.image ?? token.image;
             }
             return token;
         },
@@ -57,6 +59,7 @@ export const userAuthConfig: NextAuthConfig = {
                 (session.user as any).country = token.country as string;
                 (session.user as any).preferredLanguage = token.preferredLanguage as string;
                 (session.user as any).preferredBibleVersion = token.preferredBibleVersion as string;
+                session.user.image = token.image as string;
                 
                 // For components using session.user.name
                 session.user.name = token.firstName && token.lastName 

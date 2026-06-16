@@ -32,12 +32,14 @@ export const authConfig: NextAuthConfig = {
                 token.emailVerified = !!(user as any).emailVerified;
                 token.firstName = (user as any).firstName;
                 token.lastName = (user as any).lastName;
+                token.image = user.image;
             }
             if (trigger === 'update' && session?.user) {
                 token.onboardingCompleted = session.user.onboardingCompleted;
                 token.role = session.user.role;
                 token.firstName = session.user.firstName;
                 token.lastName = session.user.lastName;
+                token.image = session.user.image;
             }
             return token;
         },
@@ -49,6 +51,7 @@ export const authConfig: NextAuthConfig = {
                 session.user.emailVerified = token.emailVerified as any;
                 (session.user as any).firstName = token.firstName;
                 (session.user as any).lastName = token.lastName;
+                session.user.image = token.image as string;
                 // For components using session.user.name
                 session.user.name = token.firstName && token.lastName 
                     ? `${token.firstName} ${token.lastName}`.trim() 
