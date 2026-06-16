@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserRole } from '@/types/user';
-import { getAuthContext, sanitizeFilename } from '@/utils/uploadHelpers';
+import { getAuthContext } from '@/utils/uploadHelpers';
 import { AMBIENT_MUSIC_CONFIG } from '@/config/ambientMusic.config';
-import path from 'path';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,13 +104,24 @@ export async function POST(req: NextRequest) {
             }, { status: 400 });
         }
 
-        // 4. Insert metadata in Database
+        // 4. Resolve Supabase user ID if logged in (UUID vs MongoDB ObjectId check)
+        let createdByUuid: string | null = null;
+        try {
+            const { data: { user } } = await authContext.supabase.auth.getUser();
+            if (user) {
+                createdByUuid = user.id;
+            }
+        } catch (e) {
+            console.error('Failed to get Supabase user UUID:', e);
+        }
+
+        // 5. Insert metadata in Database
         const { data: insertedRecord, error: insertError } = await authContext.supabase
             .from('ambient_music')
             .insert({
                 label: label.trim(),
                 file_path: file_path,
-                created_by: authContext.userId
+                created_by: createdByUuid // Uses UUID from Supabase or null (avoiding MongoDB ID UUID validation error)
             })
             .select()
             .single();
@@ -193,7 +203,6 @@ export async function DELETE(req: NextRequest) {
 
         if (storageDeleteError) {
             console.error('Storage deletion failed or warning generated:', storageDeleteError);
-            // We proceed with DB delete even if file removal triggers a warning (e.g. file already gone)
         }
 
         // 2. Delete from Database

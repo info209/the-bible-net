@@ -5,10 +5,8 @@ import { Music, Upload, Check, X, Loader, Trash2, Play, Pause, AlertCircle } fro
 import { useAmbientMusicStore, AmbientMusicTrack } from '@/stores/useAmbientMusicStore';
 import { AMBIENT_MUSIC_CONFIG } from '@/config/ambientMusic.config';
 import { toast } from 'sonner';
-import { createClient } from '@/utils/supabase/client';
 
 export default function MediaGalleryPage() {
-    const supabase = createClient();
     const [tracks, setTracks] = useState<AmbientMusicTrack[]>([]);
     const [loadingTracks, setLoadingTracks] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -89,33 +87,14 @@ export default function MediaGalleryPage() {
         }
 
         setUploading(true);
-        const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
-        const cleanBase = file.name.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9._-]/g, '').replace(/_+/g, '_');
-        const timestamp = Date.now();
-        const randomId = Math.random().toString(36).substring(2, 8);
-        const filePath = `ambient-music/${timestamp}-${randomId}-${cleanBase}${ext}`;
-
         try {
-            const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('ambient-music')
-                .upload(filePath, file, {
-                    cacheControl: '3600',
-                    upsert: false
-                });
-
-            if (uploadError) {
-                throw new Error(uploadError.message || 'Supabase storage upload failed.');
-            }
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('label', label.trim());
 
             const res = await fetch('/api/admin/ambient-music', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    label: label.trim(),
-                    file_path: filePath
-                }),
+                body: formData,
             });
             const data = await res.json();
             if (data.success) {
@@ -124,11 +103,10 @@ export default function MediaGalleryPage() {
                 setFile(null);
                 fetchTracks();
             } else {
-                await supabase.storage.from('ambient-music').remove([filePath]);
                 setError(data.error || 'Upload failed.');
             }
-        } catch (e: any) {
-            setError(e.message || 'Upload failed. Please try again.');
+        } catch (e) {
+            setError('Upload failed. Please try again.');
         } finally {
             setUploading(false);
         }

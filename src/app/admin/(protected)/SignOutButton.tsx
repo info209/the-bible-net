@@ -5,7 +5,7 @@ import { LogOut } from 'lucide-react';
 
 export function SignOutButton() {
     return (
-        <button 
+        <button
             onClick={() => signOut({ callbackUrl: '/admin/login' })}
             className="flex items-center w-full justify-center md:justify-start space-x-2 text-[#d23952] hover:bg-red-500/10 p-2 rounded-lg transition-colors font-medium text-sm mt-2 cursor-pointer"
         >
