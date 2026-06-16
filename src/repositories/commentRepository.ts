@@ -36,7 +36,7 @@ export class CommentRepository {
 
     static async getComments(contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion'): Promise<IComment[]> {
         return await Comment.find({ contentId, contentType })
-            .populate('userId', 'name image') // Assuming User model has name and image
+            .populate('userId', 'firstName lastName image')
             .sort({ createdAt: -1 });
     }
 

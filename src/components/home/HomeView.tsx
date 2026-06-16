@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, Heart, MessageCircle, Share2, Maximize2, Pause, X } from 'lucide-react';
+import { Play, Heart, MessageCircle, Share2, Maximize2, Pause, X, Send } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
@@ -739,21 +739,21 @@ export default function HomeView() {
 
       {/* Comment Modal - Restored */}
       <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
-        <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-t-[32px] sm:rounded-2xl glass-ios border-none shadow-2xl [&>[data-slot=dialog-close]]:hidden flex flex-col max-h-[90vh]">
-          <DialogHeader className="p-4 border-b flex flex-row items-center justify-between bg-white/10 backdrop-blur-sm space-y-0">
+        <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-t-[32px] sm:rounded-2xl bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 shadow-2xl [&>[data-slot=dialog-close]]:hidden flex flex-col max-h-[90vh]">
+          <DialogHeader className="p-4 border-b flex flex-row items-center justify-between bg-white dark:bg-zinc-950 border-slate-100 dark:border-zinc-800 space-y-0">
             <div className="flex flex-col">
-              <DialogTitle className="font-bold text-slate-900">Comments</DialogTitle>
+              <DialogTitle className="font-bold text-slate-900 dark:text-slate-100">Comments</DialogTitle>
               <DialogDescription className="sr-only">View and add comments for this content</DialogDescription>
             </div>
             <button
               onClick={() => setShowCommentModal(false)}
-              className="p-2 hover:bg-gray-200/50 rounded-full transition-colors"
+              className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-900 rounded-full transition-colors"
             >
               <X className="size-5 text-gray-500" />
             </button>
           </DialogHeader>
 
-          <ScrollArea className="flex-1 min-h-[300px]">
+          <ScrollArea className="flex-1 min-h-[300px] bg-slate-50/50 dark:bg-zinc-900/50">
             <div className="p-4 space-y-4">
               {comments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-10 text-gray-400">
@@ -763,19 +763,25 @@ export default function HomeView() {
               ) : (
                 comments.map((comment, i) => (
                   <div key={i} className="flex space-x-3 group">
-                    <div className="size-9 rounded-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-xs uppercase shrink-0 shadow-sm">
-                      {comment.userId?.firstName?.[0] || 'U'}
+                    <div className="size-9 rounded-full overflow-hidden flex items-center justify-center shrink-0 shadow-sm">
+                      {comment.userId?.image ? (
+                        <img src={comment.userId.image} alt={comment.userId?.firstName || 'User'} className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="size-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-xs uppercase">
+                          {comment.userId?.firstName?.[0] || 'U'}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex-1 bg-gray-100/80 rounded-2xl rounded-tl-none p-3 transition-colors group-hover:bg-gray-100">
+                    <div className="flex-1 bg-white dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800/80 rounded-xl rounded-tl-none p-3 transition-colors group-hover:bg-slate-50 dark:group-hover:bg-zinc-800/50">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="font-extrabold text-xs text-slate-900">
+                        <p className="font-extrabold text-xs text-slate-900 dark:text-slate-200">
                           {comment.userId?.firstName} {comment.userId?.lastName}
                         </p>
                         <span className="text-[10px] font-bold text-slate-500">
                           {new Date(comment.createdAt).toLocaleDateString()}
                         </span>
                       </div>
-                      <p className="text-sm font-medium text-slate-800 leading-relaxed">{comment.commentText}</p>
+                      <p className="text-sm font-medium text-slate-800 dark:text-slate-350 leading-relaxed">{comment.commentText}</p>
                     </div>
                   </div>
                 ))
@@ -783,24 +789,24 @@ export default function HomeView() {
             </div>
           </ScrollArea>
 
-          <div className="p-4 border-t bg-white/10 backdrop-blur-md">
+          <div className="p-4 border-t bg-white dark:bg-zinc-950 border-slate-100 dark:border-zinc-800">
             <div className="flex items-end space-x-2">
               <textarea
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Write a comment..."
-                className="flex-1 bg-gray-100/80 rounded-2xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/40 resize-none transition-all placeholder:text-gray-400"
+                className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/40 resize-none transition-all placeholder:text-gray-400 dark:text-slate-100"
                 rows={2}
               />
               <button
                 onClick={handleAddComment}
                 disabled={submittingComment || !newComment.trim()}
-                className="bg-[var(--color-primary-teal)] text-white p-3 rounded-2xl disabled:opacity-50 hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
+                className="bg-[var(--color-primary-teal)] text-white p-3 rounded-xl disabled:opacity-50 hover:shadow-lg hover:scale-105 active:scale-95 transition-all flex items-center justify-center shrink-0"
               >
                 {submittingComment ? (
                   <div className="size-5 border-2 border-white border-t-transparent animate-spin rounded-full" />
                 ) : (
-                  <Play className="size-5 fill-current ml-0.5" />
+                  <Send className="size-5" />
                 )}
               </button>
             </div>

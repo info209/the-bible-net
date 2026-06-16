@@ -20,7 +20,22 @@ export async function getAuthContext(): Promise<AuthContext> {
     const supabase = createClient(cookieStore);
     
     try {
-        // Check Supabase Auth first
+        // 1. Check NextAuth admin session first (highest privilege)
+        const adminSession = await getAdminSession();
+        if (adminSession?.user) {
+            return {
+                userId: adminSession.user.id || null,
+                role: adminSession.user.role || 'SUPER_ADMIN',
+                supabase,
+                user: null
+            };
+        }
+    } catch (e) {
+        console.error('Admin NextAuth check error:', e);
+    }
+
+    try {
+        // 2. Check Supabase Auth
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
             const role = user.user_metadata?.role || 'USER';
@@ -36,7 +51,7 @@ export async function getAuthContext(): Promise<AuthContext> {
     }
     
     try {
-        // Check NextAuth user session
+        // 3. Check NextAuth user session
         const userSession = await getUserSession();
         if (userSession?.user) {
             return {
@@ -48,21 +63,6 @@ export async function getAuthContext(): Promise<AuthContext> {
         }
     } catch (e) {
         console.error('User NextAuth check error:', e);
-    }
-
-    try {
-        // Check NextAuth admin session
-        const adminSession = await getAdminSession();
-        if (adminSession?.user) {
-            return {
-                userId: adminSession.user.id || null,
-                role: adminSession.user.role || 'SUPER_ADMIN',
-                supabase,
-                user: null
-            };
-        }
-    } catch (e) {
-        console.error('Admin NextAuth check error:', e);
     }
 
     return {
