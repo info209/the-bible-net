@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signOut } from 'next-auth/react';
+import { signOut, useSession } from 'next-auth/react';
 import {
   LogOut,
   Camera,
@@ -113,8 +113,64 @@ const COMING_SOON_VIEWS: ProfileView[] = ['streaks', 'share', 'support'];
 
 export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: ProfilePanelProps) {
   const router = useRouter();
+  const { update: updateSession } = useSession();
   const user = session?.user;
   const [activeView, setActiveView] = useState<ProfileView>(null);
+  const [isUploading, setIsUploading] = useState(false);
+
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Avatar image size must be less than 5MB');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('isPrivate', 'false');
+
+      const uploadRes = await fetch('/api/v1/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      const uploadData = await uploadRes.json();
+
+      if (!uploadRes.ok || !uploadData.success) {
+        throw new Error(uploadData.error || 'Failed to upload image');
+      }
+
+      const imageUrl = uploadData.url;
+
+      const profileRes = await fetch('/api/user/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: imageUrl }),
+      });
+      const profileData = await profileRes.json();
+
+      if (!profileRes.ok || !profileData.success) {
+        throw new Error(profileData.error || 'Failed to update avatar in profile');
+      }
+
+      if (updateSession) {
+        await updateSession({
+          user: {
+            ...session.user,
+            image: imageUrl,
+          },
+        });
+      }
+    } catch (err: any) {
+      console.error('Avatar upload error:', err);
+      alert(err.message || 'Avatar upload failed. Please try again.');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const initials = getInitials(user?.name, user?.email);
   const fullName = user?.name ?? user?.email ?? 'User';
@@ -262,12 +318,26 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
                 )}
 
                 {/* Camera badge */}
+                <input
+                  type="file"
+                  id="avatar-upload-input"
+                  className="hidden"
+                  accept="image/*"
+                  onChange={handleAvatarChange}
+                  disabled={isUploading}
+                />
                 <button
-                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white border border-gray-200 shadow flex items-center justify-center hover:bg-gray-50 transition-colors"
+                  type="button"
+                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white border border-gray-200 shadow flex items-center justify-center hover:bg-gray-50 transition-colors disabled:opacity-50"
                   title="Change photo"
-                  onClick={() => {/* future: open image picker */}}
+                  onClick={() => document.getElementById('avatar-upload-input')?.click()}
+                  disabled={isUploading}
                 >
-                  <Camera className="w-3.5 h-3.5 text-gray-600" />
+                  {isUploading ? (
+                    <div className="w-3.5 h-3.5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Camera className="w-3.5 h-3.5 text-gray-600" />
+                  )}
                 </button>
               </div>
 

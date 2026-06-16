@@ -4,12 +4,13 @@ import { UserRepository } from '@/repositories/user/userRepository';
 import { z } from 'zod';
 
 const profileUpdateSchema = z.object({
-    firstName: z.string().min(2, 'First name must be at least 2 characters'),
-    lastName: z.string().min(1, 'Last name is required'),
-    country: z.enum(['New Zealand', 'United States', 'United Kingdom', 'India', 'Australia', 'Canada']),
-    preferredLanguage: z.enum(['English', 'Spanish', 'French', 'Hindi', 'Telugu']),
-    preferredBibleVersion: z.string().min(1, 'Preferred Bible version is required'),
+    firstName: z.string().min(2, 'First name must be at least 2 characters').optional(),
+    lastName: z.string().min(1, 'Last name is required').optional(),
+    country: z.enum(['New Zealand', 'United States', 'United Kingdom', 'India', 'Australia', 'Canada']).optional(),
+    preferredLanguage: z.enum(['English', 'Spanish', 'French', 'Hindi', 'Telugu']).optional(),
+    preferredBibleVersion: z.string().min(1, 'Preferred Bible version is required').optional(),
     onboardingCompleted: z.boolean().optional(),
+    image: z.string().optional().nullable(),
 });
 
 /**
@@ -134,7 +135,13 @@ export async function PUT(req: NextRequest) {
         // The user request specified these fields are required now
         const validatedData = profileUpdateSchema.parse(body);
 
-        const updatedUser = await UserRepository.update(session.user.id, validatedData);
+        // Convert any possible 'null' to 'undefined' to match Partial<IUser> type definition
+        const updatePayload = {
+            ...validatedData,
+            image: validatedData.image === null ? undefined : validatedData.image,
+        };
+
+        const updatedUser = await UserRepository.update(session.user.id, updatePayload);
         if (!updatedUser) {
             return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
         }
