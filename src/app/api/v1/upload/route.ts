@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { uploadToCloudinary } from '@/lib/cloudinary';
+import { getAuthContext, generateUniqueFilePath, getUserIdFromPath } from '@/utils/uploadHelpers';
+import { UserRole } from '@/types/user';
 
 /**
  * @swagger
  * /api/v1/upload:
  *   post:
  *     summary: Upload a file
- *     description: Upload a file to Cloudinary (max 10MB)
+ *     description: Upload a file to Supabase Storage (max 10MB)
  *     tags:
  *       - Upload
  *     requestBody:
@@ -19,9 +20,9 @@ import { uploadToCloudinary } from '@/lib/cloudinary';
  *               file:
  *                 type: string
  *                 format: binary
- *               folder:
- *                 type: string
- *                 description: Optional folder name
+ *               isPrivate:
+ *                 type: boolean
+ *                 description: Set to true for private bucket upload (default false)
  *     responses:
  *       200:
  *         description: File uploaded successfully
@@ -32,20 +33,36 @@ import { uploadToCloudinary } from '@/lib/cloudinary';
  *               properties:
  *                 success:
  *                   type: boolean
+ *                 filePath:
+ *                   type: string
  *                 url:
  *                   type: string
- *                 public_id:
- *                   type: string
+ *                 isPrivate:
+ *                   type: boolean
  *       400:
  *         description: Bad request (no file or file too large)
+ *       401:
+ *         description: Unauthorized
  *       500:
  *         description: Upload failed
  */
 export async function POST(request: NextRequest) {
     try {
+        const authContext = await getAuthContext();
+        if (!authContext.userId) {
+            return NextResponse.json(
+                { error: 'Unauthorized' },
+                { status: 401 }
+            );
+        }
+
         const formData = await request.formData();
         const file = formData.get('file') as File | null;
-        const folder = (formData.get('folder') as string) || 'uploads';
+        
+        // Support isPrivate form-data field or query parameter
+        const isPrivateForm = formData.get('isPrivate') === 'true' || formData.get('isPrivate') === '1' || formData.get('private') === 'true';
+        const isPrivateQuery = request.nextUrl.searchParams.get('isPrivate') === 'true' || request.nextUrl.searchParams.get('private') === 'true';
+        const isPrivate = isPrivateForm || isPrivateQuery;
 
         // Validation
         if (!file) {
@@ -64,26 +81,51 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        // Convert file to buffer
-        const bytes = await file.arrayBuffer();
-        const buffer = Buffer.from(bytes);
+        // Generate target path
+        const filePath = generateUniqueFilePath(authContext.userId, file.name);
+        const buffer = Buffer.from(await file.arrayBuffer());
+        
+        const bucket = isPrivate ? 'private-files' : 'public-files';
 
-        // Determine resource type based on MIME type
-        let resourceType: 'image' | 'video' | 'raw' | 'auto' = 'auto';
-        if (file.type.startsWith('image/')) {
-            resourceType = 'image';
-        } else if (file.type.startsWith('video/')) {
-            resourceType = 'video';
+        // Upload to Supabase Storage
+        const { error: uploadError } = await authContext.supabase.storage
+            .from(bucket)
+            .upload(filePath, buffer, {
+                contentType: file.type,
+                cacheControl: '3600',
+                upsert: false
+            });
+
+        if (uploadError) {
+            throw uploadError;
         }
 
-        // Upload to Cloudinary
-        const result = await uploadToCloudinary(buffer, folder, resourceType);
+        let url = '';
+        if (isPrivate) {
+            // Get 1 hour signed URL
+            const { data: signedData, error: signedError } = await authContext.supabase.storage
+                .from(bucket)
+                .createSignedUrl(filePath, 3600); // 3600 seconds = 1 hour
+            
+            if (signedError) {
+                throw signedError;
+            }
+            url = signedData.signedUrl;
+        } else {
+            // Get public URL
+            const { data: publicData } = authContext.supabase.storage
+                .from(bucket)
+                .getPublicUrl(filePath);
+            url = publicData.publicUrl;
+        }
 
         return NextResponse.json(
             {
                 success: true,
-                url: result.url,
-                public_id: result.public_id,
+                filePath,
+                url,
+                isPrivate,
+                public_id: filePath // Legacy compatibility
             },
             { status: 200 }
         );
@@ -95,3 +137,58 @@ export async function POST(request: NextRequest) {
         );
     }
 }
+
+/**
+ * DELETE /api/v1/upload
+ * Deletes an uploaded file from Supabase Storage.
+ */
+export async function DELETE(request: NextRequest) {
+    try {
+        const authContext = await getAuthContext();
+        if (!authContext.userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        let filePath = '';
+        const searchParams = request.nextUrl.searchParams;
+        filePath = searchParams.get('filePath') || '';
+        const isPrivate = searchParams.get('isPrivate') === 'true' || searchParams.get('private') === 'true';
+
+        if (!filePath) {
+            try {
+                const body = await request.json();
+                filePath = body.filePath || '';
+            } catch (e) {}
+        }
+
+        if (!filePath) {
+            return NextResponse.json({ success: false, error: 'filePath is required' }, { status: 400 });
+        }
+
+        // Enforce ownership check: users can only delete their own files
+        const fileOwnerId = getUserIdFromPath(filePath);
+        if (!fileOwnerId) {
+            return NextResponse.json({ success: false, error: 'Invalid file path structure' }, { status: 400 });
+        }
+
+        const isAdmin = authContext.role === UserRole.SUPER_ADMIN || authContext.role === UserRole.SUB_ADMIN;
+        if (fileOwnerId !== authContext.userId && !isAdmin) {
+            return NextResponse.json({ success: false, error: 'Forbidden: You can only delete your own files' }, { status: 403 });
+        }
+
+        const bucket = isPrivate ? 'private-files' : 'public-files';
+        const { data, error } = await authContext.supabase.storage
+            .from(bucket)
+            .remove([filePath]);
+
+        if (error) {
+            throw error;
+        }
+
+        return NextResponse.json({ success: true, message: 'File deleted successfully', data });
+    } catch (error: any) {
+        console.error('Delete error:', error);
+        return NextResponse.json({ success: false, error: error.message || 'Delete failed' }, { status: 500 });
+    }
+}
+

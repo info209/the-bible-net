@@ -1,36 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/auth/admin';
 import { UserRole } from '@/types/user';
-import path from 'path';
-import fs from 'fs';
-
+import { getAuthContext, generateUniqueFilePath, getUserIdFromPath } from '@/utils/uploadHelpers';
 
 export const dynamic = 'force-dynamic';
 
-// Public upload directory
-const UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'daily-content');
-
-function ensureUploadDir() {
-    if (!fs.existsSync(UPLOAD_DIR)) {
-        fs.mkdirSync(UPLOAD_DIR, { recursive: true });
-    }
-}
-
-function generateUniqueFilename(originalName: string): string {
-    const ext = path.extname(originalName).toLowerCase();
-    const timestamp = Date.now();
-    const rand = Math.random().toString(36).substring(2, 8);
-    return `bg-${timestamp}-${rand}${ext}`;
-}
-
 /**
  * POST /api/admin/daily-content/image-upload
- * Uploads a background image locally and returns its public URL.
+ * Uploads a background image to Supabase Storage and returns its public URL.
  */
 export async function POST(req: NextRequest) {
     try {
-        const session = await adminAuth();
-        if (!session?.user || (session.user.role !== UserRole.SUPER_ADMIN && session.user.role !== UserRole.SUB_ADMIN)) {
+        const authContext = await getAuthContext();
+        if (!authContext.userId || (authContext.role !== UserRole.SUPER_ADMIN && authContext.role !== UserRole.SUB_ADMIN)) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
@@ -44,7 +25,7 @@ export async function POST(req: NextRequest) {
         // Validate file type
         const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
         const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
-        const ext = path.extname(file.name).toLowerCase();
+        const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
 
         if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(ext)) {
             return NextResponse.json({
@@ -59,22 +40,35 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Image size exceeds 10MB limit.' }, { status: 400 });
         }
 
-        ensureUploadDir();
-
-        const filename = generateUniqueFilename(file.name);
-        const filePath = path.join(UPLOAD_DIR, filename);
-
-        // Write file to disk
+        // Generate unique and sanitized file path
+        const filePath = generateUniqueFilePath(authContext.userId, file.name);
         const buffer = Buffer.from(await file.arrayBuffer());
-        fs.writeFileSync(filePath, buffer);
 
-        const publicUrl = `/uploads/daily-content/${filename}`;
+        // Upload to Supabase public-files bucket
+        const { error: uploadError } = await authContext.supabase.storage
+            .from('public-files')
+            .upload(filePath, buffer, {
+                contentType: file.type,
+                cacheControl: '3600',
+                upsert: false
+            });
+
+        if (uploadError) {
+            throw uploadError;
+        }
+
+        // Get public URL
+        const { data: { publicUrl } } = authContext.supabase.storage
+            .from('public-files')
+            .getPublicUrl(filePath);
 
         return NextResponse.json({
             success: true,
+            filePath,
             url: publicUrl,
-            filename,
-            size: file.size,
+            isPrivate: false,
+            filename: filePath.split('/').pop() || file.name, // legacy filename compatibility
+            size: file.size // legacy size compatibility
         });
     } catch (error: any) {
         console.error('Image upload error:', error);
@@ -84,34 +78,103 @@ export async function POST(req: NextRequest) {
 
 /**
  * GET /api/admin/daily-content/image-upload
- * Returns list of uploaded background images.
+ * Returns list of uploaded background images for the current admin.
  */
 export async function GET(req: NextRequest) {
     try {
-        const session = await adminAuth();
-        if (!session?.user || (session.user.role !== UserRole.SUPER_ADMIN && session.user.role !== UserRole.SUB_ADMIN)) {
+        const authContext = await getAuthContext();
+        if (!authContext.userId || (authContext.role !== UserRole.SUPER_ADMIN && authContext.role !== UserRole.SUB_ADMIN)) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        ensureUploadDir();
+        // List files in users/{userId} folder under public-files bucket
+        const { data, error } = await authContext.supabase.storage
+            .from('public-files')
+            .list(`users/${authContext.userId}`, {
+                limit: 50,
+                sortBy: { column: 'created_at', order: 'desc' }
+            });
 
-        const files = fs.readdirSync(UPLOAD_DIR)
-            .filter(f => ['.jpg', '.jpeg', '.png', '.webp'].includes(path.extname(f).toLowerCase()))
-            .map(f => {
-                const stat = fs.statSync(path.join(UPLOAD_DIR, f));
-                return {
-                    filename: f,
-                    url: `/uploads/daily-content/${f}`,
-                    size: stat.size,
-                    uploadedAt: stat.birthtime.toISOString(),
-                };
+        if (error) {
+            throw error;
+        }
+
+        const files = (data || [])
+            .filter(f => {
+                const ext = f.name.slice(f.name.lastIndexOf('.')).toLowerCase();
+                return ['.jpg', '.jpeg', '.png', '.webp'].includes(ext);
             })
-            .sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime())
-            .slice(0, 50); // Latest 50
+            .map(f => {
+                const filePath = `users/${authContext.userId}/${f.name}`;
+                const { data: { publicUrl } } = authContext.supabase.storage
+                    .from('public-files')
+                    .getPublicUrl(filePath);
+
+                return {
+                    filename: f.name,
+                    url: publicUrl,
+                    size: f.metadata?.size || 0,
+                    uploadedAt: f.created_at || new Date().toISOString()
+                };
+            });
 
         return NextResponse.json({ success: true, data: files });
     } catch (error: any) {
         console.error('Image list error:', error);
-        return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+        return NextResponse.json({ success: false, error: error.message || 'Failed to list images' }, { status: 500 });
     }
 }
+
+/**
+ * DELETE /api/admin/daily-content/image-upload
+ * Deletes an uploaded background image from Supabase Storage.
+ */
+export async function DELETE(req: NextRequest) {
+    try {
+        const authContext = await getAuthContext();
+        if (!authContext.userId || (authContext.role !== UserRole.SUPER_ADMIN && authContext.role !== UserRole.SUB_ADMIN)) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        let filePath = '';
+        const searchParams = req.nextUrl.searchParams;
+        filePath = searchParams.get('filePath') || '';
+        const isPrivate = searchParams.get('isPrivate') === 'true' || searchParams.get('private') === 'true';
+
+        if (!filePath) {
+            try {
+                const body = await req.json();
+                filePath = body.filePath || '';
+            } catch (e) {}
+        }
+
+        if (!filePath) {
+            return NextResponse.json({ success: false, error: 'filePath is required' }, { status: 400 });
+        }
+
+        const fileOwnerId = getUserIdFromPath(filePath);
+        if (!fileOwnerId) {
+            return NextResponse.json({ success: false, error: 'Invalid file path structure' }, { status: 400 });
+        }
+
+        const isAdmin = authContext.role === UserRole.SUPER_ADMIN || authContext.role === UserRole.SUB_ADMIN;
+        if (fileOwnerId !== authContext.userId && !isAdmin) {
+            return NextResponse.json({ success: false, error: 'Forbidden: You can only delete your own files' }, { status: 403 });
+        }
+
+        const bucket = isPrivate ? 'private-files' : 'public-files';
+        const { data, error } = await authContext.supabase.storage
+            .from(bucket)
+            .remove([filePath]);
+
+        if (error) {
+            throw error;
+        }
+
+        return NextResponse.json({ success: true, message: 'File deleted successfully', data });
+    } catch (error: any) {
+        console.error('Delete error:', error);
+        return NextResponse.json({ success: false, error: error.message || 'Delete failed' }, { status: 500 });
+    }
+}
+
