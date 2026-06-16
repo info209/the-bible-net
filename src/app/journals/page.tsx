@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -27,7 +27,7 @@ const BIBLE_BOOKS = [
   '1 John', '2 John', '3 John', 'Jude', 'Revelation'
 ];
 
-export default function JournalsPage() {
+function JournalsContent() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -2084,5 +2084,17 @@ export default function JournalsPage() {
       </AnimatePresence>
 
     </div>
+  );
+}
+
+export default function JournalsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#0B7A81]"></div>
+      </div>
+    }>
+      <JournalsContent />
+    </Suspense>
   );
 }
