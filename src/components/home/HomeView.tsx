@@ -602,7 +602,7 @@ export default function HomeView() {
       {/* Journals & Prayers Entry Point */}
       <div
         onClick={() => router.push('/journals')}
-        className="relative overflow-hidden rounded-2xl mx-4 p-6 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-between group min-h-[120px] w-[calc(100%-2rem)]"
+        className="relative overflow-hidden rounded-2xl mx-4 p-6 shadow-md hover:shadow-lg transition-all cursor-pointer flex items-center justify-between group min-h-[120px] w-full"
         style={{ backgroundImage: 'url(/banner_journal_and_prayers.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
         {/* Consistent dark overlay to ensure readability */}
@@ -627,7 +627,7 @@ export default function HomeView() {
       </div>
 
       {/* Community Prayer Wall - Figma Design */}
-      <div className="px-4">
+      <div className="relative overflow-hidden rounded-2xl w-full">
         <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl p-6 shadow-xl">
           <h3 className="text-xl font-bold text-gray-800 mb-4">Community Prayer Requests</h3>
           <div className="space-y-3">

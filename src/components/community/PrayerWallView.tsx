@@ -2,12 +2,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, 
-  Heart, 
-  MessageCircle, 
-  Share2, 
-  ArrowLeft, 
+import {
+  Plus,
+  Heart,
+  MessageCircle,
+  Share2,
+  ArrowLeft,
   Search,
   Filter,
   Users,
@@ -92,7 +92,7 @@ export default function PrayerWallView() {
 
   const handlePostPrayer = async () => {
     if (!newPrayerText.trim()) return;
-    
+
     try {
       setSubmitting(true);
       const res = await fetch('/api/prayers', {
@@ -119,7 +119,7 @@ export default function PrayerWallView() {
     }
   };
 
-  const filteredPrayers = prayers.filter(p => 
+  const filteredPrayers = prayers.filter(p =>
     p.text.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (!p.anonymous && p.userId?.firstName?.toLowerCase().includes(searchQuery.toLowerCase()))
   );
@@ -130,7 +130,7 @@ export default function PrayerWallView() {
       <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100 px-4 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <button 
+            <button
               onClick={() => router.back()}
               className="p-2 hover:bg-gray-100 rounded-full transition-colors"
             >
@@ -141,7 +141,7 @@ export default function PrayerWallView() {
               <p className="text-xs text-gray-500 font-medium">Supporting one another in faith</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => setShowPostModal(true)}
             className="flex items-center space-x-2 bg-[var(--color-primary-teal)] text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg shadow-teal-700/20 hover:scale-105 active:scale-95 transition-all"
           >
@@ -156,9 +156,9 @@ export default function PrayerWallView() {
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Search prayers or names..." 
+            <input
+              type="text"
+              placeholder="Search prayers or names..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-white border border-gray-200 rounded-2xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 focus:border-[var(--color-primary-teal)] outline-none transition-all shadow-sm"
@@ -167,14 +167,14 @@ export default function PrayerWallView() {
 
           <div className="flex items-center space-x-2">
             <div className="bg-white border border-gray-200 rounded-2xl p-1 flex">
-              <button 
+              <button
                 onClick={() => setFilter('newest')}
                 className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${filter === 'newest' ? 'bg-[#e6f0f1] text-[var(--color-primary-teal)]' : 'text-gray-500 hover:bg-gray-50'}`}
               >
                 <Clock className="size-3.5" />
                 <span>Newest</span>
               </button>
-              <button 
+              <button
                 onClick={() => setFilter('trending')}
                 className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${filter === 'trending' ? 'bg-[#e6f0f1] text-[var(--color-primary-teal)]' : 'text-gray-500 hover:bg-gray-50'}`}
               >
@@ -184,13 +184,13 @@ export default function PrayerWallView() {
             </div>
 
             <div className="bg-white border border-gray-200 rounded-2xl p-1 flex">
-              <button 
+              <button
                 onClick={() => setLayout('grid')}
                 className={`p-1.5 rounded-xl transition-all ${layout === 'grid' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:bg-gray-50'}`}
               >
                 <LayoutGrid className="size-4" />
               </button>
-              <button 
+              <button
                 onClick={() => setLayout('list')}
                 className={`p-1.5 rounded-xl transition-all ${layout === 'list' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:bg-gray-50'}`}
               >
@@ -268,20 +268,19 @@ export default function PrayerWallView() {
                   </div>
 
                   <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                    <button 
+                    <button
                       onClick={() => handleIntercede(prayer._id)}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-2xl transition-all ${
-                        prayer.intercessors?.includes((session?.user as any)?.id)
-                        ? 'bg-orange-50 text-orange-600 font-bold'
-                        : 'bg-teal-50 text-[var(--color-primary-teal)] font-bold hover:bg-teal-100'
-                      }`}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-2xl transition-all ${prayer.intercessors?.includes((session?.user as any)?.id)
+                          ? 'bg-orange-50 text-orange-600 font-bold'
+                          : 'bg-teal-50 text-[var(--color-primary-teal)] font-bold hover:bg-teal-100'
+                        }`}
                     >
                       <Heart className={`size-4 ${prayer.intercessors?.includes((session?.user as any)?.id) ? 'fill-orange-600' : ''}`} />
                       <span className="text-xs">
                         {prayer.intercessionCount > 0 ? `${prayer.intercessionCount} praying` : 'Pray for this'}
                       </span>
                     </button>
-                    
+
                     <button className="flex items-center space-x-1.5 text-gray-400 hover:text-gray-600 font-bold transition-all">
                       <MessageCircle className="size-4" />
                       <span className="text-xs">Amen</span>
@@ -297,7 +296,7 @@ export default function PrayerWallView() {
       {/* Post Prayer Modal */}
       <Dialog open={showPostModal} onOpenChange={setShowPostModal}>
         <DialogContent className="sm:max-w-lg p-0 border-none bg-transparent shadow-none [&>[data-slot=dialog-close]]:hidden">
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
             className="bg-white rounded-[32px] overflow-hidden shadow-2xl"
@@ -312,7 +311,7 @@ export default function PrayerWallView() {
                   <DialogDescription className="text-xs font-medium text-gray-500 italic">Share your request with the community</DialogDescription>
                 </div>
               </div>
-              <button 
+              <button
                 onClick={() => setShowPostModal(false)}
                 className="p-2 hover:bg-gray-100 rounded-full transition-colors"
               >
@@ -336,11 +335,10 @@ export default function PrayerWallView() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => setIsAnonymous(!isAnonymous)}
-                  className={`flex-1 flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${
-                    isAnonymous 
-                    ? 'border-[var(--color-primary-teal)] bg-teal-50/30' 
-                    : 'border-gray-100 hover:border-gray-200'
-                  }`}
+                  className={`flex-1 flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${isAnonymous
+                      ? 'border-[var(--color-primary-teal)] bg-teal-50/30'
+                      : 'border-gray-100 hover:border-gray-200'
+                    }`}
                 >
                   <div className="flex items-center space-x-3">
                     {isAnonymous ? <UserX className="size-5 text-[var(--color-primary-teal)]" /> : <UserCheck className="size-5 text-gray-400" />}
@@ -356,11 +354,10 @@ export default function PrayerWallView() {
 
                 <button
                   onClick={() => setIsPublic(!isPublic)}
-                  className={`flex-1 flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${
-                    isPublic 
-                    ? 'border-[var(--color-primary-teal)] bg-teal-50/30' 
-                    : 'border-gray-100 hover:border-gray-200'
-                  }`}
+                  className={`flex-1 flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${isPublic
+                      ? 'border-[var(--color-primary-teal)] bg-teal-50/30'
+                      : 'border-gray-100 hover:border-gray-200'
+                    }`}
                 >
                   <div className="flex items-center space-x-3">
                     {isPublic ? <Globe className="size-5 text-[var(--color-primary-teal)]" /> : <Lock className="size-5 text-gray-400" />}
@@ -393,149 +390,6 @@ export default function PrayerWallView() {
           </motion.div>
         </DialogContent>
       </Dialog>
-
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        {/* Controls */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-gray-400" />
-            <input 
-              type="text" 
-              placeholder="Search prayers or names..." 
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-2xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 focus:border-[var(--color-primary-teal)] outline-none transition-all shadow-sm"
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <div className="bg-white border border-gray-200 rounded-2xl p-1 flex">
-              <button 
-                onClick={() => setFilter('newest')}
-                className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${filter === 'newest' ? 'bg-[#e6f0f1] text-[var(--color-primary-teal)]' : 'text-gray-500 hover:bg-gray-50'}`}
-              >
-                <Clock className="size-3.5" />
-                <span>Newest</span>
-              </button>
-              <button 
-                onClick={() => setFilter('trending')}
-                className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${filter === 'trending' ? 'bg-[#e6f0f1] text-[var(--color-primary-teal)]' : 'text-gray-500 hover:bg-gray-50'}`}
-              >
-                <Filter className="size-3.5" />
-                <span>Most Prayed</span>
-              </button>
-            </div>
-
-            <div className="bg-white border border-gray-200 rounded-2xl p-1 flex">
-              <button 
-                onClick={() => setLayout('grid')}
-                className={`p-1.5 rounded-xl transition-all ${layout === 'grid' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:bg-gray-50'}`}
-              >
-                <LayoutGrid className="size-4" />
-              </button>
-              <button 
-                onClick={() => setLayout('list')}
-                className={`p-1.5 rounded-xl transition-all ${layout === 'list' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:bg-gray-50'}`}
-              >
-                <ListIcon className="size-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* Prayer List */}
-        {loading ? (
-          <div className={`grid gap-6 ${layout === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-            {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 animate-pulse">
-                <div className="flex items-center space-x-3 mb-4">
-                  <div className="size-10 bg-gray-200 rounded-full" />
-                  <div className="space-y-2">
-                    <div className="h-3 w-24 bg-gray-200 rounded" />
-                    <div className="h-2 w-16 bg-gray-100 rounded" />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <div className="h-4 w-full bg-gray-200 rounded" />
-                  <div className="h-4 w-5/6 bg-gray-100 rounded" />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : filteredPrayers.length === 0 ? (
-          <div className="bg-white rounded-[32px] p-20 text-center shadow-lg border border-teal-100/30">
-            <div className="bg-teal-50 size-20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Plus className="size-10 text-[var(--color-primary-teal)] opacity-50" />
-            </div>
-            <h3 className="text-xl font-bold text-gray-800 mb-2">No prayers found</h3>
-            <p className="text-gray-500 max-w-sm mx-auto">
-              Be the light in someone's day. Post a prayer request or search for another term.
-            </p>
-          </div>
-        ) : (
-          <div className={`grid gap-6 ${layout === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
-            <AnimatePresence mode="popLayout">
-              {filteredPrayers.map((prayer) => (
-                <motion.div
-                  key={prayer._id}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all border border-gray-100 relative overflow-hidden group"
-                >
-                  <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button className="p-2 hover:bg-gray-50 rounded-full text-gray-400 hover:text-gray-600">
-                      <Share2 className="size-4" />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center space-x-3 mb-4">
-                    <div className="size-11 rounded-full bg-gradient-to-br from-teal-400 to-cyan-600 flex items-center justify-center text-white font-extrabold uppercase shadow-inner text-sm ring-2 ring-white">
-                      {prayer.anonymous ? 'A' : (prayer.userId?.firstName?.[0] || 'U')}
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 leading-none mb-1">
-                        {prayer.anonymous ? 'Anonymous' : `${prayer.userId?.firstName} ${prayer.userId?.lastName?.[0] || ''}`}
-                      </h4>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
-                        {new Date(prayer.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="mb-6">
-                    <p className="text-gray-700 font-medium leading-relaxed text-sm lg:text-base">
-                      {prayer.text}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between pt-4 border-t border-gray-50">
-                    <button 
-                      onClick={() => handleIntercede(prayer._id)}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-2xl transition-all ${
-                        prayer.intercessors?.includes((session?.user as any)?.id)
-                        ? 'bg-orange-50 text-orange-600 font-bold'
-                        : 'bg-teal-50 text-[var(--color-primary-teal)] font-bold hover:bg-teal-100'
-                      }`}
-                    >
-                      <Heart className={`size-4 ${prayer.intercessors?.includes((session?.user as any)?.id) ? 'fill-orange-600' : ''}`} />
-                      <span className="text-xs">
-                        {prayer.intercessionCount > 0 ? `${prayer.intercessionCount} praying` : 'Pray for this'}
-                      </span>
-                    </button>
-                    
-                    <button className="flex items-center space-x-1.5 text-gray-400 hover:text-gray-600 font-bold transition-all">
-                      <MessageCircle className="size-4" />
-                      <span className="text-xs">Amen</span>
-                    </button>
-                  </div>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
-      </main>
     </div>
   );
 }
