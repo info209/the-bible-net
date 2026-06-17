@@ -3,6 +3,7 @@
 import { Play, Heart, MessageCircle, Share2, Maximize2, Pause, X, Send } from 'lucide-react';
 import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
+import { toast } from '@/context/ToastContext';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -12,6 +13,7 @@ import { getRelativeTime } from '@/utils/time';
 import HomeSkeleton from '@/app/components/HomeSkeleton';
 import { DailyDetailModal } from './DailyDetailModal';
 import { PremiumCarousel } from './PremiumCarousel';
+import { LikeButton } from './LikeButton';
 
 export default function HomeView() {
   const { data: session } = useSession();
@@ -83,36 +85,6 @@ export default function HomeView() {
     setInitialModalIndex(index);
     setInitialModalSection(section);
     setIsDetailModalOpen(true);
-  };
-
-  const handleLike = async (contentId: string, type: 'daily-verse' | 'daily-devotion') => {
-    try {
-      const res = await fetch('/api/interactions/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentId, type })
-      });
-
-      const data = await res.json();
-      if (res.ok) {
-        // Update general contents, verses, and devotions
-        const updateCounts = (prev: any[]) => prev.map(content => {
-          if (content._id === contentId) {
-            return {
-              ...content,
-              [type === 'daily-verse' ? 'verseLikeCount' : 'devotionLikeCount']: data.likeCount
-            };
-          }
-          return content;
-        });
-
-        setDailyContents(updateCounts);
-        setDailyVerses(updateCounts);
-        setDailyDevotions(updateCounts);
-      }
-    } catch (error) {
-      console.error('Like error:', error);
-    }
   };
 
   const handleCommentClick = (contentId: string, type: 'daily-verse' | 'daily-devotion') => {
@@ -190,7 +162,7 @@ export default function HomeView() {
       }
     } else {
       navigator.clipboard.writeText(`${text} ${url}`);
-      alert('Link copied to clipboard!');
+      toast.success('Link copied to clipboard!');
     }
   };
 
@@ -335,15 +307,13 @@ export default function HomeView() {
 
                     {/* Actions */}
                     <div className="flex items-center justify-between pt-3 border-t border-white/20">
-                      <button
-                        onClick={() => handleLike(content._id, 'daily-verse')}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                      >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Heart className={`size-4 ${content.verseLikeCount > 0 ? 'fill-white' : ''}`} />
-                        </div>
-                        <span className="text-xs">{content.verseLikeCount || 'Like'}</span>
-                      </button>
+                      <LikeButton
+                        contentId={content._id}
+                        contentType="daily-verse"
+                        initialLiked={content.isVerseLiked}
+                        initialCount={content.verseLikeCount}
+                        variant="carousel"
+                      />
                       <button
                         onClick={() => handleCommentClick(content._id, 'daily-verse')}
                         className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
@@ -456,15 +426,13 @@ export default function HomeView() {
 
                     {/* Actions */}
                     <div className="flex items-center justify-between pt-3 border-t border-white/20">
-                      <button
-                        onClick={() => handleLike(content._id, 'daily-devotion')}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                      >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Heart className={`size-4 ${content.devotionLikeCount > 0 ? 'fill-white' : ''}`} />
-                        </div>
-                        <span className="text-xs">{content.devotionLikeCount || 'Like'}</span>
-                      </button>
+                      <LikeButton
+                        contentId={content._id}
+                        contentType="daily-devotion"
+                        initialLiked={content.isDevotionLiked}
+                        initialCount={content.devotionLikeCount}
+                        variant="carousel"
+                      />
                       <button
                         onClick={() => handleCommentClick(content._id, 'daily-devotion')}
                         className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
@@ -811,7 +779,7 @@ export default function HomeView() {
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
                 placeholder="Write a comment..."
-                className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/40 resize-none transition-all placeholder:text-gray-400 dark:text-slate-100"
+                className="flex-1 bg-slate-50 dark:bg-zinc-900 border border-slate-100 dark:border-zinc-800 rounded-xl p-3 text-[16px] md:text-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/40 resize-none transition-all placeholder:text-gray-400 dark:text-slate-100"
                 rows={2}
               />
               <button

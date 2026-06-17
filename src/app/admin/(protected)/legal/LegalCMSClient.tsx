@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Loader2, Save, Trash2, Eye, Edit3, CheckCircle2, AlertCircle } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmContext';
 
 interface LegalContent {
     _id: string;
@@ -14,6 +15,7 @@ interface LegalContent {
 }
 
 export default function LegalCMSClient() {
+    const confirm = useConfirm();
     const [contents, setContents] = useState<LegalContent[]>([]);
     const [loading, setLoading] = useState(true);
     const [editingContent, setEditingContent] = useState<Partial<LegalContent> | null>(null);
@@ -83,7 +85,12 @@ export default function LegalCMSClient() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Are you sure you want to delete this content?')) return;
+        const confirmed = await confirm({
+            title: 'Delete Document',
+            message: 'Are you sure you want to delete this content?',
+            destructive: true
+        });
+        if (!confirmed) return;
 
         try {
             const res = await fetch(`/api/admin/content/legal/${id}`, {

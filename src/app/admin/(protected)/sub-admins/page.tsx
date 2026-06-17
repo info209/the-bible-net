@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
+import { toast } from '@/context/ToastContext';
 import { UserRole } from '@/types/user';
 
 export default function AdminSubAdminsPage() {
@@ -42,12 +43,13 @@ export default function AdminSubAdminsPage() {
                 setShowModal(false);
                 fetchSubAdmins();
                 setFormData({ firstName: '', lastName: '', email: '', password: '' });
+                toast.success('Sub-admin created successfully!');
             } else {
                 const err = await res.json();
-                alert(err.error || 'Failed to create sub-admin');
+                toast.error(err.error || 'Failed to create sub-admin');
             }
         } catch (err) {
-            alert('Error creating sub-admin');
+            toast.error('Error creating sub-admin');
         }
     };
 

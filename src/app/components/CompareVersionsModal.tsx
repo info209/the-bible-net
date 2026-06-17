@@ -24,8 +24,6 @@ export default function CompareVersionsModal({
 }: CompareVersionsModalProps) {
   const canCompare = selectedVersions.length >= 2 && selectedVersions.length <= 4;
 
-  if (!isOpen) return null;
-
   // Premium Themes Styling Variables
   const theme = selectedTheme || (isDark ? 'dark' : 'light');
   
@@ -72,8 +70,7 @@ export default function CompareVersionsModal({
   }[theme];
   
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center">
+    <div className="fixed inset-0 z-[200] flex items-center justify-center">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -215,6 +212,5 @@ export default function CompareVersionsModal({
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
   );
 }

@@ -273,7 +273,7 @@ export default function BibleSearch({
                 }
               }}
               placeholder="Search the Bible..."
-              className="flex-1 bg-transparent outline-none transition-colors"
+              className="flex-1 bg-transparent outline-none transition-colors text-[16px] md:text-sm"
               style={{
                 color: textCol,
               }}

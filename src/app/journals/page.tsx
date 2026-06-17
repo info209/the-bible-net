@@ -10,6 +10,8 @@ import {
   Bold, Italic, List, ChevronUp, ChevronDown,
   BookOpen, Sliders
 } from 'lucide-react';
+import { toast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmContext';
 
 type Tab = 'All' | 'Journals' | 'Prayers';
 type ItemType = 'journal' | 'prayer';
@@ -32,6 +34,7 @@ function JournalsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const navigationSource = searchParams.get('source'); // 'profile' | null
+  const confirm = useConfirm();
 
   // Lifecycle
   const [mounted, setMounted] = useState(false);
@@ -120,9 +123,6 @@ function JournalsContent() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
 
-  // Toast State
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
   // Debounce search
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -141,8 +141,14 @@ function JournalsContent() {
 
   // Toast trigger helper
   const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    const lower = msg.toLowerCase();
+    if (lower.includes('error') || lower.includes('failed') || lower.includes('denied') || lower.includes('issue')) {
+      toast.error(msg);
+    } else if (lower.includes('activated') || lower.includes('complete') || lower.includes('linked')) {
+      toast.info(msg);
+    } else {
+      toast.success(msg);
+    }
   };
 
   // Main Fetcher
@@ -569,7 +575,11 @@ function JournalsContent() {
   // Multi-select Action execution
   const handleBatchDelete = async () => {
     if (selectedIds.length === 0) return;
-    const confirmBatch = confirm(`Are you sure you want to delete these ${selectedIds.length} items?`);
+    const confirmBatch = await confirm({
+      title: 'Batch Delete',
+      message: `Are you sure you want to delete these ${selectedIds.length} items?`,
+      destructive: true
+    });
     if (!confirmBatch) return;
 
     setLoading(true);
@@ -1045,7 +1055,7 @@ function JournalsContent() {
                   placeholder="Search title, contents, labels, or verses..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent border-none outline-none focus:ring-0 w-full text-sm placeholder:text-gray-400"
+                  className="bg-transparent border-none outline-none focus:ring-0 w-full text-[16px] md:text-sm placeholder:text-gray-400"
                 />
                 {searchQuery && (
                   <button onClick={() => setSearchQuery('')} className="p-0.5 hover:bg-gray-200 dark:hover:bg-white/[0.08] rounded-full shrink-0">
@@ -1389,7 +1399,7 @@ function JournalsContent() {
                         value={newLabelText}
                         onChange={(e) => setNewLabelText(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleCreateLabel(); }}
-                        className="w-full h-10 mt-3 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
+                        className="w-full h-10 mt-3 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
                       />
                       <div className="flex gap-2 mt-4">
                         <button
@@ -1463,7 +1473,7 @@ function JournalsContent() {
                             placeholder="Enter item description..."
                             value={ci.text}
                             onChange={(e) => handleUpdateChecklistItemText(idx, e.target.value)}
-                            className={`w-full bg-transparent border-none text-sm outline-none focus:ring-0 ${
+                            className={`w-full bg-transparent border-none text-[16px] md:text-sm outline-none focus:ring-0 ${
                               ci.checked ? 'line-through text-gray-400' : ''
                             }`}
                           />
@@ -1685,7 +1695,7 @@ function JournalsContent() {
                           <select
                             value={pickerBook}
                             onChange={(e) => setPickerBook(e.target.value)}
-                            className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-2 text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
+                            className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-2 text-[16px] md:text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
                           >
                             {BIBLE_BOOKS.map(b => (
                               <option key={b} value={b}>{b}</option>
@@ -1702,7 +1712,7 @@ function JournalsContent() {
                               min={1}
                               value={pickerChapter}
                               onChange={(e) => setPickerChapter(Math.max(1, Number(e.target.value)))}
-                              className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-sm bg-transparent outline-none focus:border-[#0B7A81]"
+                              className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
                             />
                           </div>
                           <div>
@@ -1716,7 +1726,7 @@ function JournalsContent() {
                                 setPickerVerseStart(val);
                                 if (pickerVerseEnd < val) setPickerVerseEnd(val);
                               }}
-                              className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-sm bg-transparent outline-none focus:border-[#0B7A81]"
+                              className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
                             />
                           </div>
                           <div>
@@ -1726,7 +1736,7 @@ function JournalsContent() {
                               min={1}
                               value={pickerVerseEnd}
                               onChange={(e) => setPickerVerseEnd(Math.max(pickerVerseStart, Number(e.target.value)))}
-                              className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-sm bg-transparent outline-none focus:border-[#0B7A81]"
+                              className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
                             />
                           </div>
                         </div>
@@ -1754,21 +1764,6 @@ function JournalsContent() {
               </AnimatePresence>
 
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── Dynamic Toast Banner ── */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
-            className="fixed bottom-[96px] left-1/2 -translate-x-1/2 z-50 bg-[#0B7A81] text-white text-xs px-5 py-3 rounded-full shadow-lg font-bold flex items-center gap-1.5"
-          >
-            <Check className="w-4 h-4 shrink-0" strokeWidth={3} />
-            {toastMessage}
           </motion.div>
         )}
       </AnimatePresence>

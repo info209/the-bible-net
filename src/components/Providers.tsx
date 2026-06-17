@@ -2,6 +2,7 @@
 
 import { SessionProvider } from "next-auth/react";
 import { usePathname } from "next/navigation";
+import { LikeProvider } from "@/context/LikeContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -13,7 +14,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <SessionProvider basePath={basePath}>
-            {children}
+            <LikeProvider>
+                {children}
+            </LikeProvider>
         </SessionProvider>
     );
 }

@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { useSavedVerses, SavedVerseClient } from '@/lib/useSavedVerses';
 import { useSavedItems, SavedItemClient } from '@/lib/useSavedItems';
+import { toast } from '@/context/ToastContext';
 
 type FilterTab = 'All' | 'Bible' | 'Reading plans';
 
@@ -32,8 +33,6 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
   const [editLabelsOpen, setEditLabelsOpen] = useState(false);
   const [editPrivacyOpen, setEditPrivacyOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-
   // Temporary Edit States
   const [tempLabels, setTempLabels] = useState<string[]>([]);
   const [tempLabelInput, setTempLabelInput] = useState('');
@@ -53,8 +52,12 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
   }, []);
 
   const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    const lower = msg.toLowerCase();
+    if (lower.includes('error') || lower.includes('failed')) {
+      toast.error(msg);
+    } else {
+      toast.success(msg);
+    }
   };
 
   const handleOpenMenu = (e: React.MouseEvent, item: any) => {
@@ -428,7 +431,7 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
                       value={tempLabelInput}
                       onChange={(e) => setTempLabelInput(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleAddLabel(); }}
-                      className="flex-1 h-9 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-transparent text-sm px-3 focus:outline-none focus:border-[#0B7A81]"
+                      className="flex-1 h-9 rounded-lg border border-gray-300 dark:border-white/[0.08] bg-transparent text-[16px] md:text-sm px-3 focus:outline-none focus:border-[#0B7A81]"
                     />
                     <button
                       onClick={handleAddLabel}
@@ -533,20 +536,7 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
         )}
       </AnimatePresence>
 
-      {/* ── Toast Notification ─────────────────────────────────────────── */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#0B7A81] text-white text-xs px-5 py-3 rounded-full shadow-lg font-semibold flex items-center gap-2"
-          >
-            <Check className="w-4 h-4 shrink-0" />
-            {toastMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
     </div>
   );

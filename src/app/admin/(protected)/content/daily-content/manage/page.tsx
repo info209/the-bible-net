@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { toast } from '@/context/ToastContext';
 import Link from 'next/link';
 import { ArrowLeft, Eye, Loader } from 'lucide-react';
 
@@ -121,13 +122,14 @@ function ManageForm() {
 
             const result = await res.json();
             if (result.success) {
+                toast.success('Daily content saved successfully');
                 router.push('/admin/content/daily-content');
                 router.refresh();
             } else {
-                alert(result.error || 'Failed to save');
+                toast.error(result.error || 'Failed to save');
             }
         } catch {
-            alert('Error saving content');
+            toast.error('Error saving content');
         } finally {
             setSubmitting(false);
         }

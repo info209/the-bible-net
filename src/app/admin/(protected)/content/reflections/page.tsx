@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { toast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmContext';
 
 interface Content {
     _id: string;
@@ -13,6 +15,7 @@ interface Content {
 }
 
 export default function ReflectionsManagement() {
+    const confirm = useConfirm();
     const [selectedType, setSelectedType] = useState<'devotion' | 'verse'>('devotion');
     const [contents, setContents] = useState<Content[]>([]);
     const [loading, setLoading] = useState(true);
@@ -47,7 +50,12 @@ export default function ReflectionsManagement() {
     };
 
     const handleDelete = async (id: string) => {
-        if (!confirm(`Are you sure you want to delete this ${selectedType}?`)) return;
+        const confirmed = await confirm({
+            title: `Delete ${selectedType === 'devotion' ? 'Devotional' : 'Verse'}`,
+            message: `Are you sure you want to delete this ${selectedType}?`,
+            destructive: true
+        });
+        if (!confirmed) return;
 
         try {
             const res = await fetch(`/api/v1/content/${id}`, {
@@ -55,12 +63,13 @@ export default function ReflectionsManagement() {
             });
             const result = await res.json();
             if (result.success) {
+                toast.success('Content deleted successfully');
                 fetchContents();
             } else {
-                alert(result.error || 'Failed to delete');
+                toast.error(result.error || 'Failed to delete');
             }
         } catch (err) {
-            alert('Error deleting content');
+            toast.error('Error deleting content');
         }
     };
 
@@ -87,12 +96,13 @@ export default function ReflectionsManagement() {
                 setTitle('');
                 setReference('');
                 setText('');
+                toast.success(`${selectedType === 'devotion' ? 'Reflection' : 'Daily Verse'} created successfully`);
                 fetchContents();
             } else {
-                alert(result.error || 'Failed to create');
+                toast.error(result.error || 'Failed to create');
             }
         } catch (err) {
-            alert('Error creating content');
+            toast.error('Error creating content');
         } finally {
             setSubmitting(false);
         }

@@ -45,6 +45,7 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { Separator as RadixSeparator } from '@radix-ui/react-separator';
 import BibleReaderPage from './BibleReaderPage';
+import { toast } from '@/context/ToastContext';
 
 const bibleBooks = {
   'Old Testament': [
@@ -289,7 +290,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     if (navigator.share) {
       navigator.share({ title: 'Bible Verses', text: shareText }).catch(console.error);
     } else {
-      alert(shareText);
+      toast.info(shareText);
     }
     setSelectedVerses([]);
   };

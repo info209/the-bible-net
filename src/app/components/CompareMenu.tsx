@@ -24,7 +24,6 @@ export default function CompareMenu({
   isDark = false,
   selectedTheme,
 }: CompareMenuProps) {
-  if (!isOpen) return null;
 
   const availableVersions = versions.filter(v => !selectedVersions.includes(v.id));
   const canAddMore = selectedVersions.length < 4;
@@ -110,8 +109,7 @@ export default function CompareMenu({
   }[theme];
 
   return (
-    <AnimatePresence>
-      <div className="fixed inset-0 z-[250] flex justify-end">
+    <div className="fixed inset-0 z-[250] flex justify-end">
         {/* Backdrop */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -260,6 +258,5 @@ export default function CompareMenu({
           </div>
         </motion.div>
       </div>
-    </AnimatePresence>
   );
 }

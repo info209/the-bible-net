@@ -635,12 +635,11 @@ export default function VerseActionMenu({
                         maxLength={MAX_LABEL_LENGTH}
                         placeholder="Create new label..."
                         aria-label="New label name"
-                        className="flex-1 focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 transition-all"
+                        className="flex-1 focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 transition-all text-[16px] md:text-[13px]"
                         style={{
                           height: 38,
                           borderRadius: 12,
                           padding: '0 12px',
-                          fontSize: 13,
                           backgroundColor: inputBg,
                           border: `1px solid ${inputBorder}`,
                           color: inputText,
@@ -842,12 +841,11 @@ export default function VerseActionMenu({
                         maxLength={MAX_LABEL_LENGTH}
                         placeholder="Create new label..."
                         aria-label="New label name"
-                        className="flex-1 focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 transition-all"
+                        className="flex-1 focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 transition-all text-[16px] md:text-[13px]"
                         style={{
                           height: 38,
                           borderRadius: 12,
                           padding: '0 12px',
-                          fontSize: 13,
                           backgroundColor: inputBg,
                           border: `1px solid ${inputBorder}`,
                           color: inputText,
@@ -946,7 +944,7 @@ export default function VerseActionMenu({
                       value={noteInput}
                       onChange={(e) => setNoteInput(e.target.value)}
                       placeholder="Write your thoughts here…"
-                      className="w-full rounded-[12px] p-3 text-[13px] focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 resize-none mb-4 shrink-0"
+                      className="w-full rounded-[12px] p-3 text-[16px] md:text-[13px] focus:outline-none focus:ring-2 focus:ring-[#31C4BE]/40 resize-none mb-4 shrink-0"
                       style={{
                         height: 110,
                         backgroundColor: inputBg,

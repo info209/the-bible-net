@@ -24,6 +24,7 @@ import BibleSearch from './BibleSearch';
 import CompareVersionsModal from './CompareVersionsModal';
 import CompareMenu from './CompareMenu';
 import CompareView from './CompareView';
+import { toast } from '@/context/ToastContext';
 
 import { useMediaStore } from '@/lib/mediaStore';
 import ChapterContent, { mockBibleContent } from './ChapterContent';
@@ -262,7 +263,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     if (navigator.share) {
       navigator.share({ title: 'Bible Verses', text: shareText }).catch(console.error);
     } else {
-      alert(shareText);
+      toast.info(shareText);
     }
     setSelectedVerses([]);
   };
@@ -1478,10 +1479,14 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               {/* Right side tools with better mobile spacing */}
               <div className="flex items-center -space-x-1 ml-auto mr-3 flex-shrink-0">
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
                     if (comparisonMode) {
+                      if (showCompareMenu) return;
                       setShowCompareMenu(true);
                     } else {
+                      if (showCompareSelector) return;
                       setTempComparisonIds(selectedVersionId ? [selectedVersionId] : []);
                       setShowCompareSelector(true);
                     }
@@ -1741,28 +1746,32 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           </div>
         )}
 
-        {showCompareSelector && (
-          <CompareVersionsModal
-            isOpen={showCompareSelector}
-            onClose={() => setShowCompareSelector(false)}
-            versions={bibleVersions}
-            selectedVersions={tempComparisonIds}
-            onToggleVersion={handleToggleCompareVersion}
-            onStartCompare={handleStartCompare}
-          />
-        )}
+        <AnimatePresence>
+          {showCompareSelector && (
+            <CompareVersionsModal
+              isOpen={showCompareSelector}
+              onClose={() => setShowCompareSelector(false)}
+              versions={bibleVersions}
+              selectedVersions={tempComparisonIds}
+              onToggleVersion={handleToggleCompareVersion}
+              onStartCompare={handleStartCompare}
+            />
+          )}
+        </AnimatePresence>
 
-        {showCompareMenu && (
-          <CompareMenu
-            isOpen={showCompareMenu}
-            onClose={() => setShowCompareMenu(false)}
-            versions={bibleVersions}
-            selectedVersions={comparisonVersionIds}
-            onRemoveVersion={handleRemoveCompareVersion}
-            onAddVersion={handleAddCompareVersion}
-            onExitCompare={handleExitCompare}
-          />
-        )}
+        <AnimatePresence>
+          {showCompareMenu && (
+            <CompareMenu
+              isOpen={showCompareMenu}
+              onClose={() => setShowCompareMenu(false)}
+              versions={bibleVersions}
+              selectedVersions={comparisonVersionIds}
+              onRemoveVersion={handleRemoveCompareVersion}
+              onAddVersion={handleAddCompareVersion}
+              onExitCompare={handleExitCompare}
+            />
+          )}
+        </AnimatePresence>
 
         {showMusicSelector && (
           <div className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-sm" onClick={() => setShowMusicSelector(false)}>

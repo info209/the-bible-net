@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { toast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmContext';
 import {
     Calendar, BookOpen, Image as ImageIcon, BarChart2, Upload,
     Download, Search, ChevronLeft, ChevronRight, Trash2, Edit,
@@ -44,6 +46,7 @@ const TABS = [
 ];
 
 export default function DailyContentManagement() {
+    const confirm = useConfirm();
     const [activeTab, setActiveTab] = useState<Tab>('verse');
 
     // Data state
@@ -116,19 +119,37 @@ export default function DailyContentManagement() {
     }, [activeTab, coverageYear, fetchCoverage]);
 
     const handleDelete = async (id: string) => {
-        if (!confirm('Delete this record?')) return;
+        const confirmed = await confirm({
+            title: 'Delete Record',
+            message: 'Are you sure you want to delete this record?',
+            destructive: true
+        });
+        if (!confirmed) return;
         const res = await fetch(`/api/admin/daily-content/${id}`, { method: 'DELETE' });
         const data = await res.json();
-        if (data.success) fetchContents();
-        else alert(data.error || 'Failed to delete');
+        if (data.success) {
+            toast.success('Record deleted successfully');
+            fetchContents();
+        } else {
+            toast.error(data.error || 'Failed to delete');
+        }
     };
 
     const handleDeleteAll = async () => {
-        if (!confirm('⚠️ This will DELETE ALL daily content records. This is irreversible. Continue?')) return;
+        const confirmed = await confirm({
+            title: 'Delete All Records',
+            message: '⚠️ This will DELETE ALL daily content records. This is irreversible. Continue?',
+            destructive: true
+        });
+        if (!confirmed) return;
         const res = await fetch('/api/admin/daily-content', { method: 'DELETE' });
         const data = await res.json();
-        if (data.success) { fetchContents(); alert(`Deleted ${data.deleted} records.`); }
-        else alert(data.error || 'Failed to delete all');
+        if (data.success) {
+            fetchContents();
+            toast.success(`Deleted ${data.deleted} records.`);
+        } else {
+            toast.error(data.error || 'Failed to delete all');
+        }
     };
 
     const handleBulkVerseUpload = async (file: File) => {
@@ -141,12 +162,13 @@ export default function DailyContentManagement() {
             const data = await res.json();
             if (data.success) {
                 setVerseResult(data.data);
+                toast.success('Verses uploaded successfully');
                 fetchContents();
             } else {
-                alert(data.error || 'Upload failed');
+                toast.error(data.error || 'Upload failed');
             }
         } catch (e) {
-            alert('Upload failed. Please try again.');
+            toast.error('Upload failed. Please try again.');
         } finally {
             setUploadingVerse(false);
         }
@@ -162,12 +184,13 @@ export default function DailyContentManagement() {
             const data = await res.json();
             if (data.success) {
                 setDevotionResult(data.data);
+                toast.success('Devotionals uploaded successfully');
                 fetchContents();
             } else {
-                alert(data.error || 'Upload failed');
+                toast.error(data.error || 'Upload failed');
             }
         } catch (e) {
-            alert('Upload failed. Please try again.');
+            toast.error('Upload failed. Please try again.');
         } finally {
             setUploadingDevotion(false);
         }

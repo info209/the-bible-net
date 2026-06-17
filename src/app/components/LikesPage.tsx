@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Heart, Share2, BookOpen, Calendar, Check, AlertCircle, Quote
 } from 'lucide-react';
+import { useLikeContext } from '@/context/LikeContext';
+import { toast } from '@/context/ToastContext';
 
 type FilterTab = 'All' | 'Verses' | 'Devotionals';
 const TABS: FilterTab[] = ['All', 'Verses', 'Devotionals'];
@@ -32,7 +34,7 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
   const [likes, setLikes] = useState<LikedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const { registerItem, toggleLike } = useLikeContext();
 
   const fetchLikes = async () => {
     setIsLoading(true);
@@ -42,6 +44,9 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
         const json = await res.json();
         if (json.success) {
           setLikes(json.data);
+          json.data.forEach((item: any) => {
+            registerItem(item.contentId, item.contentType, true, 1);
+          });
         }
       }
     } catch (err) {
@@ -56,8 +61,12 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
   }, []);
 
   const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    const lower = msg.toLowerCase();
+    if (lower.includes('error') || lower.includes('failed')) {
+      toast.error(msg);
+    } else {
+      toast.success(msg);
+    }
   };
 
   const handleUnlike = async (contentId: string, contentType: string) => {
@@ -66,17 +75,8 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
       setLikes(prev => prev.filter(item => item.contentId !== contentId));
       showToast('Removed from Likes');
 
-      const res = await fetch('/api/interactions/like', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentId, type: contentType }),
-      });
-
-      if (!res.ok) {
-        // If it failed, refresh list to revert
-        fetchLikes();
-        showToast('Failed to unlike. Reverting.');
-      }
+      // Sync with global LikeContext
+      toggleLike(contentId, contentType as any);
     } catch (err) {
       fetchLikes();
       showToast('Error unliking. Reverting.');
@@ -296,20 +296,7 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
         )}
       </main>
 
-      {/* ── Toast Notification ─────────────────────────────────────────── */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#0B7A81] text-white text-xs px-5 py-3 rounded-full shadow-lg font-semibold flex items-center gap-2"
-          >
-            <Check className="w-4 h-4 shrink-0" />
-            {toastMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </div>
   );
 }

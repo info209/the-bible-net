@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, MessageSquare, Trash2, Calendar, Check, BookOpen, Quote
 } from 'lucide-react';
+import { toast } from '@/context/ToastContext';
 
 type FilterTab = 'All' | 'Verses' | 'Devotionals';
 const TABS: FilterTab[] = ['All', 'Verses', 'Devotionals'];
@@ -33,7 +34,6 @@ export default function CommentsPage({ onBack }: CommentsPageProps = {}) {
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const fetchComments = async () => {
     setIsLoading(true);
@@ -57,8 +57,12 @@ export default function CommentsPage({ onBack }: CommentsPageProps = {}) {
   }, []);
 
   const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    const lower = msg.toLowerCase();
+    if (lower.includes('error') || lower.includes('failed')) {
+      toast.error(msg);
+    } else {
+      toast.success(msg);
+    }
   };
 
   const handleDeleteComment = async (commentId: string) => {
@@ -288,20 +292,7 @@ export default function CommentsPage({ onBack }: CommentsPageProps = {}) {
         )}
       </main>
 
-      {/* ── Toast Notification ─────────────────────────────────────────── */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#0B7A81] text-white text-xs px-5 py-3 rounded-full shadow-lg font-semibold flex items-center gap-2"
-          >
-            <Check className="w-4 h-4 shrink-0" />
-            {toastMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
+
     </div>
   );
 }

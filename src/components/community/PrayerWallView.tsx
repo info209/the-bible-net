@@ -161,7 +161,7 @@ export default function PrayerWallView() {
               placeholder="Search prayers or names..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-2xl py-2.5 pl-10 pr-4 text-sm focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 focus:border-[var(--color-primary-teal)] outline-none transition-all shadow-sm"
+              className="w-full bg-white border border-gray-200 rounded-2xl py-2.5 pl-10 pr-4 text-[16px] md:text-sm focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 focus:border-[var(--color-primary-teal)] outline-none transition-all shadow-sm"
             />
           </div>
 

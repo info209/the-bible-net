@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { toast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmContext';
 
 interface BibleVersion {
     _id: string;
@@ -14,11 +16,11 @@ interface BibleVersion {
 }
 
 export default function BibleVersionsManagement() {
+    const confirm = useConfirm();
     const [versions, setVersions] = useState<BibleVersion[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [uploading, setUploading] = useState(false);
-    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
@@ -59,7 +61,7 @@ export default function BibleVersionsManagement() {
         if (!file) return;
 
         if (!file.name.endsWith('.json')) {
-            showToast('Please upload a valid JSON file.', 'error');
+            toast.error('Please upload a valid JSON file.');
             return;
         }
 
@@ -70,17 +72,17 @@ export default function BibleVersionsManagement() {
             try {
                 data = JSON.parse(text);
             } catch (err) {
-                showToast('Invalid JSON file format.', 'error');
+                toast.error('Invalid JSON file format.');
                 return;
             }
 
             if (!data.metadata || !data.verses) {
-                showToast('JSON must contain "metadata" and "verses".', 'error');
+                toast.error('JSON must contain "metadata" and "verses".');
                 return;
             }
 
             // Step 1: Init Import
-            showToast('Initializing import...', 'success');
+            toast.success('Initializing import...');
             const initRes = await fetch('/api/v1/versions/import', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -142,14 +144,14 @@ export default function BibleVersionsManagement() {
             });
 
             if (finalizeRes.ok) {
-                showToast('Import completed successfully!', 'success');
+                toast.success('Import completed successfully!');
                 fetchVersions();
             } else {
                 throw new Error('Failed to finalize import');
             }
         } catch (err: any) {
             console.error('Upload error:', err);
-            showToast(err.message || 'Error uploading file', 'error');
+            toast.error(err.message || 'Error uploading file');
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -157,7 +159,12 @@ export default function BibleVersionsManagement() {
     };
 
     const handleDelete = async (id: string, name: string) => {
-        if (!confirm(`Are you sure you want to delete "${name}"? This will also delete all associated books, chapters, and verses. This action CANNOT be undone.`)) {
+        const confirmed = await confirm({
+            title: 'Delete Bible Version',
+            message: `Are you sure you want to delete "${name}"? This will also delete all associated books, chapters, and verses. This action CANNOT be undone.`,
+            destructive: true
+        });
+        if (!confirmed) {
             return;
         }
 
@@ -167,32 +174,18 @@ export default function BibleVersionsManagement() {
             });
             const result = await res.json();
             if (result.success) {
-                showToast('Version deleted successfully.', 'success');
+                toast.success('Version deleted successfully.');
                 fetchVersions();
             } else {
-                showToast(result.error || 'Delete failed', 'error');
+                toast.error(result.error || 'Delete failed');
             }
         } catch (err) {
-            showToast('Error deleting version', 'error');
+            toast.error('Error deleting version');
         }
-    };
-
-    const showToast = (message: string, type: 'success' | 'error') => {
-        setToast({ message, type });
-        setTimeout(() => setToast(null), 5000);
     };
 
     return (
         <div className="space-y-6">
-            {/* Toast Notification */}
-            {toast && (
-                <div className={`fixed top-6 right-6 z-[100] px-6 py-4 rounded-2xl shadow-2xl animate-in slide-in-from-right duration-300 ${toast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-                    <div className="flex items-center space-x-3">
-                        <span className="text-xl">{toast.type === 'success' ? '✅' : '❌'}</span>
-                        <p className="font-bold">{toast.message}</p>
-                    </div>
-                </div>
-            )}
 
             <div className="flex items-center justify-between">
                 <div>

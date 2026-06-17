@@ -1,8 +1,11 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { toast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmContext';
 
 export default function AdminUsersPage() {
+    const confirm = useConfirm();
     const [users, setUsers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -28,7 +31,12 @@ export default function AdminUsersPage() {
     };
 
     const deactivateUser = async (id: string) => {
-        if (!confirm('Are you sure you want to deactivate this user?')) return;
+        const confirmed = await confirm({
+            title: 'Deactivate User',
+            message: 'Are you sure you want to deactivate this user?',
+            destructive: true
+        });
+        if (!confirmed) return;
 
         try {
             const res = await fetch(`/api/admin/users/${id}/deactivate`, {
@@ -36,13 +44,13 @@ export default function AdminUsersPage() {
             });
             const result = await res.json();
             if (res.ok) {
-                alert('User deactivated');
+                toast.success('User deactivated');
                 fetchUsers();
             } else {
-                alert(result.error || 'Failed to deactivate');
+                toast.error(result.error || 'Failed to deactivate');
             }
         } catch (err) {
-            alert('Error performing action');
+            toast.error('Error performing action');
         }
     };
 

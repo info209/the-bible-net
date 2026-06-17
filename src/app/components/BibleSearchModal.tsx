@@ -677,7 +677,7 @@ export default function BibleSearchModal({
                             if (e.key === 'Escape') onClose();
                         }}
                         placeholder="Search books, John 3:16, joy, fear…"
-                        className="flex-1 bg-transparent outline-none text-sm font-medium"
+                        className="flex-1 bg-transparent outline-none text-[16px] md:text-sm font-medium"
                         style={{ color: t.textCol }}
                         autoComplete="off"
                         autoCorrect="off"

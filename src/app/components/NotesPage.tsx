@@ -8,6 +8,7 @@ import {
   ArrowLeft, MoreVertical, Tag, MessageSquare, Plus, Check, X, FileText, Trash2, Edit2, Bookmark, BookOpen
 } from 'lucide-react';
 import LibraryPageHeader from './LibraryPageHeader';
+import { toast } from '@/context/ToastContext';
 
 type FilterTab = 'All' | 'Bible' | 'Reading plans';
 
@@ -64,8 +65,6 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
   const [newLabelText, setNewLabelText] = useState('');
 
   // Toast state
-  const [toastMessage, setToastMessage] = useState<string | null>(null);
-  
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Fetch Notes
@@ -117,8 +116,12 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
   }, []);
 
   const showToast = (msg: string) => {
-    setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 3000);
+    const lower = msg.toLowerCase();
+    if (lower.includes('error') || lower.includes('failed')) {
+      toast.error(msg);
+    } else {
+      toast.success(msg);
+    }
   };
 
   const handleOpenMenu = (e: React.MouseEvent, note: any) => {
@@ -568,7 +571,7 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
                       value={newLabelText}
                       onChange={(e) => setNewLabelText(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleCreateLabel(); }}
-                      className="w-full h-10 mt-3 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
+                      className="w-full h-10 mt-3 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
                     />
                     <div className="flex gap-2 mt-4">
                       <button
@@ -657,7 +660,7 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
                         <select
                           value={pickerBook}
                           onChange={(e) => setPickerBook(e.target.value)}
-                          className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-2 text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
+                          className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-2 text-[16px] md:text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
                         >
                           {BIBLE_BOOKS.map(b => (
                             <option key={b} value={b}>{b}</option>
@@ -673,7 +676,7 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
                             min={1}
                             value={pickerChapter}
                             onChange={(e) => setPickerChapter(Number(e.target.value))}
-                            className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-sm bg-transparent"
+                            className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent"
                           />
                         </div>
                         <div>
@@ -683,7 +686,7 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
                             min={1}
                             value={pickerVerse}
                             onChange={(e) => setPickerVerse(Number(e.target.value))}
-                            className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-sm bg-transparent"
+                            className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent"
                           />
                         </div>
                       </div>
@@ -757,20 +760,7 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
         )}
       </AnimatePresence>
 
-      {/* ── Toast Notification ── */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 30 }}
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#0B7A81] text-white text-xs px-5 py-3 rounded-full shadow-lg font-semibold flex items-center gap-2"
-          >
-            <Check className="w-4 h-4 shrink-0" />
-            {toastMessage}
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
     </div>
   );

@@ -199,6 +199,7 @@ export default function AudioFloatingPlayer({
       {playerState === "default" && (
         <motion.div
           key="default-controls"
+          data-audio-player="true"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
@@ -283,6 +284,7 @@ export default function AudioFloatingPlayer({
       {playerState === "minimized" && (
         <motion.div
           key="pill-minimized"
+          data-audio-player="true"
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}

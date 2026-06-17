@@ -25,6 +25,7 @@ export default function BottomNav({ isVisible = true, onNavigate }: BottomNavPro
 
   return (
     <div 
+      data-bottom-nav="true"
       className={`fixed bottom-0 left-0 right-0 z-20 glass-medium border-t border-white/30 shadow-[0_-1px_0_0_rgba(255,255,255,0.5),0_-2px_8px_0_rgba(0,0,0,0.04)] transition-all duration-700 ease-in-out ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
       }`}

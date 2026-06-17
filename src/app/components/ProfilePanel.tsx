@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/context/ToastContext';
 import { signOut, useSession } from 'next-auth/react';
 import {
   LogOut,
@@ -123,7 +124,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert('Avatar image size must be less than 5MB');
+      toast.error('Avatar image size must be less than 5MB');
       return;
     }
 
@@ -166,7 +167,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
       }
     } catch (err: any) {
       console.error('Avatar upload error:', err);
-      alert(err.message || 'Avatar upload failed. Please try again.');
+      toast.error(err.message || 'Avatar upload failed. Please try again.');
     } finally {
       setIsUploading(false);
     }

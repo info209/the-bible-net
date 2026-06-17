@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Play, Pause } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { LikeButton } from './LikeButton';
 
 interface IDailyContent {
     _id?: string;
@@ -16,6 +17,10 @@ interface IDailyContent {
     prayerContent?: string;
     backgroundImage?: string;
     devotionalBackgroundImage?: string;
+    verseLikeCount?: number;
+    devotionLikeCount?: number;
+    isVerseLiked?: boolean;
+    isDevotionLiked?: boolean;
 }
 
 interface DailyDetailModalProps {
@@ -258,6 +263,15 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                         <p className="text-white text-2xl md:text-3xl leading-relaxed font-serif italic text-center drop-shadow-md max-w-xl mx-auto">
                                             "{currentContent.verse}"
                                         </p>
+                                        <div className="flex justify-center pt-6">
+                                            <LikeButton
+                                                contentId={currentContent._id || ''}
+                                                contentType="daily-verse"
+                                                initialLiked={currentContent.isVerseLiked || false}
+                                                initialCount={currentContent.verseLikeCount || 0}
+                                                variant="modal"
+                                            />
+                                        </div>
                                     </>
                                 ) : (
                                     <div className="text-center py-10 opacity-70">
@@ -322,10 +336,17 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                         )}
 
                                         {/* D. Complete Button Placement Placeholder */}
-                                        <div className="pt-8 pb-16 flex justify-center w-full">
+                                        <div className="pt-8 pb-16 flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md mx-auto">
+                                            <LikeButton
+                                                contentId={currentContent._id || ''}
+                                                contentType="daily-devotion"
+                                                initialLiked={currentContent.isDevotionLiked || false}
+                                                initialCount={currentContent.devotionLikeCount || 0}
+                                                variant="modal"
+                                            />
                                             <button
                                                 onClick={() => console.log('Devotional marked as complete')}
-                                                className="w-full max-w-md py-4 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] focus:ring-2 focus:ring-teal-400/40 text-white font-extrabold rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none"
+                                                className="flex-1 w-full py-4 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] focus:ring-2 focus:ring-teal-400/40 text-white font-extrabold rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none"
                                             >
                                                 Complete Devotional
                                             </button>

@@ -4,9 +4,11 @@ import { useState, useEffect, useCallback } from 'react';
 import { Music, Upload, Check, X, Loader, Trash2, Play, Pause, AlertCircle } from 'lucide-react';
 import { useAmbientMusicStore, AmbientMusicTrack } from '@/stores/useAmbientMusicStore';
 import { AMBIENT_MUSIC_CONFIG } from '@/config/ambientMusic.config';
-import { toast } from 'sonner';
+import { toast } from '@/context/ToastContext';
+import { useConfirm } from '@/context/ConfirmContext';
 
 export default function MediaGalleryPage() {
+    const confirm = useConfirm();
     const [tracks, setTracks] = useState<AmbientMusicTrack[]>([]);
     const [loadingTracks, setLoadingTracks] = useState(true);
     const [uploading, setUploading] = useState(false);
@@ -150,7 +152,12 @@ export default function MediaGalleryPage() {
     };
 
     const handleDelete = async (id: string, trackLabel: string) => {
-        if (!confirm(`Are you sure you want to delete "${trackLabel}"?`)) return;
+        const confirmed = await confirm({
+            title: 'Delete Track',
+            message: `Are you sure you want to delete "${trackLabel}"?`,
+            destructive: true
+        });
+        if (!confirmed) return;
 
         try {
             const res = await fetch(`/api/admin/ambient-music?id=${id}`, {

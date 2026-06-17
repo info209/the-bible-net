@@ -2,7 +2,8 @@ import "./globals.css"
 import ClientLayout from "./ClientLayout";
 import { Metadata, Viewport } from "next";
 import { Providers } from "@/components/Providers";
-import { Toaster } from "@/app/components/ui/sonner";
+import { ToastProvider } from "@/context/ToastContext";
+import { ConfirmProvider } from "@/context/ConfirmContext";
 
 export const metadata: Metadata = {
   title: {
@@ -31,10 +32,13 @@ export default function RootLayout({
     <html lang="en">
       <body className="antialiased">
         <Providers>
-          <ClientLayout>
-            {children}
-          </ClientLayout>
-          <Toaster />
+          <ToastProvider>
+            <ConfirmProvider>
+              <ClientLayout>
+                {children}
+              </ClientLayout>
+            </ConfirmProvider>
+          </ToastProvider>
         </Providers>
       </body>
     </html>

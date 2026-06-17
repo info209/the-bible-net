@@ -23,6 +23,7 @@ import { useAmbientMusicStore } from '@/stores/useAmbientMusicStore';
 
 import FontsSettingsModal, { ThemeType, TransitionType } from './FontsSettingsModal';
 import AudioFloatingPlayer from './AudioFloatingPlayer';
+import { toast } from '@/context/ToastContext';
 
 const VERSE_ACTION_MENU_OPEN_DELAY = 1800;
 
@@ -974,7 +975,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const startNarration = (fromVerse: number = 1) => {
     console.log('startNarration called with fromVerse:', fromVerse);
     if (!('speechSynthesis' in window)) {
-      alert('Text-to-speech is not supported in your browser.');
+      toast.warning('Text-to-speech is not supported in your browser.');
       return;
     }
 
@@ -1706,10 +1707,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             {/* Right side tools */}
             <div className="flex items-center -space-x-1 ml-auto mr-3">
               <button
-                onClick={() => {
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
                   if (compareMode.isActive) {
+                    if (showCompareMenu) return;
                     setShowCompareMenu(true);
                   } else {
+                    if (showCompareSelector) return;
                     setShowCompareSelector(true);
                   }
                 }}
@@ -2653,27 +2658,35 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       />
 
       {/* Compare Versions Modal */}
-      <CompareVersionsModal
-        isOpen={showCompareSelector}
-        onClose={() => setShowCompareSelector(false)}
-        versions={apiVersions || fallbackVersions}
-        selectedVersions={compareMode.selectedVersions}
-        onToggleVersion={handleToggleCompareVersion}
-        onStartCompare={handleStartCompare}
-        selectedTheme={selectedTheme}
-      />
+      <AnimatePresence>
+        {showCompareSelector && (
+          <CompareVersionsModal
+            isOpen={showCompareSelector}
+            onClose={() => setShowCompareSelector(false)}
+            versions={apiVersions || fallbackVersions}
+            selectedVersions={compareMode.selectedVersions}
+            onToggleVersion={handleToggleCompareVersion}
+            onStartCompare={handleStartCompare}
+            selectedTheme={selectedTheme}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Compare Menu (when clicking compare icon in active mode) */}
-      <CompareMenu
-        isOpen={showCompareMenu}
-        onClose={() => setShowCompareMenu(false)}
-        versions={apiVersions || fallbackVersions}
-        selectedVersions={compareMode.selectedVersions}
-        onRemoveVersion={handleRemoveCompareVersion}
-        onAddVersion={handleAddCompareVersion}
-        onExitCompare={handleExitCompare}
-        selectedTheme={selectedTheme}
-      />
+      <AnimatePresence>
+        {showCompareMenu && (
+          <CompareMenu
+            isOpen={showCompareMenu}
+            onClose={() => setShowCompareMenu(false)}
+            versions={apiVersions || fallbackVersions}
+            selectedVersions={compareMode.selectedVersions}
+            onRemoveVersion={handleRemoveCompareVersion}
+            onAddVersion={handleAddCompareVersion}
+            onExitCompare={handleExitCompare}
+            selectedTheme={selectedTheme}
+          />
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {showVerseActionMenu && selectedVerses.length > 0 && (
           <VerseActionMenu

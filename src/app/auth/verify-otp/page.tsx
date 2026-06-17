@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Mail, ArrowRight, RefreshCcw, AlertCircle } from 'lucide-react';
+import { toast } from '@/context/ToastContext';
 
 function VerifyOTPContent() {
     const router = useRouter();
@@ -107,7 +108,7 @@ function VerifyOTPContent() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, email }),
             });
-            if (res.ok) alert('New OTP sent!');
+            if (res.ok) toast.success('New OTP sent!');
         } catch (err) {
             setError('Failed to resend. Try again later.');
         } finally {

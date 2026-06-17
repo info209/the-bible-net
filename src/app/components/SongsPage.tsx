@@ -15,7 +15,7 @@ import {
   Heart
 } from 'lucide-react';
 import { songsDatabase, Song, getGroupedSongs, getAlphabets, searchSongs } from './SongsData';
-import { toast } from 'sonner';
+import { toast } from '@/context/ToastContext';
 
 interface SongsPageProps {
   onBack: () => void;
