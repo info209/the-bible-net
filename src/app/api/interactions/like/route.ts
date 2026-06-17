@@ -104,14 +104,14 @@ export async function POST(req: NextRequest) {
         console.log("Guest ID:", guestIdentifier || "N/A");
 
         // Check if already liked to toggle
-        const hasLiked = await LikeRepository.hasLiked(contentId, userId, guestIdentifier);
+        const hasLiked = await LikeRepository.hasLiked(contentId, type, userId, guestIdentifier);
         
         let likeCount: number;
         let action: 'liked' | 'unliked';
 
         if (hasLiked) {
             // Toggle off
-            likeCount = await LikeRepository.removeLike(contentId, userId, guestIdentifier);
+            likeCount = await LikeRepository.removeLike(contentId, type, userId, guestIdentifier);
             action = 'unliked';
         } else {
             // Toggle on
@@ -210,6 +210,8 @@ export async function GET(req: NextRequest) {
                             text: enriched.devotionalContent,
                             verseRef: enriched.devotionalVerseRef,
                             date: enriched.date,
+                            backgroundImage: enriched.backgroundImage,
+                            devotionalBackgroundImage: enriched.devotionalBackgroundImage,
                         };
                     } else if (like.contentType === 'verse' || like.contentType === 'devotion') {
                         const content = await Content.findById(like.contentId).lean();

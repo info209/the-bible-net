@@ -46,11 +46,11 @@ export class LikeRepository {
         }
     }
 
-    static async removeLike(contentId: string, userId?: string, guestIdentifier?: string): Promise<number> {
+    static async removeLike(contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion', userId?: string, guestIdentifier?: string): Promise<number> {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
-            const query: any = { contentId };
+            const query: any = { contentId, contentType };
             if (userId) query.userId = userId;
             else if (guestIdentifier) query.guestIdentifier = guestIdentifier;
             else throw new Error('User or Guest identifier required');
@@ -84,8 +84,8 @@ export class LikeRepository {
         }
     }
 
-    static async hasLiked(contentId: string, userId?: string, guestIdentifier?: string): Promise<boolean> {
-        const query: any = { contentId };
+    static async hasLiked(contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion', userId?: string, guestIdentifier?: string): Promise<boolean> {
+        const query: any = { contentId, contentType };
         if (userId) {
             query.userId = userId;
         } else if (guestIdentifier) {

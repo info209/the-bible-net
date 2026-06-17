@@ -6,20 +6,17 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 async function run() {
   const { connectDB } = await import('../src/lib/db');
-  const { DailyContent } = await import('../src/models/DailyContent');
+  const { User } = await import('../src/models/User');
 
   await connectDB();
-  const contents = await DailyContent.find({}).sort({ date: -1 }).limit(10).lean();
+  const users = await User.find({}).lean();
 
-  console.log('\n=== Raw DailyContent Documents ===');
-  contents.forEach((c: any) => {
-    console.log(`Date: ${c.date}`);
-    console.log(`  - verseBook: ${JSON.stringify(c.verseBook)}`);
-    console.log(`  - verseChapter: ${JSON.stringify(c.verseChapter)}`);
-    console.log(`  - verseNumber: ${JSON.stringify(c.verseNumber)}`);
-    console.log(`  - verseReference: ${JSON.stringify(c.verseReference)}`);
-    console.log(`  - devotionalTitle: ${JSON.stringify(c.devotionalTitle)}`);
-    console.log(`  - devotionalVerseRef: ${JSON.stringify(c.devotionalVerseRef)}`);
+  console.log('\n=== Users ===');
+  users.forEach((u: any) => {
+    console.log(`ID: ${u._id}`);
+    console.log(`  - name: ${u.firstName} ${u.lastName}`);
+    console.log(`  - email: ${u.email}`);
+    console.log(`  - role: ${u.role}`);
     console.log('-------------------------------------------');
   });
 

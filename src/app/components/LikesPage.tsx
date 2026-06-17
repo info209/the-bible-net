@@ -23,6 +23,8 @@ interface LikedItem {
   verseRef?: string;
   date?: string;
   version?: string;
+  backgroundImage?: string;
+  devotionalBackgroundImage?: string;
 }
 
 interface LikesPageProps {
@@ -72,7 +74,7 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
   const handleUnlike = async (contentId: string, contentType: string) => {
     try {
       // Optimistic update
-      setLikes(prev => prev.filter(item => item.contentId !== contentId));
+      setLikes(prev => prev.filter(item => !(item.contentId === contentId && item.contentType === contentType)));
       showToast('Removed from Likes');
 
       // Sync with global LikeContext
@@ -208,6 +210,8 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
             <AnimatePresence initial={false}>
               {filteredLikes.map(item => {
                 const isVerse = item.contentType === 'daily-verse' || item.contentType === 'verse';
+                const hasBgImage = !isVerse && (item.devotionalBackgroundImage || item.backgroundImage);
+                const bgImage = !isVerse ? (item.devotionalBackgroundImage || item.backgroundImage) : undefined;
                 return (
                   <motion.div
                     key={item._id}
@@ -215,11 +219,16 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95, y: -10 }}
                     transition={{ duration: 0.2 }}
-                    className="w-full bg-white dark:bg-[#151515] border border-[#D7D7D7] dark:border-white/[0.08] rounded-[16px] p-5 flex flex-col relative transition-shadow hover:shadow-sm"
+                    className="w-full bg-white dark:bg-[#151515] border border-[#D7D7D7] dark:border-white/[0.08] rounded-[16px] p-5 flex flex-col relative transition-shadow hover:shadow-sm overflow-hidden"
+                    style={hasBgImage ? { backgroundImage: `url(${bgImage})`, backgroundSize: 'cover', backgroundPosition: 'center' } : {}}
                   >
+                    {hasBgImage && (
+                      <div className="absolute inset-0 bg-black/60 z-0" />
+                    )}
+
                     {/* Top Row: Type & Date */}
-                    <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3">
-                      <span className="font-semibold text-[#0B7A81] uppercase tracking-wider">
+                    <div className={`flex items-center justify-between text-xs mb-3 z-10 ${hasBgImage ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'}`}>
+                      <span className={`font-semibold uppercase tracking-wider ${hasBgImage ? 'text-teal-300' : 'text-[#0B7A81]'}`}>
                         {item.contentType === 'daily-verse' && 'Daily Verse'}
                         {item.contentType === 'daily-devotion' && 'Daily Devotion'}
                         {item.contentType === 'verse' && 'Verse'}
@@ -235,7 +244,7 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
 
                     {/* Content Section */}
                     {isVerse ? (
-                      <div className="flex-1">
+                      <div className="flex-1 z-10">
                         <p className="text-[16px] font-[400] leading-[26px] text-[#222222] dark:text-gray-200 italic pl-3 border-l-2 border-[#0B7A81]/40 mb-3">
                           {item.text || 'Loading verse...'}
                         </p>
@@ -244,17 +253,17 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
                         </span>
                       </div>
                     ) : (
-                      <div className="flex-1">
+                      <div className="flex-1 z-10">
                         {item.title && (
-                          <h4 className="text-[16px] font-[700] text-[#111111] dark:text-white mb-2 leading-snug">
+                          <h4 className={`text-[16px] font-[700] mb-2 leading-snug ${hasBgImage ? 'text-white' : 'text-[#111111] dark:text-white'}`}>
                             {item.title}
                           </h4>
                         )}
-                        <p className="text-[14px] font-[400] leading-[22px] text-gray-600 dark:text-gray-300 mb-3 line-clamp-4">
+                        <p className={`text-[14px] font-[400] leading-[22px] mb-3 line-clamp-4 ${hasBgImage ? 'text-white/90' : 'text-gray-600 dark:text-gray-300'}`}>
                           {item.text || 'Loading devotional...'}
                         </p>
                         {item.verseRef && (
-                          <div className="flex items-center gap-1.5 text-xs font-semibold text-[#0B7A81]">
+                          <div className={`flex items-center gap-1.5 text-xs font-semibold ${hasBgImage ? 'text-teal-300' : 'text-[#0B7A81]'}`}>
                             <Quote className="w-3 h-3" />
                             <span>Scripture: {item.verseRef}</span>
                           </div>
@@ -263,7 +272,7 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
                     )}
 
                     {/* Action Footer */}
-                    <div className="flex items-center justify-end gap-3 mt-4 pt-3 border-t border-gray-100 dark:border-white/[0.04]">
+                    <div className="flex items-center justify-end gap-3 mt-4 pt-3 border-t border-gray-100 dark:border-white/[0.04] z-10">
                       {isVerse && item.reference && (
                         <button
                           onClick={() => handleRead(item)}
@@ -275,14 +284,20 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
                       )}
                       <button
                         onClick={() => handleShare(item)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors"
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                          hasBgImage ? 'text-white/80 hover:text-white hover:bg-white/10' : 'text-gray-500 hover:bg-gray-50 dark:hover:bg-white/[0.04]'
+                        }`}
                       >
                         <Share2 className="w-3.5 h-3.5" />
                         <span>Share</span>
                       </button>
                       <button
                         onClick={() => handleUnlike(item.contentId, item.contentType)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-red-500 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30 transition-colors"
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                          hasBgImage 
+                            ? 'text-red-200 bg-red-950/40 hover:bg-red-950/60' 
+                            : 'text-red-500 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30'
+                        }`}
                       >
                         <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500" />
                         <span>Unlike</span>
