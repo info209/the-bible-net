@@ -41,8 +41,15 @@ const EMOTION_VOCABULARY = new Set([
 // Intent detection helpers
 // ---------------------------------------------------------------------------
 
-/** Matches "Book chapter:verse" or "Book chapter : verse" */
-const EXACT_VERSE_RE = /^(.+?)\s+(\d+)\s*:\s*(\d+)$/i;
+interface ParsedReference {
+    isValid: boolean;
+    error?: string;
+    book?: string;
+    chapter?: number;
+    startVerse?: number;
+    endVerse?: number;
+    isRange?: boolean;
+}
 
 /**
  * Returns the matched BIBLE_BOOKS entry if the query is a book prefix/name/abbreviation.
@@ -74,6 +81,87 @@ function detectBook(query: string): typeof BIBLE_BOOKS[0] | null {
 }
 
 /**
+ * Parses queries containing a colon to detect single verse or verse range searches.
+ */
+function parseBibleReference(query: string): ParsedReference | null {
+    const q = query.trim();
+
+    if (!q.includes(':')) {
+        return null;
+    }
+
+    const match = q.match(/^(.+?)\s+(\d+)\s*:\s*(.*)$/);
+    if (!match) {
+        return { isValid: false, error: 'Please enter a valid Bible reference.' };
+    }
+
+    const bookStr = match[1].trim();
+    const chapterStr = match[2];
+    const versePart = match[3].trim();
+
+    const bookEntry = detectBook(bookStr) ?? BIBLE_BOOKS.find(
+        b => b.name.toLowerCase().startsWith(bookStr.toLowerCase())
+    );
+    if (!bookEntry) {
+        return { isValid: false, error: 'Book not found.' };
+    }
+
+    const chapter = parseInt(chapterStr, 10);
+    if (isNaN(chapter) || chapter <= 0) {
+        return { isValid: false, error: 'Please enter a valid Bible reference.' };
+    }
+
+    const totalChapters = BOOK_CHAPTERS[bookEntry.name] ?? 0;
+    if (chapter > totalChapters) {
+        return { isValid: false, error: 'Chapter not found.' };
+    }
+
+    // Range: e.g. "1-6"
+    const rangeMatch = versePart.match(/^(\d+)\s*-\s*(\d+)$/);
+    if (rangeMatch) {
+        const startVerse = parseInt(rangeMatch[1], 10);
+        const endVerse = parseInt(rangeMatch[2], 10);
+
+        if (isNaN(startVerse) || isNaN(endVerse) || startVerse <= 0 || endVerse <= 0) {
+            return { isValid: false, error: 'Please enter a valid Bible reference.' };
+        }
+
+        if (endVerse < startVerse) {
+            return { isValid: false, error: 'Invalid verse range.\nPlease enter a valid range.' };
+        }
+
+        return {
+            isValid: true,
+            book: bookEntry.name,
+            chapter,
+            startVerse,
+            endVerse,
+            isRange: true
+        };
+    }
+
+    // Single: e.g. "4"
+    const singleMatch = versePart.match(/^(\d+)$/);
+    if (singleMatch) {
+        const verse = parseInt(singleMatch[1], 10);
+        if (isNaN(verse) || verse <= 0) {
+            return { isValid: false, error: 'Please enter a valid Bible reference.' };
+        }
+
+        return {
+            isValid: true,
+            book: bookEntry.name,
+            chapter,
+            startVerse: verse,
+            endVerse: verse,
+            isRange: false
+        };
+    }
+
+    return { isValid: false, error: 'Please enter a valid Bible reference.' };
+}
+
+/**
  * Returns true when the query is a known emotion / theme keyword.
  */
 function detectEmotion(query: string): boolean {
@@ -101,73 +189,128 @@ async function bookSearch(bookEntry: typeof BIBLE_BOOKS[0]) {
 }
 
 async function exactVerseSearch(
-    bookStr: string,
+    bookName: string,
     chapter: number,
-    verse: number,
+    startVerse: number,
+    endVerse: number,
     versionCode?: string,
 ) {
-    // Find matching book entry
-    const bookEntry = detectBook(bookStr) ?? BIBLE_BOOKS.find(
-        b => b.name.toLowerCase().startsWith(bookStr.trim().toLowerCase())
-    );
-    if (!bookEntry) {
+    // 1. Check max verse in the chapter for validation
+    const maxVerseDoc = await Verse.findOne({
+        bookName,
+        chapterNumber: chapter,
+    })
+    .sort({ number: -1 })
+    .select('number')
+    .lean() as any;
+
+    if (!maxVerseDoc) {
         return NextResponse.json(
-            { success: false, error: `Unknown book: "${bookStr}"` },
+            { success: false, error: `Chapter not found.` },
             { status: 404 },
         );
     }
 
-    // Build filter
-    const filter: any = {
-        bookName: bookEntry.name,
-        chapterNumber: chapter,
-        number: verse,
-    };
-    if (versionCode) {
-        filter.versionCode = versionCode.toUpperCase();
-    }
+    const maxVerse = maxVerseDoc.number;
 
-    const verseDoc = await Verse.findOne(filter)
-        .select('_id reference text versionCode bookName chapterNumber number themes emotions')
-        .lean() as any;
-
-    if (!verseDoc) {
+    if (startVerse > maxVerse) {
         return NextResponse.json(
-            { success: false, error: `Verse not found: ${bookEntry.name} ${chapter}:${verse}` },
+            { success: false, error: `Verse not found: ${bookName} ${chapter}:${startVerse}` },
             { status: 404 },
         );
     }
 
-    // Fetch alternate versions for the same reference
-    const alternateFilter = {
-        bookName: bookEntry.name,
+    if (endVerse - startVerse + 1 > 100) {
+        if (endVerse > maxVerse && maxVerse <= 100) {
+            return NextResponse.json(
+                { success: false, error: `Verse range exceeds available verses in this chapter.` },
+                { status: 400 },
+            );
+        }
+        return NextResponse.json(
+            { success: false, error: `Please narrow your verse range.` },
+            { status: 400 },
+        );
+    }
+
+    if (endVerse > maxVerse) {
+        return NextResponse.json(
+            { success: false, error: `Verse range exceeds available verses in this chapter.` },
+            { status: 400 },
+        );
+    }
+
+    // 2. Fetch all verses in the range across all versions
+    const queryFilter = {
+        bookName,
         chapterNumber: chapter,
-        number: verse,
+        number: { $gte: startVerse, $lte: endVerse },
     };
-    const alternates = await Verse.find(alternateFilter)
-        .select('_id versionCode text')
+
+    const allVerses = await Verse.find(queryFilter)
+        .select('number text versionCode themes emotions')
         .lean() as any[];
 
-    // Unique versions (deduplicated by versionCode)
-    const versionMap = new Map<string, { versionCode: string; text: string }>();
-    for (const alt of alternates) {
-        if (alt.versionCode && !versionMap.has(alt.versionCode)) {
-            versionMap.set(alt.versionCode, { versionCode: alt.versionCode, text: alt.text });
+    // Group by version code
+    const versesByVersion = new Map<string, typeof allVerses>();
+    for (const v of allVerses) {
+        if (!v.versionCode) continue;
+        const code = v.versionCode.toUpperCase();
+        if (!versesByVersion.has(code)) {
+            versesByVersion.set(code, []);
         }
+        versesByVersion.get(code)!.push(v);
     }
+
+    // 3. Resolve target version code
+    let targetCode = (versionCode || '').toUpperCase();
+    if (!targetCode || !versesByVersion.has(targetCode)) {
+        const availableCodes = Array.from(versesByVersion.keys());
+        if (availableCodes.length === 0) {
+            return NextResponse.json(
+                { success: false, error: `Verse not found` },
+                { status: 404 },
+            );
+        }
+        targetCode = availableCodes[0];
+    }
+
+    // 4. Compile and format text for each available version
+    const versionMap = new Map<string, { versionCode: string; text: string }>();
+    for (const [code, verses] of versesByVersion.entries()) {
+        verses.sort((a, b) => a.number - b.number);
+        let text = '';
+        if (startVerse === endVerse) {
+            text = verses[0].text;
+        } else {
+            text = verses.map(v => `${v.number}. ${v.text}`).join('\n');
+        }
+        versionMap.set(code, { versionCode: code, text });
+    }
+
+    const targetVerses = versesByVersion.get(targetCode)!;
+    const compiledText = versionMap.get(targetCode)!.text;
+
+    // Collect and merge themes and emotions from target range
+    const themes = Array.from(new Set(targetVerses.flatMap(v => v.themes || [])));
+    const emotions = Array.from(new Set(targetVerses.flatMap(v => v.emotions || [])));
+
+    const reference = startVerse === endVerse
+        ? `${bookName} ${chapter}:${startVerse}`
+        : `${bookName} ${chapter}:${startVerse}-${endVerse}`;
 
     return NextResponse.json({
         success: true,
         data: {
             mode: 'exact',
-            reference: verseDoc.reference || `${bookEntry.name} ${chapter}:${verse}`,
-            book: bookEntry.name,
+            reference,
+            book: bookName,
             chapter,
-            verse,
-            text: verseDoc.text,
-            versionCode: verseDoc.versionCode,
-            themes: verseDoc.themes || [],
-            emotions: verseDoc.emotions || [],
+            verse: startVerse,
+            text: compiledText,
+            versionCode: targetCode,
+            themes,
+            emotions,
             availableVersions: Array.from(versionMap.values()),
         },
     });
@@ -249,19 +392,23 @@ export async function GET(req: NextRequest) {
         const query = q.trim();
 
         // -----------------------------------------------------------------------
-        // Priority 1: Exact verse reference — "John 3:16", "Ps 23:1", etc.
+        // Priority 1: Bible reference search — "John 3:16", "Genesis 23:1-6", etc.
         // -----------------------------------------------------------------------
-        const exactMatch = query.match(EXACT_VERSE_RE);
-        if (exactMatch) {
-            const [, bookStr, chapterStr, verseStr] = exactMatch;
-            const chapter = parseInt(chapterStr, 10);
-            const verse = parseInt(verseStr, 10);
-
-            // Confirm the book portion is recognisable before hitting the DB
-            const bookCandidate = detectBook(bookStr.trim());
-            if (bookCandidate) {
-                return exactVerseSearch(bookStr.trim(), chapter, verse, versionCodeParam);
+        const parsedRef = parseBibleReference(query);
+        if (parsedRef) {
+            if (!parsedRef.isValid) {
+                return NextResponse.json(
+                    { success: false, error: parsedRef.error },
+                    { status: parsedRef.error?.includes('not found') ? 404 : 400 }
+                );
             }
+            return exactVerseSearch(
+                parsedRef.book!,
+                parsedRef.chapter!,
+                parsedRef.startVerse!,
+                parsedRef.endVerse!,
+                versionCodeParam
+            );
         }
 
         // -----------------------------------------------------------------------

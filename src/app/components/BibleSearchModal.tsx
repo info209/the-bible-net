@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { FiSearch } from 'react-icons/fi';
 import { X, Clock, Trash2, BookOpen, ChevronRight, Heart, Loader2 } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -266,7 +267,7 @@ function ExactVerseModeView({
             </p>
             <blockquote
                 className="text-base leading-relaxed mb-4 pl-3 border-l-2"
-                style={{ color: t.textCol, borderColor: t.accent }}
+                style={{ color: t.textCol, borderColor: t.accent, whiteSpace: 'pre-line' }}
             >
                 {data.text}
             </blockquote>
@@ -471,6 +472,7 @@ export default function BibleSearchModal({
 }: BibleSearchModalProps) {
     const theme = selectedTheme ?? (isDark ? 'dark' : 'light');
     const t = useThemeVars(theme);
+    const { toast } = useToast();
 
     const [query, setQuery] = useState('');
     const [searchData, setSearchData] = useState<SearchData>(null);
@@ -509,7 +511,7 @@ export default function BibleSearchModal({
     }, [isOpen]);
 
     // Core search function — safe to call directly
-    const doSearch = useCallback(async (q: string) => {
+    const doSearch = useCallback(async (q: string, isExplicit: boolean = false) => {
         const trimmed = q.trim();
         if (!trimmed || trimmed.length < 2) {
             setSearchData(null);
@@ -536,6 +538,12 @@ export default function BibleSearchModal({
                 setSearchData(json.data as SearchData);
             } else {
                 setSearchData(null);
+                if (json.error) {
+                    const isCompleteReference = /^[1-3]?\s*[a-zA-Z\s]+?\s+\d+\s*:\s*\d+(?:\s*-\s*\d+)?$/.test(trimmed);
+                    if (isExplicit || isCompleteReference) {
+                        toast.error(json.error);
+                    }
+                }
             }
         } catch (e: any) {
             if (e.name !== 'AbortError') {
@@ -550,7 +558,7 @@ export default function BibleSearchModal({
                 setIsRefreshing(false);
             }
         }
-    }, [activeVersionCode]);
+    }, [activeVersionCode, toast]);
 
     // Debounce effect — re-runs when query or doSearch changes
     useEffect(() => {
@@ -571,7 +579,7 @@ export default function BibleSearchModal({
             setIsRefreshing(true);
         }
 
-        debounceRef.current = setTimeout(() => doSearch(query), DEBOUNCE_MS);
+        debounceRef.current = setTimeout(() => doSearch(query, false), DEBOUNCE_MS);
 
         return () => {
             if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -672,7 +680,7 @@ export default function BibleSearchModal({
                             if (e.key === 'Enter' && query.trim()) {
                                 if (debounceRef.current) clearTimeout(debounceRef.current);
                                 addHistory(query.trim());
-                                doSearch(query.trim());
+                                doSearch(query.trim(), true);
                             }
                             if (e.key === 'Escape') onClose();
                         }}
