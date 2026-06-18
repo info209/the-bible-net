@@ -1,4 +1,4 @@
-import NextAuth from 'next-auth';
+import NextAuth, { CredentialsSignin } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import FacebookProvider from 'next-auth/providers/facebook';
@@ -6,6 +6,13 @@ import TwitterProvider from 'next-auth/providers/twitter';
 import { UserService } from '@/services/userService';
 import { UserRole } from '@/types/user';
 import { userAuthConfig } from './user.config';
+
+class UserAuthError extends CredentialsSignin {
+    constructor(message: string) {
+        super(message);
+        this.code = message;
+    }
+}
 
 export const { 
     handlers: userHandlers, 
@@ -42,12 +49,14 @@ export const {
                         credentials.password as string
                     );
 
-                    if (!user) return null;
+                    if (!user) {
+                        throw new UserAuthError('Incorrect email or password. Please try again.');
+                    }
 
                     // STRICT ROLE CHECK: Regular Users ONLY
                     const userRole = typeof user.role === 'string' ? user.role : String(user.role);
                     if (userRole !== 'USER' && userRole !== UserRole.USER) {
-                        throw new Error(`Access denied. User account required. Found role: ${userRole}`);
+                        throw new UserAuthError(`Access denied. User account required. Found role: ${userRole}`);
                     }
 
                     return {
@@ -62,7 +71,10 @@ export const {
                         image: user.image,
                     };
                 } catch (error: any) {
-                    throw new Error(error.message || 'Invalid credentials');
+                    if (error instanceof UserAuthError) {
+                        throw error;
+                    }
+                    throw new UserAuthError(error.message || 'Incorrect email or password. Please try again.');
                 }
             },
         }),

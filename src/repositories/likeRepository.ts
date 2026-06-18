@@ -2,9 +2,11 @@ import { Like, ILike } from '@/models/Like';
 import { Content } from '@/models/Content';
 import { DailyContent } from '@/models/DailyContent';
 import mongoose from 'mongoose';
+import { connectDB } from '@/lib/db';
 
 export class LikeRepository {
     static async addLike(contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion', userId?: string, guestIdentifier?: string): Promise<number> {
+        await connectDB();
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
@@ -47,6 +49,7 @@ export class LikeRepository {
     }
 
     static async removeLike(contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion', userId?: string, guestIdentifier?: string): Promise<number> {
+        await connectDB();
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
@@ -70,8 +73,16 @@ export class LikeRepository {
                     likeCount = updated?.likeCount || 0;
                 }
             } else {
-                // Determine content type by checking Like or fallback query. But if deletedLike is null, it means it wasn't liked.
-                // We'll just return 0 or fetch from Content directly. For safety, just 0.
+                if (contentType === 'daily-verse') {
+                    const doc = await DailyContent.findById(contentId);
+                    likeCount = doc?.verseLikeCount || 0;
+                } else if (contentType === 'daily-devotion') {
+                    const doc = await DailyContent.findById(contentId);
+                    likeCount = doc?.devotionLikeCount || 0;
+                } else {
+                    const doc = await Content.findById(contentId);
+                    likeCount = doc?.likeCount || 0;
+                }
             }
 
             await session.commitTransaction();
@@ -85,6 +96,7 @@ export class LikeRepository {
     }
 
     static async hasLiked(contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion', userId?: string, guestIdentifier?: string): Promise<boolean> {
+        await connectDB();
         const query: any = { contentId, contentType };
         if (userId) {
             query.userId = userId;

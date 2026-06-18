@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Globe, Languages, Book, ArrowRight, UserCircle2 } from 'lucide-react';
 import { useSession } from 'next-auth/react';
+import { toast } from '@/context/ToastContext';
+import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
 function ProfileSetupContent() {
     const router = useRouter();
@@ -63,12 +65,16 @@ function ProfileSetupContent() {
         try {
             // Validate basic fields
             if (formData.firstName.length < 2) {
-                setError('First name must be at least 2 characters');
+                const friendlyMsg = getFriendlyErrorMessage('First name must be at least 2 characters', 'profile');
+                toast.error(friendlyMsg);
+                setError(friendlyMsg);
                 setLoading(false);
                 return;
             }
             if (!formData.lastName) {
-                setError('Last name is required');
+                const friendlyMsg = getFriendlyErrorMessage('Last name is required', 'profile');
+                toast.error(friendlyMsg);
+                setError(friendlyMsg);
                 setLoading(false);
                 return;
             }
@@ -101,13 +107,17 @@ function ProfileSetupContent() {
                         onboardingCompleted: true 
                     } 
                 });
+                toast.success('Profile saved successfully!');
                 router.push('/auth/success?type=profile');
             } else {
-                setError(data.error || 'Failed to save profile');
+                const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Failed to save profile', 'profile');
+                toast.error(friendlyMsg);
+                setError(friendlyMsg);
             }
         } catch (err) {
-            console.error(err);
-            setError('An unexpected error occurred');
+            const friendlyMsg = getFriendlyErrorMessage(err, 'profile');
+            toast.error(friendlyMsg);
+            setError(friendlyMsg);
         } finally {
             setLoading(false);
         }

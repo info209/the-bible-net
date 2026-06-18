@@ -4,6 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Mail, ArrowRight, AlertCircle, ChevronLeft } from 'lucide-react';
+import { toast } from '@/context/ToastContext';
+import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
 export default function ForgotPassword() {
     const router = useRouter();
@@ -27,10 +29,14 @@ export default function ForgotPassword() {
                 router.push('/auth/check-email');
             } else {
                 const data = await res.json();
-                setError(data.error || 'Something went wrong. Please try again.');
+                const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Something went wrong. Please try again.', 'forgot-password');
+                toast.error(friendlyMsg);
+                setError(friendlyMsg);
             }
         } catch (err) {
-            setError('Connection error. Please try again.');
+            const friendlyMsg = getFriendlyErrorMessage(err, 'forgot-password');
+            toast.error(friendlyMsg);
+            setError(friendlyMsg);
         } finally {
             setLoading(false);
         }

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/context/ToastContext';
+import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 import { signOut, useSession } from 'next-auth/react';
 import {
   LogOut,
@@ -167,7 +168,8 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
       }
     } catch (err: any) {
       console.error('Avatar upload error:', err);
-      toast.error(err.message || 'Avatar upload failed. Please try again.');
+      const friendlyMsg = getFriendlyErrorMessage(err, 'profile');
+      toast.error(friendlyMsg);
     } finally {
       setIsUploading(false);
     }

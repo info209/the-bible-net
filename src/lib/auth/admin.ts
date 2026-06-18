@@ -1,8 +1,15 @@
-import NextAuth from 'next-auth';
+import NextAuth, { CredentialsSignin } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { UserService } from '@/services/userService';
 import { UserRole } from '@/types/user';
 import { adminAuthConfig } from './admin.config';
+
+class AdminAuthError extends CredentialsSignin {
+    constructor(message: string) {
+        super(message);
+        this.code = message;
+    }
+}
 
 export const { 
     handlers: adminHandlers, 
@@ -27,13 +34,15 @@ export const {
                         credentials.password as string
                     );
 
-                    if (!user) return null;
+                    if (!user) {
+                        throw new AdminAuthError('Incorrect email or password. Please try again.');
+                    }
 
                     // STRICT ROLE CHECK: Admins ONLY
                     const adminUserRole = typeof user.role === 'string' ? user.role : String(user.role);
                     if (adminUserRole !== 'SUPER_ADMIN' && adminUserRole !== UserRole.SUPER_ADMIN && 
                         adminUserRole !== 'SUB_ADMIN' && adminUserRole !== UserRole.SUB_ADMIN) {
-                        throw new Error('Access denied. Admin privileges required.');
+                        throw new AdminAuthError('Access denied. Admin privileges required.');
                     }
 
                     return {
@@ -46,7 +55,10 @@ export const {
                         image: user.image,
                     };
                 } catch (error: any) {
-                    throw new Error(error.message || 'Invalid admin credentials');
+                    if (error instanceof AdminAuthError) {
+                        throw error;
+                    }
+                    throw new AdminAuthError(error.message || 'Incorrect email or password. Please try again.');
                 }
             },
         }),

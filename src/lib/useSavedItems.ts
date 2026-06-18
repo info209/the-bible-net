@@ -26,9 +26,9 @@ interface UseSavedItemsReturn {
   /** Get the saved item document for a given (type, refId) — needed to get its _id for unsave */
   getSavedItem: (type: SavedItemType, refId: string) => SavedItemClient | undefined;
   /** Save a new item. Optimistic update + request. */
-  saveItem: (payload: SavePayloadClient) => Promise<void>;
+  saveItem: (payload: SavePayloadClient) => Promise<SavedItemClient | undefined>;
   /** Unsave by the saved item's _id. Optimistic update + request. */
-  unsaveItem: (id: string) => Promise<void>;
+  unsaveItem: (id: string) => Promise<boolean>;
   /** Convenience toggle — saves or unsaves based on current state */
   toggleSave: (payload: SavePayloadClient) => Promise<void>;
 }
@@ -88,7 +88,7 @@ export function useSavedItems(): UseSavedItemsReturn {
   const saveItem = useCallback(
     async (payload: SavePayloadClient) => {
       const key = `${payload.type}:${payload.refId}`;
-      if (pendingRef.current.has(key)) return;
+      if (pendingRef.current.has(key)) return undefined;
       pendingRef.current.add(key);
 
       // Optimistic: add a placeholder immediately
@@ -117,11 +117,14 @@ export function useSavedItems(): UseSavedItemsReturn {
           setSavedItems((prev) =>
             prev.map((i) => (i._id === optimistic._id ? (json.data as SavedItemClient) : i))
           );
+          return json.data as SavedItemClient;
         }
+        return undefined;
       } catch (err) {
         // Revert on error
         setSavedItems((prev) => prev.filter((i) => i._id !== optimistic._id));
         console.error('[useSavedItems] saveItem error:', err);
+        return undefined;
       } finally {
         pendingRef.current.delete(key);
       }
@@ -130,7 +133,7 @@ export function useSavedItems(): UseSavedItemsReturn {
   );
 
   const unsaveItem = useCallback(async (id: string) => {
-    if (pendingRef.current.has(id)) return;
+    if (pendingRef.current.has(id)) return false;
     pendingRef.current.add(id);
 
     // Optimistic removal
@@ -145,10 +148,13 @@ export function useSavedItems(): UseSavedItemsReturn {
       if (!res.ok) {
         // Revert
         if (removed) setSavedItems((prev) => [removed!, ...prev]);
+        return false;
       }
+      return true;
     } catch (err) {
       if (removed) setSavedItems((prev) => [removed!, ...prev]);
       console.error('[useSavedItems] unsaveItem error:', err);
+      return false;
     } finally {
       pendingRef.current.delete(id);
     }

@@ -2661,6 +2661,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       <AnimatePresence>
         {showCompareSelector && (
           <CompareVersionsModal
+            key="compare-versions-modal"
             isOpen={showCompareSelector}
             onClose={() => setShowCompareSelector(false)}
             versions={apiVersions || fallbackVersions}
@@ -2676,6 +2677,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       <AnimatePresence>
         {showCompareMenu && (
           <CompareMenu
+            key="compare-menu"
             isOpen={showCompareMenu}
             onClose={() => setShowCompareMenu(false)}
             versions={apiVersions || fallbackVersions}
@@ -2690,6 +2692,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       <AnimatePresence>
         {showVerseActionMenu && selectedVerses.length > 0 && (
           <VerseActionMenu
+            key="verse-action-menu"
             isOpen={true}
             bookName={selectedBook}
             chapter={selectedChapter}

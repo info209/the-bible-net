@@ -128,6 +128,14 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   // from a canonical source (localStorage, URL params, or latestProgress).
   // Prevents subsequent API responses from overriding the user's persisted preference.
   const versionHydrated = useRef(false);
+
+  // Tracks pending highlight updates per verse for optimistic state and request sequencing/rollback
+  const pendingHighlightUpdatesRef = useRef<Map<number, {
+    targetColor: string;
+    originalItem: any | null;
+    timer: NodeJS.Timeout | null;
+    isProcessing: boolean;
+  }>>(new Map());
   const [showBookSelector, setShowBookSelector] = useState(false);
   const [showChapterSelector, setShowChapterSelector] = useState(false);
   const [showVersionSelector, setShowVersionSelector] = useState(false);
@@ -1354,6 +1362,13 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       if (typeof window !== 'undefined' && window.speechSynthesis) {
         window.speechSynthesis.cancel();
       }
+      if (pendingHighlightUpdatesRef.current) {
+        pendingHighlightUpdatesRef.current.forEach((update) => {
+          if (update.timer) {
+            clearTimeout(update.timer);
+          }
+        });
+      }
     };
   }, []);
 
@@ -1712,47 +1727,154 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       }}
       onSaveHighlight={(verses: number[], color: string) => {
         if (!session?.user) return;
-        const processHighlights = async () => {
-          for (const verseNum of verses) {
-            const refId = `${selectedBookId}_${selectedChapter}_${verseNum}_${selectedVersionId}`;
-            if (color === 'none') {
-              // Remove highlight
-              const existing = userHighlights.find(h => h.metadata?.verse === verseNum);
-              if (existing && existing._id) {
-                await unsaveItem(existing._id);
+
+        // Process each verse highlight in the background with optimistic updates & queueing/debouncing
+        verses.forEach((verseNum) => {
+          const refId = `${selectedBookId}_${selectedChapter}_${verseNum}_${selectedVersionId}`;
+
+          // 1. Get or create the pending record for this verse
+          let pending = pendingHighlightUpdatesRef.current.get(verseNum);
+          if (!pending) {
+            const original = userHighlights.find(h => h.metadata?.verse === verseNum) || null;
+            pending = {
+              targetColor: color,
+              originalItem: original,
+              timer: null,
+              isProcessing: false
+            };
+            pendingHighlightUpdatesRef.current.set(verseNum, pending);
+          } else {
+            pending.targetColor = color;
+          }
+
+          // 2. Perform the optimistic UI update immediately
+          if (color === 'none') {
+            setUserHighlights(prev => prev.filter(h => h.metadata?.verse !== verseNum));
+          } else {
+            setUserHighlights(prev => {
+              const existing = prev.find(h => h.metadata?.verse === verseNum);
+              if (existing) {
+                return prev.map(h =>
+                  h.metadata?.verse === verseNum
+                    ? { ...h, metadata: { ...h.metadata, color } }
+                    : h
+                );
               }
-              // Remove from local state immediately
-              setUserHighlights(prev => prev.filter(h => h.metadata?.verse !== verseNum));
-            } else {
-              await saveItem({
-                type: 'highlight',
+              const tempId = pending?.originalItem?._id || `opt_${Date.now()}_${verseNum}`;
+              return [...prev, {
+                _id: tempId,
                 refId,
                 metadata: {
-                  bookId: selectedBookId || undefined,
-                  bookName: displayBookName || undefined,
+                  bookId: selectedBookId,
+                  bookName: displayBookName,
                   chapter: selectedChapter,
                   verse: verseNum,
-                  versionId: selectedVersionId || undefined,
-                  versionName: displayVersionName || undefined,
+                  versionId: selectedVersionId,
+                  versionName: displayVersionName,
                   color
                 }
-              });
-              // Update local state immediately so verse color shows without re-fetch
-              setUserHighlights(prev => {
-                const existing = prev.find(h => h.metadata?.verse === verseNum);
-                if (existing) {
-                  return prev.map(h =>
-                    h.metadata?.verse === verseNum
-                      ? { ...h, metadata: { ...h.metadata, color } }
-                      : h
-                  );
-                }
-                return [...prev, { refId, metadata: { bookId: selectedBookId, bookName: displayBookName, chapter: selectedChapter, verse: verseNum, versionId: selectedVersionId, versionName: displayVersionName, color } }];
-              });
-            }
+              }];
+            });
           }
-        };
-        processHighlights();
+
+          // 3. Clear any existing debounce timer
+          if (pending.timer) {
+            clearTimeout(pending.timer);
+            pending.timer = null;
+          }
+
+          // 4. Define execute function
+          const executeUpdate = async () => {
+            const currentPending = pendingHighlightUpdatesRef.current.get(verseNum);
+            if (!currentPending) return;
+
+            currentPending.isProcessing = true;
+            const target = currentPending.targetColor;
+
+            try {
+              if (target === 'none') {
+                const existingId = currentPending.originalItem?._id;
+                if (existingId && !existingId.startsWith('opt_')) {
+                  const success = await unsaveItem(existingId);
+                  if (!success) {
+                    throw new Error('Unsave API failed');
+                  }
+                }
+                currentPending.originalItem = null;
+              } else {
+                const savedItem = await saveItem({
+                  type: 'highlight',
+                  refId,
+                  metadata: {
+                    bookId: selectedBookId || undefined,
+                    bookName: displayBookName || undefined,
+                    chapter: selectedChapter,
+                    verse: verseNum,
+                    versionId: selectedVersionId || undefined,
+                    versionName: displayVersionName || undefined,
+                    color: target
+                  }
+                });
+
+                if (!savedItem) {
+                  throw new Error('Save API failed');
+                }
+
+                currentPending.originalItem = savedItem;
+
+                setUserHighlights(prev => {
+                  const latestPending = pendingHighlightUpdatesRef.current.get(verseNum);
+                  if (latestPending && latestPending.targetColor === target) {
+                    return prev.map(h =>
+                      h.metadata?.verse === verseNum
+                        ? { ...h, _id: savedItem._id }
+                        : h
+                    );
+                  }
+                  return prev;
+                });
+              }
+            } catch (err) {
+              console.error(`Failed to sync highlight for verse ${verseNum}:`, err);
+              
+              const latestPending = pendingHighlightUpdatesRef.current.get(verseNum);
+              if (latestPending && latestPending.targetColor === target) {
+                const orig = latestPending.originalItem;
+                if (orig) {
+                  setUserHighlights(prev => {
+                    const existing = prev.find(h => h.metadata?.verse === verseNum);
+                    if (existing) {
+                      return prev.map(h => h.metadata?.verse === verseNum ? orig : h);
+                    }
+                    return [...prev, orig];
+                  });
+                } else {
+                  setUserHighlights(prev => prev.filter(h => h.metadata?.verse !== verseNum));
+                }
+
+                toast.error("Failed to update highlight. Please try again.");
+                pendingHighlightUpdatesRef.current.delete(verseNum);
+                return;
+              }
+            }
+
+            currentPending.isProcessing = false;
+
+            const latestPending = pendingHighlightUpdatesRef.current.get(verseNum);
+            if (latestPending) {
+              if (latestPending.targetColor !== target) {
+                executeUpdate();
+              } else {
+                pendingHighlightUpdatesRef.current.delete(verseNum);
+              }
+            }
+          };
+
+          // 5. Schedule execution (300ms debounce)
+          if (!pending.isProcessing) {
+            pending.timer = setTimeout(executeUpdate, 300);
+          }
+        });
       }}
       onSaveNote={(verses: number[], note: string, labels: string[]) => {
         if (!session?.user || verses.length === 0) return;

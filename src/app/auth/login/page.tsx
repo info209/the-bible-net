@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { Mail, Lock, CheckCircle2, AlertCircle, ChevronLeft } from 'lucide-react';
+import { toast } from '@/context/ToastContext';
+import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -28,12 +30,16 @@ export default function LoginPage() {
             });
 
             if (result?.error) {
-                setError(result.error || 'Invalid email or password');
+                const friendlyMsg = getFriendlyErrorMessage(result.error, 'login');
+                toast.error(friendlyMsg);
+                setError(friendlyMsg);
             } else {
                 router.push('/home');
             }
         } catch (err: any) {
-            setError('An unexpected error occurred. Please try again.');
+            const friendlyMsg = getFriendlyErrorMessage(err, 'login');
+            toast.error(friendlyMsg);
+            setError(friendlyMsg);
         } finally {
             setLoading(false);
         }

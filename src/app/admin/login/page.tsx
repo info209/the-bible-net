@@ -7,6 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { adminLoginSchema } from '@/lib/validations/admin';
 import { z } from 'zod';
+import { toast } from '@/context/ToastContext';
+import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
 type FormData = z.infer<typeof adminLoginSchema>;
 
@@ -35,13 +37,17 @@ export default function AdminLoginPage() {
             });
 
             if (res?.error) {
-                setError(res.error);
+                const friendlyMsg = getFriendlyErrorMessage(res.error, 'login');
+                toast.error(friendlyMsg);
+                setError(friendlyMsg);
             } else {
                 router.push('/admin/dashboard');
                 router.refresh();
             }
         } catch (err) {
-            setError('An unexpected error occurred. Please try again.');
+            const friendlyMsg = getFriendlyErrorMessage(err, 'login');
+            toast.error(friendlyMsg);
+            setError(friendlyMsg);
         } finally {
             setLoading(false);
         }

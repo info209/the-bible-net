@@ -4,10 +4,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, Heart, Share2, BookOpen, Calendar, Check, AlertCircle, Quote
+  ArrowLeft, Heart, Share2, BookOpen, Calendar, AlertCircle, Quote
 } from 'lucide-react';
-import { useLikeContext } from '@/context/LikeContext';
 import { toast } from '@/context/ToastContext';
+import { useLikeContext } from '@/context/LikeContext';
 
 type FilterTab = 'All' | 'Verses' | 'Devotionals';
 const TABS: FilterTab[] = ['All', 'Verses', 'Devotionals'];
@@ -33,10 +33,11 @@ interface LikesPageProps {
 
 export default function LikesPage({ onBack }: LikesPageProps = {}) {
   const router = useRouter();
+  const { setLikedStateDirectly } = useLikeContext();
   const [likes, setLikes] = useState<LikedItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
-  const { registerItem, toggleLike } = useLikeContext();
+  const [unlikingIds, setUnlikingIds] = useState<Set<string>>(new Set());
 
   const fetchLikes = async () => {
     setIsLoading(true);
@@ -46,9 +47,6 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
         const json = await res.json();
         if (json.success) {
           setLikes(json.data);
-          json.data.forEach((item: any) => {
-            registerItem(item.contentId, item.contentType, true, 1);
-          });
         }
       }
     } catch (err) {
@@ -72,16 +70,54 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
   };
 
   const handleUnlike = async (contentId: string, contentType: string) => {
-    try {
-      // Optimistic update
-      setLikes(prev => prev.filter(item => !(item.contentId === contentId && item.contentType === contentType)));
-      showToast('Removed from Likes');
+    const key = `${contentId}_${contentType}`;
 
-      // Sync with global LikeContext
-      toggleLike(contentId, contentType as any);
+    // Prevent double-tap
+    if (unlikingIds.has(key)) return;
+    setUnlikingIds(prev => new Set(prev).add(key));
+
+    // Snapshot for rollback
+    const snapshot = likes;
+
+    // Optimistic remove
+    setLikes(prev => prev.filter(
+      item => !(item.contentId === contentId && item.contentType === contentType)
+    ));
+
+    try {
+      const res = await fetch('/api/interactions/like', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contentId, type: contentType }),
+      });
+
+      if (!res.ok) throw new Error('API error');
+
+      const data = await res.json();
+      if (!data.success) throw new Error(data.error || 'API returned failure');
+
+      // Confirmed — API toggled to unliked
+      if (data.action === 'liked') {
+        // Edge case: server toggled back to liked (rapid tap race); re-fetch to sync
+        fetchLikes();
+        return;
+      }
+
+      // Sync global LikeContext
+      setLikedStateDirectly(contentId, contentType, false, data.likeCount);
+
+      showToast('Removed from Likes');
     } catch (err) {
-      fetchLikes();
-      showToast('Error unliking. Reverting.');
+      console.error('Unlike failed, reverting:', err);
+      // Rollback optimistic update
+      setLikes(snapshot);
+      showToast('Error removing like. Please try again.');
+    } finally {
+      setUnlikingIds(prev => {
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
     }
   };
 
@@ -293,13 +329,18 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
                       </button>
                       <button
                         onClick={() => handleUnlike(item.contentId, item.contentType)}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                        disabled={unlikingIds.has(`${item.contentId}_${item.contentType}`)}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors disabled:opacity-60 disabled:cursor-not-allowed ${
                           hasBgImage 
                             ? 'text-red-200 bg-red-950/40 hover:bg-red-950/60' 
                             : 'text-red-500 bg-red-50 dark:bg-red-950/20 hover:bg-red-100 dark:hover:bg-red-950/30'
                         }`}
                       >
-                        <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500" />
+                        {unlikingIds.has(`${item.contentId}_${item.contentType}`) ? (
+                          <div className="w-3.5 h-3.5 border-2 border-current border-t-transparent animate-spin rounded-full" />
+                        ) : (
+                          <Heart className="w-3.5 h-3.5 fill-red-500 text-red-500" />
+                        )}
                         <span>Unlike</span>
                       </button>
                     </div>

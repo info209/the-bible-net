@@ -6,6 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { resetPasswordSchema } from '@/lib/validations/admin';
 import { z } from 'zod';
+import { toast } from '@/context/ToastContext';
+import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
 type FormData = z.infer<typeof resetPasswordSchema>;
 
@@ -50,10 +52,14 @@ function ResetPasswordForm() {
                 setStatus({ type: 'success', message: result.message });
                 setTimeout(() => router.push('/admin/login'), 2000);
             } else {
-                setStatus({ type: 'error', message: result.error || 'Something went wrong' });
+                const friendlyMsg = getFriendlyErrorMessage(result.error || result.message || 'Something went wrong', 'reset-password');
+                toast.error(friendlyMsg);
+                setStatus({ type: 'error', message: friendlyMsg });
             }
         } catch (err) {
-            setStatus({ type: 'error', message: 'Failed to connect to server' });
+            const friendlyMsg = getFriendlyErrorMessage(err, 'reset-password');
+            toast.error(friendlyMsg);
+            setStatus({ type: 'error', message: friendlyMsg });
         } finally {
             setLoading(false);
         }

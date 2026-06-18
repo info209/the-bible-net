@@ -4,6 +4,8 @@ import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Lock, Eye, EyeOff, Check, X, AlertCircle } from 'lucide-react';
+import { toast } from '@/context/ToastContext';
+import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
 function ResetPasswordContent() {
     const router = useRouter();
@@ -35,7 +37,9 @@ function ResetPasswordContent() {
         setError('');
 
         if (password !== confirmPassword) {
-            setError("Passwords don't match");
+            const friendlyMsg = getFriendlyErrorMessage("Passwords don't match", 'reset-password');
+            toast.error(friendlyMsg);
+            setError(friendlyMsg);
             setLoading(false);
             return;
         }
@@ -51,10 +55,14 @@ function ResetPasswordContent() {
                 router.push('/auth/success?type=password');
             } else {
                 const data = await res.json();
-                setError(data.error || 'Failed to reset password. Token may be expired.');
+                const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Failed to reset password. Token may be expired.', 'reset-password');
+                toast.error(friendlyMsg);
+                setError(friendlyMsg);
             }
         } catch (err) {
-            setError('Connection failed. Please try again.');
+            const friendlyMsg = getFriendlyErrorMessage(err, 'reset-password');
+            toast.error(friendlyMsg);
+            setError(friendlyMsg);
         } finally {
             setLoading(false);
         }

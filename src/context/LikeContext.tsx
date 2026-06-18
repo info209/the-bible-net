@@ -16,7 +16,7 @@ interface LikeContextType {
   likes: Record<string, LikeState>;
   registerItem: (contentId: string, contentType: string, initialLiked: boolean, initialCount: number) => void;
   toggleLike: (contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion') => Promise<void>;
-  setLikedStateDirectly: (contentId: string, contentType: string, liked: boolean) => void;
+  setLikedStateDirectly: (contentId: string, contentType: string, liked: boolean, count?: number) => void;
 }
 
 const LikeContext = createContext<LikeContextType | undefined>(undefined);
@@ -60,18 +60,22 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Sets state directly, helpful if syncing from LikesPage fetches
-  const setLikedStateDirectly = useCallback((contentId: string, contentType: string, liked: boolean) => {
+  const setLikedStateDirectly = useCallback((contentId: string, contentType: string, liked: boolean, count?: number) => {
     const key = `${contentId}_${contentType}`;
     const status: LikeStatus = liked ? 'liked' : 'unliked';
     setLikes(prev => {
       const existing = prev[key];
-      if (!existing) return prev;
+      const newConfirmedCount = count !== undefined
+        ? count
+        : (existing ? (liked ? existing.confirmedCount + 1 : Math.max(0, existing.confirmedCount - 1)) : 0);
+
       return {
         ...prev,
         [key]: {
-          ...existing,
           desiredState: status,
           serverState: status,
+          confirmedCount: newConfirmedCount,
+          inFlight: false,
         }
       };
     });

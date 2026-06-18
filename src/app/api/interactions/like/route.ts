@@ -65,6 +65,7 @@ import { DailyContentService } from '@/services/dailyContentService';
  */
 export async function POST(req: NextRequest) {
     try {
+        await connectDB();
         const { session, type: sessionType } = await getSessionWithType();
         const body = await req.json();
         
@@ -96,12 +97,6 @@ export async function POST(req: NextRequest) {
             }
             guestIdentifier = guestId;
         }
-
-        // Temporary debug logs
-        console.log("Session:", session ? JSON.stringify(session) : "null");
-        console.log("Session Type:", sessionType);
-        console.log("Role:", session?.user?.role || "GUEST");
-        console.log("Guest ID:", guestIdentifier || "N/A");
 
         // Check if already liked to toggle
         const hasLiked = await LikeRepository.hasLiked(contentId, type, userId, guestIdentifier);

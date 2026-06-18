@@ -131,9 +131,17 @@ export default function FontSizeSelector({
             aria-label={`Font size: ${option.label} (${option.value} pixels)`}
             aria-pressed={isSelected}
           >
+            {/* Masking dot to hide the track line behind it */}
+            <div
+              className={`absolute rounded-full ${dotSize}`}
+              style={{
+                backgroundColor: theme.bg,
+              }}
+            />
+
             {/* The visual dot */}
             <div
-              className={`rounded-full transition-all duration-300 ease-out flex items-center justify-center ${dotSize}`}
+              className={`rounded-full transition-all duration-300 ease-out flex items-center justify-center relative ${dotSize}`}
               style={{
                 background: isSelected
                   ? theme.accent

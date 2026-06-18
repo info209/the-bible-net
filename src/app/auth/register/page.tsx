@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import { User, Mail, Lock, AlertCircle, ArrowRight, ChevronLeft, IdCard, Contact, Eye, EyeOff } from 'lucide-react';
 import { LegalModal } from '@/components/LegalModal';
+import { toast } from '@/context/ToastContext';
+import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
 
 export default function RegisterStep1() {
@@ -41,7 +43,9 @@ export default function RegisterStep1() {
             const data = await res.json();
 
             if (!res.ok) {
-                setError(data.error || 'Registration failed');
+                const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Registration failed', 'register');
+                toast.error(friendlyMsg);
+                setError(friendlyMsg);
             } else {
                 // Success - go to step 2 (OTP)
                 if (typeof window !== 'undefined') {
@@ -51,7 +55,9 @@ export default function RegisterStep1() {
                 router.push(`/auth/verify-otp?userId=${data.data.userId}&email=${encodeURIComponent(data.data.email)}`);
             }
         } catch (err: any) {
-            setError('An unexpected error occurred. Please try again.');
+            const friendlyMsg = getFriendlyErrorMessage(err, 'register');
+            toast.error(friendlyMsg);
+            setError(friendlyMsg);
         } finally {
             setLoading(false);
         }

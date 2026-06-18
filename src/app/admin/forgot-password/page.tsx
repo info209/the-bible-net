@@ -5,6 +5,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { forgotPasswordSchema } from '@/lib/validations/admin';
 import { z } from 'zod';
+import { toast } from '@/context/ToastContext';
+import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
 type FormData = z.infer<typeof forgotPasswordSchema>;
 
@@ -35,10 +37,14 @@ export default function AdminForgotPasswordPage() {
             if (res.ok) {
                 setStatus({ type: 'success', message: result.message });
             } else {
-                setStatus({ type: 'error', message: result.error || 'Something went wrong' });
+                const friendlyMsg = getFriendlyErrorMessage(result.error || result.message || 'Something went wrong', 'forgot-password');
+                toast.error(friendlyMsg);
+                setStatus({ type: 'error', message: friendlyMsg });
             }
         } catch (err) {
-            setStatus({ type: 'error', message: 'Failed to connect to server' });
+            const friendlyMsg = getFriendlyErrorMessage(err, 'forgot-password');
+            toast.error(friendlyMsg);
+            setStatus({ type: 'error', message: friendlyMsg });
         } finally {
             setLoading(false);
         }

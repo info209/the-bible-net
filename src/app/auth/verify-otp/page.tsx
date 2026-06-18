@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { ShieldCheck, Mail, ArrowRight, RefreshCcw, AlertCircle } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
+import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
 function VerifyOTPContent() {
     const router = useRouter();
@@ -49,7 +50,9 @@ function VerifyOTPContent() {
 
         const otpValue = otp.join('');
         if (otpValue.length !== 6) {
-            setError('Please enter all 6 digits');
+            const friendlyMsg = getFriendlyErrorMessage('Please enter all 6 digits', 'otp');
+            toast.error(friendlyMsg);
+            setError(friendlyMsg);
             setLoading(false);
             return;
         }
@@ -63,7 +66,9 @@ function VerifyOTPContent() {
 
             if (!res.ok) {
                 const data = await res.json();
-                setError(data.error || 'Verification failed');
+                const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Verification failed', 'otp');
+                toast.error(friendlyMsg);
+                setError(friendlyMsg);
             } else {
                 // Try auto-login if registration credentials are in sessionStorage
                 if (typeof window !== 'undefined') {
@@ -93,7 +98,9 @@ function VerifyOTPContent() {
                 router.push('/home');
             }
         } catch (err) {
-            setError('Connection failed. Please check your internet.');
+            const friendlyMsg = getFriendlyErrorMessage(err, 'otp');
+            toast.error(friendlyMsg);
+            setError(friendlyMsg);
         } finally {
             setLoading(false);
         }
@@ -108,9 +115,18 @@ function VerifyOTPContent() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ userId, email }),
             });
-            if (res.ok) toast.success('New OTP sent!');
+            if (res.ok) {
+                toast.success('New OTP sent!');
+            } else {
+                const data = await res.json();
+                const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Failed to resend. Try again later.', 'otp');
+                toast.error(friendlyMsg);
+                setError(friendlyMsg);
+            }
         } catch (err) {
-            setError('Failed to resend. Try again later.');
+            const friendlyMsg = getFriendlyErrorMessage(err, 'otp');
+            toast.error(friendlyMsg);
+            setError(friendlyMsg);
         } finally {
             setResending(false);
         }
@@ -121,7 +137,7 @@ function VerifyOTPContent() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-md glass-ios border-none p-8 space-y-8 relative overflow-hidden shadow-2xl"
+            className="w-full max-w-md glass-ios border-none p-6 sm:p-8 space-y-8 relative overflow-hidden shadow-2xl"
         >
             <div className="text-center space-y-4">
                 <div className="mx-auto w-20 h-20 bg-[var(--color-primary-teal)]/10 rounded-full flex items-center justify-center shadow-inner">
@@ -147,7 +163,7 @@ function VerifyOTPContent() {
                     </motion.div>
                 )}
 
-                <div className="flex justify-between gap-2.5">
+                <div className="grid grid-cols-6 gap-2 sm:gap-3 w-full max-w-sm mx-auto justify-center">
                     {otp.map((digit, i) => (
                         <input
                             key={i}
@@ -158,7 +174,7 @@ function VerifyOTPContent() {
                             value={digit}
                             onChange={(e) => handleInput(i, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(i, e)}
-                            className="w-12 h-16 text-center text-3xl font-bold bg-gray-100/50 border-2 border-transparent rounded-2xl outline-none focus:border-[var(--color-primary-teal)] focus:ring-4 focus:ring-[var(--color-primary-teal)]/10 transition-all text-slate-800 shadow-sm"
+                            className="w-full aspect-square text-center text-2xl sm:text-3xl font-bold bg-gray-100/50 border-2 border-transparent rounded-xl sm:rounded-2xl outline-none focus:border-[var(--color-primary-teal)] focus:ring-4 focus:ring-[var(--color-primary-teal)]/10 transition-all text-slate-800 shadow-sm"
                         />
                     ))}
                 </div>

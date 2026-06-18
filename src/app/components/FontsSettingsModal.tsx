@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import React, { useEffect } from "react";
 import {
   Moon,
   Sun,
@@ -11,6 +11,7 @@ import {
   FlipHorizontal,
   MoveVertical,
   Check,
+  ChevronDown,
 } from "lucide-react";
 import FontSizeSelector from "./FontSizeSelector";
 
@@ -133,14 +134,14 @@ export default function FontsSettingsModal({
             Font family
           </p>
 
-          <div className="relative">
+          <div className="relative group">
             <select
               value={selectedFont}
               onChange={(e) => onFontChange(e.target.value)}
-              className="w-full appearance-none rounded-xl px-4 py-3 text-sm outline-none"
+              className="w-full appearance-none rounded-xl pl-4 pr-10 py-3 text-sm outline-none transition-all duration-200 cursor-pointer border hover:border-[var(--color-primary-teal)]/30 focus:border-[var(--color-primary-teal)]/80 focus:ring-2 focus:ring-[var(--color-primary-teal)]/10"
               style={{
                 background: theme.card,
-                border: `1px solid ${theme.border}`,
+                borderColor: theme.border,
                 fontFamily: selectedFont,
                 color: theme.text,
               }}
@@ -153,10 +154,10 @@ export default function FontsSettingsModal({
             </select>
 
             <span
-              className="absolute right-3 top-1/2 -translate-y-1/2"
-              style={{ color: theme.subText }}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none flex items-center justify-center transition-all duration-300 group-hover:scale-110 group-focus-within:rotate-180 text-[var(--chevron-color)] group-hover:text-[var(--color-primary-teal)] group-focus-within:text-[var(--color-primary-teal)]"
+              style={{ "--chevron-color": theme.subText } as React.CSSProperties}
             >
-              ▾
+              <ChevronDown size={16} strokeWidth={2.5} />
             </span>
           </div>
         </div>
@@ -182,7 +183,7 @@ export default function FontsSettingsModal({
 
         {/* THEME */}
         <div className="mb-6">
-          <p className="text-xs mb-3 font-medium uppercase tracking-wider opacity-60" style={{ color: theme.subText }}>
+          <p className="text-xs mb-3 font-medium tracking-wider opacity-60" style={{ color: theme.subText }}>
             Theme Selection
           </p>
 
@@ -227,11 +228,11 @@ export default function FontsSettingsModal({
 
         {/* TRANSITIONS */}
         <div>
-          <p className="text-xs mb-3 font-medium uppercase tracking-wider opacity-60" style={{ color: theme.subText }}>
+          <p className="text-xs mb-3 font-medium tracking-wider opacity-60" style={{ color: theme.subText }}>
             Page Transitions
           </p>
 
-          <div className="grid grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 gap-3 w-full">
             {TRANSITIONS.map((t) => {
               const active = pageTransition === t.id;
               const Icon = t.icon;
@@ -240,19 +241,19 @@ export default function FontsSettingsModal({
                 <button
                   key={t.id}
                   onClick={() => onPageTransitionChange(t.id)}
-                  className="relative rounded-none aspect-square p-2 flex flex-col items-center justify-center gap-1.5 transition-all duration-300 active:scale-95 group overflow-hidden border"
+                  className="relative rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-all duration-300 active:scale-95 group overflow-hidden border w-full"
                   style={{
                     borderColor: active ? "var(--color-primary-teal)" : theme.border,
                     borderWidth: active ? "2px" : "1px",
                     background: active
-                      ? "rgba(210,57,82,0.05)"
+                      ? "rgba(65, 173, 176, 0.08)"
                       : theme.card,
                     boxShadow: active ? "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05)" : "none",
                     transform: active ? "translateY(-2px)" : "translateY(0)",
                   }}
                 >
-                  <div className={`p-2 rounded-full transition-all duration-300 ${active ? 'scale-110' : 'group-hover:scale-110 group-hover:-translate-y-0.5'}`}
-                       style={{ background: active ? 'rgba(0,0,0,0.03)' : 'transparent' }}>
+                  <div className={`p-2 rounded-xl transition-all duration-300 ${active ? 'scale-110' : 'group-hover:scale-110 group-hover:-translate-y-0.5'}`}
+                       style={{ background: active ? 'rgba(65, 173, 176, 0.12)' : 'transparent' }}>
                     <Icon size={20} style={{ color: active ? "var(--color-primary-teal)" : theme.text }} />
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-tight"
@@ -261,7 +262,7 @@ export default function FontsSettingsModal({
                   </span>
 
                   {active && (
-                    <div className="absolute top-1.5 right-1.5 bg-[var(--color-primary-teal)] text-white p-0.5 rounded-full shadow-sm">
+                    <div className="absolute top-2 right-2 bg-[var(--color-primary-teal)] text-white p-0.5 rounded-full shadow-sm">
                       <Check size={8} strokeWidth={4} />
                     </div>
                   )}

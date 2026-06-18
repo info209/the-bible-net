@@ -1,8 +1,15 @@
-import NextAuth from 'next-auth';
+import NextAuth, { CredentialsSignin } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import { authConfig } from './auth.config';
 import { UserService } from '@/services/userService';
 import { UserRole } from '@/types/user';
+
+class SharedAuthError extends CredentialsSignin {
+    constructor(message: string) {
+        super(message);
+        this.code = message;
+    }
+}
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
     ...authConfig,
@@ -23,7 +30,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         credentials.password as string
                     );
 
-                    if (!user) return null;
+                    if (!user) {
+                        throw new SharedAuthError('Incorrect email or password. Please try again.');
+                    }
 
                     return {
                         id: user._id.toString(),
@@ -36,8 +45,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
                         image: user.image,
                     };
                 } catch (error: any) {
-                    // Pass specific error messages (verified, locked, etc) to client
-                    throw new Error(error.message || 'Invalid credentials');
+                    if (error instanceof SharedAuthError) {
+                        throw error;
+                    }
+                    throw new SharedAuthError(error.message || 'Incorrect email or password. Please try again.');
                 }
             },
         }),

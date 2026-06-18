@@ -550,7 +550,11 @@ export default function VerseActionMenu({
                     {ALL_COLORS.map((c) => (
                       <button
                         key={c.id}
-                        onClick={() => handleColorTap(c.id, 0, 1)}
+                        onClick={() => {
+                          setSelectedColor(c.id);
+                          onHighlight(c.id);
+                          onClose();
+                        }}
                         title={c.label}
                         className="relative active:scale-90 transition-transform"
                         style={{ width: 36, height: 36 }}

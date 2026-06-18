@@ -43,7 +43,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
   };
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 h-16 glass-teal flex justify-center w-full shadow-sm border-b border-white/10 ${className || ''}`}>
+    <header className={`fixed top-0 left-0 right-[var(--removed-body-scroll-bar-size,0px)] z-50 h-16 glass-teal flex justify-center shadow-sm border-b border-white/10 ${className || ''}`}>
       <div className="w-full max-w-3xl mx-auto px-3 sm:px-8 h-full flex items-center justify-between">
 
         {/* Logo Section (Left Aligned with Content) */}
@@ -77,7 +77,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
               </div>
             </button>
           ) : (
-            <DropdownMenu>
+            <DropdownMenu modal={false}>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/30 cursor-pointer hover:bg-white/10 active:scale-95 transition-all">
                   <Menu className="size-[18px] opacity-90" />
