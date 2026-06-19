@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
 import { useLikeContext } from '@/context/LikeContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 type FilterTab = 'All' | 'Verses' | 'Devotionals';
 const TABS: FilterTab[] = ['All', 'Verses', 'Devotionals'];
@@ -33,32 +34,21 @@ interface LikesPageProps {
 
 export default function LikesPage({ onBack }: LikesPageProps = {}) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { setLikedStateDirectly } = useLikeContext();
-  const [likes, setLikes] = useState<LikedItem[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   const [unlikingIds, setUnlikingIds] = useState<Set<string>>(new Set());
 
-  const fetchLikes = async () => {
-    setIsLoading(true);
-    try {
+  const { data: likes = [], isLoading } = useQuery<LikedItem[]>({
+    queryKey: ['likes'],
+    queryFn: async () => {
       const res = await fetch('/api/interactions/like');
-      if (res.ok) {
-        const json = await res.json();
-        if (json.success) {
-          setLikes(json.data);
-        }
-      }
-    } catch (err) {
-      console.error('Error fetching likes:', err);
-    } finally {
-      setIsLoading(false);
+      if (!res.ok) throw new Error('API error');
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Failed to fetch likes');
+      return json.data;
     }
-  };
-
-  useEffect(() => {
-    fetchLikes();
-  }, []);
+  });
 
   const showToast = (msg: string) => {
     const lower = msg.toLowerCase();
@@ -77,10 +67,10 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
     setUnlikingIds(prev => new Set(prev).add(key));
 
     // Snapshot for rollback
-    const snapshot = likes;
+    const snapshot = queryClient.getQueryData<LikedItem[]>(['likes']);
 
     // Optimistic remove
-    setLikes(prev => prev.filter(
+    queryClient.setQueryData<LikedItem[]>(['likes'], prev => (prev || []).filter(
       item => !(item.contentId === contentId && item.contentType === contentType)
     ));
 
@@ -99,7 +89,7 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
       // Confirmed — API toggled to unliked
       if (data.action === 'liked') {
         // Edge case: server toggled back to liked (rapid tap race); re-fetch to sync
-        fetchLikes();
+        queryClient.invalidateQueries({ queryKey: ['likes'] });
         return;
       }
 
@@ -110,9 +100,13 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
     } catch (err) {
       console.error('Unlike failed, reverting:', err);
       // Rollback optimistic update
-      setLikes(snapshot);
+      if (snapshot) {
+        queryClient.setQueryData(['likes'], snapshot);
+      }
       showToast('Error removing like. Please try again.');
     } finally {
+      queryClient.invalidateQueries({ queryKey: ['likes'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-content-list'] });
       setUnlikingIds(prev => {
         const next = new Set(prev);
         next.delete(key);

@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface SavedVerseClient {
@@ -97,67 +98,35 @@ interface UseSavedVersesReturn {
 
 export function useSavedVerses(): UseSavedVersesReturn {
   const { data: session, status } = useSession();
-  const [savedVerses, setSavedVerses] = useState<SavedVerseClient[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [userLabels, setUserLabels] = useState<string[]>([]);
-  const [isLabelsLoading, setIsLabelsLoading] = useState(false);
-  const pendingRef = useRef<Set<string>>(new Set());
-  // Track which user's data is currently loaded to detect user switches
-  const loadedForUserRef = useRef<string | null>(null);
-
-  const fetchSavedVerses = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/saved-verses?limit=200');
-      if (!res.ok) return;
-      const json = await res.json();
-      if (json.success) setSavedVerses(json.data as SavedVerseClient[]);
-    } catch (err) {
-      console.error('[useSavedVerses] fetch error:', err);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  const fetchUserLabels = useCallback(async () => {
-    setIsLabelsLoading(true);
-    try {
-      const res = await fetch('/api/user-labels');
-      if (!res.ok) return;
-      const json = await res.json();
-      if (json.success) setUserLabels(json.data as string[]);
-    } catch (err) {
-      console.error('[useSavedVerses] labels fetch error:', err);
-    } finally {
-      setIsLabelsLoading(false);
-    }
-  }, []);
-
   const userId = session?.user?.id as string | undefined;
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    // If the user is not authenticated, clear any cached data from a previous session
-    if (status === 'unauthenticated') {
-      if (loadedForUserRef.current !== null) {
-        setSavedVerses([]);
-        setUserLabels([]);
-        loadedForUserRef.current = null;
-      }
-      return;
-    }
+  const queryKeySavedVerses = useMemo(() => ['saved-verses', userId || 'anonymous'], [userId]);
+  const queryKeyUserLabels = useMemo(() => ['user-labels', userId || 'anonymous'], [userId]);
 
-    if (status !== 'authenticated' || !userId) return;
+  const { data: savedVerses = [], isLoading } = useQuery<SavedVerseClient[]>({
+    queryKey: queryKeySavedVerses,
+    queryFn: async () => {
+      const res = await fetch('/api/saved-verses?limit=200');
+      if (!res.ok) throw new Error('Failed to fetch saved verses');
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Failed to fetch saved verses');
+      return json.data as SavedVerseClient[];
+    },
+    enabled: status === 'authenticated' && !!userId,
+  });
 
-    // Re-fetch whenever the logged-in user changes (e.g. sign-out then sign-in as a different user)
-    if (loadedForUserRef.current === userId) return;
-    loadedForUserRef.current = userId;
-
-    // Clear stale data from the previous user before loading the new user's data
-    setSavedVerses([]);
-    setUserLabels([]);
-    fetchSavedVerses();
-    fetchUserLabels();
-  }, [status, userId, fetchSavedVerses, fetchUserLabels]);
+  const { data: userLabels = [], isLoading: isLabelsLoading } = useQuery<string[]>({
+    queryKey: queryKeyUserLabels,
+    queryFn: async () => {
+      const res = await fetch('/api/user-labels');
+      if (!res.ok) throw new Error('Failed to fetch user labels');
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Failed to fetch user labels');
+      return json.data as string[];
+    },
+    enabled: status === 'authenticated' && !!userId,
+  });
 
   const isSaved = useCallback(
     (bookId: string, chapter: number, verses: number[]): boolean => {
@@ -194,146 +163,191 @@ export function useSavedVerses(): UseSavedVersesReturn {
     [savedVerses]
   );
 
-  const saveVerse = useCallback(async (payload: SaveVersePayload) => {
-    const key = `save:${payload.bookId}:${payload.chapter}:${payload.verses.sort().join(',')}`;
-    if (pendingRef.current.has(key)) return;
-    pendingRef.current.add(key);
-
-    // Optimistic insert
-    const optimistic: SavedVerseClient = {
-      _id: `opt_${Date.now()}`,
-      bookId: payload.bookId,
-      bookName: payload.bookName,
-      chapter: payload.chapter,
-      verses: [...payload.verses].sort((a, b) => a - b),
-      verseRangeText: payload.verseRangeText,
-      labels: payload.labels ?? [],
-      note: payload.note ?? '',
-      version: payload.version,
-      isPrivate: payload.isPrivate ?? false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    setSavedVerses((prev) => {
-      // Remove any existing save for the same chapter overlap, then add new
-      const filtered = prev.filter(
-        (sv) =>
-          !(
-            sv.bookId === payload.bookId &&
-            sv.chapter === payload.chapter &&
-            payload.verses.some((v) => sv.verses.includes(v))
-          )
-      );
-      return [optimistic, ...filtered];
-    });
-
-    try {
+  const saveVerseMutation = useMutation({
+    mutationFn: async (payload: SaveVersePayload) => {
       const res = await fetch('/api/saved-verses', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
+      if (!res.ok) throw new Error('Failed to save verse');
       const json = await res.json();
-      if (json.success && json.data) {
-        setSavedVerses((prev) =>
-          prev.map((sv) => (sv._id === optimistic._id ? (json.data as SavedVerseClient) : sv))
+      if (!json.success || !json.data) throw new Error(json.error || 'Failed to save verse');
+      return json.data as SavedVerseClient;
+    },
+    onMutate: async (payload) => {
+      await queryClient.cancelQueries({ queryKey: queryKeySavedVerses });
+      const previousVerses = queryClient.getQueryData<SavedVerseClient[]>(queryKeySavedVerses) || [];
+
+      // Optimistic insert
+      const optimistic: SavedVerseClient = {
+        _id: `opt_${Date.now()}`,
+        bookId: payload.bookId,
+        bookName: payload.bookName,
+        chapter: payload.chapter,
+        verses: [...payload.verses].sort((a, b) => a - b),
+        verseRangeText: payload.verseRangeText,
+        labels: payload.labels ?? [],
+        note: payload.note ?? '',
+        version: payload.version,
+        isPrivate: payload.isPrivate ?? false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+
+      queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, (prev) => {
+        const filtered = (prev || []).filter(
+          (sv) =>
+            !(
+              sv.bookId === payload.bookId &&
+              sv.chapter === payload.chapter &&
+              payload.verses.some((v) => sv.verses.includes(v))
+            )
         );
-      } else {
-        // Revert
-        setSavedVerses((prev) => prev.filter((sv) => sv._id !== optimistic._id));
+        return [optimistic, ...filtered];
+      });
+
+      return { previousVerses, optimistic };
+    },
+    onError: (err, payload, context) => {
+      if (context?.previousVerses) {
+        queryClient.setQueryData(queryKeySavedVerses, context.previousVerses);
       }
-    } catch {
-      setSavedVerses((prev) => prev.filter((sv) => sv._id !== optimistic._id));
-    } finally {
-      pendingRef.current.delete(key);
-    }
-  }, []);
+    },
+    onSuccess: (data, payload, context) => {
+      // Replace optimistic item with actual response data
+      queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, (prev) => {
+        return (prev || []).map((sv) => (sv._id === context?.optimistic._id ? data : sv));
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeySavedVerses });
+    },
+  });
 
-  const updateSavedVerse = useCallback(async (id: string, patch: UpdateVersePayload) => {
-    const key = `update:${id}`;
-    if (pendingRef.current.has(key)) return;
-    pendingRef.current.add(key);
+  const saveVerse = useCallback(async (payload: SaveVersePayload) => {
+    await saveVerseMutation.mutateAsync(payload);
+  }, [saveVerseMutation]);
 
-    // Optimistic patch
-    let previous: SavedVerseClient | undefined;
-    setSavedVerses((prev) =>
-      prev.map((sv) => {
-        if (sv._id === id) {
-          previous = sv;
-          return { ...sv, ...patch, updatedAt: new Date().toISOString() };
-        }
-        return sv;
-      })
-    );
-
-    try {
+  const updateSavedVerseMutation = useMutation({
+    mutationFn: async ({ id, patch }: { id: string; patch: UpdateVersePayload }) => {
       const res = await fetch(`/api/saved-verses/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(patch),
       });
+      if (!res.ok) throw new Error('Failed to update saved verse');
       const json = await res.json();
-      if (json.success && json.data) {
-        setSavedVerses((prev) =>
-          prev.map((sv) => (sv._id === id ? (json.data as SavedVerseClient) : sv))
-        );
-      } else if (previous) {
-        setSavedVerses((prev) => prev.map((sv) => (sv._id === id ? previous! : sv)));
+      if (!json.success || !json.data) throw new Error(json.error || 'Failed to update saved verse');
+      return json.data as SavedVerseClient;
+    },
+    onMutate: async ({ id, patch }) => {
+      await queryClient.cancelQueries({ queryKey: queryKeySavedVerses });
+      const previousVerses = queryClient.getQueryData<SavedVerseClient[]>(queryKeySavedVerses) || [];
+
+      // Optimistic patch
+      queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, (prev) => {
+        return (prev || []).map((sv) => {
+          if (sv._id === id) {
+            return { ...sv, ...patch, updatedAt: new Date().toISOString() };
+          }
+          return sv;
+        });
+      });
+
+      return { previousVerses };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousVerses) {
+        queryClient.setQueryData(queryKeySavedVerses, context.previousVerses);
       }
-    } catch {
-      if (previous) setSavedVerses((prev) => prev.map((sv) => (sv._id === id ? previous! : sv)));
-    } finally {
-      pendingRef.current.delete(key);
-    }
-  }, []);
+    },
+    onSuccess: (data, variables) => {
+      queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, (prev) => {
+        return (prev || []).map((sv) => (sv._id === variables.id ? data : sv));
+      });
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeySavedVerses });
+    },
+  });
+
+  const updateSavedVerse = useCallback(async (id: string, patch: UpdateVersePayload) => {
+    await updateSavedVerseMutation.mutateAsync({ id, patch });
+  }, [updateSavedVerseMutation]);
+
+  const deleteSavedVerseMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/saved-verses/${id}`, { method: 'DELETE' });
+      if (!res.ok) throw new Error('Failed to delete saved verse');
+    },
+    onMutate: async (id) => {
+      await queryClient.cancelQueries({ queryKey: queryKeySavedVerses });
+      const previousVerses = queryClient.getQueryData<SavedVerseClient[]>(queryKeySavedVerses) || [];
+
+      // Optimistic delete
+      queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, (prev) => {
+        return (prev || []).filter((sv) => sv._id !== id);
+      });
+
+      return { previousVerses };
+    },
+    onError: (err, id, context) => {
+      if (context?.previousVerses) {
+        queryClient.setQueryData(queryKeySavedVerses, context.previousVerses);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeySavedVerses });
+    },
+  });
 
   const deleteSavedVerse = useCallback(async (id: string) => {
-    if (pendingRef.current.has(id)) return;
-    pendingRef.current.add(id);
+    await deleteSavedVerseMutation.mutateAsync(id);
+  }, [deleteSavedVerseMutation]);
 
-    let removed: SavedVerseClient | undefined;
-    setSavedVerses((prev) => {
-      removed = prev.find((sv) => sv._id === id);
-      return prev.filter((sv) => sv._id !== id);
-    });
-
-    try {
-      const res = await fetch(`/api/saved-verses/${id}`, { method: 'DELETE' });
-      if (!res.ok && removed) {
-        setSavedVerses((prev) => [removed!, ...prev]);
-      }
-    } catch {
-      if (removed) setSavedVerses((prev) => [removed!, ...prev]);
-    } finally {
-      pendingRef.current.delete(id);
-    }
-  }, []);
-
-  const addUserLabel = useCallback(async (label: string) => {
-    const trimmed = label.trim();
-    if (!trimmed) return;
-
-    // Optimistic add
-    setUserLabels((prev) => {
-      if (prev.some((l) => l.toLowerCase() === trimmed.toLowerCase())) return prev;
-      return [trimmed, ...prev];
-    });
-
-    try {
-      await fetch('/api/user-labels', {
+  const addUserLabelMutation = useMutation({
+    mutationFn: async (label: string) => {
+      const trimmed = label.trim();
+      const res = await fetch('/api/user-labels', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ label: trimmed }),
       });
-    } catch (err) {
-      console.error('[useSavedVerses] addUserLabel error:', err);
-    }
-  }, []);
+      if (!res.ok) throw new Error('Failed to add user label');
+    },
+    onMutate: async (label) => {
+      const trimmed = label.trim();
+      await queryClient.cancelQueries({ queryKey: queryKeyUserLabels });
+      const previousLabels = queryClient.getQueryData<string[]>(queryKeyUserLabels) || [];
+
+      queryClient.setQueryData<string[]>(queryKeyUserLabels, (prev) => {
+        if ((prev || []).some((l) => l.toLowerCase() === trimmed.toLowerCase())) return prev;
+        return [trimmed, ...(prev || [])];
+      });
+
+      return { previousLabels };
+    },
+    onError: (err, label, context) => {
+      if (context?.previousLabels) {
+        queryClient.setQueryData(queryKeyUserLabels, context.previousLabels);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeyUserLabels });
+    },
+  });
+
+  const addUserLabel = useCallback(async (label: string) => {
+    await addUserLabelMutation.mutateAsync(label);
+  }, [addUserLabelMutation]);
 
   const refresh = useCallback(async () => {
-    await Promise.all([fetchSavedVerses(), fetchUserLabels()]);
-  }, [fetchSavedVerses, fetchUserLabels]);
+    await Promise.all([
+      queryClient.refetchQueries({ queryKey: queryKeySavedVerses }),
+      queryClient.refetchQueries({ queryKey: queryKeyUserLabels }),
+    ]);
+  }, [queryClient, queryKeySavedVerses, queryKeyUserLabels]);
 
   return {
     savedVerses,

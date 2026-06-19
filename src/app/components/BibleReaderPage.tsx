@@ -2246,7 +2246,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                 </button>
 
                 {/* Stop button */}
-                {currentTrack && (
+                {/* {currentTrack && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
@@ -2258,7 +2258,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   >
                     <div className="size-3.5 border-2 border-current bg-current rounded-sm" />
                   </button>
-                )}
+                )} */}
 
                 {/* Close button */}
                 <button

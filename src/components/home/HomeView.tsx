@@ -1,8 +1,9 @@
 "use client";
 
 import { Play, Heart, MessageCircle, Share2, Maximize2, Pause, X, Send } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/context/ToastContext';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
@@ -32,49 +33,50 @@ export default function HomeView() {
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
 
-  // Decoupled daily content states
-  const [dailyContents, setDailyContents] = useState<any[]>([]);
-  const [dailyVerses, setDailyVerses] = useState<any[]>([]);
-  const [dailyDevotions, setDailyDevotions] = useState<any[]>([]);
-  const [prayers, setPrayers] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
+  const preferredVersion = (session?.user as any)?.preferredBibleVersion || 'KJV';
+  const todayStr = new Date().toISOString().split('T')[0];
+
+  const { data: dailyContentData, isLoading: dailyLoading } = useQuery({
+    queryKey: ['daily-content-list', preferredVersion, todayStr],
+    queryFn: async () => {
+      const res = await fetch(`/api/daily?days=7&version=${encodeURIComponent(preferredVersion)}`);
+      if (!res.ok) throw new Error('Failed to fetch daily content');
+      const data = await res.json();
+      const items = data.data || [];
+      items.forEach((item: any) => {
+        queryClient.setQueryData(['daily-verse', item.date, preferredVersion], item);
+        queryClient.setQueryData(['daily-devotion', item.date, preferredVersion], item);
+      });
+      return items;
+    },
+  });
+
+  const dailyVerses = useMemo(() => {
+    return (dailyContentData || []).filter((item: any) => item.verseBook && item.verseBook !== 'Unknown');
+  }, [dailyContentData]);
+
+  const dailyDevotions = useMemo(() => {
+    return (dailyContentData || []).filter((item: any) => item.devotionalTitle && item.devotionalContent);
+  }, [dailyContentData]);
+
+  const { data: prayers = [], isLoading: prayersLoading } = useQuery({
+    queryKey: ['prayers', 'home'],
+    queryFn: async () => {
+      const res = await fetch('/api/prayers?limit=3');
+      if (!res.ok) throw new Error('Failed to fetch prayers');
+      return res.json();
+    },
+    staleTime: 60 * 1000,
+  });
+
+  const loading = dailyLoading || prayersLoading;
 
   // Modal states
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [initialModalIndex, setInitialModalIndex] = useState(0);
   const [initialModalSection, setInitialModalSection] = useState<'verse' | 'devotional' | 'prayer' | undefined>();
   const [modalContents, setModalContents] = useState<any[]>([]);
-
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const preferredVersion = (session?.user as any)?.preferredBibleVersion || 'KJV';
-        const [dailyRes, prayersRes] = await Promise.all([
-          fetch(`/api/daily?days=7&version=${encodeURIComponent(preferredVersion)}`),
-          fetch('/api/prayers?limit=3')
-        ]);
-
-        if (dailyRes.ok) {
-          const data = await dailyRes.json();
-          const items = data.data || [];
-          setDailyContents(items);
-          
-          // Separate daily verses and daily devotionals
-          const verses = items.filter((item: any) => item.verseBook && item.verseBook !== 'Unknown');
-          const devotions = items.filter((item: any) => item.devotionalTitle && item.devotionalContent);
-          
-          setDailyVerses(verses);
-          setDailyDevotions(devotions);
-        }
-        if (prayersRes.ok) setPrayers(await prayersRes.json());
-      } catch (error) {
-        console.error('Error fetching home data:', error);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchData();
-  }, [(session?.user as any)?.preferredBibleVersion]);
 
   const openDetailModal = (index: number, section: 'verse' | 'devotional' | 'prayer') => {
     if (section === 'verse') {
@@ -126,20 +128,22 @@ export default function HomeView() {
         setNewComment('');
         fetchComments(activeContent.id, activeContent.type);
         
-        const updateCommentCounts = (prev: any[]) => prev.map(content => {
-          if (content._id === activeContent.id) {
-            const countField = activeContent.type === 'daily-verse' ? 'verseCommentCount' : 'devotionCommentCount';
-            return {
-              ...content,
-              [countField]: (content[countField] || 0) + 1
-            };
-          }
-          return content;
+        queryClient.setQueryData(['daily-content-list', preferredVersion, todayStr], (prev: any[] | undefined) => {
+          if (!prev) return prev;
+          return prev.map(content => {
+            if (content._id === activeContent.id) {
+              const countField = activeContent.type === 'daily-verse' ? 'verseCommentCount' : 'devotionCommentCount';
+              const updatedItem = {
+                ...content,
+                [countField]: (content[countField] || 0) + 1
+              };
+              queryClient.setQueryData(['daily-verse', content.date, preferredVersion], updatedItem);
+              queryClient.setQueryData(['daily-devotion', content.date, preferredVersion], updatedItem);
+              return updatedItem;
+            }
+            return content;
+          });
         });
-
-        setDailyContents(updateCommentCounts);
-        setDailyVerses(updateCommentCounts);
-        setDailyDevotions(updateCommentCounts);
       }
     } catch (error) {
       console.error('Add comment error:', error);
@@ -194,7 +198,10 @@ export default function HomeView() {
       });
       if (res.ok) {
         const updatedPrayer = await res.json();
-        setPrayers(prayers.map(p => p._id === prayerId ? updatedPrayer : p));
+        queryClient.setQueryData(['prayers', 'home'], (prev: any[] | undefined) => {
+          if (!prev) return prev;
+          return prev.map(p => p._id === prayerId ? updatedPrayer : p);
+        });
       }
     } catch (error) {
       console.error('Intercession error:', error);
@@ -277,7 +284,7 @@ export default function HomeView() {
             onChange={setCurrentVerseSlide}
             ariaLabel="Daily Verse Carousel"
           >
-            {dailyVerses.map((content, index) => (
+            {dailyVerses.map((content: any, index: number) => (
               <div key={content._id || index} className="w-full flex-shrink-0 select-none">
                 {/* Daily Verse Card - consistent shared banner background */}
                 <div
@@ -357,7 +364,7 @@ export default function HomeView() {
         {/* Slide indicators */}
         {dailyVerses.length > 1 && (
           <div className="flex justify-center space-x-2 mt-3">
-            {dailyVerses.map((_, index) => (
+            {dailyVerses.map((_: any, index: number) => (
               <button
                 key={index}
                 onClick={() => setCurrentVerseSlide(index)}
@@ -377,7 +384,7 @@ export default function HomeView() {
             onChange={setCurrentDevotionSlide}
             ariaLabel="Daily Devotional Carousel"
           >
-            {dailyDevotions.map((content, index) => (
+            {dailyDevotions.map((content: any, index: number) => (
               <div key={content._id || index} className="w-full flex-shrink-0 select-none">
                 {/* Daily Devotional Card - consistent shared banner background */}
                 <div
@@ -476,7 +483,7 @@ export default function HomeView() {
         {/* Slide indicators */}
         {dailyDevotions.length > 1 && (
           <div className="flex justify-center space-x-2 mt-3">
-            {dailyDevotions.map((_, index) => (
+            {dailyDevotions.map((_: any, index: number) => (
               <button
                 key={index}
                 onClick={() => setCurrentDevotionSlide(index)}
@@ -604,7 +611,7 @@ export default function HomeView() {
                 No public prayer requests yet.
               </div>
             ) : (
-              prayers.map((request) => (
+              prayers.map((request: any) => (
                 <div key={request._id} className="bg-white/80 backdrop-blur-sm rounded-lg p-4 hover:bg-white transition-colors">
                   <div className="flex items-start space-x-3">
                     {!request.anonymous && request.userId?.image ? (

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { FiSearch } from 'react-icons/fi';
 import { X, Clock, Trash2, BookOpen, ChevronRight, Heart, Loader2 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -474,17 +475,12 @@ export default function BibleSearchModal({
     const t = useThemeVars(theme);
     const { toast } = useToast();
 
+    const queryClient = useQueryClient();
     const [query, setQuery] = useState('');
-    const [searchData, setSearchData] = useState<SearchData>(null);
-    // isLoading tracks only the FIRST load (no previous data) to show skeletons
-    const [isLoading, setIsLoading] = useState(false);
-    // isRefreshing is true while loading new data when old data already exists
-    const [isRefreshing, setIsRefreshing] = useState(false);
+    const [debouncedQuery, setDebouncedQuery] = useState('');
     const [history, setHistory] = useState<string[]>([]);
 
     const inputRef = useRef<HTMLInputElement>(null);
-    const debounceRef = useRef<NodeJS.Timeout | null>(null);
-    const abortRef = useRef<AbortController | null>(null);
 
     // Load history on mount
     useEffect(() => {
@@ -494,97 +490,48 @@ export default function BibleSearchModal({
         } catch { /* noop */ }
     }, []);
 
+    // Debounce effect
+    useEffect(() => {
+        const handler = setTimeout(() => {
+            setDebouncedQuery(query.trim());
+        }, DEBOUNCE_MS);
+        return () => clearTimeout(handler);
+    }, [query]);
+
     // Focus input when modal opens; reset when it closes
     useEffect(() => {
         if (isOpen) {
             setTimeout(() => inputRef.current?.focus(), 80);
         } else {
-            // Abort any in-flight request
-            abortRef.current?.abort();
-            abortRef.current = null;
-            if (debounceRef.current) clearTimeout(debounceRef.current);
             setQuery('');
-            setSearchData(null);
-            setIsLoading(false);
-            setIsRefreshing(false);
+            setDebouncedQuery('');
         }
     }, [isOpen]);
 
-    // Core search function — safe to call directly
-    const doSearch = useCallback(async (q: string, isExplicit: boolean = false) => {
-        const trimmed = q.trim();
-        if (!trimmed || trimmed.length < 2) {
-            setSearchData(null);
-            setIsLoading(false);
-            setIsRefreshing(false);
-            return;
-        }
-
-        // Abort any previous in-flight request
-        abortRef.current?.abort();
-        const controller = new AbortController();
-        abortRef.current = controller;
-
-        try {
-            const params = new URLSearchParams({ q: trimmed, limit: '50' });
+    const { data: searchResultsData, isFetching: isRefreshing, isLoading } = useQuery({
+        queryKey: ['bible-search', debouncedQuery, activeVersionCode],
+        queryFn: async ({ signal }) => {
+            const params = new URLSearchParams({ q: debouncedQuery, limit: '50' });
             if (activeVersionCode) params.set('versionCode', activeVersionCode);
 
-            const res = await fetch(`/api/v1/bible/search?${params}`, {
-                signal: controller.signal,
-            });
+            const res = await fetch(`/api/v1/bible/search?${params}`, { signal });
             const json = await res.json();
-
-            if (json.success && json.data) {
-                setSearchData(json.data as SearchData);
-            } else {
-                setSearchData(null);
+            if (!json.success || !json.data) {
                 if (json.error) {
-                    const isCompleteReference = /^[1-3]?\s*[a-zA-Z\s]+?\s+\d+\s*:\s*\d+(?:\s*-\s*\d+)?$/.test(trimmed);
-                    if (isExplicit || isCompleteReference) {
+                    const isCompleteReference = /^[1-3]?\s*[a-zA-Z\s]+?\s+\d+\s*:\s*\d+(?:\s*-\s*\d+)?$/.test(debouncedQuery);
+                    if (isCompleteReference) {
                         toast.error(json.error);
                     }
                 }
+                return null;
             }
-        } catch (e: any) {
-            if (e.name !== 'AbortError') {
-                console.error('BibleSearch fetch error:', e);
-                setSearchData(null);
-            }
-            // On AbortError, keep existing searchData intact — don't clear it
-        } finally {
-            // Only clear loading flags if this request was NOT aborted
-            if (!controller.signal.aborted) {
-                setIsLoading(false);
-                setIsRefreshing(false);
-            }
-        }
-    }, [activeVersionCode, toast]);
+            return json.data;
+        },
+        enabled: debouncedQuery.length >= 2,
+        staleTime: 5 * 60 * 1000, // 5 minutes cache
+    });
 
-    // Debounce effect — re-runs when query or doSearch changes
-    useEffect(() => {
-        if (debounceRef.current) clearTimeout(debounceRef.current);
-
-        const trimmed = query.trim();
-        if (!trimmed || trimmed.length < 2) {
-            setSearchData(null);
-            setIsLoading(false);
-            setIsRefreshing(false);
-            return;
-        }
-
-        // Show skeleton on first search, spinner on re-search
-        if (searchData === null) {
-            setIsLoading(true);
-        } else {
-            setIsRefreshing(true);
-        }
-
-        debounceRef.current = setTimeout(() => doSearch(query, false), DEBOUNCE_MS);
-
-        return () => {
-            if (debounceRef.current) clearTimeout(debounceRef.current);
-        };
-    }, [query, doSearch]); // eslint-disable-line react-hooks/exhaustive-deps
+    const searchData = searchResultsData || null;
 
     // History helpers
     const addHistory = (q: string) => {
@@ -601,7 +548,7 @@ export default function BibleSearchModal({
 
     const clearQuery = () => {
         setQuery('');
-        setSearchData(null);
+        setDebouncedQuery('');
         inputRef.current?.focus();
     };
 
@@ -618,7 +565,10 @@ export default function BibleSearchModal({
         const ev = searchData as ExactVerseResult;
         const match = ev.availableVersions.find(v => v.versionCode === versionCode);
         if (match) {
-            setSearchData({ ...ev, text: match.text, versionCode: match.versionCode });
+            queryClient.setQueryData(
+                ['bible-search', debouncedQuery, activeVersionCode],
+                { ...ev, text: match.text, versionCode: match.versionCode }
+            );
         }
     };
 
@@ -678,9 +628,8 @@ export default function BibleSearchModal({
                         onChange={e => setQuery(e.target.value)}
                         onKeyDown={e => {
                             if (e.key === 'Enter' && query.trim()) {
-                                if (debounceRef.current) clearTimeout(debounceRef.current);
                                 addHistory(query.trim());
-                                doSearch(query.trim(), true);
+                                setDebouncedQuery(query.trim());
                             }
                             if (e.key === 'Escape') onClose();
                         }}

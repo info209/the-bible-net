@@ -97,8 +97,19 @@ const defaultContent = {
   ]
 };
 
-// Global in-memory cache to prevent fetching/flashing skeleton for preloaded chapters
-const chapterCache = new Map<string, { title: string; verses: { number: number; text: string }[] }>();
+import { useQuery } from '@tanstack/react-query';
+
+export async function fetchChapterContent(version: string, book: string, chapter: number): Promise<{ title: string; verses: { number: number; text: string }[] }> {
+  const response = await fetch(`/api/v1/bible/${encodeURIComponent(version)}/${encodeURIComponent(book)}/${chapter}`);
+  const result = await response.json();
+  if (!result.success) {
+    throw new Error(result.error || 'Failed to fetch content');
+  }
+  return {
+    title: `${result.data.book.name} ${result.data.chapter.number}`,
+    verses: result.data.verses
+  };
+}
 
 function ChapterContent({ 
   book, chapter, font, fontSize, version = 'NKJV', 
@@ -108,13 +119,14 @@ function ChapterContent({
   isSliderDragging = false,
   swipeActiveRef,
 }: ChapterContentProps) {
-  // Check the cache synchronously to initialize state directly without a skeleton flash
-  const cacheKey = `${version}-${book}-${chapter}`;
-  const cached = chapterCache.get(cacheKey);
+  const { data: apiContent, isLoading, error: queryError } = useQuery({
+    queryKey: ['chapter-content', version, book, chapter],
+    queryFn: () => fetchChapterContent(version, book, chapter),
+    enabled: !!book && !!chapter && book !== 'undefined' && !!version,
+    staleTime: Infinity, // Bible text never changes
+  });
 
-  const [apiContent, setApiContent] = useState<{ title: string; verses: { number: number; text: string }[] } | null>(cached || null);
-  const [isLoading, setIsLoading] = useState(!cached);
-  const [error, setError] = useState<string | null>(null);
+  const error = queryError ? (queryError as Error).message : null;
 
   const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
   const touchStartPosRef = useRef<{x: number, y: number} | null>(null);
@@ -249,53 +261,8 @@ function ChapterContent({
     }
   };
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchContent = async () => {
-      if (!book || !chapter || book === 'undefined' || !version) return;
-
-      const currentCacheKey = `${version}-${book}-${chapter}`;
-      const cachedData = chapterCache.get(currentCacheKey);
-      if (cachedData) {
-        if (isMounted) {
-          setApiContent(cachedData);
-          setIsLoading(false);
-        }
-        return;
-      }
-
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch(`/api/v1/bible/${encodeURIComponent(version)}/${encodeURIComponent(book)}/${chapter}`);
-        const result = await response.json();
-        if (isMounted) {
-          if (result.success) {
-            const data = {
-              title: `${result.data.book.name} ${result.data.chapter.number}`,
-              verses: result.data.verses
-            };
-            chapterCache.set(currentCacheKey, data);
-            setApiContent(data);
-          } else {
-            setError(result.error || 'Failed to fetch content');
-            setApiContent(null);
-          }
-        }
-      } catch (err) {
-        if (isMounted) {
-          setError('An error occurred while fetching content');
-          setApiContent(null);
-        }
-      } finally {
-        if (isMounted) setIsLoading(false);
-      }
-    };
-    fetchContent();
-    return () => { isMounted = false; };
-  }, [book, chapter, version]);
-
   const content = apiContent;
+
 
   useEffect(() => {
     if (scrollToVerse && scrollToVerse >= 1 && content?.verses?.length && !isSliderDragging) {
@@ -349,7 +316,7 @@ function ChapterContent({
            <div className="h-1 w-12 bg-accent-rose mt-4 rounded-full opacity-80" />
         </div>
         <div className="space-y-3 leading-loose text-justify" style={{ fontFamily: font, fontSize: `${fontSize}px` }}>
-          {apiContent.verses?.map(verse => {
+          {apiContent.verses?.map((verse: { number: number; text: string }) => {
             const isSelected = selectedVerses.includes(verse.number);
             const isReading = readingVerse === verse.number;
             const isSavedVerse = savedVerseIds.includes(verse.number);

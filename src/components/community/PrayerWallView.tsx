@@ -24,6 +24,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 interface Prayer {
   _id: string;
@@ -42,8 +43,7 @@ interface Prayer {
 export default function PrayerWallView() {
   const router = useRouter();
   const { data: session } = useSession();
-  const [prayers, setPrayers] = useState<Prayer[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [filter, setFilter] = useState<'newest' | 'trending'>('newest');
   const [searchQuery, setSearchQuery] = useState('');
   const [layout, setLayout] = useState<'grid' | 'list'>('grid');
@@ -55,38 +55,66 @@ export default function PrayerWallView() {
   const [isPublic, setIsPublic] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchPrayers();
-  }, [filter]);
-
-  const fetchPrayers = async () => {
-    try {
-      setLoading(true);
+  const { data: prayers = [], isLoading: loading } = useQuery<Prayer[]>({
+    queryKey: ['prayers', filter],
+    queryFn: async () => {
       const res = await fetch(`/api/prayers?limit=50&sort=${filter === 'trending' ? 'trending' : 'newest'}`);
-      const data = await res.json();
-      setPrayers(data);
-    } catch (error) {
-      console.error('Error fetching prayers:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (!res.ok) throw new Error('Failed to fetch prayers');
+      return res.json();
+    },
+    staleTime: 30 * 1000,
+  });
 
   const handleIntercede = async (id: string) => {
     if (!session) {
-      // Potentially show login prompt
       return;
     }
+
+    const previousPrayers = queryClient.getQueryData<Prayer[]>(['prayers', filter]);
+    const userId = (session.user as any)?.id;
+
+    if (previousPrayers && userId) {
+      const updated = previousPrayers.map((p) => {
+        if (p._id === id) {
+          const isInterceding = p.intercessors?.includes(userId);
+          const nextIntercessors = isInterceding
+            ? p.intercessors.filter((uid) => uid !== userId)
+            : [...(p.intercessors || []), userId];
+          const nextCount = isInterceding
+            ? Math.max(0, p.intercessionCount - 1)
+            : p.intercessionCount + 1;
+          return {
+            ...p,
+            intercessors: nextIntercessors,
+            intercessionCount: nextCount,
+          };
+        }
+        return p;
+      });
+      queryClient.setQueryData(['prayers', filter], updated);
+    }
+
     try {
       const res = await fetch(`/api/prayers/${id}/intercede`, {
         method: 'POST',
       });
       if (res.ok) {
         const updatedPrayer = await res.json();
-        setPrayers(prev => prev.map(p => p._id === id ? updatedPrayer : p));
+        queryClient.setQueryData<Prayer[]>(['prayers', filter], (prev) => {
+          return (prev || []).map((p) => (p._id === id ? updatedPrayer : p));
+        });
+      } else {
+        if (previousPrayers) {
+          queryClient.setQueryData(['prayers', filter], previousPrayers);
+        }
       }
     } catch (error) {
       console.error('Error interceding:', error);
+      if (previousPrayers) {
+        queryClient.setQueryData(['prayers', filter], previousPrayers);
+      }
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ['prayers'] });
     }
   };
 
@@ -110,7 +138,7 @@ export default function PrayerWallView() {
         setIsAnonymous(false);
         setIsPublic(true);
         setShowPostModal(false);
-        fetchPrayers(); // Refresh wall
+        queryClient.invalidateQueries({ queryKey: ['prayers'] });
       }
     } catch (error) {
       console.error('Error posting prayer:', error);

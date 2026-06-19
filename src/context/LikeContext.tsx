@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from '@/context/ToastContext';
+import { useQueryClient } from '@tanstack/react-query';
 
 export type LikeStatus = 'liked' | 'unliked';
 
@@ -22,6 +23,7 @@ interface LikeContextType {
 const LikeContext = createContext<LikeContextType | undefined>(undefined);
 
 export function LikeProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [likes, setLikes] = useState<Record<string, LikeState>>({});
   
   // Keep mutable references for the sync loop to read latest state without re-creating functions
@@ -121,6 +123,10 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
       if (!data.success) {
         throw new Error(data.error || 'API returned failure');
       }
+
+      // Invalidate queries to sync state across views
+      queryClient.invalidateQueries({ queryKey: ['daily-content-list'] });
+      queryClient.invalidateQueries({ queryKey: ['likes'] });
 
       const newServerState: LikeStatus = data.liked ? 'liked' : 'unliked';
       const newCount = data.likeCount;
