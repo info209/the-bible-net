@@ -146,13 +146,186 @@ export const TELUGU_BOOK_NAMES: Record<string, string> = {
   'Revelation':       'ప్రకటన గ్రంథము',
 };
 
+export const HINDI_BOOK_NAMES: Record<string, string> = {
+  'Genesis':          'उत्पत्ति',
+  'Exodus':           'निर्गमन',
+  'Leviticus':        'लैव्यव्यवस्था',
+  'Numbers':          'गिनती',
+  'Deuteronomy':      'व्यवस्थाविवरण',
+  'Joshua':           'यहोशू',
+  'Judges':           'न्यायियों',
+  'Ruth':             'रूथ',
+  '1 Samuel':         '1 शमूएल',
+  '2 Samuel':         '2 शमूएल',
+  '1 Kings':          '1 राजा',
+  '2 Kings':          '2 राजा',
+  '1 Chronicles':     '1 इतिहास',
+  '2 Chronicles':     '2 इतिहास',
+  'Ezra':             'एज्रा',
+  'Nehemiah':         'नहेमायाह',
+  'Esther':           'एस्तेर',
+  'Job':              'अय्यूब',
+  'Psalms':           'भजन संहिता',
+  'Proverbs':         'नीतिवचन',
+  'Ecclesiastes':     'सभोपदेशक',
+  'Song of Solomon':  'श्रेष्ठगीत',
+  'Isaiah':           'यशायाह',
+  'Jeremiah':         'यिर्मयाह',
+  'Lamentations':     'विलापगीत',
+  'Ezekiel':          'यहेजकेल',
+  'Daniel':           'दानिय्येल',
+  'Hosea':            'होशे',
+  'Joel':             'योएल',
+  'Amos':             'आमोस',
+  'Obadiah':          'ओबद्याह',
+  'Jonah':            'योना',
+  'Micah':            'मीका',
+  'Nahum':            'नहूम',
+  'Habakkuk':         'हबक्कूक',
+  'Zephaniah':        'सपन्याह',
+  'Haggai':           'हाग्गै',
+  'Zechariah':        'जकरयाह',
+  'Malachi':          'मलाकी',
+  'Matthew':          'मत्ती',
+  'Mark':             'मरकुस',
+  'Luke':             'लूका',
+  'John':             'यूहन्ना',
+  'Acts':             'प्रेरितों के काम',
+  'Romans':           'रोमियों',
+  '1 Corinthians':    '1 कुरिन्थियों',
+  '2 Corinthians':    '2 कुरिन्थियों',
+  'Galatians':        'गलातियों',
+  'Ephesians':        'इफिसियों',
+  'Philippians':      'फिलिप्पियों',
+  'Colossians':       'कुलुस्सियों',
+  '1 Thessalonians':  '1 थिस्सलुनीकियों',
+  '2 Thessalonians':  '2 थिस्सलुनीकियों',
+  '1 Timothy':        '1 तीमुथियुस',
+  '2 Timothy':        '2 तीमुथियुस',
+  'Titus':            'तीतुस',
+  'Philemon':         'फिलेमोन',
+  'Hebrews':          'इब्रानियों',
+  'James':            'याकूब',
+  '1 Peter':          '1 पतरस',
+  '2 Peter':          '2 पतरस',
+  '1 John':           '1 यूहन्ना',
+  '2 John':           '2 यूहन्ना',
+  '3 John':           '3 यूहन्ना',
+  'Jude':             'यहूदा',
+  'Revelation':       'प्रकाशितवाक्य',
+};
+
 /**
  * Given an English book name and a language, returns the localized display name.
  * Falls back to the English name if no mapping exists.
  */
 export function getLocalizedBookName(englishName: string, language: string): string {
-  if (language === 'Telugu') {
+  const cleanLang = (language || '').toLowerCase().trim();
+  if (cleanLang === 'telugu' || cleanLang === 'te') {
     return TELUGU_BOOK_NAMES[englishName] ?? englishName;
+  }
+  if (cleanLang === 'hindi' || cleanLang === 'hi') {
+    return HINDI_BOOK_NAMES[englishName] ?? englishName;
   }
   return englishName;
 }
+
+// Dynamic dynamic book resolver cache
+let dbBooksCache: Array<{ name: string; abbreviation?: string; order: number }> = [];
+let cacheLoaded = false;
+let BookModel: any = null;
+
+// Populate static candidates
+const STATIC_BOOKS: Array<{ name: string; abbreviation?: string; order: number }> = [];
+
+// Populate English
+BIBLE_BOOKS.forEach(b => {
+  STATIC_BOOKS.push({ name: b.name, abbreviation: b.abbreviation, order: b.order });
+});
+// Populate Telugu
+for (const [engName, telName] of Object.entries(TELUGU_BOOK_NAMES)) {
+  const book = BIBLE_BOOKS.find(b => b.name === engName);
+  if (book) {
+    STATIC_BOOKS.push({ name: telName, order: book.order });
+  }
+}
+// Populate Hindi
+for (const [engName, hinName] of Object.entries(HINDI_BOOK_NAMES)) {
+  const book = BIBLE_BOOKS.find(b => b.name === engName);
+  if (book) {
+    STATIC_BOOKS.push({ name: hinName, order: book.order });
+  }
+}
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+export async function loadBooksCache() {
+  if (cacheLoaded) return;
+  try {
+    if (!BookModel) {
+      const models = await import('../models/Bible');
+      BookModel = models.Book;
+    }
+    const books = await BookModel.find().select('name abbreviation order').lean();
+    dbBooksCache = books.map((b: any) => ({
+      name: b.name,
+      abbreviation: b.abbreviation,
+      order: b.order
+    }));
+    cacheLoaded = true;
+  } catch (err) {
+    console.error('Failed to load books cache from DB:', err);
+  }
+}
+
+export async function resolveBook(query: string): Promise<{ order: number; name: string; abbreviation: string; testament: string } | null> {
+  const cleanQuery = query.trim().toLowerCase();
+  if (!cleanQuery) return null;
+
+  // 1. Ensure DB cache is loaded if possible
+  await loadBooksCache();
+
+  // 2. Collect all candidates
+  const candidates = [...dbBooksCache, ...STATIC_BOOKS];
+
+  // 3. Try exact match on name
+  for (const c of candidates) {
+    if (c.name.toLowerCase() === cleanQuery) {
+      const canonical = BIBLE_BOOKS.find(b => b.order === c.order);
+      if (canonical) return canonical as any;
+    }
+  }
+
+  // 4. Try exact match on abbreviation (if present)
+  for (const c of candidates) {
+    if (c.abbreviation && c.abbreviation.toLowerCase() === cleanQuery) {
+      const canonical = BIBLE_BOOKS.find(b => b.order === c.order);
+      if (canonical) return canonical as any;
+    }
+  }
+
+  // 5. Try prefix match on name (query is a prefix of candidate name)
+  if (cleanQuery.length >= 2) {
+    for (const c of candidates) {
+      if (c.name.toLowerCase().startsWith(cleanQuery)) {
+        const canonical = BIBLE_BOOKS.find(b => b.order === c.order);
+        if (canonical) return canonical as any;
+      }
+    }
+  }
+
+  // 6. Try prefix match on abbreviation (if present)
+  if (cleanQuery.length >= 2) {
+    for (const c of candidates) {
+      if (c.abbreviation && c.abbreviation.toLowerCase().startsWith(cleanQuery)) {
+        const canonical = BIBLE_BOOKS.find(b => b.order === c.order);
+        if (canonical) return canonical as any;
+      }
+    }
+  }
+
+  return null;
+}
+

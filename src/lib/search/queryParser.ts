@@ -46,33 +46,29 @@ const VERSION_ALIASES: Record<string, string> = {
  * Extract book name and abbreviation from text
  * Handles various formats: "John", "Gospel of John", "Jn", "John's Gospel"
  */
-export function extractBookName(text: string): {
+export async function extractBookName(text: string): Promise<{
     name?: string;
     abbr?: string;
     remaining: string;
-} {
-    const cleanText = text.toLowerCase().trim();
+}> {
+    const cleanText = text.trim();
+    if (!cleanText) return { remaining: '' };
     
-    for (const book of BIBLE_BOOKS) {
-        const bookName = book.name.toLowerCase();
-        const bookAbbr = book.abbreviation.toLowerCase();
-        
-        // Try exact name match
-        const nameMatch = cleanText.match(new RegExp(`\\b${bookName}\\b`));
-        if (nameMatch) {
-            const remaining = cleanText
-                .replace(new RegExp(`\\b${bookName}\\b`), '')
-                .trim();
-            return { name: book.name, abbr: book.abbreviation, remaining };
-        }
-        
-        // Try abbreviation match
-        const abbrMatch = cleanText.match(new RegExp(`\\b${bookAbbr}\\b`));
-        if (abbrMatch) {
-            const remaining = cleanText
-                .replace(new RegExp(`\\b${bookAbbr}\\b`), '')
-                .trim();
-            return { name: book.name, abbr: book.abbreviation, remaining };
+    const { resolveBook } = await import('@/utils/bibleBooks');
+    
+    // Split the text into tokens to search for book names
+    const words = cleanText.split(/\s+/);
+    
+    // Check all sub-phrases from length 3 down to 1
+    for (let len = Math.min(words.length, 3); len >= 1; len--) {
+        for (let i = 0; i <= words.length - len; i++) {
+            const subPhrase = words.slice(i, i + len).join(' ');
+            const bookMatch = await resolveBook(subPhrase);
+            if (bookMatch) {
+                // Remove matched phrase
+                const remaining = words.filter((_, idx) => idx < i || idx >= i + len).join(' ').trim();
+                return { name: bookMatch.name, abbr: bookMatch.abbreviation, remaining };
+            }
         }
     }
     
@@ -106,14 +102,14 @@ export function extractVersionCode(text: string): {
  * Extract exact Bible reference
  * Formats: "John 3:16", "John 3", "John:3:16" (error), "Psalms 23:4"
  */
-export function extractExactReference(text: string): {
+export async function extractExactReference(text: string): Promise<{
     bookName?: string;
     bookAbbr?: string;
     chapter?: number;
     verse?: number;
     isExact: boolean;
     remaining: string;
-} {
+}> {
     const result: {
         bookName?: string;
         bookAbbr?: string;
@@ -127,7 +123,8 @@ export function extractExactReference(text: string): {
     };
     
     // Pattern: BookName chapter:verse or BookName chapter or BookName:chapter:verse
-    const refPattern = /\b([A-Za-z\s]+?)\s+(\d+)(?::(\d+))?\b/;
+    // Uses Unicode property escapes \p{L} and \p{M} to match any localized letters/marks and supports multi-word books
+    const refPattern = /([1-3]?\s*[\p{L}\p{M}]+(?:\s+[\p{L}\p{M}]+)*)\s+(\d+)(?::(\d+))?/iu;
     const match = text.match(refPattern);
     
     if (!match) {
@@ -139,7 +136,7 @@ export function extractExactReference(text: string): {
     const verse = match[3] ? parseInt(match[3], 10) : undefined;
     
     // Try to match book
-    const bookExtract = extractBookName(potentialBook);
+    const bookExtract = await extractBookName(potentialBook);
     if (!bookExtract.name) {
         return result;
     }
@@ -169,7 +166,7 @@ export function extractExactReference(text: string): {
  * 3. Extract book name (if not already in reference)
  * 4. Determine search mode based on what was extracted
  */
-export function parseQuery(rawQuery: string): ParsedQuery {
+export async function parseQuery(rawQuery: string): Promise<ParsedQuery> {
     if (!rawQuery || rawQuery.trim().length === 0) {
         return {
             raw: rawQuery,
@@ -191,7 +188,7 @@ export function parseQuery(rawQuery: string): ParsedQuery {
     remaining = versionExtract.remaining;
     
     // Step 2: Extract exact reference
-    const refExtract = extractExactReference(remaining);
+    const refExtract = await extractExactReference(remaining);
     remaining = refExtract.remaining;
     
     // Step 3: If we didn't get a book from reference, try extracting just book name
@@ -199,7 +196,7 @@ export function parseQuery(rawQuery: string): ParsedQuery {
     let bookAbbr = refExtract.bookAbbr;
     
     if (!bookName) {
-        const bookExtract = extractBookName(remaining);
+        const bookExtract = await extractBookName(remaining);
         bookName = bookExtract.name;
         bookAbbr = bookExtract.abbr;
         remaining = bookExtract.remaining;

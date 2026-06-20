@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Verse, BibleVersion, Book } from '@/models/Bible';
-import { BIBLE_BOOKS } from '@/utils/bibleBooks';
+import { BIBLE_BOOKS, resolveBook } from '@/utils/bibleBooks';
 import { getEmbeddingProvider } from '@/lib/search/embeddingProvider';
 import { getReranker } from '@/lib/search/reranker';
 import { createBibleSearchService } from '@/lib/search/bibleSearchService';
@@ -55,35 +55,14 @@ interface ParsedReference {
  * Returns the matched BIBLE_BOOKS entry if the query is a book prefix/name/abbreviation.
  * Returns null otherwise.
  */
-function detectBook(query: string): typeof BIBLE_BOOKS[0] | null {
-    const q = query.trim().toLowerCase();
-    if (q.length < 2) return null;
-
-    // Exact name or abbreviation match first
-    for (const book of BIBLE_BOOKS) {
-        if (book.name.toLowerCase() === q || book.abbreviation.toLowerCase() === q) {
-            return book;
-        }
-    }
-    // Prefix match on full name
-    for (const book of BIBLE_BOOKS) {
-        if (book.name.toLowerCase().startsWith(q)) {
-            return book;
-        }
-    }
-    // Prefix match on abbreviation
-    for (const book of BIBLE_BOOKS) {
-        if (book.abbreviation.toLowerCase().startsWith(q)) {
-            return book;
-        }
-    }
-    return null;
+async function detectBook(query: string): Promise<typeof BIBLE_BOOKS[0] | null> {
+    return await resolveBook(query);
 }
 
 /**
  * Parses queries containing a colon to detect single verse or verse range searches.
  */
-function parseBibleReference(query: string): ParsedReference | null {
+async function parseBibleReference(query: string): Promise<ParsedReference | null> {
     const q = query.trim();
 
     if (!q.includes(':')) {
@@ -99,9 +78,7 @@ function parseBibleReference(query: string): ParsedReference | null {
     const chapterStr = match[2];
     const versePart = match[3].trim();
 
-    const bookEntry = detectBook(bookStr) ?? BIBLE_BOOKS.find(
-        b => b.name.toLowerCase().startsWith(bookStr.toLowerCase())
-    );
+    const bookEntry = await detectBook(bookStr);
     if (!bookEntry) {
         return { isValid: false, error: 'Book not found.' };
     }
@@ -161,11 +138,58 @@ function parseBibleReference(query: string): ParsedReference | null {
     return { isValid: false, error: 'Please enter a valid Bible reference.' };
 }
 
+const LOCALIZED_EMOTIONS: Record<string, string> = {
+    // English
+    'joy': 'joy', 'peace': 'peace', 'hope': 'hope', 'faith': 'faith', 'fear': 'fear', 'anxiety': 'anxiety', 'depression': 'depression',
+    'loneliness': 'loneliness', 'love': 'love', 'anger': 'anger', 'grief': 'grief', 'sorrow': 'grief', 'comfort': 'peace',
+    'strength': 'strength', 'courage': 'strength', 'trust': 'faith', 'forgiveness': 'forgiveness', 'healing': 'healing',
+    'protection': 'protection', 'refuge': 'protection', 'salvation': 'salvation',
+    // Hindi
+    'भय': 'fear', 'डर': 'fear', 'आतंक': 'fear',
+    'चिंता': 'anxiety', 'चिन्ता': 'anxiety', 'व्याकुलता': 'anxiety',
+    'शोक': 'grief', 'दुख': 'grief',
+    'अकेलापन': 'loneliness',
+    'निराशा': 'depression',
+    'लज्जा': 'shame',
+    'क्रोध': 'anger', 'गुस्सा': 'anger',
+    'आशा': 'hope', 'उम्मीद': 'hope',
+    'शांति': 'peace', 'शान्ति': 'peace',
+    'आनन्द': 'joy', 'आनंद': 'joy',
+    'प्रेम': 'love', 'प्यार': 'love',
+    'चंगाई': 'healing',
+    'क्षमा': 'forgiveness',
+    'बल': 'strength', 'शक्ति': 'strength',
+    'विश्वास': 'faith',
+    'मार्गदर्शन': 'guidance',
+    'रक्षा': 'protection', 'शरण': 'protection',
+    'उद्धार': 'salvation',
+    // Telugu
+    'భయం': 'fear', 'దిగులు': 'fear',
+    'ఆందోళన': 'anxiety', 'చింత': 'anxiety',
+    'దుఃఖము': 'grief', 'దుఖము': 'grief', 'కన్నీరు': 'grief',
+    'ఒంటరి': 'loneliness',
+    'నిరాశ': 'depression',
+    'సిగ్గు': 'shame',
+    'కోపము': 'anger', 'ఉగ్రత': 'anger',
+    'నిరీక్షణ': 'hope', 'ఆశ': 'hope',
+    'శాంతి': 'peace', 'నెమ్మది': 'peace', 'సమాధానము': 'peace',
+    'ఆనందం': 'joy', 'ఆనందము': 'joy', 'సంతోషము': 'joy', 'సంతోషం': 'joy',
+    'ప్రేమ': 'love',
+    'స్వస్థత': 'healing',
+    'క్షమాపణ': 'forgiveness',
+    'బలము': 'strength', 'శక్తి': 'strength',
+    'విశ్వాసము': 'faith', 'విశ్వాసం': 'faith',
+    'నడిపింపు': 'guidance',
+    'ఆశ్రయము': 'protection', 'రక్షణ': 'protection',
+    'విమోచన': 'salvation'
+};
+
 /**
- * Returns true when the query is a known emotion / theme keyword.
+ * Returns canonical emotion when the query is a known localized emotion / theme keyword.
  */
-function detectEmotion(query: string): boolean {
-    return EMOTION_VOCABULARY.has(query.trim().toLowerCase());
+function detectEmotion(query: string): string | null {
+    const q = query.trim().toLowerCase();
+    return LOCALIZED_EMOTIONS[q] || null;
 }
 
 // ---------------------------------------------------------------------------
@@ -316,13 +340,23 @@ async function exactVerseSearch(
     });
 }
 
-async function emotionSearch(emotion: string, limit: number) {
-    const verses = await Verse.find({ emotions: { $in: [emotion] } })
+async function emotionSearch(emotion: string, limit: number, versionCode?: string) {
+    const queryFilter: any = { emotions: { $in: [emotion] } };
+    const verses = await Verse.find(queryFilter)
         .select('_id reference text versionCode bookName chapterNumber number emotions themes')
         .limit(limit)
         .lean() as any[];
 
-    const results = verses.map((v: any) => ({
+    if (versionCode) {
+        const upperCode = versionCode.toUpperCase();
+        verses.sort((a, b) => {
+            const aMatch = (a.versionCode || '').toUpperCase() === upperCode ? 1 : 0;
+            const bMatch = (b.versionCode || '').toUpperCase() === upperCode ? 1 : 0;
+            return bMatch - aMatch;
+        });
+    }
+
+    const results = verses.slice(0, limit).map((v: any) => ({
         verseId: v._id.toString(),
         reference: v.reference || `${v.bookName} ${v.chapterNumber}:${v.number}`,
         text: v.text,
@@ -392,9 +426,22 @@ export async function GET(req: NextRequest) {
         const query = q.trim();
 
         // -----------------------------------------------------------------------
+        // Pre-resolve target version code to support localized lookups
+        // -----------------------------------------------------------------------
+        let resolvedVersionCode: string | undefined = undefined;
+        if (versionCodeParam) {
+            if (versionCodeParam.match(/^[0-9a-fA-F]{24}$/)) {
+                const versionDoc = await BibleVersion.findById(versionCodeParam).select('abbreviation');
+                if (versionDoc) resolvedVersionCode = versionDoc.abbreviation;
+            } else {
+                resolvedVersionCode = versionCodeParam.toUpperCase();
+            }
+        }
+
+        // -----------------------------------------------------------------------
         // Priority 1: Bible reference search — "John 3:16", "Genesis 23:1-6", etc.
         // -----------------------------------------------------------------------
-        const parsedRef = parseBibleReference(query);
+        const parsedRef = await parseBibleReference(query);
         if (parsedRef) {
             if (!parsedRef.isValid) {
                 return NextResponse.json(
@@ -407,7 +454,7 @@ export async function GET(req: NextRequest) {
                 parsedRef.chapter!,
                 parsedRef.startVerse!,
                 parsedRef.endVerse!,
-                versionCodeParam
+                resolvedVersionCode
             );
         }
 
@@ -419,7 +466,7 @@ export async function GET(req: NextRequest) {
         const bookChapterMatch = query.match(bookChapterRe);
         if (bookChapterMatch) {
             const [, bookStr, chapterStr] = bookChapterMatch;
-            const bookEntry = detectBook(bookStr.trim());
+            const bookEntry = await detectBook(bookStr.trim());
             if (bookEntry) {
                 const focusChapter = parseInt(chapterStr, 10);
                 const totalChapters = BOOK_CHAPTERS[bookEntry.name] ?? 1;
@@ -439,7 +486,7 @@ export async function GET(req: NextRequest) {
             }
         }
 
-        const bookEntry = detectBook(query);
+        const bookEntry = await detectBook(query);
         if (bookEntry) {
             return bookSearch(bookEntry);
         }
@@ -447,23 +494,14 @@ export async function GET(req: NextRequest) {
         // -----------------------------------------------------------------------
         // Priority 3: Emotion / theme keyword
         // -----------------------------------------------------------------------
-        if (detectEmotion(query)) {
-            return emotionSearch(query.toLowerCase(), limit);
+        const matchedEmotion = detectEmotion(query);
+        if (matchedEmotion) {
+            return emotionSearch(matchedEmotion, limit, resolvedVersionCode);
         }
 
         // -----------------------------------------------------------------------
         // Priority 4: Hybrid full-text search (existing pipeline)
         // -----------------------------------------------------------------------
-        let resolvedVersionCode: string | undefined = undefined;
-        if (versionCodeParam) {
-            if (versionCodeParam.match(/^[0-9a-fA-F]{24}$/)) {
-                const versionDoc = await BibleVersion.findById(versionCodeParam).select('abbreviation');
-                if (versionDoc) resolvedVersionCode = versionDoc.abbreviation;
-            } else {
-                resolvedVersionCode = versionCodeParam.toUpperCase();
-            }
-        }
-
         const embeddingProvider = getEmbeddingProvider();
         const rerankerService = getReranker();
         const searchService = createBibleSearchService(embeddingProvider, rerankerService);

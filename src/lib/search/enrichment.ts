@@ -10,26 +10,152 @@
  */
 export const THEME_TAXONOMY = {
     // Negative emotions and struggles
-    ANXIETY: { name: 'anxiety', keywords: ['anxious', 'worry', 'worry', 'worried', 'troubled', 'afraid', 'fear'] },
-    FEAR: { name: 'fear', keywords: ['fear', 'afraid', 'terror', 'frightened', 'dread'] },
-    GRIEF: { name: 'grief', keywords: ['grief', 'mourn', 'mourning', 'sorrow', 'weep', 'weeping', 'tears'] },
-    LONELINESS: { name: 'loneliness', keywords: ['lonely', 'alone', 'forsaken', 'abandoned', 'desolate'] },
-    DEPRESSION: { name: 'depression', keywords: ['depressed', 'despair', 'hopeless', 'darkness', 'heavy', 'heavy-hearted'] },
-    SHAME: { name: 'shame', keywords: ['shame', 'shameful', 'ashamed', 'disgrace', 'humiliation'] },
-    ANGER: { name: 'anger', keywords: ['anger', 'angry', 'wrath', 'rage', 'furious'] },
+    ANXIETY: {
+        name: 'anxiety',
+        keywords: [
+            'anxious', 'worry', 'worried', 'troubled', 'afraid', 'fear', 'anxiety',
+            'चिंता', 'चिन्ता', 'चिंतित', 'चिन्तित', 'व्याकुल', 'परेशान',
+            'చింత', 'ఆందోళన', 'విచారము', 'కలవరము'
+        ]
+    },
+    FEAR: {
+        name: 'fear',
+        keywords: [
+            'fear', 'afraid', 'terror', 'frightened', 'dread',
+            'भय', 'डर', 'आतंक', 'भयभीत', 'डरा',
+            'భయం', 'భయపడ', 'దిగులు'
+        ]
+    },
+    GRIEF: {
+        name: 'grief',
+        keywords: [
+            'grief', 'mourn', 'mourning', 'sorrow', 'weep', 'weeping', 'tears',
+            'शोक', 'विलाप', 'दुख', 'रोते', 'आंसू', 'आँसू',
+            'దుఃఖము', 'దుఖము', 'కన్నీరు', 'విలాపము', 'రోదన'
+        ]
+    },
+    LONELINESS: {
+        name: 'loneliness',
+        keywords: [
+            'lonely', 'alone', 'forsaken', 'abandoned', 'desolate',
+            'अकेला', 'त्यागा', 'अकेलापन', 'उजाड़',
+            'ఒంటరి', 'విసర్జించబడిన', 'దిక్కులేని'
+        ]
+    },
+    DEPRESSION: {
+        name: 'depression',
+        keywords: [
+            'depressed', 'despair', 'hopeless', 'darkness', 'heavy', 'heavy-hearted',
+            'निराशा', 'हताशा', 'अंधकार', 'अन्धकार', 'उदासी',
+            'నిరాశ', 'నిస్పృహ', 'అంధకారము', 'కృంగిన'
+        ]
+    },
+    SHAME: {
+        name: 'shame',
+        keywords: [
+            'shame', 'shameful', 'ashamed', 'disgrace', 'humiliation',
+            'लज्जा', 'शर्म', 'अपमान', 'निंदा',
+            'సిగ్గు', 'అవమానము', 'నింద'
+        ]
+    },
+    ANGER: {
+        name: 'anger',
+        keywords: [
+            'anger', 'angry', 'wrath', 'rage', 'furious',
+            'क्रोध', 'गुस्सा', 'कोप', 'नाराज',
+            'కోపము', 'క్రోధము', 'ఉగ్రత'
+        ]
+    },
     
     // Positive emotions and states
-    HOPE: { name: 'hope', keywords: ['hope', 'hope', 'hopeful', 'trust', 'confidence'] },
-    PEACE: { name: 'peace', keywords: ['peace', 'peaceful', 'calm', 'rest', 'tranquil'] },
-    JOY: { name: 'joy', keywords: ['joy', 'joyful', 'rejoice', 'gladness', 'happy', 'delight'] },
-    LOVE: { name: 'love', keywords: ['love', 'loved', 'compassion', 'kindness', 'charity'] },
-    HEALING: { name: 'healing', keywords: ['heal', 'healing', 'wholeness', 'recovery', 'restoration', 'restore', 'mending'] },
-    FORGIVENESS: { name: 'forgiveness', keywords: ['forgive', 'forgiveness', 'pardon', 'grace', 'mercy'] },
-    STRENGTH: { name: 'strength', keywords: ['strength', 'strong', 'power', 'mighty', 'endurance', 'courage'] },
-    FAITH: { name: 'faith', keywords: ['faith', 'faithful', 'believe', 'belief', 'trust', 'conviction'] },
-    GUIDANCE: { name: 'guidance', keywords: ['guide', 'guidance', 'direction', 'wisdom', 'counsel', 'lead', 'path'] },
-    PROTECTION: { name: 'protection', keywords: ['protection', 'protect', 'shelter', 'refuge', 'safe', 'safety', 'shield'] },
-    SALVATION: { name: 'salvation', keywords: ['salvation', 'save', 'saved', 'redemption', 'redeemed', 'rescue', 'deliverance'] },
+    HOPE: {
+        name: 'hope',
+        keywords: [
+            'hope', 'hopeful', 'trust', 'confidence',
+            'आशा', 'भरोसा', 'उम्मीद',
+            'నిరీక్షణ', 'ఆశ', 'నమ్మకము'
+        ]
+    },
+    PEACE: {
+        name: 'peace',
+        keywords: [
+            'peace', 'peaceful', 'calm', 'rest', 'tranquil',
+            'शांति', 'शान्ति', 'चैन', 'विश्राम',
+            'శాంతి', 'సమాధానము', 'నెమ్మది', 'విశ్రాంతి'
+        ]
+    },
+    JOY: {
+        name: 'joy',
+        keywords: [
+            'joy', 'joyful', 'rejoice', 'gladness', 'happy', 'delight',
+            'आनन्द', 'आनंद', 'हर्ष', 'खुश', 'मगन',
+            'ఆనందం', 'ఆనందము', 'సంతోషము', 'సంతోషం', 'హర్షము'
+        ]
+    },
+    LOVE: {
+        name: 'love',
+        keywords: [
+            'love', 'loved', 'compassion', 'kindness', 'charity',
+            'प्रेम', 'प्यार', 'दया', 'करुणा',
+            'ప్రేమ', 'దయ', 'కరుణ'
+        ]
+    },
+    HEALING: {
+        name: 'healing',
+        keywords: [
+            'heal', 'healing', 'wholeness', 'recovery', 'restoration', 'restore', 'mending',
+            'चंगा', 'चंगाई', 'स्वस्थ', 'सुधार',
+            'స్వస్థత', 'బాగు', 'ఆరోగ్యము'
+        ]
+    },
+    FORGIVENESS: {
+        name: 'forgiveness',
+        keywords: [
+            'forgive', 'forgiveness', 'pardon', 'grace', 'mercy',
+            'क्षमा', 'माफ', 'दया', 'अनुग्रह',
+            'కృప', 'కనికరము', 'క్షమాపణ', 'క్షమించు'
+        ]
+    },
+    STRENGTH: {
+        name: 'strength',
+        keywords: [
+            'strength', 'strong', 'power', 'mighty', 'endurance', 'courage',
+            'बल', 'शक्ति', 'सामर्थ्य', 'दृढ़',
+            'బలము', 'శక్తి', 'ధైర్యము'
+        ]
+    },
+    FAITH: {
+        name: 'faith',
+        keywords: [
+            'faith', 'faithful', 'believe', 'belief', 'trust', 'conviction',
+            'विश्वास', 'विश्वासी', 'भरोसा',
+            'విశ్వాసము', 'విశ్వాసం', 'నమ్మకము'
+        ]
+    },
+    GUIDANCE: {
+        name: 'guidance',
+        keywords: [
+            'guide', 'guidance', 'direction', 'wisdom', 'counsel', 'lead', 'path',
+            'मार्गदर्शन', 'मार्ग', 'बुद्धि', 'उपदेश',
+            'నడిపింపు', 'త్రోవ', 'మార్గము', 'జ్ఞానము'
+        ]
+    },
+    PROTECTION: {
+        name: 'protection',
+        keywords: [
+            'protection', 'protect', 'shelter', 'refuge', 'safe', 'safety', 'shield',
+            'रक्षा', 'बचाव', 'शरण', 'सुरक्षित',
+            'ఆశ్రయము', 'కేడెము', 'భద్రత'
+        ]
+    },
+    SALVATION: {
+        name: 'salvation',
+        keywords: [
+            'salvation', 'save', 'saved', 'redemption', 'redeemed', 'rescue', 'deliverance',
+            'उद्धार', 'बचाव', 'मुक्ति', 'छुटकारा',
+            'రక్షణ', 'విమోచన', 'రక్షించు'
+        ]
+    },
 } as const;
 
 /**
@@ -65,12 +191,22 @@ export function extractKeywords(text: string): string[] {
     const keywords: string[] = [];
     const seenKeywords = new Set<string>();
     
-    // Important biblical terms (low-hanging fruit)
+    // Important biblical terms (extended to support English, Hindi, and Telugu)
     const biblicalTerms = [
+        // English
         'god', 'lord', 'jesus', 'christ', 'spirit', 'holy', 'soul', 'heart',
         'love', 'faith', 'grace', 'mercy', 'forgive', 'salvation', 'redemption',
         'peace', 'joy', 'hope', 'strength', 'power', 'kingdom', 'eternal',
-        'life', 'death', 'resurrection', 'light', 'darkness', 'truth', 'wisdom'
+        'life', 'death', 'resurrection', 'light', 'darkness', 'truth', 'wisdom',
+        // Hindi
+        'परमेश्वर', 'प्रभु', 'यीशु', 'मसीह', 'आत्मा', 'हृदय', 'प्रेम', 'विश्वास', 
+        'अनुग्रह', 'दया', 'क्षमा', 'उद्धार', 'शांति', 'आनन्द', 'आशा', 'बल', 
+        'शक्ति', 'सामर्थ्य', 'जीवन', 'मृत्यु', 'सत्य', 'बुद्धि',
+        // Telugu
+        'దేవుడు', 'ప్రభువు', 'యేసు', 'క్రీస్తు', 'ఆత్మ', 'హృదయము', 'ప్రేమ', 
+        'విశ్వాసము', 'విశ్వాసం', 'కృప', 'కనికరము', 'క్షమాపణ', 'రక్షణ', 
+        'సమాధానము', 'ఆనందము', 'సంతోషము', 'నిరీక్షణ', 'బలము', 'శక్తి', 
+        'జీవము', 'మరణము', 'సత్యము', 'జ్ఞానము'
     ];
     
     const lowerText = text.toLowerCase();
@@ -82,10 +218,10 @@ export function extractKeywords(text: string): string[] {
         }
     }
     
-    // Extract proper nouns (words starting with capitals)
+    // Extract proper nouns for English (words starting with capitals)
     const words = text.split(/\s+/);
     for (const word of words) {
-        const clean = word.replace(/[^\w]/g, '');
+        const clean = word.replace(/[^\p{L}\p{M}]/gu, '');
         if (clean.length > 2 && /^[A-Z]/.test(clean) && !seenKeywords.has(clean.toLowerCase())) {
             keywords.push(clean.toLowerCase());
             seenKeywords.add(clean.toLowerCase());
@@ -168,10 +304,10 @@ export function generateSearchText(
     emotions: string[] = [],
     keywords: string[] = []
 ): string {
-    // Normalize text
+    // Normalize text using Unicode property escapes
     const normalizedText = text
         .toLowerCase()
-        .replace(/[^\w\s]/g, ' ')
+        .replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ')
         .split(/\s+/)
         .filter(w => w.length > 2)
         .join(' ');
@@ -196,7 +332,7 @@ export function generateSearchText(
 export function generateNormalizedText(text: string): string {
     return text
         .toLowerCase()
-        .replace(/[^\w\s]/g, ' ')
+        .replace(/[^\p{L}\p{M}\p{N}\s]/gu, ' ')
         .split(/\s+/)
         .join(' ')
         .trim();

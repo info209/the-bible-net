@@ -32,10 +32,10 @@ export class QueryNormalizer {
     public static normalize(query: string): NormalizedQuery {
         const raw = query || '';
         
-        // 1. Lowercase and strip punctuation/special characters, keeping alphanumeric and spaces
+        // 1. Lowercase and strip punctuation/special characters, keeping Unicode letters, marks, numbers, spaces, hyphens, and apostrophes
         const cleanText = raw
             .toLowerCase()
-            .replace(/[^\w\s\-\']/g, ' ')
+            .replace(/[^\p{L}\p{M}\p{N}\s'-]/gu, ' ')
             .replace(/\s+/g, ' ')
             .trim();
         
@@ -45,8 +45,15 @@ export class QueryNormalizer {
         // 3. Filter stop words
         const filteredTokens = tokens.filter(token => !STOP_WORDS.has(token));
         
-        // 4. Stem tokens using natural's PorterStemmer
-        const stemmedTokens = filteredTokens.map(token => PorterStemmer.stem(token));
+        const stemToken = (token: string) => {
+            if (/^[a-z0-9'-]+$/i.test(token)) {
+                return PorterStemmer.stem(token);
+            }
+            return token;
+        };
+
+        // 4. Stem tokens using natural's PorterStemmer conditionally
+        const stemmedTokens = filteredTokens.map(stemToken);
         
         // Remove duplicate stems
         const uniqueStems = Array.from(new Set(stemmedTokens));
@@ -56,7 +63,7 @@ export class QueryNormalizer {
         
         // We expand the filtered raw tokens, then stem all the expanded synonym tokens
         const expandedRawTokens = synonymEngine.expandTokens(filteredTokens);
-        const expandedStems = expandedRawTokens.map(token => PorterStemmer.stem(token));
+        const expandedStems = expandedRawTokens.map(stemToken);
         const expandedTokens = Array.from(new Set(expandedStems));
 
         return {
@@ -76,13 +83,20 @@ export class QueryNormalizer {
         if (!text) return [];
         const clean = text
             .toLowerCase()
-            .replace(/[^\w\s\-\']/g, ' ')
+            .replace(/[^\p{L}\p{M}\p{N}\s'-]/gu, ' ')
             .replace(/\s+/g, ' ')
             .trim();
         
+        const stemToken = (token: string) => {
+            if (/^[a-z0-9'-]+$/i.test(token)) {
+                return PorterStemmer.stem(token);
+            }
+            return token;
+        };
+
         return clean
             .split(/\s+/)
             .filter(token => token.length > 1 && !STOP_WORDS.has(token))
-            .map(token => PorterStemmer.stem(token));
+            .map(stemToken);
     }
 }

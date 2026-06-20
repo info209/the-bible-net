@@ -111,9 +111,11 @@ class VerseMigrator {
             // Count verses for this version
             const versesCount = await Verse.countDocuments({ version: ver._id });
             
-            ver.licenseType = ver.licenseType || 'public-domain';
-            ver.versesCount = versesCount;
-            await ver.save();
+            const licenseType = ver.licenseType || 'public-domain';
+            await BibleVersion.updateOne(
+                { _id: ver._id },
+                { $set: { licenseType, versesCount } }
+            );
             console.log(`✓ Updated version ${ver.abbreviation} (verses: ${versesCount})`);
         }
     }
@@ -140,9 +142,10 @@ class VerseMigrator {
                 const chaptersCount = await Chapter.countDocuments({ book: book._id });
                 const versesCount = await Verse.countDocuments({ book: book._id });
                 
-                book.chaptersCount = chaptersCount;
-                book.versesCount = versesCount;
-                await book.save();
+                await Book.updateOne(
+                    { _id: book._id },
+                    { $set: { chaptersCount, versesCount } }
+                );
             }
             console.log(`✓ Updated books for version ${ver.abbreviation}`);
         }
@@ -168,8 +171,10 @@ class VerseMigrator {
                     continue;
                 }
                 const versesCount = await Verse.countDocuments({ chapter: chap._id });
-                chap.versesCount = versesCount;
-                await chap.save();
+                await Chapter.updateOne(
+                    { _id: chap._id },
+                    { $set: { versesCount } }
+                );
             }
             console.log(`✓ Updated chapters for version ${ver.abbreviation}`);
         }

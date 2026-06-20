@@ -83,11 +83,12 @@ export class BibleSearchService {
         options: SearchOptions = {}
     ): Promise<SearchResponse> {
         const startTime = Date.now();
+        let parsed: ParsedQuery | null = null;
         
         try {
             const limit = Math.min(options.limit || 30, 100);
             const page = Math.max(options.page || 1, 1);
-            const parsed = parseQuery(query);
+            parsed = await parseQuery(query);
             
             // Override with out-of-band versionCode if explicitly supplied
             if (options.versionCode) {
@@ -135,11 +136,22 @@ export class BibleSearchService {
             const processingTimeMs = Date.now() - startTime;
             console.error('Search failed in pipeline:', error);
             
+            const fallbackParsed = parsed || {
+                raw: query,
+                query: '',
+                isExactReference: false,
+                hasVersionFilter: false,
+                hasBookFilter: false,
+                hasChapterFilter: false,
+                hasVerseFilter: false,
+                detectMode: 'semantic' as const
+            };
+            
             return {
                 success: false,
                 query,
                 mode: 'keyword',
-                parsed: parseQuery(query),
+                parsed: fallbackParsed,
                 filters: {},
                 pagination: { limit: 0, page: 1, total: 0 },
                 results: [],
@@ -240,13 +252,37 @@ export class BibleSearchService {
             $text: { $search: textSearchTerms }
         };
 
-        // 3. Fetch candidate verses
+        const cleanQuery = normalizedQuery.cleanText;
+        const escapeRegExp = (str: string) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const regexPattern = new RegExp(escapeRegExp(cleanQuery), 'i');
+        const regexFilters = {
+            ...filters,
+            $or: [
+                { normalizedText: regexPattern },
+                { keywords: regexPattern }
+            ]
+        };
+
+        // 3. Fetch candidate verses in parallel (both text and regex search)
         // We fetch more candidates than the limit (e.g. limit * 4, capped at 200) to allow accurate in-memory reranking
         const candidateLimit = Math.min(limit * 4, 200);
-        const candidates = await Verse.find(textFilters)
-            .select('_id reference text versionCode bookName chapterNumber number themes emotions keywords popularityScore')
-            .lean()
-            .limit(candidateLimit);
+
+        const [textCandidates, regexCandidates] = await Promise.all([
+            Verse.find(textFilters)
+                .select('_id reference text versionCode bookName chapterNumber number themes emotions keywords popularityScore')
+                .lean()
+                .limit(candidateLimit),
+            Verse.find(regexFilters)
+                .select('_id reference text versionCode bookName chapterNumber number themes emotions keywords popularityScore')
+                .lean()
+                .limit(candidateLimit)
+        ]);
+
+        // Merge and deduplicate
+        const candidateMap = new Map<string, any>();
+        textCandidates.forEach((c: any) => candidateMap.set(c._id.toString(), c));
+        regexCandidates.forEach((c: any) => candidateMap.set(c._id.toString(), c));
+        const candidates = Array.from(candidateMap.values());
 
         if (candidates.length === 0) {
             return [];
