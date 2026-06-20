@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Verse, BibleVersion, Book } from '@/models/Bible';
-import { BIBLE_BOOKS, resolveBook } from '@/utils/bibleBooks';
+import { BIBLE_BOOKS } from '@/utils/bibleBooks';
+import { resolveBook } from '@/utils/bibleBooksServer';
 import { getEmbeddingProvider } from '@/lib/search/embeddingProvider';
 import { getReranker } from '@/lib/search/reranker';
 import { createBibleSearchService } from '@/lib/search/bibleSearchService';

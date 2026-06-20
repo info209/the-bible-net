@@ -54,7 +54,7 @@ export async function extractBookName(text: string): Promise<{
     const cleanText = text.trim();
     if (!cleanText) return { remaining: '' };
     
-    const { resolveBook } = await import('@/utils/bibleBooks');
+    const { resolveBook } = await import('@/utils/bibleBooksServer');
     
     // Split the text into tokens to search for book names
     const words = cleanText.split(/\s+/);
