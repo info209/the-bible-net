@@ -13,6 +13,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 interface BookSearchResult {
     mode: 'book';
     book: string;
+    displayName?: string;
     abbreviation: string;
     testament: string;
     totalChapters: number;
@@ -40,6 +41,7 @@ interface EmotionResult {
     results: {
         verseId: string;
         reference: string;
+        displayReference?: string;
         text: string;
         versionCode: string;
         emotions: string[];
@@ -53,7 +55,7 @@ interface HybridResult {
         verseId: string;
         number: number;
         text: string;
-        book: { name: string; abbreviation: string };
+        book: { name: string; abbreviation: string; displayName?: string };
         chapter: { number: number };
         version: { abbreviation: string; name: string };
         emotions: string[];
@@ -203,7 +205,7 @@ function BookModeView({
             <div className="flex items-center gap-2 mb-1">
                 <BookOpen size={18} style={{ color: t.accent }} />
                 <h2 className="text-xl font-bold" style={{ color: t.textCol }}>
-                    {data.book}
+                    {data.displayName || data.book}
                 </h2>
                 <span
                     className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest"
@@ -361,7 +363,7 @@ function EmotionModeView({
                         <Heart size={14} className="flex-shrink-0 mt-1" style={{ color: t.accent }} />
                         <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
-                                <span className="text-xs font-bold" style={{ color: t.accent }}>{r.reference}</span>
+                                <span className="text-xs font-bold" style={{ color: t.accent }}>{r.displayReference || r.reference}</span>
                                 {r.versionCode && (
                                     <span className="text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-widest font-bold"
                                         style={{ borderColor: t.chipBorder, color: t.subText }}>
@@ -438,7 +440,7 @@ function HybridModeView({
                     <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between mb-1">
                             <span className="text-xs font-bold" style={{ color: t.accent }}>
-                                {r.book?.name} {r.chapter?.number}:{r.number}
+                                {r.book?.displayName || r.book?.name} {r.chapter?.number}:{r.number}
                             </span>
                             {r.version?.abbreviation && (
                                 <span className="text-[9px] px-1.5 py-0.5 rounded border uppercase tracking-widest font-bold"

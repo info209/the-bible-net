@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { Verse, BibleVersion, Book } from '@/models/Bible';
-import { BIBLE_BOOKS } from '@/utils/bibleBooks';
+import { BIBLE_BOOKS, getLocalizedBookName } from '@/utils/bibleBooks';
 import { resolveBook } from '@/utils/bibleBooksServer';
 import { getEmbeddingProvider } from '@/lib/search/embeddingProvider';
 import { getReranker } from '@/lib/search/reranker';
 import { createBibleSearchService } from '@/lib/search/bibleSearchService';
+
+function detectQueryLanguage(query: string): 'hi' | 'te' | 'en' {
+    if (/[\u0900-\u097F]/.test(query)) return 'hi'; // Devanagari range
+    if (/[\u0C00-\u0C7F]/.test(query)) return 'te'; // Telugu range
+    return 'en';
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -193,18 +199,27 @@ function detectEmotion(query: string): string | null {
     return LOCALIZED_EMOTIONS[q] || null;
 }
 
+function getDbBookNameFilter(bookName: string): any {
+    const hindiName = getLocalizedBookName(bookName, 'hi');
+    const teluguName = getLocalizedBookName(bookName, 'te');
+    const names = Array.from(new Set([bookName, hindiName, teluguName]));
+    return names.length === 1 ? bookName : { $in: names };
+}
+
 // ---------------------------------------------------------------------------
 // Search handlers
 // ---------------------------------------------------------------------------
 
-async function bookSearch(bookEntry: typeof BIBLE_BOOKS[0]) {
+async function bookSearch(bookEntry: typeof BIBLE_BOOKS[0], targetLang: string = 'en') {
     const totalChapters = BOOK_CHAPTERS[bookEntry.name] ?? 1;
     const chapters = Array.from({ length: totalChapters }, (_, i) => i + 1);
+    const displayName = getLocalizedBookName(bookEntry.name, targetLang);
     return NextResponse.json({
         success: true,
         data: {
             mode: 'book',
             book: bookEntry.name,
+            displayName,
             abbreviation: bookEntry.abbreviation,
             testament: bookEntry.testament,
             totalChapters,
@@ -222,7 +237,7 @@ async function exactVerseSearch(
 ) {
     // 1. Check max verse in the chapter for validation
     const maxVerseDoc = await Verse.findOne({
-        bookName,
+        bookName: getDbBookNameFilter(bookName),
         chapterNumber: chapter,
     })
     .sort({ number: -1 })
@@ -267,7 +282,7 @@ async function exactVerseSearch(
 
     // 2. Fetch all verses in the range across all versions
     const queryFilter = {
-        bookName,
+        bookName: getDbBookNameFilter(bookName),
         chapterNumber: chapter,
         number: { $gte: startVerse, $lte: endVerse },
     };
@@ -320,9 +335,12 @@ async function exactVerseSearch(
     const themes = Array.from(new Set(targetVerses.flatMap(v => v.themes || [])));
     const emotions = Array.from(new Set(targetVerses.flatMap(v => v.emotions || [])));
 
+    // Localize the displayed book reference
+    const lang = targetCode === 'IRV' ? 'hi' : (targetCode === 'తెలుగు IRV' ? 'te' : 'en');
+    const localizedBook = getLocalizedBookName(bookName, lang);
     const reference = startVerse === endVerse
-        ? `${bookName} ${chapter}:${startVerse}`
-        : `${bookName} ${chapter}:${startVerse}-${endVerse}`;
+        ? `${localizedBook} ${chapter}:${startVerse}`
+        : `${localizedBook} ${chapter}:${startVerse}-${endVerse}`;
 
     return NextResponse.json({
         success: true,
@@ -357,14 +375,20 @@ async function emotionSearch(emotion: string, limit: number, versionCode?: strin
         });
     }
 
-    const results = verses.slice(0, limit).map((v: any) => ({
-        verseId: v._id.toString(),
-        reference: v.reference || `${v.bookName} ${v.chapterNumber}:${v.number}`,
-        text: v.text,
-        versionCode: v.versionCode,
-        emotions: v.emotions || [],
-        themes: v.themes || [],
-    }));
+    const results = verses.slice(0, limit).map((v: any) => {
+        const lang = (v.versionCode || '').toUpperCase() === 'IRV' ? 'hi' : ((v.versionCode || '').toUpperCase() === 'తెలుగు IRV' ? 'te' : 'en');
+        const localizedBook = getLocalizedBookName(v.bookName, lang);
+        const displayReference = `${localizedBook} ${v.chapterNumber}:${v.number}`;
+        return {
+            verseId: v._id.toString(),
+            reference: v.reference || `${v.bookName} ${v.chapterNumber}:${v.number}`,
+            displayReference,
+            text: v.text,
+            versionCode: v.versionCode,
+            emotions: v.emotions || [],
+            themes: v.themes || [],
+        };
+    });
 
     return NextResponse.json({
         success: true,
@@ -439,6 +463,14 @@ export async function GET(req: NextRequest) {
             }
         }
 
+        // Detect query script language and override target translation default version code
+        const queryLang = detectQueryLanguage(query);
+        if (queryLang === 'hi') {
+            resolvedVersionCode = 'IRV';
+        } else if (queryLang === 'te') {
+            resolvedVersionCode = 'తెలుగు IRV';
+        }
+
         // -----------------------------------------------------------------------
         // Priority 1: Bible reference search — "John 3:16", "Genesis 23:1-6", etc.
         // -----------------------------------------------------------------------
@@ -472,11 +504,13 @@ export async function GET(req: NextRequest) {
                 const focusChapter = parseInt(chapterStr, 10);
                 const totalChapters = BOOK_CHAPTERS[bookEntry.name] ?? 1;
                 const chapters = Array.from({ length: totalChapters }, (_, i) => i + 1);
+                const displayName = getLocalizedBookName(bookEntry.name, queryLang);
                 return NextResponse.json({
                     success: true,
                     data: {
                         mode: 'book',
                         book: bookEntry.name,
+                        displayName,
                         abbreviation: bookEntry.abbreviation,
                         testament: bookEntry.testament,
                         totalChapters,
@@ -489,7 +523,7 @@ export async function GET(req: NextRequest) {
 
         const bookEntry = await detectBook(query);
         if (bookEntry) {
-            return bookSearch(bookEntry);
+            return bookSearch(bookEntry, queryLang);
         }
 
         // -----------------------------------------------------------------------
@@ -513,28 +547,33 @@ export async function GET(req: NextRequest) {
         });
 
         if (searchResponse.success) {
-            const results = searchResponse.results.map((r: any) => ({
-                verseId: r.verseId,
-                number: r.verse,
-                text: r.text,
-                book: {
-                    id: r.book.name,
-                    name: r.book.name,
-                    abbreviation: r.book.abbreviation,
-                },
-                chapter: {
-                    id: `${r.book.name}-${r.chapter}`,
-                    number: r.chapter,
-                },
-                version: {
-                    id: r.version.code,
-                    abbreviation: r.version.code,
-                    name: r.version.name,
-                },
-                themes: r.themes,
-                emotions: r.emotions,
-                score: r.score,
-            }));
+            const results = searchResponse.results.map((r: any) => {
+                const lang = r.version.code === 'IRV' ? 'hi' : (r.version.code === 'తెలుగు IRV' ? 'te' : 'en');
+                const displayName = getLocalizedBookName(r.book.name, lang);
+                return {
+                    verseId: r.verseId,
+                    number: r.verse,
+                    text: r.text,
+                    book: {
+                        id: r.book.name,
+                        name: r.book.name,
+                        displayName,
+                        abbreviation: r.book.abbreviation,
+                    },
+                    chapter: {
+                        id: `${r.book.name}-${r.chapter}`,
+                        number: r.chapter,
+                    },
+                    version: {
+                        id: r.version.code,
+                        abbreviation: r.version.code,
+                        name: r.version.name,
+                    },
+                    themes: r.themes,
+                    emotions: r.emotions,
+                    score: r.score,
+                };
+            });
 
             return NextResponse.json({
                 success: true,

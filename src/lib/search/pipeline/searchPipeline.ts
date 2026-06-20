@@ -4,6 +4,20 @@ import { QueryNormalizer, NormalizedQuery } from '../normalization/normalizer';
 import { WeightedReranker, ScoredVerse } from '../ranking/reranker';
 import { SearchHighlighter } from '../highlighting/highlighter';
 import { SynonymEngine } from '../synonyms/synonymEngine';
+import { getLocalizedBookName } from '@/utils/bibleBooks';
+
+function detectQueryLanguage(query: string): 'hi' | 'te' | 'en' {
+    if (/[\u0900-\u097F]/.test(query)) return 'hi'; // Devanagari range
+    if (/[\u0C00-\u0C7F]/.test(query)) return 'te'; // Telugu range
+    return 'en';
+}
+
+function getDbBookNameFilter(bookName: string): any {
+    const hindiName = getLocalizedBookName(bookName, 'hi');
+    const teluguName = getLocalizedBookName(bookName, 'te');
+    const names = Array.from(new Set([bookName, hindiName, teluguName]));
+    return names.length === 1 ? bookName : { $in: names };
+}
 
 export interface SearchFilters {
     versionCode?: string;
@@ -23,6 +37,7 @@ export interface SearchOptions {
 export interface VerseSearchResult {
     verseId: string;
     reference: string;
+    displayReference?: string;
     text: string;
     highlightedText?: string; // Enhanced feature!
     version: {
@@ -31,6 +46,7 @@ export interface VerseSearchResult {
     };
     book: {
         name: string;
+        displayName?: string;
         abbreviation: string;
     };
     chapter: number;
@@ -94,6 +110,16 @@ export class BibleSearchService {
             if (options.versionCode) {
                 parsed.versionCode = options.versionCode;
                 parsed.hasVersionFilter = true;
+            } else {
+                // Auto-detect language of search term and default target version
+                const queryLang = detectQueryLanguage(query);
+                if (queryLang === 'hi') {
+                    parsed.versionCode = 'IRV';
+                    parsed.hasVersionFilter = true;
+                } else if (queryLang === 'te') {
+                    parsed.versionCode = 'తెలుగు IRV';
+                    parsed.hasVersionFilter = true;
+                }
             }
             
             // Determine search mode
@@ -170,7 +196,7 @@ export class BibleSearchService {
         }
         
         const filters: any = {
-            bookName: parsed.bookName,
+            bookName: getDbBookNameFilter(parsed.bookName),
             chapterNumber: parsed.chapter
         };
         
@@ -241,7 +267,7 @@ export class BibleSearchService {
             filters.versionCode = parsed.versionCode;
         }
         if (parsed.bookName) {
-            filters.bookName = parsed.bookName;
+            filters.bookName = getDbBookNameFilter(parsed.bookName);
         }
         if (parsed.chapter) {
             filters.chapterNumber = parsed.chapter;
@@ -309,9 +335,14 @@ export class BibleSearchService {
         // Generate high-quality highlighted text segment
         const highlightedText = SearchHighlighter.highlightHtml(verse.text, normalizedQuery);
 
+        const lang = (verse.versionCode || '').toUpperCase() === 'IRV' ? 'hi' : (((verse.versionCode || '').toUpperCase() === 'తెలుగు IRV') ? 'te' : 'en');
+        const localizedBookName = getLocalizedBookName(verse.bookName || '', lang);
+        const displayReference = `${localizedBookName} ${verse.chapterNumber}:${verse.number}`;
+
         return {
             verseId: verse._id.toString(),
             reference: verse.reference || `${verse.bookName} ${verse.chapterNumber}:${verse.number}`,
+            displayReference,
             text: verse.text,
             highlightedText,
             version: {
@@ -320,6 +351,7 @@ export class BibleSearchService {
             },
             book: {
                 name: verse.bookName || '',
+                displayName: localizedBookName,
                 abbreviation: verse.bookName ? verse.bookName.substring(0, 3).toUpperCase() : ''
             },
             chapter: verse.chapterNumber || 1,
