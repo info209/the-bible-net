@@ -425,17 +425,20 @@ export default function HomeView() {
           </div>
         )}
 
-        {/* Slide indicators */}
+        {/* Slide indicators — reversed so today (index 0) is the rightmost dot */}
         {dailyVerses.length > 1 && (
           <div className="flex justify-center space-x-2 mt-3">
-            {dailyVerses.map((_: any, index: number) => (
-              <button
-                key={index}
-                onClick={() => setCurrentVerseSlide(index)}
-                className={`h-2 rounded-full transition-all ${currentVerseSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
+            {dailyVerses.map((_: any, displayPos: number) => {
+              const dataIndex = dailyVerses.length - 1 - displayPos;
+              return (
+                <button
+                  key={displayPos}
+                  onClick={() => setCurrentVerseSlide(dataIndex)}
+                  className={`h-2 rounded-full transition-all ${currentVerseSlide === dataIndex ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
+                  aria-label={`Go to slide ${dataIndex + 1}`}
+                />
+              );
+            })}
           </div>
         )}
       </div>
@@ -544,17 +547,20 @@ export default function HomeView() {
           </div>
         )}
 
-        {/* Slide indicators */}
+        {/* Slide indicators — reversed so today (index 0) is the rightmost dot */}
         {dailyDevotions.length > 1 && (
           <div className="flex justify-center space-x-2 mt-3">
-            {dailyDevotions.map((_: any, index: number) => (
-              <button
-                key={index}
-                onClick={() => setCurrentDevotionSlide(index)}
-                className={`h-2 rounded-full transition-all ${currentDevotionSlide === index ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
-                aria-label={`Go to slide ${index + 1}`}
-              />
-            ))}
+            {dailyDevotions.map((_: any, displayPos: number) => {
+              const dataIndex = dailyDevotions.length - 1 - displayPos;
+              return (
+                <button
+                  key={displayPos}
+                  onClick={() => setCurrentDevotionSlide(dataIndex)}
+                  className={`h-2 rounded-full transition-all ${currentDevotionSlide === dataIndex ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
+                  aria-label={`Go to slide ${dataIndex + 1}`}
+                />
+              );
+            })}
           </div>
         )}
       </div>
