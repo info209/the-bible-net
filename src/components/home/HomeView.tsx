@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, Heart, MessageCircle, Share2, Maximize2, Pause, X, Send } from 'lucide-react';
+import { Play, Heart, MessageCircle, Share2, Pause, X, Send, MoreVertical, Maximize2 } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -25,6 +25,8 @@ export default function HomeView() {
 
   // Independent slide tracking for each carousel
   const [currentVerseSlide, setCurrentVerseSlide] = useState(0);
+  // Tracks which verse card's kebab menu is open (by carousel index)
+  const [openKebabIndex, setOpenKebabIndex] = useState<number | null>(null);
   const [currentDevotionSlide, setCurrentDevotionSlide] = useState(0);
 
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -225,6 +227,37 @@ export default function HomeView() {
     return `${diffDays} Days Ago`;
   };
 
+  // Ordinal date label for the verse banner (feature #2)
+  const getOrdinalSuffix = (day: number): string => {
+    if (day >= 11 && day <= 13) return 'th';
+    switch (day % 10) {
+      case 1: return 'st';
+      case 2: return 'nd';
+      case 3: return 'rd';
+      default: return 'th';
+    }
+  };
+
+  const formatVerseLabel = (dateStr: string): string => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateStr === todayStr) return 'Verse of the Day';
+    const d = new Date(dateStr);
+    const day = d.getUTCDate();
+    const month = d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+    return `${day}${getOrdinalSuffix(day)} ${month}`;
+  };
+
+  // Navigate to Bible reader at the exact verse context (feature #7)
+  const handleReadFullChapter = (content: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenKebabIndex(null);
+    const version = encodeURIComponent(content.version || preferredVersion);
+    const book    = encodeURIComponent(content.verseBook || '');
+    const chapter = encodeURIComponent(content.verseChapter || '');
+    const verse   = encodeURIComponent(content.verseNumber || '');
+    router.push(`/bible?version=${version}&book=${book}&chapter=${chapter}&verse=${verse}`);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -286,34 +319,74 @@ export default function HomeView() {
           >
             {dailyVerses.map((content: any, index: number) => (
               <div key={content._id || index} className="w-full flex-shrink-0 select-none">
-                {/* Daily Verse Card - consistent shared banner background */}
+                {/* Daily Verse Card — tap anywhere to expand, consistent banner height */}
                 <div
-                  className="rounded-none p-6 shadow-xl relative overflow-hidden h-[395px] flex flex-col"
+                  className="rounded-none p-6 shadow-xl relative overflow-hidden h-[395px] flex flex-col cursor-pointer"
                   style={content.backgroundImage
                     ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                     : { background: 'linear-gradient(135deg, #0B7A81 0%, #14b8a6 50%, #2dd4bf 100%)' }
                   }
+                  onClick={() => openDetailModal(index, 'verse')}
                 >
                   {/* Consistent dark overlay */}
                   <div className="absolute inset-0 bg-black/55" />
 
                   {/* Content */}
                   <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
-                    <div>
-                      <p className="text-white/80 text-xs mb-1 uppercase tracking-wider">{getRelativeLabel(content.date)}&apos;s Verse</p>
-                      <h3 className="text-white text-xl font-bold truncate">{content.verseReference || 'Reference'}</h3>
-                      <p className="text-white/90 text-xs">{content.version || 'KJV'}</p>
+                    {/* Header row: label + kebab menu */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <p className="text-white/80 text-xs mb-1 uppercase tracking-wider">{formatVerseLabel(content.date)}</p>
+                        <h3 className="text-white text-xl font-bold truncate">{content.verseReference || 'Reference'}</h3>
+                        <p className="text-white/90 text-xs">{content.version || 'KJV'}</p>
+                      </div>
+
+                      {/* Kebab menu button — stops propagation so banner tap doesn't fire */}
+                      <div className="relative shrink-0">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenKebabIndex(openKebabIndex === index ? null : index);
+                          }}
+                          className="bg-white/20 backdrop-blur-sm p-2 rounded-full text-white hover:bg-white/30 transition-colors"
+                          aria-label="More options"
+                        >
+                          <MoreVertical className="size-4" />
+                        </button>
+
+                        {/* Dropdown — anchored to the ⋮ button, top-right aligned */}
+                        {openKebabIndex === index && (
+                          <>
+                            {/* Invisible overlay to dismiss on outside click */}
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={(e) => { e.stopPropagation(); setOpenKebabIndex(null); }}
+                            />
+                            <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
+                              <button
+                                onClick={(e) => handleReadFullChapter(content, e)}
+                                className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                              >
+                                Read Full Chapter
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
 
-                    {/* Verse text - line clamped to prevent vertical growth */}
+                    {/* Verse text — clamped to 4 lines; card height stays constant */}
                     <div className="flex-1 flex items-center justify-center my-4 overflow-hidden">
-                      <p className="text-white text-[16px] md:text-[18px] leading-relaxed font-serif italic text-justify line-clamp-5 overflow-hidden text-ellipsis w-full">
+                      <p className="text-white text-[16px] md:text-[18px] leading-relaxed font-serif italic text-justify line-clamp-4 overflow-hidden text-ellipsis w-full">
                         &quot;{content.verse || 'Verse text available soon...'}&quot;
                       </p>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-between pt-3 border-t border-white/20">
+                    <div
+                      className="flex items-center justify-between pt-3 border-t border-white/20"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <LikeButton
                         contentId={content._id}
                         contentType="daily-verse"
@@ -322,7 +395,7 @@ export default function HomeView() {
                         variant="carousel"
                       />
                       <button
-                        onClick={() => handleCommentClick(content._id, 'daily-verse')}
+                        onClick={(e) => { e.stopPropagation(); handleCommentClick(content._id, 'daily-verse'); }}
                         className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
@@ -331,22 +404,13 @@ export default function HomeView() {
                         <span className="text-xs">{content.verseCommentCount || 'Comment'}</span>
                       </button>
                       <button
-                        onClick={() => handleShare(content, 'daily-verse')}
+                        onClick={(e) => { e.stopPropagation(); handleShare(content, 'daily-verse'); }}
                         className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                           <Share2 className="size-4" />
                         </div>
                         <span className="text-xs">Share</span>
-                      </button>
-                      <button
-                        onClick={() => openDetailModal(index, 'verse')}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                      >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Maximize2 className="size-4" />
-                        </div>
-                        <span className="text-xs">Expand</span>
                       </button>
                     </div>
                   </div>

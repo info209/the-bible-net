@@ -128,12 +128,13 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
 
     let newIndex = activeIndex;
 
-    // Decide if we should go to next, previous, or snap back to current
-    if (deltaX < -swipeThreshold || (deltaX < 0 && velocity > velocityThreshold)) {
+    // Decide if we should go to next, previous, or snap back to current.
+    // Direction is reversed from the default: swipe LEFT → previous slide, swipe RIGHT → next slide.
+    if (deltaX > swipeThreshold || (deltaX > 0 && velocity > velocityThreshold)) {
       if (activeIndex < count - 1) {
         newIndex = activeIndex + 1;
       }
-    } else if (deltaX > swipeThreshold || (deltaX > 0 && velocity > velocityThreshold)) {
+    } else if (deltaX < -swipeThreshold || (deltaX < 0 && velocity > velocityThreshold)) {
       if (activeIndex > 0) {
         newIndex = activeIndex - 1;
       }
@@ -179,13 +180,13 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      if (activeIndex > 0) {
-        onChange(activeIndex - 1);
+      if (activeIndex < count - 1) {
+        onChange(activeIndex + 1);
       }
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
-      if (activeIndex < count - 1) {
-        onChange(activeIndex + 1);
+      if (activeIndex > 0) {
+        onChange(activeIndex - 1);
       }
     }
   };
