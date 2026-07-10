@@ -16,6 +16,12 @@ import { DailyDetailModal } from './DailyDetailModal';
 import { PremiumCarousel } from './PremiumCarousel';
 import { LikeButton } from './LikeButton';
 
+const getGreetingByHour = (hour: number): string => {
+  if (hour >= 5 && hour < 12) return 'Good Morning';
+  if (hour >= 12 && hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
+};
+
 export default function HomeView() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -34,6 +40,18 @@ export default function HomeView() {
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+
+  const [greeting, setGreeting] = useState('Shalom');
+
+  useEffect(() => {
+    const updateGreeting = () => {
+      setGreeting(getGreetingByHour(new Date().getHours()));
+    };
+    updateGreeting();
+    // Update every minute to catch timezone/hour changes dynamically
+    const interval = setInterval(updateGreeting, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   const queryClient = useQueryClient();
   const preferredVersion = (session?.user as any)?.preferredBibleVersion || 'KJV';
@@ -242,9 +260,10 @@ export default function HomeView() {
     const todayStr = new Date().toISOString().split('T')[0];
     if (dateStr === todayStr) return 'Verse of the Day';
     const d = new Date(dateStr);
+    const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
     const day = d.getUTCDate();
     const month = d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
-    return `${day}${getOrdinalSuffix(day)} ${month}`;
+    return `${dayOfWeek}, ${day}${getOrdinalSuffix(day)} ${month}`;
   };
 
   // Navigate to Bible reader at the exact verse context (feature #7)
@@ -279,7 +298,7 @@ export default function HomeView() {
         </div>
         <div className="min-w-0 flex-1">
           <h2 className="flex items-baseline space-x-1.5 min-w-0">
-            <span className="text-gray-800 text-[19px] font-bold shrink-0">Shalom,</span>
+            <span className="text-gray-800 text-[19px] font-bold shrink-0">{greeting},</span>
             <span className="truncate block max-w-full text-gray-500 text-[14px] font-medium">
               {(session?.user as any)?.firstName || session?.user?.name || 'Believer'}
             </span>
@@ -334,24 +353,48 @@ export default function HomeView() {
                   {/* Content */}
                   <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
                     {/* Header row: label */}
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1 min-w-0 pr-2">
-                        <p className="text-white/80 text-xs mb-1 uppercase tracking-wider">{formatVerseLabel(content.date)}</p>
-                        <h3 className="text-white text-xl font-bold truncate">{content.verseReference || 'Reference'}</h3>
-                        <p className="text-white/90 text-xs">{content.version || 'KJV'}</p>
+                    <div className="w-full">
+                      <div className="text-center w-full">
+                        <p className="text-white/90 text-[15px] font-semibold mb-2.5">
+                          {formatVerseLabel(content.date)}
+                        </p>
+                        
+                        {/* Slide indicators inside the card */}
+                        {dailyVerses.length > 1 && (
+                          <div className="flex justify-center space-x-1.5 mb-2" onClick={(e) => e.stopPropagation()}>
+                            {dailyVerses.map((_: any, displayPos: number) => {
+                              const dataIndex = dailyVerses.length - 1 - displayPos;
+                              return (
+                                <button
+                                  key={displayPos}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentVerseSlide(dataIndex);
+                                  }}
+                                  className={`h-1.5 rounded-full transition-all ${index === dataIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/60'}`}
+                                  aria-label={`Go to slide ${dataIndex + 1}`}
+                                />
+                              );
+                            })}
+                          </div>
+                        )}
                       </div>
+
+                      <h3 className="text-white text-2xl font-extrabold tracking-tight truncate mt-6">
+                        {content.verseReference || 'Reference'} {content.version || 'KJV'}
+                      </h3>
                     </div>
 
                     {/* Verse text — clamped to 4 lines; card height stays constant */}
-                    <div className="flex-1 flex items-center justify-center my-4 overflow-hidden">
-                      <p className="text-white text-[16px] md:text-[18px] leading-relaxed font-serif italic text-justify line-clamp-4 overflow-hidden text-ellipsis w-full">
+                    <div className="flex-1 flex flex-col justify-start mt-4 overflow-hidden">
+                      <p className="text-white text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 line-clamp-4 overflow-hidden text-ellipsis w-full">
                         &quot;{content.verse || 'Verse text available soon...'}&quot;
                       </p>
                     </div>
 
                     {/* Actions */}
                     <div
-                      className="flex items-center justify-between pt-3 border-t border-white/20 relative"
+                      className="flex items-center justify-between pt-3 relative"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <LikeButton
@@ -422,22 +465,7 @@ export default function HomeView() {
           </div>
         )}
 
-        {/* Slide indicators — reversed so today (index 0) is the rightmost dot */}
-        {dailyVerses.length > 1 && (
-          <div className="flex justify-center space-x-2 mt-3">
-            {dailyVerses.map((_: any, displayPos: number) => {
-              const dataIndex = dailyVerses.length - 1 - displayPos;
-              return (
-                <button
-                  key={displayPos}
-                  onClick={() => setCurrentVerseSlide(dataIndex)}
-                  className={`h-2 rounded-full transition-all ${currentVerseSlide === dataIndex ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
-                  aria-label={`Go to slide ${dataIndex + 1}`}
-                />
-              );
-            })}
-          </div>
-        )}
+
       </div>
 
       {/* Daily Devotional Carousel (7-Day History) */}

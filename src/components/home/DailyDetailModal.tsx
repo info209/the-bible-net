@@ -165,6 +165,26 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
 
     if (!isOpen || contents.length === 0) return null;
     
+    const getOrdinalSuffix = (day: number): string => {
+        if (day >= 11 && day <= 13) return 'th';
+        switch (day % 10) {
+            case 1: return 'st';
+            case 2: return 'nd';
+            case 3: return 'rd';
+            default: return 'th';
+        }
+    };
+
+    const formatVerseLabel = (dateStr: string): string => {
+        const todayStr = new Date().toISOString().split('T')[0];
+        if (dateStr === todayStr) return 'Verse of the Day';
+        const d = new Date(dateStr);
+        const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
+        const day = d.getUTCDate();
+        const month = d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+        return `${dayOfWeek}, ${day}${getOrdinalSuffix(day)} ${month}`;
+    };
+    
     const getRelativeLabel = (dateStr: string) => {
         const todayStr = new Date().toISOString().split('T')[0];
         if (dateStr === todayStr) return 'Today';
@@ -260,16 +280,42 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                         
                         {/* Section 1: Daily Verse */}
                         {initialSection === 'verse' && (
-                            <div id="section-verse" className="flex flex-col space-y-6">
+                            <div id="section-verse" className="flex flex-col space-y-2">
                                 {currentContent.verse ? (
                                     <>
-                                        <p className="text-white/70 text-xs mb-2 uppercase tracking-widest font-bold text-center">Daily Verse</p>
-                                        <h3 className="text-white text-2xl md:text-3xl font-extrabold mb-4 text-center">{currentContent.verseReference}</h3>
+                                        <div className="w-full">
+                                            <div className="text-center w-full">
+                                                <p className="text-white/90 text-[17px] font-semibold mb-3">
+                                                    {formatVerseLabel(currentContent.date)}
+                                                </p>
+                                                
+                                                {/* Centered Pagination Dots */}
+                                                {contents.length > 1 && (
+                                                    <div className="flex justify-center space-x-2 mb-3">
+                                                        {contents.map((_: any, displayPos: number) => {
+                                                            const dataIndex = contents.length - 1 - displayPos;
+                                                            return (
+                                                                <button
+                                                                    key={displayPos}
+                                                                    onClick={() => setCurrentIndex(dataIndex)}
+                                                                    className={`h-2 rounded-full transition-all ${currentIndex === dataIndex ? 'w-8 bg-white' : 'w-2 bg-white/40 hover:bg-white/60'}`}
+                                                                    aria-label={`Go to slide ${dataIndex + 1}`}
+                                                                />
+                                                            );
+                                                        })}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            <h3 className="text-white text-4xl md:text-5xl font-extrabold tracking-tight truncate mt-8">
+                                                {currentContent.verseReference || 'Reference'} {(currentContent as any).version || 'KJV'}
+                                            </h3>
+                                        </div>
                                         
-                                        <p className="text-white text-2xl md:text-3xl leading-relaxed font-serif italic text-center drop-shadow-md max-w-xl mx-auto">
+                                        <p className="text-white text-2xl md:text-3xl leading-relaxed font-serif italic text-left pl-2 drop-shadow-md w-full mt-8">
                                             "{currentContent.verse}"
                                         </p>
-                                        <div className="flex items-center justify-center gap-6 pt-6">
+                                        <div className="flex items-center justify-start gap-6 pt-10">
                                             <LikeButton
                                                 contentId={currentContent._id || ''}
                                                 contentType="daily-verse"
