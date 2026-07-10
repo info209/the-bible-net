@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, Heart, MessageCircle, Share2, Pause, X, Send, MoreVertical, Maximize2 } from 'lucide-react';
+import { Play, Heart, MessageCircle, Forward, Pause, X, Send, MoreVertical, Maximize2 } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -333,45 +333,12 @@ export default function HomeView() {
 
                   {/* Content */}
                   <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
-                    {/* Header row: label + kebab menu */}
+                    {/* Header row: label */}
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0 pr-2">
                         <p className="text-white/80 text-xs mb-1 uppercase tracking-wider">{formatVerseLabel(content.date)}</p>
                         <h3 className="text-white text-xl font-bold truncate">{content.verseReference || 'Reference'}</h3>
                         <p className="text-white/90 text-xs">{content.version || 'KJV'}</p>
-                      </div>
-
-                      {/* Kebab menu button — stops propagation so banner tap doesn't fire */}
-                      <div className="relative shrink-0">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setOpenKebabIndex(openKebabIndex === index ? null : index);
-                          }}
-                          className="bg-white/20 backdrop-blur-sm p-2 rounded-full text-white hover:bg-white/30 transition-colors"
-                          aria-label="More options"
-                        >
-                          <MoreVertical className="size-4" />
-                        </button>
-
-                        {/* Dropdown — anchored to the ⋮ button, top-right aligned */}
-                        {openKebabIndex === index && (
-                          <>
-                            {/* Invisible overlay to dismiss on outside click */}
-                            <div
-                              className="fixed inset-0 z-10"
-                              onClick={(e) => { e.stopPropagation(); setOpenKebabIndex(null); }}
-                            />
-                            <div className="absolute right-0 top-full mt-1 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
-                              <button
-                                onClick={(e) => handleReadFullChapter(content, e)}
-                                className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                              >
-                                Read Full Chapter
-                              </button>
-                            </div>
-                          </>
-                        )}
                       </div>
                     </div>
 
@@ -384,7 +351,7 @@ export default function HomeView() {
 
                     {/* Actions */}
                     <div
-                      className="flex items-center justify-between pt-3 border-t border-white/20"
+                      className="flex items-center justify-between pt-3 border-t border-white/20 relative"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <LikeButton
@@ -408,10 +375,40 @@ export default function HomeView() {
                         className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Share2 className="size-4" />
+                          <Forward className="size-4" />
                         </div>
                         <span className="text-xs">Share</span>
                       </button>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenKebabIndex(openKebabIndex === index ? null : index);
+                          }}
+                          className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                        >
+                          <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                            <MoreVertical className="size-4" />
+                          </div>
+                          <span className="text-xs">More</span>
+                        </button>
+                        {openKebabIndex === index && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={(e) => { e.stopPropagation(); setOpenKebabIndex(null); }}
+                            />
+                            <div className="absolute right-0 bottom-full mb-2 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
+                              <button
+                                onClick={(e) => handleReadFullChapter(content, e)}
+                                className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                              >
+                                Read Full Chapter
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -521,7 +518,7 @@ export default function HomeView() {
                         className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Share2 className="size-4" />
+                          <Forward className="size-4" />
                         </div>
                         <span className="text-xs">Share</span>
                       </button>
@@ -796,6 +793,9 @@ export default function HomeView() {
         contents={modalContents}
         initialIndex={initialModalIndex}
         initialSection={initialModalSection}
+        onCommentClick={handleCommentClick}
+        onShareClick={handleShare}
+        onReadFullChapter={(content) => handleReadFullChapter(content, { stopPropagation: () => {} } as any)}
       />
 
       {/* Comment Modal - Restored */}

@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Play, Pause } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Forward, MessageCircle, MoreVertical } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LikeButton } from './LikeButton';
 
@@ -21,6 +21,8 @@ interface IDailyContent {
     devotionLikeCount?: number;
     isVerseLiked?: boolean;
     isDevotionLiked?: boolean;
+    devotionCommentCount?: number;
+    verseCommentCount?: number;
 }
 
 interface DailyDetailModalProps {
@@ -29,12 +31,16 @@ interface DailyDetailModalProps {
     contents: IDailyContent[];
     initialIndex: number;
     initialSection?: 'verse' | 'devotional' | 'prayer';
+    onCommentClick?: (contentId: string, type: 'daily-verse' | 'daily-devotion') => void;
+    onShareClick?: (content: any, type: 'daily-verse' | 'daily-devotion') => void;
+    onReadFullChapter?: (content: any) => void;
 }
 
-export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, initialSection }: DailyDetailModalProps) {
+export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, initialSection, onCommentClick, onShareClick, onReadFullChapter }: DailyDetailModalProps) {
     const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
     const [isSpeaking, setIsSpeaking] = React.useState(false);
     const [isPaused, setIsPaused] = React.useState(false);
+    const [openKebab, setOpenKebab] = React.useState(false);
     const scrollRef = useRef<HTMLDivElement>(null);
     
     useEffect(() => {
@@ -263,7 +269,7 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                         <p className="text-white text-2xl md:text-3xl leading-relaxed font-serif italic text-center drop-shadow-md max-w-xl mx-auto">
                                             "{currentContent.verse}"
                                         </p>
-                                        <div className="flex justify-center pt-6">
+                                        <div className="flex items-center justify-center gap-6 pt-6">
                                             <LikeButton
                                                 contentId={currentContent._id || ''}
                                                 contentType="daily-verse"
@@ -271,6 +277,36 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                                 initialCount={currentContent.verseLikeCount || 0}
                                                 variant="modal"
                                             />
+                                            <button onClick={() => onCommentClick?.(currentContent._id || '', 'daily-verse')} className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform">
+                                                <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
+                                                    <MessageCircle className="size-5" />
+                                                </div>
+                                                <span className="text-xs">{currentContent?.verseCommentCount || 'Comment'}</span>
+                                            </button>
+                                            <button onClick={() => onShareClick?.(currentContent, 'daily-verse')} className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform">
+                                                <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
+                                                    <Forward className="size-5" />
+                                                </div>
+                                                <span className="text-xs">Share</span>
+                                            </button>
+                                            <div className="relative">
+                                                <button onClick={(e) => { e.stopPropagation(); setOpenKebab(!openKebab); }} className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform">
+                                                    <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
+                                                        <MoreVertical className="size-5" />
+                                                    </div>
+                                                    <span className="text-xs">More</span>
+                                                </button>
+                                                {openKebab && (
+                                                    <>
+                                                        <div className="fixed inset-0 z-10" onClick={() => setOpenKebab(false)} />
+                                                        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
+                                                            <button onClick={() => { setOpenKebab(false); onReadFullChapter?.(currentContent); }} className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors">
+                                                                Read Full Chapter
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </div>
                                         </div>
                                     </>
                                 ) : (
@@ -336,17 +372,31 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                         )}
 
                                         {/* D. Complete Button Placement Placeholder */}
-                                        <div className="pt-8 pb-16 flex flex-col sm:flex-row items-center justify-center gap-4 w-full max-w-md mx-auto">
-                                            <LikeButton
-                                                contentId={currentContent._id || ''}
-                                                contentType="daily-devotion"
-                                                initialLiked={currentContent.isDevotionLiked || false}
-                                                initialCount={currentContent.devotionLikeCount || 0}
-                                                variant="modal"
-                                            />
+                                        <div className="pt-8 pb-16 flex flex-col items-center justify-center gap-8 w-full max-w-md mx-auto">
+                                            <div className="flex items-center justify-center gap-6 w-full">
+                                                <LikeButton
+                                                    contentId={currentContent._id || ''}
+                                                    contentType="daily-devotion"
+                                                    initialLiked={currentContent.isDevotionLiked || false}
+                                                    initialCount={currentContent.devotionLikeCount || 0}
+                                                    variant="modal"
+                                                />
+                                                <button onClick={() => onCommentClick?.(currentContent._id || '', 'daily-devotion')} className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform">
+                                                    <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
+                                                        <MessageCircle className="size-5" />
+                                                    </div>
+                                                    <span className="text-xs">{currentContent.devotionCommentCount || 'Comment'}</span>
+                                                </button>
+                                                <button onClick={() => onShareClick?.(currentContent, 'daily-devotion')} className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform">
+                                                    <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
+                                                        <Forward className="size-5" />
+                                                    </div>
+                                                    <span className="text-xs">Share</span>
+                                                </button>
+                                            </div>
                                             <button
                                                 onClick={() => console.log('Devotional marked as complete')}
-                                                className="flex-1 w-full py-4 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] focus:ring-2 focus:ring-teal-400/40 text-white font-extrabold rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none"
+                                                className="w-full py-4 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] focus:ring-2 focus:ring-teal-400/40 text-white font-extrabold rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none"
                                             >
                                                 Complete Devotional
                                             </button>
