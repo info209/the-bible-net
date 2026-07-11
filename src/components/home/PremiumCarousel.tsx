@@ -92,10 +92,10 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
     const isAtStart = activeIndex === 0;
     const isAtEnd = activeIndex === count - 1;
 
-    // Boundary resistance — reversed direction:
-    // • index 0 = today (newest). Dragging LEFT tries to go to index -1 → resist.
-    // • index n-1 = oldest.  Dragging RIGHT tries to go past the end  → resist.
-    if ((isAtStart && deltaX < 0) || (isAtEnd && deltaX > 0)) {
+    // Boundary resistance:
+    // • index 0 = newest. Dragging RIGHT tries to go to index -1 → resist.
+    // • index n-1 = oldest. Dragging LEFT tries to go past the end → resist.
+    if ((isAtStart && deltaX > 0) || (isAtEnd && deltaX < 0)) {
       computedDeltaX = deltaX * 0.2;
     }
 
@@ -104,10 +104,8 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
 
     if (trackRef.current) {
       const basePercent = -activeIndex * 100;
-      // Negate computedDeltaX: in reversed-swipe mode, dragging right should move the
-      // track LEFT (revealing the next/older slide at a higher DOM position), so the
-      // live-drag direction must be the opposite of the raw pointer delta.
-      trackRef.current.style.transform = `translate3d(calc(${basePercent}% - ${computedDeltaX}px), 0, 0)`;
+      // Dragging naturally in the direction of pointer movement
+      trackRef.current.style.transform = `translate3d(calc(${basePercent}% + ${computedDeltaX}px), 0, 0)`;
     }
   };
 
@@ -134,14 +132,14 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
     let newIndex = activeIndex;
 
     // Decide if we should go to next, previous, or snap back to current.
-    // Direction is reversed from the default: swipe LEFT → previous slide, swipe RIGHT → next slide.
+    // Standard direction: swipe RIGHT → previous slide, swipe LEFT → next slide.
     if (deltaX > swipeThreshold || (deltaX > 0 && velocity > velocityThreshold)) {
-      if (activeIndex < count - 1) {
-        newIndex = activeIndex + 1;
-      }
-    } else if (deltaX < -swipeThreshold || (deltaX < 0 && velocity > velocityThreshold)) {
       if (activeIndex > 0) {
         newIndex = activeIndex - 1;
+      }
+    } else if (deltaX < -swipeThreshold || (deltaX < 0 && velocity > velocityThreshold)) {
+      if (activeIndex < count - 1) {
+        newIndex = activeIndex + 1;
       }
     }
 
@@ -185,13 +183,13 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      if (activeIndex < count - 1) {
-        onChange(activeIndex + 1);
+      if (activeIndex > 0) {
+        onChange(activeIndex - 1);
       }
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
-      if (activeIndex > 0) {
-        onChange(activeIndex - 1);
+      if (activeIndex < count - 1) {
+        onChange(activeIndex + 1);
       }
     }
   };

@@ -380,9 +380,12 @@ export default function HomeView() {
                         )}
                       </div>
 
-                      <h3 className="text-white text-2xl font-extrabold tracking-tight truncate mt-6">
-                        {content.verseReference || 'Reference'} {content.version || 'KJV'}
-                      </h3>
+                      <div className="mt-6">
+                        <h4 className="text-white/80 text-xs font-bold uppercase tracking-wider mb-0.5">Daily Verse</h4>
+                        <h3 className="text-white text-lg font-bold tracking-tight truncate">
+                          {content.verseReference || 'Reference'} {content.version || 'KJV'}
+                        </h3>
+                      </div>
                     </div>
 
                     {/* Verse text — clamped to 4 lines; card height stays constant */}
@@ -406,7 +409,7 @@ export default function HomeView() {
                       />
                       <button
                         onClick={(e) => { e.stopPropagation(); handleCommentClick(content._id, 'daily-verse'); }}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                        className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                           <MessageCircle className="size-4" />
@@ -415,7 +418,7 @@ export default function HomeView() {
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleShare(content, 'daily-verse'); }}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                        className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                           <Forward className="size-4" />
@@ -428,7 +431,7 @@ export default function HomeView() {
                             e.stopPropagation();
                             setOpenKebabIndex(openKebabIndex === index ? null : index);
                           }}
-                          className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                          className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
                         >
                           <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                             <MoreVertical className="size-4" />
@@ -534,7 +537,7 @@ export default function HomeView() {
                       />
                       <button
                         onClick={() => handleCommentClick(content._id, 'daily-devotion')}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                        className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                           <MessageCircle className="size-4" />

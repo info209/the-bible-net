@@ -189,17 +189,20 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
 
       const newDesired: LikeStatus = current.desiredState === 'liked' ? 'unliked' : 'liked';
 
-      return {
+      const newState = {
         ...prev,
         [key]: {
           ...current,
           desiredState: newDesired
         }
       };
+
+      // Keep ref perfectly in sync for the immediately following setTimeout
+      likesRef.current = newState;
+      return newState;
     });
 
     // Run the synchronization loop in the background
-    // We defer the execution slightly so the react state updates first and gets captured in likesRef
     setTimeout(() => {
       runSync(contentId, contentType);
     }, 0);

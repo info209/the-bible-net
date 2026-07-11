@@ -73,7 +73,7 @@ export function LikeButton({
   return (
     <button
       onClick={handlePress}
-      className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all"
+      className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
     >
       <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full flex items-center justify-center">
         <motion.div animate={iconControls} className="flex items-center justify-center">
