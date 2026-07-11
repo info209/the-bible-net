@@ -13,6 +13,7 @@ import { useSavedItems } from '@/lib/useSavedItems';
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
 import { MdOutlineLibraryBooks } from 'react-icons/md';
+import ModalHeader from './ModalHeader';
 import { BiBible } from 'react-icons/bi';
 import { LuLibraryBig } from 'react-icons/lu';
 import { motion, AnimatePresence, Variants } from 'framer-motion';
@@ -1712,14 +1713,15 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         {showVersionSelector && (
           <div className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-sm" onClick={() => setShowVersionSelector(false)}>
             <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-2xl rounded-lg w-[92vw] max-w-[360px] max-h-[calc(100dvh-160px)] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
-              <div className="flex justify-end p-4">
-                <button onClick={() => setShowVersionSelector(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
-                  <X className="size-6 text-[#31393a]/60" />
-                </button>
-              </div>
+              <ModalHeader
+                title="Bible Version Selection"
+                onClose={() => setShowVersionSelector(false)}
+                textCol="#31393a"
+                borderCol="rgba(49, 57, 58, 0.1)"
+              />
 
-              <div className="flex-1 overflow-y-auto custom-scrollbar px-4 pb-4">
-                <h4 className="font-bold text-[var(--color-accent-rose)] mb-4 text-sm">Bible Versions</h4>
+              <div className="flex-1 overflow-y-auto custom-scrollbar px-4 py-4">
+
                 <div className="space-y-4">
                   {['English', 'Telugu', 'Hindi'].map(lang => (
                     <div key={lang} className="space-y-2">

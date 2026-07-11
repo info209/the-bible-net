@@ -23,6 +23,7 @@ import { useAmbientMusicStore } from '@/stores/useAmbientMusicStore';
 
 import FontsSettingsModal, { ThemeType, TransitionType } from './FontsSettingsModal';
 import AudioFloatingPlayer from './AudioFloatingPlayer';
+import ModalHeader from './ModalHeader';
 import { toast } from '@/context/ToastContext';
 
 const VERSE_ACTION_MENU_OPEN_DELAY = 1800;
@@ -2085,20 +2086,17 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button */}
-            <div className="flex justify-end p-4">
-              <button
-                onClick={() => setShowVersionSelector(false)}
-                className="p-2 rounded-full transition-colors"
-                style={{ color: currentTheme.text }}
-              >
-                <X className="size-6 opacity-60" />
-              </button>
-            </div>
+            {/* Header */}
+            <ModalHeader
+              title="Bible Version Selection"
+              onClose={() => setShowVersionSelector(false)}
+              textCol={currentTheme.text}
+              borderCol={selectedTheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : selectedTheme === 'sepia' || selectedTheme === 'cream' ? 'rgba(92, 74, 58, 0.15)' : 'rgba(0,0,0,0.1)'}
+              isDark={selectedTheme === 'dark'}
+            />
 
             {/* Content */}
-            <div className="flex-1 overflow-y-auto px-4 pb-4">
-              <h4 className="font-bold mb-4 text-sm" style={{ color: currentTheme.verseNumber }}>Bible Versions</h4>
+            <div className="flex-1 overflow-y-auto px-4 py-4">
               <div className="space-y-3">
                 {/* English Section */}
                 <div className="space-y-2">

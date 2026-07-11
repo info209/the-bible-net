@@ -1,5 +1,6 @@
 import { X, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import ModalHeader from './ModalHeader';
 
 interface CompareVersionsModalProps {
   isOpen: boolean;
@@ -94,18 +95,13 @@ export default function CompareVersionsModal({
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: borderCol }}>
-            <h2 className="text-xl font-semibold" style={{ color: textCol }}>
-              Compare Versions
-            </h2>
-            <button
-              onClick={onClose}
-              className="p-2 rounded-full transition-colors"
-              style={{ color: textCol, hoverBg: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)' } as any}
-            >
-              <X className="size-5" />
-            </button>
-          </div>
+          <ModalHeader
+            title="Compare Versions"
+            onClose={onClose}
+            textCol={textCol}
+            borderCol={borderCol}
+            isDark={isDark}
+          />
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-4">
