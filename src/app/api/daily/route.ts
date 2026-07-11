@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/db';
 import { auth } from '@/lib/auth';
 import { getSessionWithType } from '@/lib/auth-helpers';
 import { Like } from '@/models/Like';
+import { ContentEngagement } from '@/models/ContentEngagement';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -74,10 +75,20 @@ export async function GET(request: NextRequest) {
             });
         }
 
+        // Fetch share counts
+        const dates = recentContent.map(c => c.date);
+        const engagements = await ContentEngagement.find({ date: { $in: dates } }).lean();
+
+        const getShareCount = (date: string, type: string) => {
+            return engagements.find((e: any) => e.date === date && e.type === type)?.shareCount || 0;
+        };
+
         const enrichedContent = recentContent.map(item => ({
             ...item,
             isVerseLiked: likedVerseIds.has(item._id.toString()),
-            isDevotionLiked: likedDevotionIds.has(item._id.toString())
+            isDevotionLiked: likedDevotionIds.has(item._id.toString()),
+            verseShareCount: getShareCount(item.date, 'dailyVerse'),
+            devotionShareCount: getShareCount(item.date, 'dailyDevotional')
         }));
 
         return NextResponse.json({ data: enrichedContent });

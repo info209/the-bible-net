@@ -40,6 +40,7 @@ export default function HomeView() {
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [submittingComment, setSubmittingComment] = useState(false);
+  const [sharingStates, setSharingStates] = useState<Set<string>>(new Set());
 
   const [greeting, setGreeting] = useState('Shalom');
 
@@ -173,20 +174,66 @@ export default function HomeView() {
   };
 
   const handleShare = async (content: any, type: 'daily-verse' | 'daily-devotion') => {
+    const shareKey = `${content._id}-${type}`;
+    if (sharingStates.has(shareKey)) return;
+
     const url = `${window.location.origin}/share/${type.replace('daily-', '')}/${content._id}`;
     const text = type === 'daily-verse'
       ? `Check out this verse: ${content.verseReference} - "${content.verse}"`
       : `Check out this devotional: "${content.devotionalTitle}"`;
 
+    let sharedSuccessfully = false;
+
     if (navigator.share) {
       try {
         await navigator.share({ title: 'The Bible Net', text, url });
+        sharedSuccessfully = true;
       } catch (error) {
         console.log('Share failed', error);
       }
     } else {
       navigator.clipboard.writeText(`${text} ${url}`);
       toast.success('Link copied to clipboard!');
+      sharedSuccessfully = true;
+    }
+
+    if (sharedSuccessfully) {
+      try {
+        setSharingStates(prev => new Set(prev).add(shareKey));
+        const res = await fetch('/api/interactions/share', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ date: content.date, type })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          queryClient.setQueryData(['daily-content-list', preferredVersion, todayStr], (prev: any[] | undefined) => {
+            if (!prev) return prev;
+            return prev.map(c => {
+              if (c._id === content._id) {
+                const countField = type === 'daily-verse' ? 'verseShareCount' : 'devotionShareCount';
+                const updatedItem = {
+                  ...c,
+                  [countField]: data.shareCount
+                };
+                queryClient.setQueryData(['daily-verse', c.date, preferredVersion], updatedItem);
+                queryClient.setQueryData(['daily-devotion', c.date, preferredVersion], updatedItem);
+                return updatedItem;
+              }
+              return c;
+            });
+          });
+        }
+      } catch (error) {
+        console.error('Error tracking share:', error);
+      } finally {
+        setSharingStates(prev => {
+          const next = new Set(prev);
+          next.delete(shareKey);
+          return next;
+        });
+      }
     }
   };
 
@@ -418,12 +465,13 @@ export default function HomeView() {
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleShare(content, 'daily-verse'); }}
-                        className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
+                        className={`flex flex-col items-center space-y-1 text-white transition-all ${sharingStates.has(`${content._id}-daily-verse`) ? 'opacity-50 cursor-not-allowed' : 'md:hover:scale-110 active:scale-95'}`}
+                        disabled={sharingStates.has(`${content._id}-daily-verse`)}
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                           <Forward className="size-4" />
                         </div>
-                        <span className="text-xs">Share</span>
+                        <span className="text-xs">{content.verseShareCount > 0 ? content.verseShareCount : 'Share'}</span>
                       </button>
                       <div className="relative">
                         <button
@@ -546,12 +594,13 @@ export default function HomeView() {
                       </button>
                       <button
                         onClick={() => handleShare(content, 'daily-devotion')}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
+                        className={`flex flex-col items-center space-y-1 text-white transition-transform ${sharingStates.has(`${content._id}-daily-devotion`) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}`}
+                        disabled={sharingStates.has(`${content._id}-daily-devotion`)}
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
                           <Forward className="size-4" />
                         </div>
-                        <span className="text-xs">Share</span>
+                        <span className="text-xs">{content.devotionShareCount > 0 ? content.devotionShareCount : 'Share'}</span>
                       </button>
                       <button
                         onClick={() => openDetailModal(index, 'devotional')}

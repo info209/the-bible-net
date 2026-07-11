@@ -23,6 +23,8 @@ interface IDailyContent {
     isDevotionLiked?: boolean;
     devotionCommentCount?: number;
     verseCommentCount?: number;
+    verseShareCount?: number;
+    devotionShareCount?: number;
 }
 
 interface DailyDetailModalProps {
@@ -333,7 +335,7 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                                 <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
                                                     <Forward className="size-5" />
                                                 </div>
-                                                <span className="text-xs">Share</span>
+                                                <span className="text-xs">{currentContent.verseShareCount && currentContent.verseShareCount > 0 ? currentContent.verseShareCount : 'Share'}</span>
                                             </button>
                                             <div className="relative">
                                                 <button onClick={(e) => { e.stopPropagation(); setOpenKebab(!openKebab); }} className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform">
@@ -437,7 +439,7 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                                     <div className="bg-white/20 backdrop-blur-sm p-3 rounded-full">
                                                         <Forward className="size-5" />
                                                     </div>
-                                                    <span className="text-xs">Share</span>
+                                                    <span className="text-xs">{currentContent.devotionShareCount && currentContent.devotionShareCount > 0 ? currentContent.devotionShareCount : 'Share'}</span>
                                                 </button>
                                             </div>
                                             <button
