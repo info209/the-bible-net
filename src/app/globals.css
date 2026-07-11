@@ -379,8 +379,8 @@ html, body, #__next {
   .glass-teal {
     background: linear-gradient(
       135deg,
-      rgba(65, 173, 176, 0.89) 0%,
-      rgba(65, 173, 176, 0.83) 100%
+      rgba(29, 158, 163, 0.89) 0%,
+      rgba(29, 158, 163, 0.83) 100%
     );
     backdrop-filter: blur(200px) saturate(180%) brightness(1.12);
     -webkit-backdrop-filter: blur(200px) saturate(180%) brightness(1.12);
