@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, Heart, MessageCircle, Forward, Pause, X, Send, MoreVertical, Maximize2 } from 'lucide-react';
+import { Play, Heart, MessageCircle, Forward, Pause, X, Send, MoreVertical, Maximize2, Check } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -98,6 +98,26 @@ export default function HomeView() {
   const [initialModalIndex, setInitialModalIndex] = useState(0);
   const [initialModalSection, setInitialModalSection] = useState<'verse' | 'devotional' | 'prayer' | undefined>();
   const [modalContents, setModalContents] = useState<any[]>([]);
+
+  // Local cache of devotional progress by date — updated optimistically when modal fires onProgressChange
+  const [devotionalProgressCache, setDevotionalProgressCache] = useState<Record<string, 'INCOMPLETE' | 'IN_PROGRESS' | 'COMPLETED'>>({});
+
+  // Seed cache from API data whenever content refreshes
+  useEffect(() => {
+    if (!dailyContentData) return;
+    const seed: Record<string, 'INCOMPLETE' | 'IN_PROGRESS' | 'COMPLETED'> = {};
+    for (const item of dailyContentData) {
+      if (item.devotionalProgress?.status) {
+        seed[item.date] = item.devotionalProgress.status;
+      }
+    }
+    setDevotionalProgressCache(prev => ({ ...seed, ...prev }));
+  }, [dailyContentData]);
+
+  // Called by DailyDetailModal when user completes a devotional — updates Home carousel badge immediately
+  const handleProgressChange = (date: string, status: 'INCOMPLETE' | 'IN_PROGRESS' | 'COMPLETED') => {
+    setDevotionalProgressCache(prev => ({ ...prev, [date]: status }));
+  };
 
   const openDetailModal = (index: number, section: 'verse' | 'devotional' | 'prayer') => {
     if (section === 'verse') {
@@ -542,6 +562,14 @@ export default function HomeView() {
                   {/* Consistent dark overlay */}
                   <div className="absolute inset-0 bg-black/55" />
 
+                  {/* Done badge — visible when devotional is completed */}
+                  {devotionalProgressCache[content.date] === 'COMPLETED' && (
+                    <div className="absolute top-3 right-3 z-20 flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/85 backdrop-blur-sm text-white text-xs font-semibold shadow-lg">
+                      <Check className="size-3" />
+                      Done
+                    </div>
+                  )}
+
                   <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0 pr-2">
@@ -876,6 +904,7 @@ export default function HomeView() {
         onCommentClick={handleCommentClick}
         onShareClick={handleShare}
         onReadFullChapter={(content) => handleReadFullChapter(content, { stopPropagation: () => {} } as any)}
+        onProgressChange={handleProgressChange}
       />
 
       {/* Comment Modal - Restored */}

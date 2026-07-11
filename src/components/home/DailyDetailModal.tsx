@@ -1,8 +1,31 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Play, Pause, Forward, MessageCircle, MoreVertical } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Forward, MessageCircle, MoreVertical, CheckCircle2, CheckCheck } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LikeButton } from './LikeButton';
+import { useSession } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
+import { toast } from '@/context/ToastContext';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Minimum seconds the devotional must be open before auto-completion fires */
+const AUTO_COMPLETE_TIME_GATE_SECONDS = 30;
+
+/** Fraction of scroll height that must be reached to trigger auto-completion */
+const AUTO_COMPLETE_SCROLL_THRESHOLD = 0.90;
+
+const CONTENT_TYPE = 'dailyDevotional';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+type ProgressStatus = 'INCOMPLETE' | 'IN_PROGRESS' | 'COMPLETED';
+
+interface DevotionalProgress {
+    status: ProgressStatus;
+    startedAt?: string | null;
+    completedAt?: string | null;
+}
 
 interface IDailyContent {
     _id?: string;
@@ -25,6 +48,8 @@ interface IDailyContent {
     verseCommentCount?: number;
     verseShareCount?: number;
     devotionShareCount?: number;
+    /** Progress enriched by /api/daily */
+    devotionalProgress?: DevotionalProgress;
 }
 
 interface DailyDetailModalProps {
@@ -36,20 +61,119 @@ interface DailyDetailModalProps {
     onCommentClick?: (contentId: string, type: 'daily-verse' | 'daily-devotion') => void;
     onShareClick?: (content: any, type: 'daily-verse' | 'daily-devotion') => void;
     onReadFullChapter?: (content: any) => void;
+    /** Callback so HomeView can update its local cache after progress changes */
+    onProgressChange?: (date: string, status: ProgressStatus) => void;
 }
 
-export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, initialSection, onCommentClick, onShareClick, onReadFullChapter }: DailyDetailModalProps) {
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+const getOrdinalSuffix = (day: number): string => {
+    if (day >= 11 && day <= 13) return 'th';
+    switch (day % 10) {
+        case 1: return 'st';
+        case 2: return 'nd';
+        case 3: return 'rd';
+        default: return 'th';
+    }
+};
+
+const formatVerseLabel = (dateStr: string): string => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateStr === todayStr) return 'Verse of the Day';
+    const d = new Date(dateStr);
+    const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    const day = d.getUTCDate();
+    const month = d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+    return `${dayOfWeek}, ${day}${getOrdinalSuffix(day)} ${month}`;
+};
+
+const formatDevotionLabel = (dateStr: string): string => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateStr === todayStr) return 'Devotion of the Day';
+    const d = new Date(dateStr);
+    const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    const day = d.getUTCDate();
+    const month = d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+    return `${dayOfWeek}, ${day}${getOrdinalSuffix(day)} ${month}`;
+};
+
+const getRelativeLabel = (dateStr: string) => {
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateStr === todayStr) return 'Today';
+    const contentDate = new Date(dateStr);
+    const today = new Date(todayStr);
+    const diffTime = Math.abs(today.getTime() - contentDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) return 'Yesterday';
+    return `${diffDays} Days Ago`;
+};
+
+// ─── Component ────────────────────────────────────────────────────────────────
+
+export function DailyDetailModal({
+    isOpen,
+    onClose,
+    contents,
+    initialIndex,
+    initialSection,
+    onCommentClick,
+    onShareClick,
+    onReadFullChapter,
+    onProgressChange,
+}: DailyDetailModalProps) {
+    const { data: session } = useSession();
+    const router = useRouter();
+    const isAuthenticated = !!session?.user;
+
     const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
     const [isSpeaking, setIsSpeaking] = React.useState(false);
     const [isPaused, setIsPaused] = React.useState(false);
     const [openKebab, setOpenKebab] = React.useState(false);
+
+    // Progress state — keyed by date so switching days works correctly
+    const [progressByDate, setProgressByDate] = React.useState<Record<string, ProgressStatus>>({});
+    const [progressLoading, setProgressLoading] = React.useState(false);
+
     const scrollRef = useRef<HTMLDivElement>(null);
-    
+    const openedAtRef = useRef<number>(0);
+    const hasAutoCompletedRef = useRef<Record<string, boolean>>({});
+
+    const currentContent = contents[currentIndex];
+    const currentDate = currentContent?.date;
+    const currentProgress = progressByDate[currentDate] ?? currentContent?.devotionalProgress?.status ?? 'INCOMPLETE';
+
+    // ── Derived: weekly completion count ─────────────────────────────────────
+    const weeklyCompletedCount = React.useMemo(() => {
+        let count = 0;
+        for (const content of contents) {
+            const status = progressByDate[content.date] ?? content.devotionalProgress?.status ?? 'INCOMPLETE';
+            if (status === 'COMPLETED') count++;
+        }
+        return count;
+    }, [contents, progressByDate]);
+
+    // ── Hydrate progress from API data ────────────────────────────────────────
+    useEffect(() => {
+        if (!isOpen || initialSection !== 'devotional') return;
+
+        // Seed from enriched API data (instant, no extra request)
+        const seed: Record<string, ProgressStatus> = {};
+        for (const c of contents) {
+            if (c.devotionalProgress?.status) {
+                seed[c.date] = c.devotionalProgress.status;
+            }
+        }
+        if (Object.keys(seed).length > 0) {
+            setProgressByDate(prev => ({ ...seed, ...prev }));
+        }
+    }, [isOpen, initialSection, contents]);
+
+    // ── Reset scroll + timers when switching day or opening ──────────────────
     useEffect(() => {
         if (isOpen) {
             setCurrentIndex(initialIndex);
-            
-            // Allow DOM to render, then scroll to top cleanly
+            openedAtRef.current = Date.now();
+
             setTimeout(() => {
                 if (scrollRef.current) {
                     const scrollContainer = scrollRef.current.querySelector('[data-radix-scroll-area-viewport]');
@@ -61,9 +185,76 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
         }
     }, [isOpen, initialIndex, initialSection]);
 
-    const currentContent = contents[currentIndex];
+    // Reset timer when switching days in devotional view
+    useEffect(() => {
+        openedAtRef.current = Date.now();
+    }, [currentIndex]);
 
-    const getNarrationText = React.useCallback(() => {
+    // ── Progress API call ─────────────────────────────────────────────────────
+    const updateProgress = useCallback(
+        async (date: string, newStatus: ProgressStatus) => {
+            if (!isAuthenticated || !date) return;
+
+            // Prevent regression
+            const current = progressByDate[date] ?? 'INCOMPLETE';
+            const rank: Record<ProgressStatus, number> = { INCOMPLETE: 0, IN_PROGRESS: 1, COMPLETED: 2 };
+            if (rank[newStatus] <= rank[current] && current === newStatus) return;
+            if (rank[newStatus] < rank[current]) return;
+
+            // Optimistic update
+            setProgressByDate(prev => ({ ...prev, [date]: newStatus }));
+            onProgressChange?.(date, newStatus);
+
+            try {
+                const res = await fetch('/api/user/content-progress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contentType: CONTENT_TYPE, date, status: newStatus }),
+                });
+                if (!res.ok) {
+                    console.error('[progress update] Server responded with', res.status);
+                    // Silently keep optimistic state — better UX than reverting
+                }
+            } catch (err) {
+                console.error('[progress update] Network error:', err);
+                // Silently keep optimistic state
+            }
+        },
+        [isAuthenticated, progressByDate, onProgressChange]
+    );
+
+    // ── Scroll-based auto-completion ──────────────────────────────────────────
+    useEffect(() => {
+        if (!isOpen || initialSection !== 'devotional') return;
+
+        const scrollContainer = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (!scrollContainer) return;
+
+        const handleScroll = () => {
+            const date = currentDate;
+            if (!date) return;
+            if (progressByDate[date] === 'COMPLETED') return;
+            if (hasAutoCompletedRef.current[date]) return;
+
+            const el = scrollContainer as HTMLElement;
+            const scrolledFraction = (el.scrollTop + el.clientHeight) / (el.scrollHeight || 1);
+            const elapsedSeconds = (Date.now() - openedAtRef.current) / 1000;
+
+            if (
+                scrolledFraction >= AUTO_COMPLETE_SCROLL_THRESHOLD &&
+                elapsedSeconds >= AUTO_COMPLETE_TIME_GATE_SECONDS
+            ) {
+                hasAutoCompletedRef.current[date] = true;
+                updateProgress(date, 'COMPLETED');
+            }
+        };
+
+        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        return () => scrollContainer.removeEventListener('scroll', handleScroll);
+    }, [isOpen, initialSection, currentDate, progressByDate, updateProgress]);
+
+    // ── Speech synthesis ──────────────────────────────────────────────────────
+    const getNarrationText = useCallback(() => {
         if (!currentContent) return '';
         if (initialSection === 'verse') {
             const parts = ['Daily Verse'];
@@ -88,9 +279,7 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
             }
             if (currentContent.prayerContent) {
                 parts.push('Daily Prayer');
-                if (currentContent.prayerTitle) {
-                    parts.push(currentContent.prayerTitle);
-                }
+                if (currentContent.prayerTitle) parts.push(currentContent.prayerTitle);
                 parts.push(currentContent.prayerContent);
             }
             return parts.join('. ');
@@ -98,7 +287,7 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
         return '';
     }, [currentContent, initialSection]);
 
-    const stopNarration = React.useCallback(() => {
+    const stopNarration = useCallback(() => {
         if (typeof window !== 'undefined' && window.speechSynthesis) {
             window.speechSynthesis.cancel();
         }
@@ -108,7 +297,6 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
 
     const handlePlayPause = () => {
         if (typeof window === 'undefined' || !window.speechSynthesis) return;
-
         const synth = window.speechSynthesis;
 
         if (isSpeaking) {
@@ -120,13 +308,21 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                 setIsPaused(true);
             }
         } else {
-            // Cancel any active speech first
             synth.cancel();
-
             const textToSpeak = getNarrationText();
             if (!textToSpeak) return;
 
             const utterance = new SpeechSynthesisUtterance(textToSpeak);
+
+            utterance.onstart = () => {
+                // Audio actually started — transition INCOMPLETE → IN_PROGRESS
+                if (initialSection === 'devotional' && currentDate) {
+                    const current = progressByDate[currentDate] ?? currentContent?.devotionalProgress?.status ?? 'INCOMPLETE';
+                    if (current === 'INCOMPLETE') {
+                        updateProgress(currentDate, 'IN_PROGRESS');
+                    }
+                }
+            };
 
             utterance.onend = () => {
                 setIsSpeaking(false);
@@ -134,6 +330,7 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
             };
 
             utterance.onerror = () => {
+                // Playback failed — do NOT transition to IN_PROGRESS
                 setIsSpeaking(false);
                 setIsPaused(false);
             };
@@ -144,19 +341,33 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
         }
     };
 
+    // ── Complete button handler ───────────────────────────────────────────────
+    const handleCompleteDevotional = useCallback(() => {
+        if (!isAuthenticated) {
+            // Show login prompt (same pattern as verse highlight menu)
+            toast.info('Sign in to track your devotional progress');
+            setTimeout(() => {
+                router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`);
+            }, 800);
+            return;
+        }
+
+        if (!currentDate) return;
+        if (currentProgress === 'COMPLETED') return; // already done — idempotent guard
+
+        updateProgress(currentDate, 'COMPLETED');
+        toast.success('Devotional completed! Keep it up 🙏');
+    }, [isAuthenticated, currentDate, currentProgress, updateProgress, router]);
+
     // Stop speaking when day, content, or section changes
     useEffect(() => {
         stopNarration();
     }, [currentIndex, initialSection, stopNarration]);
 
-    // Stop speaking when the modal is closed
     useEffect(() => {
-        if (!isOpen) {
-            stopNarration();
-        }
+        if (!isOpen) stopNarration();
     }, [isOpen, stopNarration]);
 
-    // Cleanup on unmount
     useEffect(() => {
         return () => {
             if (typeof window !== 'undefined' && window.speechSynthesis) {
@@ -166,39 +377,8 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
     }, []);
 
     if (!isOpen || contents.length === 0) return null;
-    
-    const getOrdinalSuffix = (day: number): string => {
-        if (day >= 11 && day <= 13) return 'th';
-        switch (day % 10) {
-            case 1: return 'st';
-            case 2: return 'nd';
-            case 3: return 'rd';
-            default: return 'th';
-        }
-    };
 
-    const formatVerseLabel = (dateStr: string): string => {
-        const todayStr = new Date().toISOString().split('T')[0];
-        if (dateStr === todayStr) return 'Verse of the Day';
-        const d = new Date(dateStr);
-        const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
-        const day = d.getUTCDate();
-        const month = d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
-        return `${dayOfWeek}, ${day}${getOrdinalSuffix(day)} ${month}`;
-    };
-    
-    const getRelativeLabel = (dateStr: string) => {
-        const todayStr = new Date().toISOString().split('T')[0];
-        if (dateStr === todayStr) return 'Today';
-        
-        const contentDate = new Date(dateStr);
-        const today = new Date(todayStr);
-        const diffTime = Math.abs(today.getTime() - contentDate.getTime());
-        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
-        if (diffDays === 1) return 'Yesterday';
-        return `${diffDays} Days Ago`;
-    };
+    // ── Render ────────────────────────────────────────────────────────────────
 
     return (
         <AnimatePresence>
@@ -211,12 +391,12 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
             >
                 {/* Dynamic Background Image */}
                 {initialSection === 'devotional' && currentContent.devotionalBackgroundImage ? (
-                    <div 
+                    <div
                         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700"
                         style={{ backgroundImage: `url(${currentContent.devotionalBackgroundImage})` }}
                     />
                 ) : initialSection === 'verse' && currentContent.backgroundImage ? (
-                    <div 
+                    <div
                         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700"
                         style={{ backgroundImage: `url(${currentContent.backgroundImage})` }}
                     />
@@ -235,7 +415,7 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                     >
                         <ArrowLeft className="size-6" />
                     </button>
-                    
+
                     <div className="text-center flex-1">
                         <h2 className="text-white font-bold text-lg">{getRelativeLabel(currentContent.date)}</h2>
                         <p className="text-white/60 text-xs">{currentContent.date}</p>
@@ -244,8 +424,8 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                     <button
                         onClick={handlePlayPause}
                         className={`p-2 rounded-full shadow-sm text-white transition-all flex items-center justify-center ${
-                            isSpeaking && !isPaused 
-                            ? 'bg-teal-500 hover:bg-teal-600 animate-pulse scale-105 shadow-teal-500/20' 
+                            isSpeaking && !isPaused
+                            ? 'bg-teal-500 hover:bg-teal-600 animate-pulse scale-105 shadow-teal-500/20'
                             : 'bg-white/20 hover:bg-white/30'
                         }`}
                         title={isSpeaking ? (isPaused ? 'Resume Narration' : 'Pause Narration') : 'Start Narration'}
@@ -266,8 +446,8 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                             key={item.date}
                             onClick={() => setCurrentIndex(index)}
                             className={`snap-center shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                                currentIndex === index 
-                                ? 'bg-white text-slate-900 shadow-md scale-105' 
+                                currentIndex === index
+                                ? 'bg-white text-slate-900 shadow-md scale-105'
                                 : 'bg-white/20 text-white hover:bg-white/30'
                             }`}
                         >
@@ -279,8 +459,8 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                 {/* Content Sections */}
                 <ScrollArea className="relative z-10 flex-1 px-4 sm:px-8 pb-12 mt-4" ref={scrollRef}>
                     <div className="max-w-2xl mx-auto flex flex-col space-y-12 py-8">
-                        
-                        {/* Section 1: Daily Verse */}
+
+                        {/* ─── Section 1: Daily Verse ─────────────────────────────────────── */}
                         {initialSection === 'verse' && (
                             <div id="section-verse" className="flex flex-col space-y-2">
                                 {currentContent.verse ? (
@@ -290,7 +470,7 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                                 <p className="text-white/90 text-[17px] font-semibold mb-3">
                                                     {formatVerseLabel(currentContent.date)}
                                                 </p>
-                                                
+
                                                 {/* Centered Pagination Dots */}
                                                 {contents.length > 1 && (
                                                     <div className="flex justify-center space-x-2 mb-3">
@@ -313,9 +493,9 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                                 {currentContent.verseReference || 'Reference'} {(currentContent as any).version || 'KJV'}
                                             </h3>
                                         </div>
-                                        
+
                                         <p className="text-white text-2xl md:text-3xl leading-relaxed font-serif italic text-left pl-2 drop-shadow-md w-full mt-8">
-                                            "{currentContent.verse}"
+                                            &ldquo;{currentContent.verse}&rdquo;
                                         </p>
                                         <div className="flex items-center justify-start gap-6 pt-10">
                                             <LikeButton
@@ -360,37 +540,62 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                 ) : (
                                     <div className="text-center py-10 opacity-70">
                                         <p className="text-white/70 text-xs mb-2 uppercase tracking-widest font-bold">Daily Verse</p>
-                                        <p className="text-white text-lg">Today's verse will be available soon.</p>
+                                        <p className="text-white text-lg">Today&apos;s verse will be available soon.</p>
                                     </div>
                                 )}
                             </div>
                         )}
 
-                        {/* Section 2: Daily Devotional - Decoupled & Restructured Layout */}
+                        {/* ─── Section 2: Daily Devotional ────────────────────────────────── */}
                         {initialSection === 'devotional' && (
                             <div id="section-devotional" className="flex flex-col space-y-12">
                                 {currentContent.devotionalContent ? (
                                     <>
-                                        {/* A. Devotional Scripture Reference Section */}
-                                        <div className="flex flex-col items-center text-center">
-                                            <p className="text-white/70 text-xs uppercase tracking-widest font-bold mb-4">Devotional Verse</p>
-                                            <h3 className="text-white text-2xl font-bold mb-4">{currentContent.devotionalVerseRef}</h3>
-                                            
-                                            {currentContent.devotionalVerseText ? (
-                                                <p className="text-white text-xl md:text-2xl leading-relaxed font-serif italic max-w-xl mx-auto drop-shadow-md">
-                                                    “{currentContent.devotionalVerseText}”
-                                                </p>
-                                            ) : (
-                                                <div className="py-4 px-6 opacity-70 border border-white/20 rounded-2xl bg-white/5 max-w-md">
-                                                    <p className="text-white/80 text-sm italic">Verse content resolution pending...</p>
+                                        {/* ── A. Aligned Header (matches Daily Verse) ─────────── */}
+                                        <div className="flex flex-col items-center text-center w-full">
+                                            {/* Title — "Devotion of the Day" or "Tuesday, 8th July" */}
+                                            <p className="text-white/90 text-[17px] font-semibold mb-3">
+                                                {formatDevotionLabel(currentContent.date)}
+                                            </p>
+
+                                            {/* Pagination dots — same position as Daily Verse */}
+                                            {contents.length > 1 && (
+                                                <div className="flex justify-center space-x-2 mb-3">
+                                                    {contents.map((_: any, displayPos: number) => {
+                                                        const dataIndex = contents.length - 1 - displayPos;
+                                                        return (
+                                                            <button
+                                                                key={displayPos}
+                                                                onClick={() => setCurrentIndex(dataIndex)}
+                                                                className={`h-2 rounded-full transition-all ${currentIndex === dataIndex ? 'w-8 bg-white' : 'w-2 bg-white/40 hover:bg-white/60'}`}
+                                                                aria-label={`Go to devotional ${dataIndex + 1}`}
+                                                            />
+                                                        );
+                                                    })}
                                                 </div>
                                             )}
+
+                                            {/* Devotional verse reference — styled as the verse reference in Daily Verse */}
+                                            {currentContent.devotionalVerseRef && (
+                                                <h3 className="text-white text-4xl md:text-5xl font-extrabold tracking-tight mt-8">
+                                                    {currentContent.devotionalVerseRef}
+                                                </h3>
+                                            )}
                                         </div>
+
+                                        {/* ── B. Devotional Scripture Verse Text ──────────────── */}
+                                        {currentContent.devotionalVerseText && (
+                                            <div className="flex flex-col items-center text-center">
+                                                <p className="text-white text-xl md:text-2xl leading-relaxed font-serif italic max-w-xl mx-auto drop-shadow-md">
+                                                    &ldquo;{currentContent.devotionalVerseText}&rdquo;
+                                                </p>
+                                            </div>
+                                        )}
 
                                         {/* Premium Divider */}
                                         <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent w-full" />
 
-                                        {/* B. Devotional Content (Title & Body) */}
+                                        {/* ── C. Devotional Content (Title & Body) ────────────── */}
                                         <div className="flex flex-col space-y-6">
                                             <p className="text-white/70 text-xs uppercase tracking-widest font-bold text-center">Devotional Reading</p>
                                             <h3 className="text-white text-3xl font-extrabold text-center tracking-tight leading-tight">{currentContent.devotionalTitle}</h3>
@@ -399,12 +604,11 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                             </p>
                                         </div>
 
-                                        {/* C. Optional Prayer Section - Only Renders and Takes Spacing If Exists */}
+                                        {/* ── D. Optional Prayer Section ──────────────────────── */}
                                         {currentContent.prayerContent && (
                                             <>
                                                 {/* Premium Divider */}
                                                 <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent w-full" />
-
                                                 <div id="section-prayer" className="flex flex-col space-y-6">
                                                     <p className="text-white/70 text-xs uppercase tracking-widest font-bold text-center">Daily Prayer</p>
                                                     {currentContent.prayerTitle && (
@@ -419,8 +623,46 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                             </>
                                         )}
 
-                                        {/* D. Complete Button Placement Placeholder */}
-                                        <div className="pt-8 pb-16 flex flex-col items-center justify-center gap-8 w-full max-w-md mx-auto">
+                                        {/* ── E. Bottom CTA Area ───────────────────────────────── */}
+                                        <div className="pt-8 pb-16 flex flex-col items-center justify-center gap-6 w-full max-w-md mx-auto">
+
+                                            {/* Weekly Progress Indicator */}
+                                            <div className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15">
+                                                <div>
+                                                    <p className="text-white/60 text-xs uppercase tracking-widest font-semibold mb-0.5">Weekly Progress</p>
+                                                    <p className="text-white font-bold text-base">
+                                                        {weeklyCompletedCount} of {contents.length} Completed
+                                                    </p>
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    {contents.map((c: IDailyContent) => {
+                                                        const s = progressByDate[c.date] ?? c.devotionalProgress?.status ?? 'INCOMPLETE';
+                                                        return (
+                                                            <div
+                                                                key={c.date}
+                                                                className={`h-2 w-2 rounded-full transition-all ${
+                                                                    s === 'COMPLETED'
+                                                                        ? 'bg-emerald-400'
+                                                                        : s === 'IN_PROGRESS'
+                                                                        ? 'bg-amber-400'
+                                                                        : 'bg-white/25'
+                                                                }`}
+                                                                title={s}
+                                                            />
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+
+                                            {/* Completed Badge — shown only when COMPLETED */}
+                                            {currentProgress === 'COMPLETED' && (
+                                                <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 backdrop-blur-sm w-full justify-center">
+                                                    <CheckCircle2 className="size-5 text-emerald-400 flex-shrink-0" />
+                                                    <span className="text-emerald-300 text-sm font-semibold tracking-wide">Devotional Completed</span>
+                                                </div>
+                                            )}
+
+                                            {/* Social actions row */}
                                             <div className="flex items-center justify-center gap-6 w-full">
                                                 <LikeButton
                                                     contentId={currentContent._id || ''}
@@ -442,11 +684,26 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                                     <span className="text-xs">{currentContent.devotionShareCount && currentContent.devotionShareCount > 0 ? currentContent.devotionShareCount : 'Share'}</span>
                                                 </button>
                                             </div>
+
+                                            {/* Complete Devotion Button */}
                                             <button
-                                                onClick={() => console.log('Devotional marked as complete')}
-                                                className="w-full py-4 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] focus:ring-2 focus:ring-teal-400/40 text-white font-extrabold rounded-2xl shadow-xl hover:shadow-2xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none"
+                                                onClick={handleCompleteDevotional}
+                                                disabled={currentProgress === 'COMPLETED'}
+                                                className={`w-full py-4 font-extrabold rounded-2xl shadow-xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none flex items-center justify-center gap-2 ${
+                                                    currentProgress === 'COMPLETED'
+                                                        ? 'bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 cursor-default'
+                                                        : 'bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] focus:ring-2 focus:ring-teal-400/40 text-white hover:shadow-2xl'
+                                                }`}
+                                                aria-label={currentProgress === 'COMPLETED' ? 'Devotional already completed' : 'Mark devotional as complete'}
                                             >
-                                                Complete Devotional
+                                                {currentProgress === 'COMPLETED' ? (
+                                                    <>
+                                                        <CheckCheck className="size-4" />
+                                                        Completed
+                                                    </>
+                                                ) : (
+                                                    'Complete Devotion'
+                                                )}
                                             </button>
                                         </div>
                                     </>
@@ -458,7 +715,7 @@ export function DailyDetailModal({ isOpen, onClose, contents, initialIndex, init
                                 )}
                             </div>
                         )}
-                        
+
                     </div>
                 </ScrollArea>
             </motion.div>

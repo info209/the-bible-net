@@ -5,6 +5,7 @@ import { auth } from '@/lib/auth';
 import { getSessionWithType } from '@/lib/auth-helpers';
 import { Like } from '@/models/Like';
 import { ContentEngagement } from '@/models/ContentEngagement';
+import { UserContentProgressRepository } from '@/repositories/userContentProgressRepository';
 import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
@@ -83,12 +84,33 @@ export async function GET(request: NextRequest) {
             return engagements.find((e: any) => e.date === date && e.type === type)?.shareCount || 0;
         };
 
+        // Fetch per-user devotional progress (authenticated users only)
+        let devotionalProgressMap: Record<string, any> = {};
+        if (userId) {
+            try {
+                devotionalProgressMap = await UserContentProgressRepository.findByUserAndDates(
+                    userId,
+                    'dailyDevotional',
+                    dates
+                );
+            } catch (err) {
+                console.error('Error fetching devotional progress:', err);
+            }
+        }
+
         const enrichedContent = recentContent.map(item => ({
             ...item,
             isVerseLiked: likedVerseIds.has(item._id.toString()),
             isDevotionLiked: likedDevotionIds.has(item._id.toString()),
             verseShareCount: getShareCount(item.date, 'dailyVerse'),
-            devotionShareCount: getShareCount(item.date, 'dailyDevotional')
+            devotionShareCount: getShareCount(item.date, 'dailyDevotional'),
+            devotionalProgress: devotionalProgressMap[item.date]
+                ? {
+                      status: devotionalProgressMap[item.date].status,
+                      startedAt: devotionalProgressMap[item.date].startedAt ?? null,
+                      completedAt: devotionalProgressMap[item.date].completedAt ?? null,
+                  }
+                : { status: 'INCOMPLETE', startedAt: null, completedAt: null },
         }));
 
         return NextResponse.json({ data: enrichedContent });
