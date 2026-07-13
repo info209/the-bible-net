@@ -15,6 +15,7 @@ import HomeSkeleton from '@/app/components/HomeSkeleton';
 import { DailyDetailModal } from './DailyDetailModal';
 import { PremiumCarousel } from './PremiumCarousel';
 import { LikeButton } from './LikeButton';
+import { Avatar, AvatarImage, AvatarFallback } from '@/app/components/ui/avatar';
 
 const getGreetingByHour = (hour: number): string => {
   if (hour >= 5 && hour < 12) return 'Good Morning';
@@ -43,6 +44,38 @@ export default function HomeView() {
   const [sharingStates, setSharingStates] = useState<Set<string>>(new Set());
 
   const [greeting, setGreeting] = useState('Shalom');
+
+  const userName = useMemo(() => {
+    return (session?.user as any)?.firstName || session?.user?.name || 'Believer';
+  }, [session]);
+
+  const initials = useMemo(() => {
+    if (!session?.user) return 'G';
+    const u = session.user as any;
+    
+    // First, try firstName/lastName
+    const first = u.firstName || '';
+    const last = u.lastName || '';
+    if (first || last) {
+      const fChar = first.trim()?.[0] || '';
+      const lChar = last.trim()?.[0] || '';
+      return `${fChar}${lChar}`.toUpperCase();
+    }
+    
+    // Fallback to name
+    const name = u.name || '';
+    if (name) {
+      const parts = name.trim().split(/\s+/);
+      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+      return parts[0][0].toUpperCase();
+    }
+    
+    // Fallback to email
+    const email = u.email || '';
+    if (email) return email[0].toUpperCase();
+    
+    return 'G';
+  }, [session]);
 
   useEffect(() => {
     const updateGreeting = () => {
@@ -352,24 +385,24 @@ export default function HomeView() {
       className="space-y-6 pt-0 pb-6 bg-transparent min-h-full px-0 overflow-hidden"
     >
       {/* Greeting - Figma Style */}
-      <div className="flex items-center space-x-3 animate-fade-in px-4 mt-0.5">
-        {/* <div className="flex items-center justify-center shrink-0">
-          <svg
-            viewBox="0 0 24 24"
-            className="w-5 h-5 text-black"
-            fill="currentColor"
-            aria-hidden="true"
-          >
-            <path d="M11 2h2v5h5v2h-5v13h-2V9H6V7h5V2z" />
-          </svg>
-        </div> */}
-        <div className="min-w-0 flex-1">
-          <h2 className="flex items-baseline space-x-1.5 min-w-0">
-            <span className="text-gray-800 text-[19px] font-bold shrink-0">{greeting},</span>
-            <span className="truncate block max-w-full text-gray-800 text-[17px] font-bold">
-              {(session?.user as any)?.firstName || session?.user?.name || 'Believer'}
-            </span>
-          </h2>
+      <div className="flex items-center gap-3.5 animate-fade-in px-4 mt-0.5">
+        <Avatar className="w-12 h-12 shrink-0">
+          {session?.user?.image && (
+            <AvatarImage
+              src={session.user.image}
+              alt={userName}
+              className="object-cover"
+            />
+          )}
+          <AvatarFallback className="bg-[#53b1b9] text-white font-bold text-lg select-none">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex flex-col min-w-0">
+          <span className="text-gray-500 text-[15px] font-normal leading-tight">{greeting},</span>
+          <span className="truncate block max-w-full text-gray-900 text-[21px] font-bold leading-tight">
+            {userName}
+          </span>
         </div>
       </div>
 
