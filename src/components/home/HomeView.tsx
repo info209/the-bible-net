@@ -440,7 +440,7 @@ export default function HomeView() {
               <div key={content._id || index} className="w-full flex-shrink-0 select-none">
                 {/* Daily Verse Card — tap anywhere to expand, consistent banner height */}
                 <div
-                  className="rounded-none p-6 shadow-xl relative overflow-hidden h-[395px] flex flex-col cursor-pointer"
+                  className="rounded-none p-6 shadow-xl relative overflow-hidden h-[355px] flex flex-col cursor-pointer"
                   style={content.backgroundImage
                     ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                     : { background: 'linear-gradient(135deg, #0B7A81 0%, #14b8a6 50%, #2dd4bf 100%)' }
@@ -582,7 +582,7 @@ export default function HomeView() {
               <div key={content._id || index} className="w-full flex-shrink-0 select-none">
                 {/* Daily Devotional Card — tap anywhere to expand, consistent banner height */}
                 <div
-                  className="rounded-none p-6 shadow-xl relative overflow-hidden h-[395px] flex flex-col cursor-pointer"
+                  className="rounded-none p-6 shadow-xl relative overflow-hidden h-[355px] flex flex-col cursor-pointer"
                   style={content.devotionalBackgroundImage
                     ? { backgroundImage: `url(${content.devotionalBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                     : content.backgroundImage
