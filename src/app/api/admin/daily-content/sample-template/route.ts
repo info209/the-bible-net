@@ -12,11 +12,18 @@ const VERSE_EXAMPLES = [
     ['2026-05-16', 'Romans', '8', '28', 'https://example.com/bg2.jpg'],
 ];
 
-const DEVOTIONAL_HEADERS = ['Date (YYYY-MM-DD)', 'Verse Reference', 'Title', 'Body', 'Background Image URL'];
+const DEVOTIONAL_HEADERS = ['Date (YYYY-MM-DD)', 'Reference', 'Title', 'Body', 'Prayer', 'Background Image URL'];
 const DEVOTIONAL_EXAMPLES = [
-    ['2026-05-14', 'Romans 8:28', 'Trust in God\'s Plan', 'God works in mysterious ways and has a purpose for every season of our lives. When we trust Him fully, even the hardest circumstances become stepping stones to His glory.', ''],
-    ['2026-05-15', 'John 3:16', 'God\'s Unconditional Love', 'The love of God is so vast and deep that He gave His only Son so that we might have life. Meditate today on how much you are loved by your Heavenly Father.', 'https://example.com/bg.jpg'],
-    ['2026-05-16', 'Philippians 4:13', 'Strength in Every Season', 'No matter what challenges you face today, remember that you can do all things through Christ who gives you strength. His power is made perfect in your weakness.', ''],
+    // Single verse
+    ['2026-05-14', 'Romans 8:28', 'Trust in God\'s Plan', 'God works in mysterious ways and has a purpose for every season of our lives. When we trust Him fully, even the hardest circumstances become stepping stones to His glory.', '', ''],
+    // Single range
+    ['2026-05-15', 'Psalms 23:1-3', 'The Lord Is My Shepherd', 'In green pastures and still waters, our Good Shepherd leads us beside quiet streams. He restores what was broken and guides our path in righteousness.', '', 'https://example.com/bg.jpg'],
+    // Multiple books (newline in cell — Excel/CSV multiline)
+    ['2026-05-16', 'John 3:16\nRomans 8:28', 'God\'s Unconditional Love', 'The love of God is so vast and deep that He gave His only Son so that we might have life. Meditate today on how much you are loved by your Heavenly Father.', 'Heavenly Father, thank You for Your unfailing love. Help us to trust Your plan for our lives. Amen.', ''],
+    // Comma shorthand (multiple verses same chapter) + another book
+    ['2026-05-17', 'Genesis 1:1-3,26\nJohn 1:1', 'In the Beginning', 'Before time began, God spoke and light filled the void. His creative word fashioned all things and His image is reflected in us — His most treasured creation.', '', ''],
+    // Multiple ranges across books
+    ['2026-05-18', 'Isaiah 40:31\nPhilippians 4:13\nJohn 15:5', 'Strength for Today', 'No matter what challenges you face today, remember that you can do all things through Christ. He is the vine and we are the branches — apart from Him we can do nothing.', 'Lord, renew my strength today as I wait on You. Amen.', ''],
 ];
 
 /**

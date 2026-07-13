@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/db';
 import { adminAuth } from '@/lib/auth/admin';
 import { UserRole } from '@/types/user';
 import { DailyContentRepository } from '@/repositories/dailyContentRepository';
+import { parseVerseReferences } from '@/utils/verseReferenceParser';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,6 +53,20 @@ export async function POST(req: NextRequest) {
         if (data.date && !data.contentYear) {
             data.contentYear = parseInt(data.date.substring(0, 4), 10);
         }
+
+        // Parse devotional verse references into normalized array
+        if (data.devotionalVerseRef && !data.devotionalVerseRefs?.length) {
+            const parsed = parseVerseReferences(data.devotionalVerseRef);
+            if (parsed.errors.length > 0) {
+                return NextResponse.json({
+                    success: false,
+                    error: `Invalid verse reference: ${parsed.errors.join('; ')}`
+                }, { status: 400 });
+            }
+            data.devotionalVerseRefs = parsed.refs;
+        }
+
+        // If devotionalVerseRefs already supplied (from new dynamic form), keep as-is
 
         const newContent = await DailyContentRepository.create(data);
         return NextResponse.json({ success: true, data: newContent });

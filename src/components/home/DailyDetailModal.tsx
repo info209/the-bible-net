@@ -34,8 +34,11 @@ interface IDailyContent {
     verseReference: string;
     devotionalTitle?: string;
     devotionalContent?: string;
+    // Legacy single-ref fields
     devotionalVerseRef?: string;
     devotionalVerseText?: string;
+    // New: multiple resolved verse blocks
+    devotionalVerseBlocks?: Array<{ ref: string; text: string }>;
     prayerTitle?: string;
     prayerContent?: string;
     backgroundImage?: string;
@@ -270,13 +273,24 @@ export function DailyDetailModal({
             return parts.join('. ');
         } else if (initialSection === 'devotional') {
             const parts = [];
-            if (currentContent.devotionalVerseRef) {
-                parts.push('Devotional Verse');
-                parts.push(currentContent.devotionalVerseRef);
+
+            // Multi-ref verse blocks (new)
+            if (currentContent.devotionalVerseBlocks && currentContent.devotionalVerseBlocks.length > 0) {
+                for (const block of currentContent.devotionalVerseBlocks) {
+                    if (block.ref) parts.push(block.ref);
+                    if (block.text) parts.push(block.text);
+                }
+            } else {
+                // Legacy fallback
+                if (currentContent.devotionalVerseRef) {
+                    parts.push('Devotional Verse');
+                    parts.push(currentContent.devotionalVerseRef);
+                }
+                if (currentContent.devotionalVerseText) {
+                    parts.push(currentContent.devotionalVerseText);
+                }
             }
-            if (currentContent.devotionalVerseText) {
-                parts.push(currentContent.devotionalVerseText);
-            }
+
             if (currentContent.devotionalTitle) {
                 parts.push('Devotional Reading');
                 parts.push(currentContent.devotionalTitle);
@@ -583,22 +597,48 @@ export function DailyDetailModal({
                                                 </div>
                                             )}
 
-                                            {/* Devotional verse reference — styled as the verse reference in Daily Verse */}
-                                            {currentContent.devotionalVerseRef && (
-                                                <h3 className="text-white text-4xl md:text-5xl font-extrabold tracking-tight mt-8">
-                                                    {currentContent.devotionalVerseRef}
-                                                </h3>
+                                            {/* ── Multi-block verse references (new) ── */}
+                                            {currentContent.devotionalVerseBlocks && currentContent.devotionalVerseBlocks.length > 0 ? (
+                                                // New: render each verse block in order
+                                                currentContent.devotionalVerseBlocks.map((block, blockIdx) => (
+                                                    <React.Fragment key={blockIdx}>
+                                                        <h3 className="text-white text-4xl md:text-5xl font-extrabold tracking-tight mt-8">
+                                                            {block.ref}
+                                                        </h3>
+                                                        {block.text && (
+                                                            <div className="flex flex-col items-center text-center mt-4">
+                                                                <p className="text-white text-xl md:text-2xl leading-relaxed font-serif italic max-w-xl mx-auto drop-shadow-md">
+                                                                    &ldquo;{block.text}&rdquo;
+                                                                </p>
+                                                            </div>
+                                                        )}
+                                                        {/* Thin divider between multiple verse blocks (not after last) */}
+                                                        {blockIdx < (currentContent.devotionalVerseBlocks?.length ?? 0) - 1 && (
+                                                            <div className="h-px bg-white/10 w-2/3 mx-auto mt-8" />
+                                                        )}
+                                                    </React.Fragment>
+                                                ))
+                                            ) : (
+                                                // Legacy fallback: single verse ref + text
+                                                <>
+                                                    {currentContent.devotionalVerseRef && (
+                                                        <h3 className="text-white text-4xl md:text-5xl font-extrabold tracking-tight mt-8">
+                                                            {currentContent.devotionalVerseRef}
+                                                        </h3>
+                                                    )}
+                                                </>
                                             )}
                                         </div>
 
-                                        {/* ── B. Devotional Scripture Verse Text ──────────────── */}
-                                        {currentContent.devotionalVerseText && (
-                                            <div className="flex flex-col items-center text-center">
-                                                <p className="text-white text-xl md:text-2xl leading-relaxed font-serif italic max-w-xl mx-auto drop-shadow-md">
-                                                    &ldquo;{currentContent.devotionalVerseText}&rdquo;
-                                                </p>
-                                            </div>
-                                        )}
+                                        {/* ── B. Legacy single verse text (shown only for old records without blocks) ── */}
+                                        {(!currentContent.devotionalVerseBlocks || currentContent.devotionalVerseBlocks.length === 0) &&
+                                            currentContent.devotionalVerseText && (
+                                                <div className="flex flex-col items-center text-center">
+                                                    <p className="text-white text-xl md:text-2xl leading-relaxed font-serif italic max-w-xl mx-auto drop-shadow-md">
+                                                        &ldquo;{currentContent.devotionalVerseText}&rdquo;
+                                                    </p>
+                                                </div>
+                                            )}
 
                                         {/* Premium Divider */}
                                         <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent w-full" />

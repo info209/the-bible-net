@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
+import { ParsedVerseRef } from '@/utils/verseReferenceParser';
 
 export interface IDailyContent extends Document {
     date: string;             // ISO format: YYYY-MM-DD (UTC)
@@ -13,7 +14,8 @@ export interface IDailyContent extends Document {
     // Daily devotional
     devotionalTitle?: string;
     devotionalContent?: string;
-    devotionalVerseRef?: string;         // e.g. "Romans 8:28"
+    devotionalVerseRef?: string;         // e.g. "Romans 8:28" — legacy single-ref (kept for backward compat)
+    devotionalVerseRefs?: ParsedVerseRef[]; // New: normalized multi-ref array; takes precedence over devotionalVerseRef when present
     devotionalBackgroundImage?: string; // Separate background for devotionals
 
     // Optional Prayer fields
@@ -72,6 +74,19 @@ const DailyContentSchema = new Schema<IDailyContent>(
         devotionalVerseRef: {
             type: String,
             trim: true,
+        },
+        // New: normalized structured verse references for devotionals
+        // Each entry mirrors ParsedVerseRef: { book, chapter, startVerse, endVerse }
+        devotionalVerseRefs: {
+            type: [
+                {
+                    book: { type: String, required: true, trim: true },
+                    chapter: { type: Number, required: true, min: 1 },
+                    startVerse: { type: Number, required: true, min: 1 },
+                    endVerse: { type: Number, required: true, min: 1 },
+                }
+            ],
+            default: undefined,
         },
         devotionalBackgroundImage: {
             type: String,

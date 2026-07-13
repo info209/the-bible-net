@@ -1,10 +1,13 @@
 "use client";
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from '@/context/ToastContext';
 import Link from 'next/link';
-import { ArrowLeft, Eye, Loader } from 'lucide-react';
+import { ArrowLeft, Eye, Loader, Plus, X, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { parseSingleReference, formatSingleRef } from '@/utils/verseReferenceParser';
+
+// ─── Types ────────────────────────────────────────────────────────────────────
 
 interface FormData {
     _id?: string;
@@ -15,11 +18,126 @@ interface FormData {
     verseReference?: string;
     devotionalTitle: string;
     devotionalContent: string;
-    devotionalVerseRef: string;
+    // Dynamic list of verse reference inputs
+    devotionalVerseRefLines: string[];
     backgroundImage: string;
     devotionalBackgroundImage: string;
+    prayerTitle: string;
+    prayerContent: string;
     isPublished: boolean;
 }
+
+// ─── Verse Reference Input List ───────────────────────────────────────────────
+
+interface VerseRefInputListProps {
+    lines: string[];
+    onChange: (lines: string[]) => void;
+}
+
+function VerseRefInputList({ lines, onChange }: VerseRefInputListProps) {
+    const inputClass =
+        'flex-1 bg-white/5 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors placeholder:text-gray-700';
+
+    const handleChange = (index: number, value: string) => {
+        const updated = [...lines];
+        updated[index] = value;
+        onChange(updated);
+    };
+
+    const handleAdd = () => {
+        onChange([...lines, '']);
+    };
+
+    const handleRemove = (index: number) => {
+        if (lines.length <= 1) {
+            onChange(['']);
+            return;
+        }
+        onChange(lines.filter((_, i) => i !== index));
+    };
+
+    return (
+        <div className="flex flex-col gap-2">
+            {lines.map((line, i) => {
+                // Per-field real-time validation
+                const trimmed = line.trim();
+                let fieldError: string | null = null;
+                let fieldValid = false;
+
+                if (trimmed) {
+                    const result = parseSingleReference(trimmed);
+                    if (result.errors.length > 0) {
+                        fieldError = result.errors[0];
+                    } else if (result.refs.length > 0) {
+                        fieldValid = true;
+                    }
+                }
+
+                return (
+                    <div key={i} className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                            <input
+                                type="text"
+                                value={line}
+                                onChange={e => handleChange(i, e.target.value)}
+                                placeholder={
+                                    i === 0
+                                        ? 'e.g. John 3:16  or  Genesis 1:13-17  or  Genesis 1:13-17,20,22'
+                                        : 'e.g. Romans 8:28'
+                                }
+                                className={`${inputClass} ${
+                                    trimmed && fieldError
+                                        ? 'border-red-500/60 focus:border-red-500'
+                                        : trimmed && fieldValid
+                                        ? 'border-emerald-500/50 focus:border-emerald-500'
+                                        : 'border-white/10 focus:border-blue-500'
+                                }`}
+                                autoComplete="off"
+                                spellCheck={false}
+                                id={`devotional-verse-ref-${i}`}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => handleRemove(i)}
+                                title="Remove this reference"
+                                className="p-2 rounded-lg text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors flex-shrink-0"
+                            >
+                                <X className="size-4" />
+                            </button>
+                        </div>
+
+                        {/* Per-field feedback */}
+                        {trimmed && fieldError && (
+                            <p className="flex items-center gap-1.5 text-xs text-red-400 pl-1">
+                                <AlertCircle className="size-3 flex-shrink-0" />
+                                {fieldError}
+                            </p>
+                        )}
+                        {trimmed && fieldValid && (
+                            <p className="flex items-center gap-1.5 text-xs text-emerald-400 pl-1">
+                                <CheckCircle2 className="size-3 flex-shrink-0" />
+                                {parseSingleReference(trimmed).refs.map(r => formatSingleRef(r)).join(', ')}
+                            </p>
+                        )}
+                    </div>
+                );
+            })}
+
+            {/* Add another reference */}
+            <button
+                type="button"
+                onClick={handleAdd}
+                className="flex items-center gap-2 px-4 py-2.5 w-full mt-1 rounded-xl border border-dashed border-white/15 text-gray-500 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all text-sm font-medium"
+                id="add-verse-reference-btn"
+            >
+                <Plus className="size-4" />
+                Add another reference
+            </button>
+        </div>
+    );
+}
+
+// ─── Main Form ────────────────────────────────────────────────────────────────
 
 function ManageForm() {
     const router = useRouter();
@@ -39,9 +157,11 @@ function ManageForm() {
         verseNumber: '',
         devotionalTitle: '',
         devotionalContent: '',
-        devotionalVerseRef: '',
+        devotionalVerseRefLines: [''],
         backgroundImage: '',
         devotionalBackgroundImage: '',
+        prayerTitle: '',
+        prayerContent: '',
         isPublished: true,
     });
 
@@ -55,6 +175,23 @@ function ManageForm() {
                 .then(res => {
                     if (res.success) {
                         const d = res.data;
+
+                        // Reconstruct verse ref lines:
+                        //   New records: derive from devotionalVerseRefs array
+                        //   Legacy records: split devotionalVerseRef by newline
+                        let verseRefLines: string[] = [''];
+                        if (d.devotionalVerseRefs && d.devotionalVerseRefs.length > 0) {
+                            // Build display strings from normalized refs
+                            const { formatSingleRef: fmt } = require('@/utils/verseReferenceParser');
+                            verseRefLines = d.devotionalVerseRefs.map((r: any) => fmt(r));
+                        } else if (d.devotionalVerseRef) {
+                            verseRefLines = d.devotionalVerseRef
+                                .split('\n')
+                                .map((l: string) => l.trim())
+                                .filter(Boolean);
+                            if (verseRefLines.length === 0) verseRefLines = [''];
+                        }
+
                         setFormData({
                             _id: d._id,
                             date: d.date,
@@ -63,9 +200,11 @@ function ManageForm() {
                             verseNumber: String(d.verseNumber || ''),
                             devotionalTitle: d.devotionalTitle || '',
                             devotionalContent: d.devotionalContent || '',
-                            devotionalVerseRef: d.devotionalVerseRef || '',
+                            devotionalVerseRefLines: verseRefLines,
                             backgroundImage: d.backgroundImage || '',
                             devotionalBackgroundImage: d.devotionalBackgroundImage || '',
+                            prayerTitle: d.prayerTitle || '',
+                            prayerContent: d.prayerContent || '',
                             isPublished: d.isPublished ?? true,
                         });
                     }
@@ -79,10 +218,6 @@ function ManageForm() {
         setPreviewing(true);
         setPreviewText(null);
         try {
-            const res = await fetch(
-                `/api/daily?days=1&version=${previewVersion}`
-            );
-            // Actually resolve inline via the Bible API
             const bibleRes = await fetch(
                 `/api/v1/bible/${previewVersion}/${encodeURIComponent(formData.verseBook)}/${formData.verseChapter}`
             );
@@ -93,7 +228,7 @@ function ManageForm() {
             } else {
                 setPreviewText('Could not resolve verse text.');
             }
-        } catch (e) {
+        } catch {
             setPreviewText('Preview failed. Check verse reference.');
         } finally {
             setPreviewing(false);
@@ -104,13 +239,50 @@ function ManageForm() {
         e.preventDefault();
         setSubmitting(true);
         try {
-            const payload = {
+            // Build the raw combined ref string (joined with newlines)
+            const rawRefString = formData.devotionalVerseRefLines
+                .map(l => l.trim())
+                .filter(Boolean)
+                .join('\n');
+
+            // Build normalized refs from each line using the parser
+            const { parseSingleReference: parseOne } = await import('@/utils/verseReferenceParser');
+            const allRefs: any[] = [];
+            const refErrors: string[] = [];
+
+            for (const line of formData.devotionalVerseRefLines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                const result = parseOne(trimmed);
+                if (result.errors.length > 0) {
+                    refErrors.push(...result.errors);
+                } else {
+                    allRefs.push(...result.refs);
+                }
+            }
+
+            if (rawRefString && refErrors.length > 0) {
+                toast.error(`Invalid reference: ${refErrors[0]}`);
+                setSubmitting(false);
+                return;
+            }
+
+            const payload: any = {
                 ...formData,
-                verseChapter: parseInt(formData.verseChapter, 10),
-                verseNumber: parseInt(formData.verseNumber, 10),
+                verseChapter: formData.verseChapter ? parseInt(formData.verseChapter, 10) : undefined,
+                verseNumber: formData.verseNumber ? parseInt(formData.verseNumber, 10) : undefined,
                 contentYear: parseInt(formData.date.substring(0, 4), 10),
-                verseReference: `${formData.verseBook} ${formData.verseChapter}:${formData.verseNumber}`,
+                // Derived Daily Verse reference string
+                ...(formData.verseBook && formData.verseChapter && formData.verseNumber
+                    ? { verseReference: `${formData.verseBook} ${formData.verseChapter}:${formData.verseNumber}` }
+                    : {}),
+                // Devotional verse refs — both formats for compat
+                devotionalVerseRef: rawRefString,
+                devotionalVerseRefs: allRefs,
             };
+
+            // Remove the UI-only field before sending
+            delete payload.devotionalVerseRefLines;
 
             const url = id ? `/api/admin/daily-content/${id}` : '/api/admin/daily-content';
             const method = id ? 'PUT' : 'POST';
@@ -177,15 +349,15 @@ function ManageForm() {
                 <div className="grid grid-cols-3 gap-4">
                     <div>
                         <label className="block text-sm font-medium text-gray-400 mb-2">Book Name</label>
-                        <input type="text" value={formData.verseBook} onChange={e => set('verseBook', e.target.value)} className={inputClass} placeholder="e.g. Psalms" required />
+                        <input type="text" value={formData.verseBook} onChange={e => set('verseBook', e.target.value)} className={inputClass} placeholder="e.g. Psalms" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-400 mb-2">Chapter</label>
-                        <input type="number" min="1" value={formData.verseChapter} onChange={e => set('verseChapter', e.target.value)} className={inputClass} placeholder="23" required />
+                        <input type="number" min="1" value={formData.verseChapter} onChange={e => set('verseChapter', e.target.value)} className={inputClass} placeholder="23" />
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-gray-400 mb-2">Verse</label>
-                        <input type="number" min="1" value={formData.verseNumber} onChange={e => set('verseNumber', e.target.value)} className={inputClass} placeholder="1" required />
+                        <input type="number" min="1" value={formData.verseNumber} onChange={e => set('verseNumber', e.target.value)} className={inputClass} placeholder="1" />
                     </div>
                 </div>
 
@@ -225,10 +397,23 @@ function ManageForm() {
             {/* ── Devotional ── */}
             <div className="bg-[#111] border border-white/5 rounded-2xl p-6 space-y-5 shadow-xl">
                 <h3 className="text-white font-bold text-base border-b border-white/5 pb-3">🙏 Daily Devotional</h3>
+
+                {/* Multi-ref verse input list */}
                 <div>
-                    <label className="block text-sm font-medium text-gray-400 mb-2">Key Verse Reference <span className="text-red-400">*</span></label>
-                    <input type="text" value={formData.devotionalVerseRef} onChange={e => set('devotionalVerseRef', e.target.value)} className={inputClass} placeholder="e.g. Romans 8:28" required />
+                    <label className="block text-sm font-medium text-gray-400 mb-1">
+                        Verse References <span className="text-red-400">*</span>
+                    </label>
+                    <p className="text-gray-600 text-xs mb-3">
+                        Add one reference per field. Each can be a single verse, range, or comma-shorthand within one chapter.
+                        <br />
+                        Examples: <span className="font-mono text-gray-500">John 3:16</span> · <span className="font-mono text-gray-500">Genesis 1:13-17</span> · <span className="font-mono text-gray-500">Genesis 1:13-17,20,22</span>
+                    </p>
+                    <VerseRefInputList
+                        lines={formData.devotionalVerseRefLines}
+                        onChange={lines => set('devotionalVerseRefLines', lines)}
+                    />
                 </div>
+
                 <div>
                     <label className="block text-sm font-medium text-gray-400 mb-2">Devotional Title</label>
                     <input type="text" value={formData.devotionalTitle} onChange={e => set('devotionalTitle', e.target.value)} className={inputClass} placeholder="Enter title..." />
@@ -240,6 +425,19 @@ function ManageForm() {
                 <div>
                     <label className="block text-sm font-medium text-gray-400 mb-2">Devotional Background Image URL (Optional)</label>
                     <input type="url" value={formData.devotionalBackgroundImage} onChange={e => set('devotionalBackgroundImage', e.target.value)} className={inputClass} placeholder="https://... or /uploads/daily-content/bg.jpg" />
+                </div>
+            </div>
+
+            {/* ── Prayer (Optional) ── */}
+            <div className="bg-[#111] border border-white/5 rounded-2xl p-6 space-y-5 shadow-xl">
+                <h3 className="text-white font-bold text-base border-b border-white/5 pb-3">🕊️ Daily Prayer <span className="text-gray-600 font-normal text-sm">(Optional)</span></h3>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Prayer Title</label>
+                    <input type="text" value={formData.prayerTitle} onChange={e => set('prayerTitle', e.target.value)} className={inputClass} placeholder="e.g. A Prayer for Strength" />
+                </div>
+                <div>
+                    <label className="block text-sm font-medium text-gray-400 mb-2">Prayer Content</label>
+                    <textarea value={formData.prayerContent} onChange={e => set('prayerContent', e.target.value)} className={`${inputClass} h-32 resize-none`} placeholder="Write the prayer here..." />
                 </div>
             </div>
 

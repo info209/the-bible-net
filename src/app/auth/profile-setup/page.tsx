@@ -152,7 +152,7 @@ function ProfileSetupContent() {
 
             <div className="space-y-6">
                 {/* Basic Info */}
-                <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-4">
                     <div className="space-y-1.5">
                         <label className="text-sm font-bold text-slate-700 ml-1">First Name</label>
                         <input

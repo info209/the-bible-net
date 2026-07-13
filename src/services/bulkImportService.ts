@@ -2,6 +2,7 @@ import * as XLSX from 'xlsx';
 import { isLeapYear, getTotalDaysInYear, getMissingDates } from '@/utils/calendarUtils';
 import { Book, Chapter, Verse } from '@/models/Bible';
 import { DailyContentRepository } from '@/repositories/dailyContentRepository';
+import { parseVerseReferences, ParsedVerseRef } from '@/utils/verseReferenceParser';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -17,10 +18,12 @@ export interface VerseImportRow {
 export interface DevotionalImportRow {
     row: number;
     date: string;
-    verseRef: string;
+    verseRef: string;        // Raw string (preserved for devotionalVerseRef backward compat)
+    verseRefs: ParsedVerseRef[]; // Normalized multi-ref array (for devotionalVerseRefs)
     title: string;
     body: string;
     backgroundImage?: string;
+    prayer?: string;
 }
 
 export interface ImportError {
@@ -276,10 +279,12 @@ export async function validateDevotionalRows(
         const raw = normalizeRow(rawRows[i]);
 
         const dateRaw = raw['date'] || raw['date_(yyyy-mm-dd)'] || '';
-        const verseRef = raw['verse'] || raw['verse_reference'] || raw['verse_ref'] || '';
+        // Support both old column name 'verse' and new preferred 'reference'
+        const verseRef = raw['reference'] || raw['verse'] || raw['verse_reference'] || raw['verse_ref'] || '';
         const title = raw['title'] || '';
         const body = raw['body'] || raw['content'] || '';
         const bgImage = raw['background'] || raw['background_image'] || raw['background_image_url'] || '';
+        const prayer = raw['prayer'] || '';
 
         if (!dateRaw) {
             errors.push({ row: rowNum, reason: 'Date is required' });
@@ -310,6 +315,22 @@ export async function validateDevotionalRows(
             continue;
         }
 
+        // Validate verse reference(s) using the shared parser
+        const parseResult = parseVerseReferences(verseRef);
+        if (parseResult.errors.length > 0) {
+            errors.push({
+                row: rowNum,
+                date: dateStr,
+                reference: verseRef.slice(0, 80),
+                reason: `Invalid verse reference: ${parseResult.errors.join('; ')}`
+            });
+            continue;
+        }
+        if (parseResult.refs.length === 0) {
+            errors.push({ row: rowNum, date: dateStr, reason: 'Devotional verse reference could not be parsed.' });
+            continue;
+        }
+
         if (seenDates.has(dateStr)) {
             errors.push({ row: rowNum, date: dateStr, reason: `Duplicate date "${dateStr}" in this file (row ${seenDates.get(dateStr)})` });
             continue;
@@ -322,7 +343,16 @@ export async function validateDevotionalRows(
             continue;
         }
 
-        valid.push({ row: rowNum, date: dateStr, verseRef, title, body, backgroundImage: bgImage || undefined });
+        valid.push({
+            row: rowNum,
+            date: dateStr,
+            verseRef,
+            verseRefs: parseResult.refs,
+            title,
+            body,
+            backgroundImage: bgImage || undefined,
+            prayer: prayer || undefined,
+        });
     }
 
     return { valid, errors };
@@ -334,8 +364,12 @@ export async function importDevotionals(validRows: DevotionalImportRow[]): Promi
         contentYear: extractYear(row.date),
         devotionalTitle: row.title,
         devotionalContent: row.body,
+        // Legacy single-ref string — kept for backward compat
         devotionalVerseRef: row.verseRef,
+        // New: normalized structured refs array
+        devotionalVerseRefs: row.verseRefs,
         devotionalBackgroundImage: row.backgroundImage,
+        ...(row.prayer ? { prayerContent: row.prayer } : {}),
         isPublished: true,
     }));
 

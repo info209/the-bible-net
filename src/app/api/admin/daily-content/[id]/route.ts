@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/db';
 import { adminAuth } from '@/lib/auth/admin';
 import { UserRole } from '@/types/user';
 import { DailyContentRepository } from '@/repositories/dailyContentRepository';
+import { parseVerseReferences } from '@/utils/verseReferenceParser';
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
     try {
@@ -31,7 +32,22 @@ export async function PUT(req: NextRequest, { params }: { params: { id: string }
         // Auto-compute contentYear if date changed
         if (data.date) {
             data.contentYear = parseInt(data.date.substring(0, 4), 10);
-            data.verseReference = `${data.verseBook} ${data.verseChapter}:${data.verseNumber}`;
+            // Only rebuild verseReference if the daily verse fields are being updated
+            if (data.verseBook && data.verseChapter && data.verseNumber) {
+                data.verseReference = `${data.verseBook} ${data.verseChapter}:${data.verseNumber}`;
+            }
+        }
+
+        // Parse devotional verse references into normalized array
+        if (data.devotionalVerseRef && !data.devotionalVerseRefs?.length) {
+            const parsed = parseVerseReferences(data.devotionalVerseRef);
+            if (parsed.errors.length > 0) {
+                return NextResponse.json({
+                    success: false,
+                    error: `Invalid verse reference: ${parsed.errors.join('; ')}`
+                }, { status: 400 });
+            }
+            data.devotionalVerseRefs = parsed.refs;
         }
 
         const updated = await DailyContentRepository.updateById(params.id, data);
