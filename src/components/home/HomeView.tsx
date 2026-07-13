@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, Heart, MessageCircle, Forward, Pause, X, Send, MoreVertical, Maximize2, Check } from 'lucide-react';
+import { Play, MessageCircle, Forward, Pause, X, Send, MoreVertical, Check } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -353,7 +353,7 @@ export default function HomeView() {
     >
       {/* Greeting - Figma Style */}
       <div className="flex items-center space-x-3 animate-fade-in px-4 mt-0.5">
-        <div className="flex items-center justify-center shrink-0">
+        {/* <div className="flex items-center justify-center shrink-0">
           <svg
             viewBox="0 0 24 24"
             className="w-5 h-5 text-black"
@@ -362,11 +362,11 @@ export default function HomeView() {
           >
             <path d="M11 2h2v5h5v2h-5v13h-2V9H6V7h5V2z" />
           </svg>
-        </div>
+        </div> */}
         <div className="min-w-0 flex-1">
           <h2 className="flex items-baseline space-x-1.5 min-w-0">
             <span className="text-gray-800 text-[19px] font-bold shrink-0">{greeting},</span>
-            <span className="truncate block max-w-full text-gray-500 text-[14px] font-medium">
+            <span className="truncate block max-w-full text-gray-800 text-[17px] font-bold">
               {(session?.user as any)?.firstName || session?.user?.name || 'Believer'}
             </span>
           </h2>
@@ -448,7 +448,7 @@ export default function HomeView() {
                       </div>
 
                       <div className="mt-6">
-                        <h4 className="text-white/80 text-xs font-bold uppercase tracking-wider mb-0.5">Daily Verse</h4>
+                        <h4 className="text-white/80 text-xs font-bold tracking-wider mb-0.5">Daily Verse</h4>
                         <h3 className="text-white text-lg font-bold tracking-tight truncate">
                           {content.verseReference || 'Reference'} {content.version || 'KJV'}
                         </h3>
@@ -535,8 +535,6 @@ export default function HomeView() {
             <p className="relative z-10">No daily verses available yet.</p>
           </div>
         )}
-
-
       </div>
 
       {/* Daily Devotional Carousel (7-Day History) */}
@@ -549,15 +547,16 @@ export default function HomeView() {
           >
             {dailyDevotions.map((content: any, index: number) => (
               <div key={content._id || index} className="w-full flex-shrink-0 select-none">
-                {/* Daily Devotional Card - consistent shared banner background */}
+                {/* Daily Devotional Card — tap anywhere to expand, consistent banner height */}
                 <div
-                  className="rounded-none p-6 shadow-xl relative overflow-hidden h-[360px] flex flex-col justify-between"
+                  className="rounded-none p-6 shadow-xl relative overflow-hidden h-[395px] flex flex-col cursor-pointer"
                   style={content.devotionalBackgroundImage
                     ? { backgroundImage: `url(${content.devotionalBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                     : content.backgroundImage
                       ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                       : { background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 50%, #db2777 100%)' }
                   }
+                  onClick={() => openDetailModal(index, 'devotional')}
                 >
                   {/* Consistent dark overlay */}
                   <div className="absolute inset-0 bg-black/55" />
@@ -570,40 +569,61 @@ export default function HomeView() {
                     </div>
                   )}
 
+                  {/* Content */}
                   <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0 pr-2">
-                        <p className="text-xs mb-1 uppercase tracking-wider text-white/80">
-                          {getRelativeLabel(content.date)}&apos;s Devotional
+                    {/* Header row: label + indicators */}
+                    <div className="w-full">
+                      <div className="text-center w-full">
+                        <p className="text-white/90 text-[15px] font-semibold mb-2.5">
+                          {formatVerseLabel(content.date) === 'Verse of the Day' ? 'Devotion of the Day' : formatVerseLabel(content.date)}
                         </p>
-                        <h3 className="text-xl font-bold truncate text-white">
+
+                        {/* Slide indicators inside the card */}
+                        {dailyDevotions.length > 1 && (
+                          <div className="flex justify-center space-x-1.5 mb-2" onClick={(e) => e.stopPropagation()}>
+                            {dailyDevotions.map((_: any, displayPos: number) => {
+                              const dataIndex = dailyDevotions.length - 1 - displayPos;
+                              return (
+                                <button
+                                  key={displayPos}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentDevotionSlide(dataIndex);
+                                  }}
+                                  className={`h-1.5 rounded-full transition-all ${index === dataIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/60'}`}
+                                  aria-label={`Go to slide ${dataIndex + 1}`}
+                                />
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mt-6">
+                        <h4 className="text-white/80 text-xs font-bold tracking-wider mb-0.5">Daily Devotional</h4>
+                        <h3 className="text-white text-lg font-bold tracking-tight truncate">
                           {content.devotionalTitle}
                         </h3>
                         {content.devotionalVerseRef && (
-                          <p className="text-xs mt-1 font-bold text-white/90 truncate">
+                          <p className="text-xs mt-0.5 font-semibold text-white/80 truncate">
                             {content.devotionalVerseRef}
                           </p>
                         )}
                       </div>
-                      {content.audioUrl && (
-                        <button
-                          onClick={() => toggleAudio(content.audioUrl)}
-                          className="p-2 bg-white/20 backdrop-blur-sm rounded-full shadow-md hover:scale-110 transition-transform shrink-0"
-                        >
-                          {audioPlaying === content.audioUrl ? <Pause className="size-5 text-white" /> : <Play className="size-5 text-white ml-0.5" />}
-                        </button>
-                      )}
                     </div>
 
-                    {/* Devotional content - clamped to exactly 3 lines to maintain uniform height */}
-                    <div className="flex-1 flex items-center my-4 overflow-hidden">
-                      <p className="leading-relaxed text-justify line-clamp-3 text-white/90 text-sm md:text-base w-full">
+                    {/* Devotional content preview — clamped to 4 lines; card height stays constant */}
+                    <div className="flex-1 flex flex-col justify-start mt-4 overflow-hidden">
+                      <p className="text-white/90 text-sm md:text-base leading-relaxed text-left line-clamp-4 overflow-hidden text-ellipsis w-full">
                         {content.devotionalContent}
                       </p>
                     </div>
 
                     {/* Actions */}
-                    <div className="flex items-center justify-between pt-3 border-t border-white/20">
+                    <div
+                      className="flex items-center justify-between pt-3 relative"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <LikeButton
                         contentId={content._id}
                         contentType="daily-devotion"
@@ -612,7 +632,7 @@ export default function HomeView() {
                         variant="carousel"
                       />
                       <button
-                        onClick={() => handleCommentClick(content._id, 'daily-devotion')}
+                        onClick={(e) => { e.stopPropagation(); handleCommentClick(content._id, 'daily-devotion'); }}
                         className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
@@ -621,8 +641,8 @@ export default function HomeView() {
                         <span className="text-xs">{content.devotionCommentCount || 'Comment'}</span>
                       </button>
                       <button
-                        onClick={() => handleShare(content, 'daily-devotion')}
-                        className={`flex flex-col items-center space-y-1 text-white transition-transform ${sharingStates.has(`${content._id}-daily-devotion`) ? 'opacity-50 cursor-not-allowed' : 'hover:scale-110'}`}
+                        onClick={(e) => { e.stopPropagation(); handleShare(content, 'daily-devotion'); }}
+                        className={`flex flex-col items-center space-y-1 text-white transition-all ${sharingStates.has(`${content._id}-daily-devotion`) ? 'opacity-50 cursor-not-allowed' : 'md:hover:scale-110 active:scale-95'}`}
                         disabled={sharingStates.has(`${content._id}-daily-devotion`)}
                       >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
@@ -630,15 +650,17 @@ export default function HomeView() {
                         </div>
                         <span className="text-xs">{content.devotionShareCount > 0 ? content.devotionShareCount : 'Share'}</span>
                       </button>
-                      <button
-                        onClick={() => openDetailModal(index, 'devotional')}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 transition-transform"
-                      >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Maximize2 className="size-4" />
-                        </div>
-                        <span className="text-xs">Expand</span>
-                      </button>
+                      {content.audioUrl && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); toggleAudio(content.audioUrl); }}
+                          className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
+                        >
+                          <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                            {audioPlaying === content.audioUrl ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
+                          </div>
+                          <span className="text-xs">Listen</span>
+                        </button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -646,26 +668,9 @@ export default function HomeView() {
             ))}
           </PremiumCarousel>
         ) : (
-          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[360px] flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 50%, #db2777 100%)' }}>
+          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[395px] flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 50%, #db2777 100%)' }}>
             <div className="absolute inset-0 bg-black/20" />
             <p className="relative z-10">No daily devotionals available yet.</p>
-          </div>
-        )}
-
-        {/* Slide indicators — reversed so today (index 0) is the rightmost dot */}
-        {dailyDevotions.length > 1 && (
-          <div className="flex justify-center space-x-2 mt-3">
-            {dailyDevotions.map((_: any, displayPos: number) => {
-              const dataIndex = dailyDevotions.length - 1 - displayPos;
-              return (
-                <button
-                  key={displayPos}
-                  onClick={() => setCurrentDevotionSlide(dataIndex)}
-                  className={`h-2 rounded-full transition-all ${currentDevotionSlide === dataIndex ? 'w-8 bg-[var(--color-primary-teal)]' : 'w-2 bg-gray-300'}`}
-                  aria-label={`Go to slide ${dataIndex + 1}`}
-                />
-              );
-            })}
           </div>
         )}
       </div>
