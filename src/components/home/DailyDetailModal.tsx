@@ -419,6 +419,106 @@ export function DailyDetailModal({
         };
     }, []);
 
+    const renderActionButtons = (type: 'verse' | 'devotional') => {
+        const isVerse = type === 'verse';
+        const contentType = isVerse ? 'daily-verse' : 'daily-devotion';
+        const isLiked = isVerse ? currentContent.isVerseLiked : currentContent.isDevotionLiked;
+        const likeCount = isVerse ? currentContent.verseLikeCount : currentContent.devotionLikeCount;
+        const commentCount = isVerse ? currentContent.verseCommentCount : currentContent.devotionCommentCount;
+        const shareCount = isVerse ? currentContent.verseShareCount : currentContent.devotionShareCount;
+
+        if (isVerse && !currentContent.verse) return null;
+        if (!isVerse && !currentContent.devotionalContent) return null;
+
+        return (
+            <div className="flex flex-col gap-6 w-full max-w-md mx-auto pt-6">
+                <div className="flex items-center justify-around">
+                    <LikeButton
+                        contentId={currentContent._id || ''}
+                        contentType={contentType}
+                        initialLiked={isLiked || false}
+                        initialCount={likeCount || 0}
+                        variant="carousel"
+                    />
+                    <button
+                        onClick={() => onCommentClick?.(currentContent._id || '', contentType)}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all"
+                    >
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                            <MessageCircle className="size-4" />
+                        </div>
+                        <span className="text-xs">{commentCount || 'Comment'}</span>
+                    </button>
+                    <button
+                        onClick={() => onShareClick?.(currentContent, contentType)}
+                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all"
+                    >
+                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                            <Forward className="size-4" />
+                        </div>
+                        <span className="text-xs">
+                            {shareCount && shareCount > 0 ? shareCount : 'Share'}
+                        </span>
+                    </button>
+                    {isVerse ? (
+                        <div className="relative">
+                            <button
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOpenKebab(!openKebab);
+                                }}
+                                className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all"
+                            >
+                                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                                    <MoreVertical className="size-4" />
+                                </div>
+                                <span className="text-xs">More</span>
+                            </button>
+                            {openKebab && (
+                                <>
+                                    <div className="fixed inset-0 z-10" onClick={() => setOpenKebab(false)} />
+                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
+                                        <button
+                                            onClick={() => {
+                                                setOpenKebab(false);
+                                                onReadFullChapter?.(currentContent);
+                                            }}
+                                            className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                                        >
+                                            Read Full Chapter
+                                        </button>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    ) : null}
+                </div>
+
+                {!isVerse && (
+                    <button
+                        onClick={handleCompleteDevotional}
+                        disabled={currentProgress === 'COMPLETED'}
+                        className={`w-full py-3.5 font-extrabold rounded-2xl shadow-xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none flex items-center justify-center gap-2 ${
+                            currentProgress === 'COMPLETED'
+                                ? 'bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 cursor-default'
+                                : 'bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] text-white'
+                        }`}
+                        aria-label={currentProgress === 'COMPLETED' ? 'Devotional already completed' : 'Mark devotional as complete'}
+                    >
+                        {currentProgress === 'COMPLETED' ? (
+                            <>
+                                <CheckCheck className="size-4" />
+                                Completed
+                            </>
+                        ) : (
+                            'Complete Devotion'
+                        )}
+                    </button>
+                )}
+            </div>
+        );
+    };
+
     if (!isOpen || contents.length === 0) return null;
 
     // ── Swipe navigation ──────────────────────────────────────────────────────
@@ -487,10 +587,10 @@ export function DailyDetailModal({
                 onPointerCancel={() => { swipeIsDraggingRef.current = false; }}
             >
                 {/* Dynamic Background Image */}
-                {initialSection === 'devotional' && currentContent.devotionalBackgroundImage ? (
+                {initialSection === 'devotional' && (currentContent.devotionalBackgroundImage || currentContent.backgroundImage) ? (
                     <div
                         className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
-                        style={{ backgroundImage: `url(${currentContent.devotionalBackgroundImage})` }}
+                        style={{ backgroundImage: `url(${currentContent.devotionalBackgroundImage || currentContent.backgroundImage})` }}
                     />
                 ) : initialSection === 'verse' && currentContent.backgroundImage ? (
                     <div
@@ -498,9 +598,9 @@ export function DailyDetailModal({
                         style={{ backgroundImage: `url(${currentContent.backgroundImage})` }}
                     />
                 ) : initialSection === 'devotional' ? (
-                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700" style={{ backgroundImage: `url(${devotionalTexture.src})` }} />
+                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700" style={{ backgroundImage: `url(${devotionalTexture.src})` }} />
                 ) : (
-                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700" style={{ backgroundImage: `url(${verseTexture.src})` }} />
+                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700" style={{ backgroundImage: `url(${verseTexture.src})` }} />
                 )}
 
                 {/* Header */}
@@ -593,6 +693,13 @@ export function DailyDetailModal({
                                         <p className="text-white text-2xl md:text-3xl leading-relaxed font-serif italic text-left pl-2 drop-shadow-md w-full mt-8">
                                             &ldquo;{currentContent.verse}&rdquo;
                                         </p>
+
+                                        {/* Premium Divider */}
+                                        <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent w-full mt-12" />
+
+                                        <div className="mt-8 w-full">
+                                            {renderActionButtons('verse')}
+                                        </div>
                                     </>
                                 ) : (
                                     <div className="text-center py-10 opacity-70">
@@ -744,6 +851,11 @@ export function DailyDetailModal({
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* Premium Divider */}
+                                        <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent w-full" />
+
+                                        {renderActionButtons('devotional')}
                                     </>
                                 ) : (
                                     <div className="text-center py-12 bg-white/5 rounded-3xl border border-white/10">
@@ -757,94 +869,6 @@ export function DailyDetailModal({
                     </div>
                 </ScrollArea>
 
-                {/* ── Sticky Bottom Action Bar ──────────────────────────────────── */}
-                <div className="relative z-10 flex-shrink-0 border-t border-white/15 bg-black/30 backdrop-blur-md px-6 py-4">
-                    {initialSection === 'verse' && currentContent.verse && (
-                        <div className="flex items-center justify-around max-w-lg mx-auto">
-                            <LikeButton
-                                contentId={currentContent._id || ''}
-                                contentType="daily-verse"
-                                initialLiked={currentContent.isVerseLiked || false}
-                                initialCount={currentContent.verseLikeCount || 0}
-                                variant="carousel"
-                            />
-                            <button onClick={() => onCommentClick?.(currentContent._id || '', 'daily-verse')} className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all">
-                                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                                    <MessageCircle className="size-4" />
-                                </div>
-                                <span className="text-xs">{currentContent?.verseCommentCount || 'Comment'}</span>
-                            </button>
-                            <button onClick={() => onShareClick?.(currentContent, 'daily-verse')} className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all">
-                                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                                    <Forward className="size-4" />
-                                </div>
-                                <span className="text-xs">{currentContent.verseShareCount && currentContent.verseShareCount > 0 ? currentContent.verseShareCount : 'Share'}</span>
-                            </button>
-                            <div className="relative">
-                                <button onClick={(e) => { e.stopPropagation(); setOpenKebab(!openKebab); }} className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all">
-                                    <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                                        <MoreVertical className="size-4" />
-                                    </div>
-                                    <span className="text-xs">More</span>
-                                </button>
-                                {openKebab && (
-                                    <>
-                                        <div className="fixed inset-0 z-10" onClick={() => setOpenKebab(false)} />
-                                        <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
-                                            <button onClick={() => { setOpenKebab(false); onReadFullChapter?.(currentContent); }} className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors">
-                                                Read Full Chapter
-                                            </button>
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                    )}
-                    {initialSection === 'devotional' && currentContent.devotionalContent && (
-                        <div className="flex flex-col gap-3 max-w-lg mx-auto">
-                            <div className="flex items-center justify-around">
-                                <LikeButton
-                                    contentId={currentContent._id || ''}
-                                    contentType="daily-devotion"
-                                    initialLiked={currentContent.isDevotionLiked || false}
-                                    initialCount={currentContent.devotionLikeCount || 0}
-                                    variant="carousel"
-                                />
-                                <button onClick={() => onCommentClick?.(currentContent._id || '', 'daily-devotion')} className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all">
-                                    <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                                        <MessageCircle className="size-4" />
-                                    </div>
-                                    <span className="text-xs">{currentContent.devotionCommentCount || 'Comment'}</span>
-                                </button>
-                                <button onClick={() => onShareClick?.(currentContent, 'daily-devotion')} className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all">
-                                    <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                                        <Forward className="size-4" />
-                                    </div>
-                                    <span className="text-xs">{currentContent.devotionShareCount && currentContent.devotionShareCount > 0 ? currentContent.devotionShareCount : 'Share'}</span>
-                                </button>
-                            </div>
-                            <button
-                                onClick={handleCompleteDevotional}
-                                disabled={currentProgress === 'COMPLETED'}
-                                className={`w-full py-3.5 font-extrabold rounded-2xl shadow-xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none flex items-center justify-center gap-2 ${
-                                    currentProgress === 'COMPLETED'
-                                        ? 'bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 cursor-default'
-                                        : 'bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] text-white'
-                                }`}
-                                aria-label={currentProgress === 'COMPLETED' ? 'Devotional already completed' : 'Mark devotional as complete'}
-                            >
-                                {currentProgress === 'COMPLETED' ? (
-                                    <>
-                                        <CheckCheck className="size-4" />
-                                        Completed
-                                    </>
-                                ) : (
-                                    'Complete Devotion'
-                                )}
-                            </button>
-                        </div>
-                    )}
-                </div>
 
                 {/* Desktop Navigation Arrows */}
                 {contents.length > 1 && (
