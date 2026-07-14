@@ -493,6 +493,14 @@ export default function HomeView() {
                     {/* Verse text — clamped to 4 lines; card height stays constant */}
                     <div className="flex-1 flex flex-col justify-start mt-4 overflow-hidden">
                       <p className="text-white text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 line-clamp-4 overflow-hidden text-ellipsis w-full">
+                        {(() => {
+                          const verseNumber = content.verseNumber || content.verseReference?.split(':')?.[1]?.trim();
+                          return verseNumber ? (
+                            <span className="text-[var(--color-accent-rose)] font-sans font-bold not-italic mr-1.5 text-[22px] md:text-[24px] align-middle">
+                              {verseNumber}
+                            </span>
+                          ) : null;
+                        })()}
                         &quot;{content.verse || 'Verse text available soon...'}&quot;
                       </p>
                     </div>
