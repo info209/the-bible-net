@@ -195,6 +195,8 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
     }
   };
 
+  const reversedChildren = React.Children.toArray(children).reverse();
+
   return (
     <div
       ref={containerRef}
@@ -215,22 +217,24 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
         className="flex w-full will-change-transform"
         style={{
           transform: `translate3d(-${(count - 1 - activeIndex) * 100}%, 0, 0)`,
-          transition: 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)',
-          flexDirection: 'row-reverse'
+          transition: 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)'
         }}
       >
-        {children.map((child, index) => (
-          <div
-            key={index}
-            className="w-full flex-shrink-0"
-            role="group"
-            aria-roledescription="slide"
-            aria-label={`Slide ${index + 1} of ${count}`}
-            aria-hidden={index !== activeIndex}
-          >
-            {child}
-          </div>
-        ))}
+        {reversedChildren.map((child, index) => {
+          const isCurrentActive = index === (count - 1 - activeIndex);
+          return (
+            <div
+              key={index}
+              className="w-full flex-shrink-0"
+              role="group"
+              aria-roledescription="slide"
+              aria-label={`Slide ${index + 1} of ${count}`}
+              aria-hidden={!isCurrentActive}
+            >
+              {child}
+            </div>
+          );
+        })}
       </div>
 
       {/* Navigation Arrows for Desktop */}
