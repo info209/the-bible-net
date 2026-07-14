@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useRef, useEffect } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PremiumCarouselProps {
   children: React.ReactNode[];
@@ -27,9 +28,9 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
     const track = trackRef.current;
     if (track && !isDraggingRef.current) {
       track.style.transition = 'transform 350ms cubic-bezier(0.25, 0.46, 0.45, 0.94)';
-      track.style.transform = `translate3d(-${activeIndex * 100}%, 0, 0)`;
+      track.style.transform = `translate3d(-${(count - 1 - activeIndex) * 100}%, 0, 0)`;
     }
-  }, [activeIndex]);
+  }, [activeIndex, count]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     // Only support left click on mouse
@@ -95,7 +96,7 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
     // Boundary resistance:
     // • index 0 = newest. Dragging RIGHT tries to go to index -1 → resist.
     // • index n-1 = oldest. Dragging LEFT tries to go past the end → resist.
-    if ((isAtStart && deltaX > 0) || (isAtEnd && deltaX < 0)) {
+    if ((isAtStart && deltaX < 0) || (isAtEnd && deltaX > 0)) {
       computedDeltaX = deltaX * 0.2;
     }
 
@@ -103,7 +104,7 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
     computedDeltaX = Math.max(-containerWidth, Math.min(containerWidth, computedDeltaX));
 
     if (trackRef.current) {
-      const basePercent = -activeIndex * 100;
+      const basePercent = -(count - 1 - activeIndex) * 100;
       // Dragging naturally in the direction of pointer movement
       trackRef.current.style.transform = `translate3d(calc(${basePercent}% + ${computedDeltaX}px), 0, 0)`;
     }
@@ -132,21 +133,21 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
     let newIndex = activeIndex;
 
     // Decide if we should go to next, previous, or snap back to current.
-    // Standard direction: swipe RIGHT → previous slide, swipe LEFT → next slide.
+    // Swipe RIGHT → older content (index + 1), swipe LEFT → newer content (index - 1)
     if (deltaX > swipeThreshold || (deltaX > 0 && velocity > velocityThreshold)) {
-      if (activeIndex > 0) {
-        newIndex = activeIndex - 1;
-      }
-    } else if (deltaX < -swipeThreshold || (deltaX < 0 && velocity > velocityThreshold)) {
       if (activeIndex < count - 1) {
         newIndex = activeIndex + 1;
+      }
+    } else if (deltaX < -swipeThreshold || (deltaX < 0 && velocity > velocityThreshold)) {
+      if (activeIndex > 0) {
+        newIndex = activeIndex - 1;
       }
     }
 
     // Animate smoothly to the destination slide
     if (trackRef.current) {
       trackRef.current.style.transition = 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)';
-      trackRef.current.style.transform = `translate3d(-${newIndex * 100}%, 0, 0)`;
+      trackRef.current.style.transform = `translate3d(-${(count - 1 - newIndex) * 100}%, 0, 0)`;
     }
 
     if (newIndex !== activeIndex) {
@@ -168,7 +169,7 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
     // Revert/snap back to current activeIndex
     if (trackRef.current) {
       trackRef.current.style.transition = 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)';
-      trackRef.current.style.transform = `translate3d(-${activeIndex * 100}%, 0, 0)`;
+      trackRef.current.style.transform = `translate3d(-${(count - 1 - activeIndex) * 100}%, 0, 0)`;
     }
   };
 
@@ -183,13 +184,13 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
-      if (activeIndex > 0) {
-        onChange(activeIndex - 1);
+      if (activeIndex < count - 1) {
+        onChange(activeIndex + 1);
       }
     } else if (e.key === 'ArrowRight') {
       e.preventDefault();
-      if (activeIndex < count - 1) {
-        onChange(activeIndex + 1);
+      if (activeIndex > 0) {
+        onChange(activeIndex - 1);
       }
     }
   };
@@ -197,7 +198,7 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden w-full touch-pan-y select-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-teal)]/50 focus-visible:ring-offset-2 rounded-md"
+      className="relative overflow-hidden w-full touch-pan-y select-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-teal)]/50 focus-visible:ring-offset-2 rounded-md group"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -213,8 +214,9 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
         ref={trackRef}
         className="flex w-full will-change-transform"
         style={{
-          transform: `translate3d(-${activeIndex * 100}%, 0, 0)`,
-          transition: 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)'
+          transform: `translate3d(-${(count - 1 - activeIndex) * 100}%, 0, 0)`,
+          transition: 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)',
+          flexDirection: 'row-reverse'
         }}
       >
         {children.map((child, index) => (
@@ -230,6 +232,34 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
           </div>
         ))}
       </div>
+
+      {/* Navigation Arrows for Desktop */}
+      {count > 1 && (
+        <>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (activeIndex < count - 1) onChange(activeIndex + 1);
+            }}
+            disabled={activeIndex === count - 1}
+            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center size-10 rounded-full bg-black/30 hover:bg-black/50 text-white border border-white/10 transition-all hover:scale-110 active:scale-95 disabled:!opacity-0 disabled:pointer-events-none opacity-0 group-hover:opacity-100"
+            aria-label="Previous slide (older)"
+          >
+            <ChevronLeft className="size-5" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (activeIndex > 0) onChange(activeIndex - 1);
+            }}
+            disabled={activeIndex === 0}
+            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center size-10 rounded-full bg-black/30 hover:bg-black/50 text-white border border-white/10 transition-all hover:scale-110 active:scale-95 disabled:!opacity-0 disabled:pointer-events-none opacity-0 group-hover:opacity-100"
+            aria-label="Next slide (newer)"
+          >
+            <ChevronRight className="size-5" />
+          </button>
+        </>
+      )}
     </div>
   );
 }

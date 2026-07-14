@@ -550,7 +550,7 @@ export default function HomeView() {
                                 onClick={(e) => handleReadFullChapter(content, e)}
                                 className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                               >
-                                Read Full Chapter
+                                Read chapter
                               </button>
                             </div>
                           </>
@@ -593,14 +593,6 @@ export default function HomeView() {
                 >
                   {/* Consistent dark overlay */}
                   <div className="absolute inset-0 bg-black/55" />
-
-                  {/* Done badge — visible when devotional is completed */}
-                  {devotionalProgressCache[content.date] === 'COMPLETED' && (
-                    <div className="absolute top-3 right-3 z-20 flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-500/85 backdrop-blur-sm text-white text-xs font-semibold shadow-lg">
-                      <Check className="size-3" />
-                      Done
-                    </div>
-                  )}
 
                   {/* Content */}
                   <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
@@ -683,6 +675,36 @@ export default function HomeView() {
                         </div>
                         <span className="text-xs">{content.devotionShareCount > 0 ? content.devotionShareCount : 'Share'}</span>
                       </button>
+                      <div className="relative">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setOpenKebabIndex(openKebabIndex === index ? null : index);
+                          }}
+                          className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
+                        >
+                          <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                            <MoreVertical className="size-4" />
+                          </div>
+                          <span className="text-xs">More</span>
+                        </button>
+                        {openKebabIndex === index && (
+                          <>
+                            <div
+                              className="fixed inset-0 z-10"
+                              onClick={(e) => { e.stopPropagation(); setOpenKebabIndex(null); }}
+                            />
+                            <div className="absolute right-0 bottom-full mb-2 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
+                              <button
+                                onClick={() => openDetailModal(index, 'devotional')}
+                                className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                              >
+                                Read devotional
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </div>
                       {content.audioUrl && (
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleAudio(content.audioUrl); }}
@@ -935,7 +957,16 @@ export default function HomeView() {
 
       <DailyDetailModal
         isOpen={isDetailModalOpen}
-        onClose={() => setIsDetailModalOpen(false)}
+        onClose={(finalIndex) => {
+          setIsDetailModalOpen(false);
+          if (finalIndex !== undefined) {
+            if (initialModalSection === 'verse') {
+              setCurrentVerseSlide(finalIndex);
+            } else if (initialModalSection === 'devotional') {
+              setCurrentDevotionSlide(finalIndex);
+            }
+          }
+        }}
         contents={modalContents}
         initialIndex={initialModalIndex}
         initialSection={initialModalSection}

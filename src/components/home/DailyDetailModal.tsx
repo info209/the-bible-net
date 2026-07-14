@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Play, Pause, Forward, MessageCircle, MoreVertical, CheckCircle2, CheckCheck } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Forward, MessageCircle, MoreVertical, CheckCircle2, CheckCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LikeButton } from './LikeButton';
 import { useSession } from 'next-auth/react';
@@ -57,7 +57,7 @@ interface IDailyContent {
 
 interface DailyDetailModalProps {
     isOpen: boolean;
-    onClose: () => void;
+    onClose: (finalIndex?: number) => void;
     contents: IDailyContent[];
     initialIndex: number;
     initialSection?: 'verse' | 'devotional' | 'prayer';
@@ -199,6 +199,26 @@ export function DailyDetailModal({
     useEffect(() => {
         openedAtRef.current = Date.now();
     }, [currentIndex]);
+
+    // Global Keyboard Navigation
+    useEffect(() => {
+        if (!isOpen) return;
+        const handleGlobalKeyDown = (e: KeyboardEvent) => {
+            if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                if (currentIndex < contents.length - 1) {
+                    setCurrentIndex(currentIndex + 1);
+                }
+            } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                if (currentIndex > 0) {
+                    setCurrentIndex(currentIndex - 1);
+                }
+            }
+        };
+        window.addEventListener('keydown', handleGlobalKeyDown);
+        return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+    }, [isOpen, currentIndex, contents.length]);
 
     // ── Progress API call ─────────────────────────────────────────────────────
     const updateProgress = useCallback(
@@ -414,13 +434,25 @@ export function DailyDetailModal({
         const deltaX = Math.abs(e.clientX - swipeStartXRef.current);
         const deltaY = Math.abs(e.clientY - swipeStartYRef.current);
         if (swipeIsHorizontalRef.current === null && (deltaX > 8 || deltaY > 8)) {
-            swipeIsHorizontalRef.current = deltaX > deltaY;
+            const isHorizontal = deltaX > deltaY;
+            swipeIsHorizontalRef.current = isHorizontal;
+            if (isHorizontal) {
+                try {
+                    e.currentTarget.setPointerCapture(e.pointerId);
+                } catch {}
+            }
+        }
+        if (swipeIsHorizontalRef.current === true) {
+            e.preventDefault();
         }
     };
 
     const handleSwipeEnd = (e: React.PointerEvent<HTMLDivElement>) => {
         if (!swipeIsDraggingRef.current) return;
         swipeIsDraggingRef.current = false;
+        try {
+            e.currentTarget.releasePointerCapture(e.pointerId);
+        } catch {}
         if (swipeIsHorizontalRef.current !== true) return;
 
         const deltaX = e.clientX - swipeStartXRef.current;
@@ -472,7 +504,7 @@ export function DailyDetailModal({
                 {/* Header */}
                 <div className="relative z-10 flex items-center justify-between p-4">
                     <button
-                        onClick={onClose}
+                        onClick={() => onClose(currentIndex)}
                         className="p-2 rounded-full shadow-sm bg-white/20 hover:bg-white/30 text-white transition-colors"
                         aria-label="Back"
                     >
@@ -811,6 +843,32 @@ export function DailyDetailModal({
                         </div>
                     )}
                 </div>
+
+                {/* Desktop Navigation Arrows */}
+                {contents.length > 1 && (
+                    <>
+                        <button
+                            onClick={() => {
+                                if (currentIndex < contents.length - 1) setCurrentIndex(currentIndex + 1);
+                            }}
+                            disabled={currentIndex === contents.length - 1}
+                            className="absolute left-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex items-center justify-center size-12 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/25 shadow-2xl transition-all hover:scale-110 active:scale-95 disabled:opacity-0 disabled:pointer-events-none"
+                            aria-label="Previous slide (older)"
+                        >
+                            <ChevronLeft className="size-6" />
+                        </button>
+                        <button
+                            onClick={() => {
+                                if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
+                            }}
+                            disabled={currentIndex === 0}
+                            className="absolute right-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex items-center justify-center size-12 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/25 shadow-2xl transition-all hover:scale-110 active:scale-95 disabled:opacity-0 disabled:pointer-events-none"
+                            aria-label="Next slide (newer)"
+                        >
+                            <ChevronRight className="size-6" />
+                        </button>
+                    </>
+                )}
             </motion.div>
         </AnimatePresence>
     );
