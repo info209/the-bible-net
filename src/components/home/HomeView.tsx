@@ -449,8 +449,7 @@ export default function HomeView() {
                   }
                   onClick={() => openDetailModal(index, 'verse')}
                 >
-                  {/* Consistent dark overlay */}
-                  <div className="absolute inset-0 bg-black/55" />
+
 
                   {/* Content */}
                   <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
@@ -593,8 +592,7 @@ export default function HomeView() {
                   }
                   onClick={() => openDetailModal(index, 'devotional')}
                 >
-                  {/* Consistent dark overlay */}
-                  <div className="absolute inset-0 bg-black/55" />
+
 
                   {/* Content */}
                   <div className="relative z-10 flex-1 flex flex-col h-full justify-between">
