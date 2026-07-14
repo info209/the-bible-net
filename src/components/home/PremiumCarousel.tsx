@@ -200,7 +200,8 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden w-full touch-pan-y select-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-teal)]/50 focus-visible:ring-offset-2 rounded-md group"
+      className="relative overflow-hidden w-full touch-pan-y select-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-teal)]/50 focus-visible:ring-offset-2 group"
+      style={{ borderRadius: 'var(--radius-md)' }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
