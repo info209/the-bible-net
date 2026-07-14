@@ -6,6 +6,8 @@ import { LikeButton } from './LikeButton';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/context/ToastContext';
+import verseTexture from '../../../assets/textures/verse-texture.svg';
+import devotionalTexture from '../../../assets/textures/devotional-texture.svg';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -496,9 +498,9 @@ export function DailyDetailModal({
                         style={{ backgroundImage: `url(${currentContent.backgroundImage})` }}
                     />
                 ) : initialSection === 'devotional' ? (
-                    <div className="absolute inset-0 z-0 transition-all duration-700" style={{ background: 'linear-gradient(135deg, #831843 0%, #db2777 50%, #f472b6 100%)' }} />
+                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700" style={{ backgroundImage: `url(${devotionalTexture.src})` }} />
                 ) : (
-                    <div className="absolute inset-0 z-0 transition-all duration-700" style={{ background: 'linear-gradient(135deg, #0B7A81 0%, #14b8a6 50%, #2dd4bf 100%)' }} />
+                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700" style={{ backgroundImage: `url(${verseTexture.src})` }} />
                 )}
 
                 {/* Header */}

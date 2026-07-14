@@ -15,6 +15,8 @@ import HomeSkeleton from '@/app/components/HomeSkeleton';
 import { DailyDetailModal } from './DailyDetailModal';
 import { PremiumCarousel } from './PremiumCarousel';
 import { LikeButton } from './LikeButton';
+import verseTexture from '../../../assets/textures/verse-texture.svg';
+import devotionalTexture from '../../../assets/textures/devotional-texture.svg';
 import { Avatar, AvatarImage, AvatarFallback } from '@/app/components/ui/avatar';
 
 const getGreetingByHour = (hour: number): string => {
@@ -443,7 +445,7 @@ export default function HomeView() {
                   className="rounded-none p-6 shadow-xl relative overflow-hidden h-[355px] flex flex-col cursor-pointer"
                   style={content.backgroundImage
                     ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                    : { background: 'linear-gradient(135deg, #0B7A81 0%, #14b8a6 50%, #2dd4bf 100%)' }
+                    : { backgroundImage: `url(${verseTexture.src})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                   }
                   onClick={() => openDetailModal(index, 'verse')}
                 >
@@ -587,7 +589,7 @@ export default function HomeView() {
                     ? { backgroundImage: `url(${content.devotionalBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                     : content.backgroundImage
                       ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                      : { background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 50%, #db2777 100%)' }
+                      : { backgroundImage: `url(${devotionalTexture.src})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                   }
                   onClick={() => openDetailModal(index, 'devotional')}
                 >
