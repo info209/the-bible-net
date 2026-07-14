@@ -489,18 +489,18 @@ export function DailyDetailModal({
                 {/* Dynamic Background Image */}
                 {initialSection === 'devotional' && currentContent.devotionalBackgroundImage ? (
                     <div
-                        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700"
+                        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
                         style={{ backgroundImage: `url(${currentContent.devotionalBackgroundImage})` }}
                     />
                 ) : initialSection === 'verse' && currentContent.backgroundImage ? (
                     <div
-                        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700"
+                        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
                         style={{ backgroundImage: `url(${currentContent.backgroundImage})` }}
                     />
                 ) : initialSection === 'devotional' ? (
-                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700" style={{ backgroundImage: `url(${devotionalTexture.src})` }} />
+                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700" style={{ backgroundImage: `url(${devotionalTexture.src})` }} />
                 ) : (
-                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700" style={{ backgroundImage: `url(${verseTexture.src})` }} />
+                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700" style={{ backgroundImage: `url(${verseTexture.src})` }} />
                 )}
 
                 {/* Header */}
