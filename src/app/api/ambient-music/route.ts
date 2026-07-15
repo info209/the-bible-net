@@ -26,11 +26,21 @@ export async function GET(req: NextRequest) {
                 .from('ambient-music')
                 .getPublicUrl(track.file_path);
 
+            let publicThumbUrl = null;
+            if (track.thumbnail_path) {
+                const { data: { publicUrl: thumbUrl } } = supabase.storage
+                    .from('ambient-music')
+                    .getPublicUrl(track.thumbnail_path);
+                publicThumbUrl = thumbUrl;
+            }
+
             return {
                 id: track.id,
                 label: track.label,
                 file_path: track.file_path,
-                url: publicUrl
+                url: publicUrl,
+                thumbnail_path: track.thumbnail_path,
+                thumbnail_url: publicThumbUrl
             };
         });
 

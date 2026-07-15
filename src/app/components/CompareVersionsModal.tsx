@@ -87,7 +87,7 @@ export default function CompareVersionsModal({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative rounded-2xl shadow-[var(--shadow-lg)] w-[90%] max-w-md max-h-[80vh] overflow-hidden flex flex-col transition-all duration-300"
+          className="relative rounded-lg shadow-[var(--shadow-lg)] w-[90%] max-w-md max-h-[80vh] overflow-hidden flex flex-col transition-all duration-300"
           style={{
             backgroundColor: modalBg,
             border: `1px solid ${borderCol}`,

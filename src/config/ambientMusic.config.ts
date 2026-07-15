@@ -12,5 +12,12 @@ export const AMBIENT_MUSIC_CONFIG = {
         'audio/m4a',
         'audio/mp4'
     ],
-    MAX_FILE_SIZE: 15 * 1024 * 1024 // 15MB
+    MAX_FILE_SIZE: 15 * 1024 * 1024, // 15MB
+    IMAGE_SUPPORTED_EXTENSIONS: ['.jpg', '.jpeg', '.png', '.webp'],
+    IMAGE_SUPPORTED_MIME_TYPES: [
+        'image/jpeg',
+        'image/png',
+        'image/webp'
+    ],
+    IMAGE_MAX_FILE_SIZE: 5 * 1024 * 1024 // 5MB
 };

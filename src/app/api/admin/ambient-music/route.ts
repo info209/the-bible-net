@@ -31,11 +31,21 @@ export async function GET(req: NextRequest) {
                 .from('ambient-music')
                 .getPublicUrl(track.file_path);
 
+            let publicThumbUrl = null;
+            if (track.thumbnail_path) {
+                const { data: { publicUrl: thumbUrl } } = authContext.supabase.storage
+                    .from('ambient-music')
+                    .getPublicUrl(track.thumbnail_path);
+                publicThumbUrl = thumbUrl;
+            }
+
             return {
                 id: track.id,
                 label: track.label,
                 file_path: track.file_path,
                 url: publicUrl,
+                thumbnail_path: track.thumbnail_path,
+                thumbnail_url: publicThumbUrl,
                 created_at: track.created_at
             };
         });
@@ -53,6 +63,7 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
     let filePathToDeleteOnError: string | null = null;
+    let thumbPathToDeleteOnError: string | null = null;
     try {
         const authContext = await getAuthContext();
         if (!authContext.userId || (authContext.role !== UserRole.SUPER_ADMIN && authContext.role !== UserRole.SUB_ADMIN)) {
@@ -60,8 +71,9 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { label, file_path } = body;
+        const { label, file_path, thumbnail_path } = body;
         filePathToDeleteOnError = file_path;
+        thumbPathToDeleteOnError = thumbnail_path;
 
         // 1. Validate mandatory fields
         if (!label || label.trim() === '') {
@@ -69,6 +81,9 @@ export async function POST(req: NextRequest) {
         }
         if (!file_path || file_path.trim() === '') {
             return NextResponse.json({ success: false, error: 'File path is mandatory' }, { status: 400 });
+        }
+        if (!thumbnail_path || thumbnail_path.trim() === '') {
+            return NextResponse.json({ success: false, error: 'Thumbnail is mandatory' }, { status: 400 });
         }
 
         // 2. Validate duplicate label
@@ -88,6 +103,13 @@ export async function POST(req: NextRequest) {
                     await authContext.supabase.storage.from('ambient-music').remove([file_path]);
                 } catch (cleanupErr) {
                     console.error('Failed to clean up file after duplicate label check:', cleanupErr);
+                }
+            }
+            if (thumbnail_path) {
+                try {
+                    await authContext.supabase.storage.from('ambient-music').remove([thumbnail_path]);
+                } catch (cleanupErr) {
+                    console.error('Failed to clean up thumbnail after duplicate label check:', cleanupErr);
                 }
             }
             return NextResponse.json({
@@ -113,6 +135,13 @@ export async function POST(req: NextRequest) {
                     console.error('Failed to clean up file after max tracks check:', cleanupErr);
                 }
             }
+            if (thumbnail_path) {
+                try {
+                    await authContext.supabase.storage.from('ambient-music').remove([thumbnail_path]);
+                } catch (cleanupErr) {
+                    console.error('Failed to clean up thumbnail after max tracks check:', cleanupErr);
+                }
+            }
             return NextResponse.json({
                 success: false,
                 error: `Maximum upload limit of ${AMBIENT_MUSIC_CONFIG.MAX_TRACKS} tracks reached. Delete an existing track to upload a new one.`
@@ -136,6 +165,7 @@ export async function POST(req: NextRequest) {
             .insert({
                 label: label.trim(),
                 file_path: file_path,
+                thumbnail_path: thumbnail_path,
                 created_by: createdByUuid // Uses UUID from Supabase or null (avoiding MongoDB ID UUID validation error)
             })
             .select()
@@ -149,6 +179,14 @@ export async function POST(req: NextRequest) {
             .from('ambient-music')
             .getPublicUrl(file_path);
 
+        let publicThumbUrl = null;
+        if (insertedRecord.thumbnail_path) {
+            const { data: { publicUrl: thumbUrl } } = authContext.supabase.storage
+                .from('ambient-music')
+                .getPublicUrl(insertedRecord.thumbnail_path);
+            publicThumbUrl = thumbUrl;
+        }
+
         return NextResponse.json({
             success: true,
             data: {
@@ -156,13 +194,15 @@ export async function POST(req: NextRequest) {
                 label: insertedRecord.label,
                 file_path: insertedRecord.file_path,
                 url: publicUrl,
+                thumbnail_path: insertedRecord.thumbnail_path,
+                thumbnail_url: publicThumbUrl,
                 created_at: insertedRecord.created_at
             }
         });
     } catch (error: any) {
         console.error('POST ambient music metadata error:', error);
         
-        // Clean up the uploaded storage file if database operation failed
+        // Clean up the uploaded storage files if database operation failed
         if (filePathToDeleteOnError) {
             try {
                 const authContext = await getAuthContext();
@@ -171,6 +211,16 @@ export async function POST(req: NextRequest) {
                     .remove([filePathToDeleteOnError]);
             } catch (cleanupErr) {
                 console.error('Failed to clean up orphaned storage file after error:', cleanupErr);
+            }
+        }
+        if (thumbPathToDeleteOnError) {
+            try {
+                const authContext = await getAuthContext();
+                await authContext.supabase.storage
+                    .from('ambient-music')
+                    .remove([thumbPathToDeleteOnError]);
+            } catch (cleanupErr) {
+                console.error('Failed to clean up orphaned storage thumbnail after error:', cleanupErr);
             }
         }
         
@@ -196,10 +246,10 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'Track ID is required' }, { status: 400 });
         }
 
-        // Fetch track metadata to retrieve the file_path
+        // Fetch track metadata to retrieve the file_path and thumbnail_path
         const { data: track, error: findError } = await authContext.supabase
             .from('ambient_music')
-            .select('file_path')
+            .select('file_path, thumbnail_path')
             .eq('id', id)
             .maybeSingle();
 
@@ -212,9 +262,13 @@ export async function DELETE(req: NextRequest) {
         }
 
         // 1. Delete from Supabase Storage
+        const filesToDelete = [track.file_path];
+        if (track.thumbnail_path) {
+            filesToDelete.push(track.thumbnail_path);
+        }
         const { error: storageDeleteError } = await authContext.supabase.storage
             .from('ambient-music')
-            .remove([track.file_path]);
+            .remove(filesToDelete);
 
         if (storageDeleteError) {
             console.error('Storage deletion failed or warning generated:', storageDeleteError);
@@ -235,5 +289,214 @@ export async function DELETE(req: NextRequest) {
     } catch (error: any) {
         console.error('DELETE ambient music error:', error);
         return NextResponse.json({ success: false, error: error.message || 'Failed to delete track' }, { status: 500 });
+    }
+}
+
+/**
+ * PUT /api/admin/ambient-music
+ * Edit an existing ambient music track (label, file, and/or thumbnail).
+ */
+export async function PUT(req: NextRequest) {
+    let newFilePathToDeleteOnError: string | null = null;
+    let newThumbPathToDeleteOnError: string | null = null;
+    try {
+        const authContext = await getAuthContext();
+        if (!authContext.userId || (authContext.role !== UserRole.SUPER_ADMIN && authContext.role !== UserRole.SUB_ADMIN)) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const body = await req.json();
+        const { id, label, file_path, thumbnail_path } = body;
+
+        if (!id) {
+            return NextResponse.json({ success: false, error: 'Track ID is required' }, { status: 400 });
+        }
+
+        // Fetch existing track
+        const { data: track, error: findError } = await authContext.supabase
+            .from('ambient_music')
+            .select('*')
+            .eq('id', id)
+            .maybeSingle();
+
+        if (findError) {
+            throw findError;
+        }
+        if (!track) {
+            return NextResponse.json({ success: false, error: 'Track not found' }, { status: 404 });
+        }
+
+        const updatedFields: any = {};
+
+        // 1. Validate and update label
+        if (label !== undefined) {
+            if (!label || label.trim() === '') {
+                return NextResponse.json({ success: false, error: 'Label cannot be empty' }, { status: 400 });
+            }
+            const trimmedLabel = label.trim();
+            if (trimmedLabel !== track.label) {
+                // Check duplicate label (excluding current track)
+                const { data: duplicateTrack, error: duplicateCheckError } = await authContext.supabase
+                    .from('ambient_music')
+                    .select('id')
+                    .eq('label', trimmedLabel)
+                    .neq('id', id)
+                    .maybeSingle();
+
+                if (duplicateCheckError) {
+                    throw duplicateCheckError;
+                }
+                if (duplicateTrack) {
+                    return NextResponse.json({
+                        success: false,
+                        error: 'Duplicate labels are not allowed. Please choose a different label.'
+                    }, { status: 400 });
+                }
+                updatedFields.label = trimmedLabel;
+            }
+        }
+
+        // 2. Validate and update file_path
+        if (file_path !== undefined && file_path !== track.file_path) {
+            if (!file_path || file_path.trim() === '') {
+                return NextResponse.json({ success: false, error: 'File path cannot be empty' }, { status: 400 });
+            }
+            updatedFields.file_path = file_path;
+            newFilePathToDeleteOnError = file_path;
+        }
+
+        // 3. Validate and update thumbnail_path
+        const existingThumbnail = track.thumbnail_path;
+        const incomingThumbnail = thumbnail_path;
+
+        if (incomingThumbnail !== undefined) {
+            if (!incomingThumbnail || incomingThumbnail.trim() === '') {
+                return NextResponse.json({ success: false, error: 'Thumbnail is mandatory' }, { status: 400 });
+            }
+            if (incomingThumbnail !== existingThumbnail) {
+                updatedFields.thumbnail_path = incomingThumbnail;
+                newThumbPathToDeleteOnError = incomingThumbnail;
+            }
+        } else {
+            // No new thumbnail provided. If there's no existing thumbnail, validation must fail!
+            if (!existingThumbnail) {
+                return NextResponse.json({ success: false, error: 'Thumbnail is mandatory' }, { status: 400 });
+            }
+        }
+
+        // If no changes, return early
+        if (Object.keys(updatedFields).length === 0) {
+            // Return mapped record even if no changes, so frontend gets complete updated structure
+            const { data: { publicUrl } } = authContext.supabase.storage
+                .from('ambient-music')
+                .getPublicUrl(track.file_path);
+
+            let publicThumbUrl = null;
+            if (track.thumbnail_path) {
+                const { data: { publicUrl: thumbUrl } } = authContext.supabase.storage
+                    .from('ambient-music')
+                    .getPublicUrl(track.thumbnail_path);
+                publicThumbUrl = thumbUrl;
+            }
+            return NextResponse.json({
+                success: true,
+                data: {
+                    id: track.id,
+                    label: track.label,
+                    file_path: track.file_path,
+                    url: publicUrl,
+                    thumbnail_path: track.thumbnail_path,
+                    thumbnail_url: publicThumbUrl,
+                    created_at: track.created_at
+                }
+            });
+        }
+
+        // Update database
+        const { data: updatedRecord, error: updateError } = await authContext.supabase
+            .from('ambient_music')
+            .update(updatedFields)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (updateError) {
+            throw updateError;
+        }
+
+        // Deletions of old files/thumbnails from Supabase storage (only after successful DB update)
+        if (updatedFields.file_path && track.file_path) {
+            try {
+                await authContext.supabase.storage
+                    .from('ambient-music')
+                    .remove([track.file_path]);
+            } catch (cleanupErr) {
+                console.error('Failed to remove old music file:', cleanupErr);
+            }
+        }
+
+        if (updatedFields.thumbnail_path && track.thumbnail_path) {
+            try {
+                await authContext.supabase.storage
+                    .from('ambient-music')
+                    .remove([track.thumbnail_path]);
+            } catch (cleanupErr) {
+                console.error('Failed to remove old thumbnail file:', cleanupErr);
+            }
+        }
+
+        // Return mapped record
+        const { data: { publicUrl } } = authContext.supabase.storage
+            .from('ambient-music')
+            .getPublicUrl(updatedRecord.file_path);
+
+        let publicThumbUrl = null;
+        if (updatedRecord.thumbnail_path) {
+            const { data: { publicUrl: thumbUrl } } = authContext.supabase.storage
+                .from('ambient-music')
+                .getPublicUrl(updatedRecord.thumbnail_path);
+            publicThumbUrl = thumbUrl;
+        }
+
+        return NextResponse.json({
+            success: true,
+            data: {
+                id: updatedRecord.id,
+                label: updatedRecord.label,
+                file_path: updatedRecord.file_path,
+                url: publicUrl,
+                thumbnail_path: updatedRecord.thumbnail_path,
+                thumbnail_url: publicThumbUrl,
+                created_at: updatedRecord.created_at
+            }
+        });
+
+    } catch (error: any) {
+        console.error('PUT ambient music metadata error:', error);
+        
+        // Clean up newly uploaded files if the DB operation failed
+        if (newFilePathToDeleteOnError) {
+            try {
+                const authContext = await getAuthContext();
+                await authContext.supabase.storage
+                    .from('ambient-music')
+                    .remove([newFilePathToDeleteOnError]);
+            } catch (cleanupErr) {
+                console.error('Failed to clean up new file after error:', cleanupErr);
+            }
+        }
+
+        if (newThumbPathToDeleteOnError) {
+            try {
+                const authContext = await getAuthContext();
+                await authContext.supabase.storage
+                    .from('ambient-music')
+                    .remove([newThumbPathToDeleteOnError]);
+            } catch (cleanupErr) {
+                console.error('Failed to clean up new thumbnail after error:', cleanupErr);
+            }
+        }
+
+        return NextResponse.json({ success: false, error: error.message || 'Update failed' }, { status: 500 });
     }
 }

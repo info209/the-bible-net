@@ -112,6 +112,23 @@ export const ReadingPlanSkeleton = () => (
   </div>
 );
 
+export const JournalBannerSkeleton = () => (
+  <div className="bg-white border border-gray-100 rounded-xl p-6 flex items-center justify-between gap-4 min-h-[120px] w-full shadow-sm mb-6">
+    <div className="flex items-center space-x-4 w-full">
+      {/* Icon Box */}
+      <Skeleton className="size-12 rounded-xl flex-shrink-0" />
+      {/* Text Lines */}
+      <div className="space-y-2 w-full max-w-[240px] sm:max-w-md">
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="h-3 w-[90%]" />
+        <Skeleton className="h-3 w-[70%]" />
+      </div>
+    </div>
+    {/* Arrow Circle */}
+    <Skeleton className="size-10 rounded-full flex-shrink-0" />
+  </div>
+);
+
 export const PrayerSkeleton = () => (
   <div className="bg-gray-50 border border-gray-100 rounded-2xl p-6 shadow-sm mb-6">
     <Skeleton className="h-6 w-56 mb-4" />
@@ -140,17 +157,15 @@ export default function HomeSkeleton() {
       <div className="px-4">
         <GreetingSkeleton />
       </div>
-      <div className="px-4">
-        <BannerSkeleton />
-      </div>
       <div className="px-2">
         <VerseSkeleton />
       </div>
       <div className="px-2">
         <DevotionSkeleton />
       </div>
-      {/* ReadingPlanSkeleton is commented out to match the main HomeView */}
-      {/* <ReadingPlanSkeleton /> */}
+      <div className="px-4">
+        <JournalBannerSkeleton />
+      </div>
       <div className="px-4">
         <PrayerSkeleton />
       </div>

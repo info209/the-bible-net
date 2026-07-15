@@ -29,7 +29,7 @@ interface ChapterContentProps {
   readingVerse?: number | null;
   selectedVerses?: number[];
   savedVerseIds?: number[];
-  onVerseLongPress?: (verseNumber: number, e?: React.PointerEvent) => void;
+  onVerseDoubleTap?: (verseNumber: number, e?: React.PointerEvent) => void;
   onVerseTap?: (verseNumber: number, e?: React.PointerEvent) => void;
   highlights?: any[];
   notes?: any[];
@@ -114,7 +114,7 @@ export async function fetchChapterContent(version: string, book: string, chapter
 function ChapterContent({ 
   book, chapter, font, fontSize, version = 'NKJV', 
   scrollToVerse, readingVerse, theme, selectedVerses = [], savedVerseIds = [], 
-  onVerseLongPress, onVerseTap,
+  onVerseDoubleTap, onVerseTap,
   highlights = [], notes = [],
   isSliderDragging = false,
   swipeActiveRef,
@@ -128,136 +128,61 @@ function ChapterContent({
 
   const error = queryError ? (queryError as Error).message : null;
 
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const touchStartPosRef = useRef<{x: number, y: number} | null>(null);
-  const isLongPressRef = useRef(false);
-
-  const handlePointerDown = (e: React.PointerEvent, verseNum: number) => {
-    // Only handle primary pointer button (left mouse button or first touch point)
-    if (e.button !== 0 && e.pointerType === 'mouse') return;
-
-    // If a horizontal swipe is in progress, don't start a long-press at all.
-    if (swipeActiveRef?.current) return;
-
-    // Capture pointer so we receive pointerup/pointermove even if cursor leaves the element
-    // This is critical: after a long press fires, the user can release anywhere and it works.
-    try { (e.currentTarget as Element).setPointerCapture(e.pointerId); } catch (_) {}
-
-    touchStartPosRef.current = { x: e.clientX, y: e.clientY };
-
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-    }
-
-    isLongPressRef.current = false;
-
-    // Only activate the long press timer if we are NOT already in selection mode
-    if (selectedVerses.length === 0) {
-      longPressTimerRef.current = setTimeout(() => {
-        if (onVerseLongPress) onVerseLongPress(verseNum, e);
-        isLongPressRef.current = true;
-        longPressTimerRef.current = null;
-
-        // Haptic feedback on mobile
-        if ('vibrate' in navigator) {
-          try { navigator.vibrate(50); } catch (err) {}
-        }
-      }, 600);
-    }
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!touchStartPosRef.current) return;
-
-    const dx = e.clientX - touchStartPosRef.current.x;
-    const dy = e.clientY - touchStartPosRef.current.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (dist > 8) {
-      // Horizontal intent: X dominates Y by 1.5× or more — this is a swipe.
-      // Cancel long-press immediately so VerseActionMenu never opens mid-swipe.
-      if (Math.abs(dx) > Math.abs(dy) * 1.5) {
-        if (longPressTimerRef.current) {
-          clearTimeout(longPressTimerRef.current);
-          longPressTimerRef.current = null;
-        }
-        touchStartPosRef.current = null;
-        return;
-      }
-
-      // Vertical scroll: cancel long-press after a slightly larger threshold
-      if (dist > 14) {
-        if (longPressTimerRef.current) {
-          clearTimeout(longPressTimerRef.current);
-          longPressTimerRef.current = null;
-        }
-      }
-    }
-  };
-
-  const handlePointerUp = (e: React.PointerEvent, verseNum: number) => {
-    const isLong = isLongPressRef.current;
-
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-
-    if (!touchStartPosRef.current) return;
-
-    if (isLong) {
-      // Long press already fired — selection is active. Release anywhere is fine.
-      touchStartPosRef.current = null;
-      isLongPressRef.current = false;
-      return;
-    }
-
-    // If selection mode is active, a regular tap toggles the verse via onClick.
-    if (selectedVerses.length > 0) {
-      touchStartPosRef.current = null;
-      isLongPressRef.current = false;
-      return;
-    }
-
-    // Short press when selection mode is inactive — do nothing.
-    touchStartPosRef.current = null;
-    isLongPressRef.current = false;
-  };
-
-  /**
-   * onPointerLeave — fires when the pointer physically exits the element bounds.
-   * ONLY cancel the timer here if the long press has NOT yet triggered.
-   * If it already fired (isLongPressRef.current === true), the verse stays selected.
-   */
-  const handlePointerLeave = (e: React.PointerEvent) => {
-    if (isLongPressRef.current) {
-      // Long press already fired — leaving the element must not cancel selection.
-      return;
-    }
-    // Threshold not reached yet — cancel the timer so the cursor leaving before
-    // 600 ms doesn't accidentally trigger selection.
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-    touchStartPosRef.current = null;
-  };
-
-  const handlePointerCancel = () => {
-    // Always clean up on cancel (e.g. browser interruption, scroll takeover).
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-    touchStartPosRef.current = null;
-    isLongPressRef.current = false;
-  };
+  const lastTapRef = useRef<{ verseNum: number; time: number } | null>(null);
 
   const handleVerseClick = (verseNum: number, e: React.MouseEvent) => {
     e.stopPropagation();
-    // Only handle clicks in selection mode — prevents accidental selection
+    
     if (selectedVerses.length > 0) {
-      if (onVerseTap) onVerseTap(verseNum, e as unknown as React.PointerEvent);
+      if (onVerseTap) {
+        onVerseTap(verseNum, e as unknown as React.PointerEvent);
+      }
+    } else {
+      // Mobile touch double-tap detection
+      const nativeEvent = e.nativeEvent as any;
+      const isTouch = nativeEvent.pointerType === 'touch' || nativeEvent.touches !== undefined;
+      
+      if (isTouch) {
+        const now = Date.now();
+        const lastTap = lastTapRef.current;
+        
+        if (lastTap && lastTap.verseNum === verseNum && now - lastTap.time < 300) {
+          lastTapRef.current = null; // Reset
+          
+          // Clear text selection
+          try { window.getSelection()?.removeAllRanges(); } catch (_) {}
+          
+          // Haptic feedback
+          if ('vibrate' in navigator) {
+            try { navigator.vibrate(50); } catch (err) {}
+          }
+          
+          if (onVerseDoubleTap) {
+            onVerseDoubleTap(verseNum, e as unknown as React.PointerEvent);
+          }
+        } else {
+          lastTapRef.current = { verseNum, time: now };
+        }
+      }
+    }
+  };
+
+  const handleVerseDoubleClick = (verseNum: number, e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    if (selectedVerses.length === 0) {
+      // Clear text selection
+      try { window.getSelection()?.removeAllRanges(); } catch (_) {}
+      
+      // Haptic feedback
+      if ('vibrate' in navigator) {
+        try { navigator.vibrate(50); } catch (err) {}
+      }
+      
+      if (onVerseDoubleTap) {
+        onVerseDoubleTap(verseNum, e as unknown as React.PointerEvent);
+      }
     }
   };
 
@@ -346,12 +271,8 @@ function ChapterContent({
                 key={verse.number}
                 id={`verse-${book}-${chapter}-${verse.number}`}
                 className="relative transition-all duration-200 rounded px-2 py-1 select-none cursor-pointer hover:bg-black/[0.02] scroll-mt-[120px]"
-                onPointerDown={(e) => handlePointerDown(e, verse.number)}
-                onPointerUp={(e) => handlePointerUp(e, verse.number)}
-                onPointerLeave={handlePointerLeave}
-                onPointerCancel={handlePointerCancel}
-                onPointerMove={handlePointerMove}
                 onClick={(e) => handleVerseClick(verse.number, e)}
+                onDoubleClick={(e) => handleVerseDoubleClick(verse.number, e)}
                 style={{
                   color: theme.text,
                   backgroundColor: bgColor,

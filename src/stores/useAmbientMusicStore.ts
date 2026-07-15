@@ -6,6 +6,8 @@ export interface AmbientMusicTrack {
   label: string;
   file_path: string;
   url: string;
+  thumbnail_path?: string | null;
+  thumbnail_url?: string | null;
 }
 
 interface AmbientMusicState {

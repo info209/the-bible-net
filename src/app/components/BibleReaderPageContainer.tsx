@@ -189,7 +189,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const [selectedVerses, setSelectedVerses] = useState<number[]>([]);
 
 
-  const handleVerseLongPress = useCallback((verseNum: number, e?: React.PointerEvent) => {
+  const handleVerseDoubleTap = useCallback((verseNum: number, e?: React.PointerEvent) => {
     if (e) e.stopPropagation();
     setSelectedVerses(prev => {
       if (prev.includes(verseNum)) return prev;
@@ -1896,7 +1896,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       selectedVerses={selectedVerses}
       userHighlights={userHighlights}
       userNotes={userNotes}
-      onVerseLongPress={handleVerseLongPress}
+      onVerseDoubleTap={handleVerseDoubleTap}
       onVerseTap={(v) => {
         if (v === 0) onVerseMenuClose();
         else handleVerseTap(v);

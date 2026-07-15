@@ -610,7 +610,7 @@ export default function BibleSearchModal({
             onClick={onClose}
         >
             <div
-                className="absolute top-14 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-[620px] rounded-2xl shadow-2xl max-h-[82vh] flex flex-col overflow-hidden border"
+                className="absolute top-14 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:w-full sm:max-w-[620px] rounded-lg shadow-2xl max-h-[82vh] flex flex-col overflow-hidden border"
                 style={{ backgroundColor: t.modalBg, borderColor: t.borderCol }}
                 onClick={e => e.stopPropagation()}
             >

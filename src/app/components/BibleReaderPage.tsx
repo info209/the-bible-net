@@ -85,7 +85,7 @@ interface BibleReaderPageProps {
   onBookChange?: (book: string) => void;
   onVersionChange?: (ver: string) => void;
   selectedVerses?: number[];
-  onVerseLongPress?: (verseNumber: number, e?: React.PointerEvent) => void;
+  onVerseDoubleTap?: (verseNumber: number, e?: React.PointerEvent) => void;
   onVerseTap?: (verseNumber: number, e?: React.PointerEvent) => void;
   onSaveHighlight?: (verses: number[], color: string) => void;
   onSaveNote?: (verses: number[], note: string, labels: string[]) => void;
@@ -138,7 +138,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     onVersionChange,
     selectedVerses = [],
     verses = [],
-    onVerseLongPress,
+    onVerseDoubleTap,
     onVerseTap,
     onSaveHighlight,
     onSaveNote,
@@ -2299,8 +2299,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                           : 'transparent',
                       }}
                     >
-                      {/* Left side: Play/Pause icon + Label */}
-                      <div className="flex items-center space-x-3.5">
+                      {/* Left side: Play/Pause icon + Thumbnail + Label */}
+                      <div className="flex items-center space-x-3.5 min-w-0">
                         <div className="flex-shrink-0" style={{ color: currentTrack?.id === track.id ? currentTheme.verseNumber : currentTheme.text }}>
                           {currentTrack?.id === track.id && ambientPlaying ? (
                             <Pause className="size-5 fill-current" />
@@ -2309,8 +2309,17 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                           )}
                         </div>
 
+                        {/* Thumbnail */}
+                        <div className="relative size-10 rounded-lg overflow-hidden flex-shrink-0 bg-black/5 flex items-center justify-center border border-black/5">
+                          {track.thumbnail_url ? (
+                            <img src={track.thumbnail_url} alt={track.label} className="w-full h-full object-cover" />
+                          ) : (
+                            <Music className="size-4 opacity-45" style={{ color: currentTheme.text }} />
+                          )}
+                        </div>
+
                         <span
-                          className="text-base text-left truncate max-w-[200px]"
+                          className="text-base text-left truncate max-w-[160px]"
                           style={{ 
                             color: currentTrack?.id === track.id ? currentTheme.verseNumber : currentTheme.text,
                             fontWeight: currentTrack?.id === track.id ? 600 : 400 
@@ -2549,7 +2558,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               theme={currentTheme}
               selectedVerses={selectedVerses}
               savedVerseIds={savedVerseIds}
-              onVerseLongPress={onVerseLongPress}
+              onVerseDoubleTap={onVerseDoubleTap}
               onVerseTap={onVerseTap}
               highlights={userHighlights}
               notes={userNotes}
