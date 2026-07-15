@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useRef, PointerEvent, memo } from 'react';
+import { useVerseNavigation } from '@/lib/useVerseNavigation';
 import { motion } from 'framer-motion';
 import { Bookmark, FileText } from 'lucide-react';
 import BibleSkeleton from './BibleSkeleton';
@@ -31,6 +32,7 @@ interface ChapterContentProps {
   savedVerseIds?: number[];
   onVerseDoubleTap?: (verseNumber: number, e?: React.PointerEvent) => void;
   onVerseTap?: (verseNumber: number, e?: React.PointerEvent) => void;
+  onVerseLongPress?: (verseNumber: number, e?: React.PointerEvent) => void;
   highlights?: any[];
   notes?: any[];
   theme: {
@@ -189,26 +191,15 @@ function ChapterContent({
   const content = apiContent;
 
 
-  useEffect(() => {
-    if (scrollToVerse && scrollToVerse >= 1 && content?.verses?.length && !isSliderDragging) {
-      const timer = setTimeout(() => {
-        const verseElement = document.getElementById(`verse-${book}-${chapter}-${scrollToVerse}`);
-        if (verseElement) {
-          const scrollContainer = document.querySelector('[class*="overflow-y-auto"]');
-          if (scrollContainer) {
-            const elementTop = verseElement.getBoundingClientRect().top;
-            const containerTop = scrollContainer.getBoundingClientRect().top;
-            const currentScroll = scrollContainer.scrollTop;
-            const targetScroll = currentScroll + elementTop - containerTop - 180;
-            scrollContainer.scrollTo({ top: targetScroll, behavior: 'smooth' });
-          } else {
-            verseElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          }
-        }
-      }, 300);
-      return () => clearTimeout(timer);
-    }
-  }, [scrollToVerse, book, chapter, content, isSliderDragging]);
+  // Canonical verse navigation — uses MutationObserver, no setTimeout races.
+  // isChapterReady is true only when data has been fetched and rendered, so
+  // the hook never attempts to scroll before the verse elements exist.
+  useVerseNavigation({
+    book,
+    chapter,
+    verseNumber: isSliderDragging ? null : (scrollToVerse ?? null),
+    isChapterReady: !isLoading && !!apiContent && !!(apiContent.verses?.length),
+  });
 
   if (error && !content) {
     return (
@@ -256,12 +247,10 @@ function ChapterContent({
               (n.metadata?.bookId === book || n.metadata?.bookName === book)
             );
 
-            // Determine background: highlight > reading > transparent
+            // Determine background: highlight > transparent
             let bgColor: string;
             if (highlight?.metadata?.color && highlight.metadata.color !== 'none') {
               bgColor = (HIGHLIGHT_COLOR_MAP[highlight.metadata.color] ?? highlight.metadata.color) + '55';
-            } else if (isReading) {
-              bgColor = 'rgba(49, 196, 190, 0.08)';
             } else {
               bgColor = 'transparent';
             }
@@ -270,7 +259,7 @@ function ChapterContent({
               <div
                 key={verse.number}
                 id={`verse-${book}-${chapter}-${verse.number}`}
-                className="relative transition-all duration-200 rounded px-2 py-1 select-none cursor-pointer hover:bg-black/[0.02] scroll-mt-[120px]"
+                className="relative transition-all duration-200 rounded px-2 py-1 cursor-pointer hover:bg-black/[0.02] scroll-mt-[120px]"
                 onClick={(e) => handleVerseClick(verse.number, e)}
                 onDoubleClick={(e) => handleVerseDoubleClick(verse.number, e)}
                 style={{
@@ -278,9 +267,12 @@ function ChapterContent({
                   backgroundColor: bgColor,
                 }}
               >
+                {isReading && (
+                  <div className="absolute left-0 top-0 bottom-0 w-1 bg-[#31C4BE] rounded-l" />
+                )}
                 <sup className="font-bold mr-1.5 select-none opacity-60" style={{ color: theme.verseNumber }}>{verse.number}</sup>
                 <span
-                  className={`${isReading ? 'font-medium' : 'font-normal'}`}
+                  className={`${isReading ? 'font-bold' : 'font-normal'}`}
                   style={isSelected ? {
                     textDecoration: 'underline',
                     textDecorationStyle: 'dashed',

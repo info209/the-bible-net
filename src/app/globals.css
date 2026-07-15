@@ -509,6 +509,23 @@ html, body, #__next {
   .animate-shimmer {
     animation: shimmer 1.4s ease-in-out infinite;
   }
+
+  /* ── Verse navigation arrival highlight ────────────────────────────────────
+   * Applied by useVerseNavigation to the destination verse element.
+   * Fades from a soft teal glow to transparent — never permanently changes
+   * the verse appearance. Existing highlight colors are unaffected because
+   * this class only animates background-color and does not set it statically.
+   */
+  @keyframes verse-nav-highlight {
+    0%   { background-color: rgba(49, 196, 190, 0.30); }
+    40%  { background-color: rgba(49, 196, 190, 0.20); }
+    100% { background-color: transparent; }
+  }
+
+  .verse-nav-highlight {
+    animation: verse-nav-highlight 2s ease-out forwards !important;
+    border-radius: 4px;
+  }
 }
 
 @supports (-webkit-touch-callout: none) {

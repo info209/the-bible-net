@@ -894,24 +894,10 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       setSelectedChapter(chapter);
       setSelectedVerse(verse);
       setShowSearch(false);
-
-      // Scroll to the verse after a short delay to allow state to update
-      setTimeout(() => {
-        const verseElement = document.getElementById(`verse-${targetBook.id}-${chapter}-${verse}`);
-        if (verseElement && scrollContainerRef.current) {
-          const elementTop = verseElement.getBoundingClientRect().top;
-          const containerTop = scrollContainerRef.current.getBoundingClientRect().top;
-          const currentScroll = scrollContainerRef.current.scrollTop;
-          const targetScroll = currentScroll + elementTop - containerTop - 180;
-
-          scrollContainerRef.current.scrollTo({
-            top: targetScroll,
-            behavior: 'smooth'
-          });
-        }
-      }, 300);
+      // Scroll is handled by useVerseNavigation inside ChapterContent.
     }
   };
+
 
   const handlePrevious = () => {
     if (isTransitioningRef.current) return;
