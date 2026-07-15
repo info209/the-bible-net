@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UserRole } from '@/types/user';
 import { getAuthContext, sanitizeFilename } from '@/utils/uploadHelpers';
 import { AMBIENT_MUSIC_CONFIG } from '@/config/ambientMusic.config';
+import { createAdminClient } from '@/utils/supabase/admin';
 import path from 'path';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +18,8 @@ export async function GET(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
-        const { data: tracks, error } = await authContext.supabase
+        const db = createAdminClient() || authContext.supabase;
+        const { data: tracks, error } = await db
             .from('ambient_music')
             .select('*')
             .order('created_at', { ascending: true });
@@ -27,13 +29,13 @@ export async function GET(req: NextRequest) {
         }
 
         const mappedTracks = (tracks || []).map(track => {
-            const { data: { publicUrl } } = authContext.supabase.storage
+            const { data: { publicUrl } } = db.storage
                 .from('ambient-music')
                 .getPublicUrl(track.file_path);
 
             let publicThumbUrl = null;
             if (track.thumbnail_path) {
-                const { data: { publicUrl: thumbUrl } } = authContext.supabase.storage
+                const { data: { publicUrl: thumbUrl } } = db.storage
                     .from('ambient-music')
                     .getPublicUrl(track.thumbnail_path);
                 publicThumbUrl = thumbUrl;
@@ -70,6 +72,12 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const adminDb = createAdminClient();
+        if (!adminDb) {
+            console.warn('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Falling back to anon client. Database writes may fail due to Row Level Security (RLS) policies.');
+        }
+        const db = adminDb || authContext.supabase;
+
         const body = await req.json();
         const { label, file_path, thumbnail_path } = body;
         filePathToDeleteOnError = file_path;
@@ -87,7 +95,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 2. Validate duplicate label
-        const { data: duplicateTrack, error: duplicateCheckError } = await authContext.supabase
+        const { data: duplicateTrack, error: duplicateCheckError } = await db
             .from('ambient_music')
             .select('id')
             .eq('label', label.trim())
@@ -100,14 +108,14 @@ export async function POST(req: NextRequest) {
         if (duplicateTrack) {
             if (file_path) {
                 try {
-                    await authContext.supabase.storage.from('ambient-music').remove([file_path]);
+                    await db.storage.from('ambient-music').remove([file_path]);
                 } catch (cleanupErr) {
                     console.error('Failed to clean up file after duplicate label check:', cleanupErr);
                 }
             }
             if (thumbnail_path) {
                 try {
-                    await authContext.supabase.storage.from('ambient-music').remove([thumbnail_path]);
+                    await db.storage.from('ambient-music').remove([thumbnail_path]);
                 } catch (cleanupErr) {
                     console.error('Failed to clean up thumbnail after duplicate label check:', cleanupErr);
                 }
@@ -119,7 +127,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 3. Check maximum track count limit
-        const { count, error: countError } = await authContext.supabase
+        const { count, error: countError } = await db
             .from('ambient_music')
             .select('*', { count: 'exact', head: true });
 
@@ -130,14 +138,14 @@ export async function POST(req: NextRequest) {
         if (count !== null && count >= AMBIENT_MUSIC_CONFIG.MAX_TRACKS) {
             if (file_path) {
                 try {
-                    await authContext.supabase.storage.from('ambient-music').remove([file_path]);
+                    await db.storage.from('ambient-music').remove([file_path]);
                 } catch (cleanupErr) {
                     console.error('Failed to clean up file after max tracks check:', cleanupErr);
                 }
             }
             if (thumbnail_path) {
                 try {
-                    await authContext.supabase.storage.from('ambient-music').remove([thumbnail_path]);
+                    await db.storage.from('ambient-music').remove([thumbnail_path]);
                 } catch (cleanupErr) {
                     console.error('Failed to clean up thumbnail after max tracks check:', cleanupErr);
                 }
@@ -160,7 +168,7 @@ export async function POST(req: NextRequest) {
         }
 
         // 5. Insert metadata in Database
-        const { data: insertedRecord, error: insertError } = await authContext.supabase
+        const { data: insertedRecord, error: insertError } = await db
             .from('ambient_music')
             .insert({
                 label: label.trim(),
@@ -175,13 +183,13 @@ export async function POST(req: NextRequest) {
             throw insertError;
         }
 
-        const { data: { publicUrl } } = authContext.supabase.storage
+        const { data: { publicUrl } } = db.storage
             .from('ambient-music')
             .getPublicUrl(file_path);
 
         let publicThumbUrl = null;
         if (insertedRecord.thumbnail_path) {
-            const { data: { publicUrl: thumbUrl } } = authContext.supabase.storage
+            const { data: { publicUrl: thumbUrl } } = db.storage
                 .from('ambient-music')
                 .getPublicUrl(insertedRecord.thumbnail_path);
             publicThumbUrl = thumbUrl;
@@ -205,8 +213,9 @@ export async function POST(req: NextRequest) {
         // Clean up the uploaded storage files if database operation failed
         if (filePathToDeleteOnError) {
             try {
-                const authContext = await getAuthContext();
-                await authContext.supabase.storage
+                const adminDb = createAdminClient();
+                const db = adminDb || (await getAuthContext()).supabase;
+                await db.storage
                     .from('ambient-music')
                     .remove([filePathToDeleteOnError]);
             } catch (cleanupErr) {
@@ -215,8 +224,9 @@ export async function POST(req: NextRequest) {
         }
         if (thumbPathToDeleteOnError) {
             try {
-                const authContext = await getAuthContext();
-                await authContext.supabase.storage
+                const adminDb = createAdminClient();
+                const db = adminDb || (await getAuthContext()).supabase;
+                await db.storage
                     .from('ambient-music')
                     .remove([thumbPathToDeleteOnError]);
             } catch (cleanupErr) {
@@ -239,6 +249,12 @@ export async function DELETE(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const adminDb = createAdminClient();
+        if (!adminDb) {
+            console.warn('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Falling back to anon client. Database writes may fail due to Row Level Security (RLS) policies.');
+        }
+        const db = adminDb || authContext.supabase;
+
         const { searchParams } = new URL(req.url);
         const id = searchParams.get('id');
 
@@ -247,7 +263,7 @@ export async function DELETE(req: NextRequest) {
         }
 
         // Fetch track metadata to retrieve the file_path and thumbnail_path
-        const { data: track, error: findError } = await authContext.supabase
+        const { data: track, error: findError } = await db
             .from('ambient_music')
             .select('file_path, thumbnail_path')
             .eq('id', id)
@@ -266,7 +282,7 @@ export async function DELETE(req: NextRequest) {
         if (track.thumbnail_path) {
             filesToDelete.push(track.thumbnail_path);
         }
-        const { error: storageDeleteError } = await authContext.supabase.storage
+        const { error: storageDeleteError } = await db.storage
             .from('ambient-music')
             .remove(filesToDelete);
 
@@ -276,7 +292,7 @@ export async function DELETE(req: NextRequest) {
         }
 
         // 2. Delete from Database
-        const { error: dbDeleteError } = await authContext.supabase
+        const { error: dbDeleteError } = await db
             .from('ambient_music')
             .delete()
             .eq('id', id);
@@ -305,6 +321,12 @@ export async function PUT(req: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
 
+        const adminDb = createAdminClient();
+        if (!adminDb) {
+            console.warn('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Falling back to anon client. Database writes may fail due to Row Level Security (RLS) policies.');
+        }
+        const db = adminDb || authContext.supabase;
+
         const body = await req.json();
         const { id, label, file_path, thumbnail_path } = body;
 
@@ -313,7 +335,7 @@ export async function PUT(req: NextRequest) {
         }
 
         // Fetch existing track
-        const { data: track, error: findError } = await authContext.supabase
+        const { data: track, error: findError } = await db
             .from('ambient_music')
             .select('*')
             .eq('id', id)
@@ -336,7 +358,7 @@ export async function PUT(req: NextRequest) {
             const trimmedLabel = label.trim();
             if (trimmedLabel !== track.label) {
                 // Check duplicate label (excluding current track)
-                const { data: duplicateTrack, error: duplicateCheckError } = await authContext.supabase
+                const { data: duplicateTrack, error: duplicateCheckError } = await db
                     .from('ambient_music')
                     .select('id')
                     .eq('label', trimmedLabel)
@@ -387,13 +409,13 @@ export async function PUT(req: NextRequest) {
         // If no changes, return early
         if (Object.keys(updatedFields).length === 0) {
             // Return mapped record even if no changes, so frontend gets complete updated structure
-            const { data: { publicUrl } } = authContext.supabase.storage
+            const { data: { publicUrl } } = db.storage
                 .from('ambient-music')
                 .getPublicUrl(track.file_path);
 
             let publicThumbUrl = null;
             if (track.thumbnail_path) {
-                const { data: { publicUrl: thumbUrl } } = authContext.supabase.storage
+                const { data: { publicUrl: thumbUrl } } = db.storage
                     .from('ambient-music')
                     .getPublicUrl(track.thumbnail_path);
                 publicThumbUrl = thumbUrl;
@@ -413,7 +435,7 @@ export async function PUT(req: NextRequest) {
         }
 
         // Update database
-        const { data: updatedRecord, error: updateError } = await authContext.supabase
+        const { data: updatedRecord, error: updateError } = await db
             .from('ambient_music')
             .update(updatedFields)
             .eq('id', id)
@@ -427,7 +449,7 @@ export async function PUT(req: NextRequest) {
         // Deletions of old files/thumbnails from Supabase storage (only after successful DB update)
         if (updatedFields.file_path && track.file_path) {
             try {
-                await authContext.supabase.storage
+                await db.storage
                     .from('ambient-music')
                     .remove([track.file_path]);
             } catch (cleanupErr) {
@@ -437,7 +459,7 @@ export async function PUT(req: NextRequest) {
 
         if (updatedFields.thumbnail_path && track.thumbnail_path) {
             try {
-                await authContext.supabase.storage
+                await db.storage
                     .from('ambient-music')
                     .remove([track.thumbnail_path]);
             } catch (cleanupErr) {
@@ -446,13 +468,13 @@ export async function PUT(req: NextRequest) {
         }
 
         // Return mapped record
-        const { data: { publicUrl } } = authContext.supabase.storage
+        const { data: { publicUrl } } = db.storage
             .from('ambient-music')
             .getPublicUrl(updatedRecord.file_path);
 
         let publicThumbUrl = null;
         if (updatedRecord.thumbnail_path) {
-            const { data: { publicUrl: thumbUrl } } = authContext.supabase.storage
+            const { data: { publicUrl: thumbUrl } } = db.storage
                 .from('ambient-music')
                 .getPublicUrl(updatedRecord.thumbnail_path);
             publicThumbUrl = thumbUrl;
@@ -477,8 +499,9 @@ export async function PUT(req: NextRequest) {
         // Clean up newly uploaded files if the DB operation failed
         if (newFilePathToDeleteOnError) {
             try {
-                const authContext = await getAuthContext();
-                await authContext.supabase.storage
+                const adminDb = createAdminClient();
+                const db = adminDb || (await getAuthContext()).supabase;
+                await db.storage
                     .from('ambient-music')
                     .remove([newFilePathToDeleteOnError]);
             } catch (cleanupErr) {
@@ -488,8 +511,9 @@ export async function PUT(req: NextRequest) {
 
         if (newThumbPathToDeleteOnError) {
             try {
-                const authContext = await getAuthContext();
-                await authContext.supabase.storage
+                const adminDb = createAdminClient();
+                const db = adminDb || (await getAuthContext()).supabase;
+                await db.storage
                     .from('ambient-music')
                     .remove([newThumbPathToDeleteOnError]);
             } catch (cleanupErr) {
@@ -500,3 +524,4 @@ export async function PUT(req: NextRequest) {
         return NextResponse.json({ success: false, error: error.message || 'Update failed' }, { status: 500 });
     }
 }
+

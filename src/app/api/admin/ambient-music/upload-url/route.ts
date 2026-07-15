@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UserRole } from '@/types/user';
 import { getAuthContext, sanitizeFilename } from '@/utils/uploadHelpers';
 import { AMBIENT_MUSIC_CONFIG } from '@/config/ambientMusic.config';
+import { createAdminClient } from '@/utils/supabase/admin';
 import path from 'path';
 
 export const dynamic = 'force-dynamic';
@@ -73,8 +74,9 @@ export async function POST(req: NextRequest) {
             : `ambient-music/${timestamp}-${randomId}-${sanitizedBase}${ext}`;
 
         // Create signed upload URL in the 'ambient-music' bucket
-        // We use the admin client from the authContext since RLS policies might not allow anon users to upload
-        const { data, error: storageError } = await authContext.supabase.storage
+        // We use the admin client from createAdminClient since RLS policies might not allow anon users to upload
+        const db = createAdminClient() || authContext.supabase;
+        const { data, error: storageError } = await db.storage
             .from('ambient-music')
             .createSignedUploadUrl(filePath, {
                 upsert: false
@@ -96,3 +98,4 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ success: false, error: error.message || 'Failed to create upload URL' }, { status: 500 });
     }
 }
+

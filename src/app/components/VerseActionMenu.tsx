@@ -374,7 +374,7 @@ export default function VerseActionMenu({
             <div
               onPointerDown={(e) => dragControls.start(e)}
               style={{ touchAction: 'none' }}
-              className="flex items-center justify-center pt-3 pb-3 cursor-grab active:cursor-grabbing"
+              className="flex items-center justify-center pt-2.5 pb-1.5 cursor-grab active:cursor-grabbing"
             >
               <div className="w-9 h-1 rounded-full" style={{ backgroundColor: dragBg }} />
             </div>
@@ -388,11 +388,11 @@ export default function VerseActionMenu({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.15 }}
-                  className="px-4 pt-3 pb-6 flex flex-col flex-1 min-h-0 overflow-y-auto"
+                  className="px-4 pt-2.5 pb-4 flex flex-col flex-1 min-h-0 overflow-y-auto"
                 >
                   {/* Selected verse label */}
                   <p
-                    className="text-center text-[11px] mb-3"
+                    className="text-center text-[11px] mb-2"
                     style={{ color: subText }}
                   >
                     Selected:{' '}
@@ -404,26 +404,26 @@ export default function VerseActionMenu({
                   {!isLoggedIn ? (
                     /* ── Login prompt ──────────────────────────────────── */
                     <div
-                      className="rounded-[20px] p-5 border border-dashed"
+                      className="rounded-[16px] p-4 border border-dashed"
                       style={{ backgroundColor: actionBg, borderColor: dm ? '#3A3A3C' : '#E5E7EB' }}
                     >
                       <div className="flex flex-col items-center text-center">
                         <div
-                          className="w-12 h-12 rounded-full flex items-center justify-center mb-3"
+                          className="w-9 h-9 rounded-full flex items-center justify-center mb-2"
                           style={{ backgroundColor: dm ? '#1C1C1E' : '#FFFFFF' }}
                         >
-                          <BookmarkPlus className="w-6 h-6 text-[#31C4BE]" />
+                          <BookmarkPlus className="w-[18px] h-[18px] text-[#31C4BE]" />
                         </div>
-                        <h3 className="text-[14px] font-bold mb-1" style={{ color: labelText }}>
+                        <h3 className="text-[13px] font-bold mb-0.5" style={{ color: labelText }}>
                           Login to Save & Highlight
                         </h3>
-                        <p className="text-[11px] mb-4 leading-relaxed" style={{ color: subText }}>
+                        <p className="text-[10px] mb-3 leading-relaxed" style={{ color: subText }}>
                           Sign in to save verses, highlight, and take personal notes.
                         </p>
                         <div className="flex w-full">
                           <Link
                             href="/auth/login"
-                            className="flex-1 py-3 bg-[#31C4BE] text-white text-[13px] font-bold rounded-[16px] shadow-[0_6px_20px_rgba(49,196,190,0.28)] active:scale-95 transition-all text-center"
+                            className="flex-1 py-2 bg-[#31C4BE] text-white text-[12px] font-bold rounded-[12px] shadow-[0_4px_15px_rgba(49,196,190,0.22)] active:scale-95 transition-all text-center"
                           >
                             Login
                           </Link>
@@ -439,15 +439,15 @@ export default function VerseActionMenu({
                           onClick={() => setView('highlight')}
                           id="verse-action-highlight"
                           aria-label="Highlight verse"
-                          className="flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[18px] transition-all active:scale-95 animate-none"
+                          className="flex flex-col items-center justify-center gap-1 h-[58px] rounded-[14px] transition-all active:scale-95 animate-none"
                           style={{
                             backgroundColor: existingHighlightColor ? 'rgba(49,196,190,0.16)' : actionBg,
                             border: existingHighlightColor ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
                           }}
                         >
                           <PenTool
-                            className="w-[24px] h-[24px]"
-                            strokeWidth={2.2}
+                            className="w-[18px] h-[18px]"
+                            strokeWidth={2}
                             style={{ color: existingHighlightColor ? '#31C4BE' : iconColor }}
                           />
                           <span className="text-[10px] font-bold" style={{ color: existingHighlightColor ? '#31C4BE' : iconColor }}>
@@ -464,16 +464,16 @@ export default function VerseActionMenu({
                           }}
                           id="verse-action-save"
                           aria-label="Save verse"
-                          className="flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[18px] transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-1 h-[58px] rounded-[14px] transition-all active:scale-95"
                           style={{
                             backgroundColor: isSavedVerse ? 'rgba(49,196,190,0.16)' : actionBg,
                             border: isSavedVerse ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
                           }}
                         >
                           {isSavedVerse ? (
-                            <BookmarkCheck className="w-[24px] h-[24px] text-[#31C4BE]" strokeWidth={2.2} />
+                            <BookmarkCheck className="w-[18px] h-[18px] text-[#31C4BE]" strokeWidth={2} />
                           ) : (
-                            <BookmarkPlus className="w-[24px] h-[24px]" strokeWidth={2.2} style={{ color: iconColor }} />
+                            <BookmarkPlus className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
                           )}
                           <span className="text-[10px] font-bold" style={{ color: isSavedVerse ? '#31C4BE' : iconColor }}>
                             {isSavedVerse ? 'Saved' : 'Save'}
@@ -489,10 +489,10 @@ export default function VerseActionMenu({
                           }}
                           id="verse-action-note"
                           aria-label="Add note"
-                          className="flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[18px] transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-1 h-[58px] rounded-[14px] transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <FileText className="w-[24px] h-[24px]" strokeWidth={2.2} style={{ color: iconColor }} />
+                          <FileText className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
                           <span className="text-[10px] font-bold" style={{ color: iconColor }}>Note</span>
                         </button>
 
@@ -501,10 +501,10 @@ export default function VerseActionMenu({
                           onClick={() => onShare?.()}
                           id="verse-action-share"
                           aria-label="Share verse"
-                          className="flex flex-col items-center justify-center gap-1.5 aspect-square rounded-[18px] transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-1 h-[58px] rounded-[14px] transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <Share2 className="w-[24px] h-[24px]" strokeWidth={2.2} style={{ color: iconColor }} />
+                          <Share2 className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
                           <span className="text-[10px] font-bold" style={{ color: iconColor }}>Share</span>
                         </button>
                       </div>
