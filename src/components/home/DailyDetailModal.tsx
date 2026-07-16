@@ -558,9 +558,9 @@ export function DailyDetailModal({
                         <div className="absolute inset-0 z-0 transition-all duration-700" />
                     </>
                 ) : initialSection === 'devotional' ? (
-                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700" style={{ backgroundImage: `url(${devotionalTexture.src})` }} />
+                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700" style={{ backgroundImage: `url(${devotionalTexture.src})` }} />
                 ) : (
-                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700" style={{ backgroundImage: `url(${verseTexture.src})` }} />
+                    <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700" style={{ backgroundImage: `url(${verseTexture.src})` }} />
                 )}
 
                 {/* Header */}
