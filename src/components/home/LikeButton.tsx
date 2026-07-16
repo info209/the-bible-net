@@ -53,12 +53,12 @@ export function LikeButton({
     return (
       <button
         onClick={handlePress}
-        className="flex items-center space-x-2.5 text-white bg-white/10 hover:bg-white/15 active:scale-[0.97] backdrop-blur-md px-5 py-2.5 rounded-2xl transition-all cursor-pointer select-none font-bold text-sm border border-white/15"
+        className="flex items-center space-x-2.5 text-black bg-black/10 hover:bg-black/15 active:scale-[0.97] backdrop-blur-md px-5 py-2.5 rounded-2xl transition-all cursor-pointer select-none font-bold text-sm border border-black/15"
       >
         <motion.div animate={iconControls} className="flex items-center justify-center">
           <Heart
             className={`size-5 transition-colors duration-200 ${
-              isLiked ? 'fill-white text-white' : 'text-white/80'
+              isLiked ? 'fill-black text-black' : 'text-black/80'
             }`}
           />
         </motion.div>

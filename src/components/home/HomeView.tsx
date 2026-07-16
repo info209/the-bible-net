@@ -452,7 +452,7 @@ export default function HomeView() {
                 >
                   {/* Consistent light overlay - only for default linear gradients */}
                   {!content.backgroundImage && (
-                    <div className="absolute inset-0 bg-white/65" />
+                    <div className="absolute inset-0" />
                   )}
 
                   {/* Content */}
@@ -594,7 +594,7 @@ export default function HomeView() {
           </PremiumCarousel>
         ) : (
           <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[395px] flex items-center justify-center text-black" style={{ backgroundImage: `url(${verseTexture.src})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-            <div className="absolute inset-0 bg-white/65" />
+            <div className="absolute inset-0" />
             <p className="relative z-10 font-medium">No daily verses available yet.</p>
           </div>
         )}
@@ -623,7 +623,7 @@ export default function HomeView() {
                 >
                   {/* Consistent light overlay - only for default linear gradients */}
                   {!(content.devotionalBackgroundImage || content.backgroundImage) && (
-                    <div className="absolute inset-0 bg-white/65" />
+                    <div className="absolute inset-0" />
                   )}
 
                   {/* Content */}
@@ -756,7 +756,7 @@ export default function HomeView() {
           </PremiumCarousel>
         ) : (
           <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[395px] flex items-center justify-center text-black" style={{ backgroundImage: `url(${devotionalTexture.src})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
-            <div className="absolute inset-0 bg-white/65" />
+            <div className="absolute inset-0" />
             <p className="relative z-10 font-medium">No daily devotionals available yet.</p>
           </div>
         )}

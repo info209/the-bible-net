@@ -438,18 +438,18 @@ export function DailyDetailModal({
                     />
                     <button
                         onClick={() => onCommentClick?.(content._id || '', contentType)}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all"
+                        className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
                     >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                        <div className="bg-black/20 backdrop-blur-sm p-2 rounded-full">
                             <MessageCircle className="size-4" />
                         </div>
                         <span className="text-xs">{commentCount || 'Comment'}</span>
                     </button>
                     <button
                         onClick={() => onShareClick?.(content, contentType)}
-                        className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all"
+                        className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
                     >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                        <div className="bg-black/20 backdrop-blur-sm p-2 rounded-full">
                             <Forward className="size-4" />
                         </div>
                         <span className="text-xs">
@@ -463,9 +463,9 @@ export function DailyDetailModal({
                                     e.stopPropagation();
                                     setOpenKebab(!openKebab);
                                 }}
-                                className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all"
+                                className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
                             >
-                                <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
+                                <div className="bg-black/20 backdrop-blur-sm p-2 rounded-full">
                                     <MoreVertical className="size-4" />
                                 </div>
                                 <span className="text-xs">More</span>
@@ -533,7 +533,7 @@ export function DailyDetailModal({
                             className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
                             style={{ backgroundImage: `url(${currentContent.devotionalBackgroundImage || currentContent.backgroundImage})` }}
                         />
-                        <div className="absolute inset-0 z-0 bg-white/70 transition-all duration-700" />
+                        <div className="absolute inset-0 z-0 transition-all duration-700" />
                     </>
                 ) : initialSection === 'verse' && currentContent.backgroundImage ? (
                     <>
@@ -541,7 +541,7 @@ export function DailyDetailModal({
                             className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
                             style={{ backgroundImage: `url(${currentContent.backgroundImage})` }}
                         />
-                        <div className="absolute inset-0 z-0 bg-white/70 transition-all duration-700" />
+                        <div className="absolute inset-0 z-0 transition-all duration-700" />
                     </>
                 ) : initialSection === 'devotional' ? (
                     <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700" style={{ backgroundImage: `url(${devotionalTexture.src})` }} />
