@@ -16,6 +16,8 @@ import { DailyDetailModal } from './DailyDetailModal';
 import { PremiumCarousel } from './PremiumCarousel';
 import { LikeButton } from './LikeButton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/app/components/ui/avatar';
+import verseTexture from '@/assets/textures/verse-texture.svg';
+import devotionalTexture from '@/assets/textures/devotional-texture.svg';
 
 const getGreetingByHour = (hour: number): string => {
   if (hour >= 5 && hour < 12) return 'Good Morning';
@@ -359,7 +361,7 @@ export default function HomeView() {
 
   const formatVerseLabel = (dateStr: string): string => {
     const todayStr = new Date().toISOString().split('T')[0];
-    if (dateStr === todayStr) return 'Verse of the Day';
+    if (dateStr === todayStr) return 'Today';
     const d = new Date(dateStr);
     const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
     const day = d.getUTCDate();
@@ -444,13 +446,13 @@ export default function HomeView() {
                   className="rounded-none p-6 shadow-xl relative overflow-hidden h-[355px] flex flex-col cursor-pointer"
                   style={content.backgroundImage
                     ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                    : { background: 'linear-gradient(135deg, #0B7A81 0%, #14b8a6 50%, #2dd4bf 100%)' }
+                    : { backgroundImage: `url(${verseTexture.src})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                   }
                   onClick={() => openDetailModal(index, 'verse')}
                 >
-                  {/* Consistent dark overlay - only for default linear gradients */}
+                  {/* Consistent light overlay - only for default linear gradients */}
                   {!content.backgroundImage && (
-                    <div className="absolute inset-0 bg-black/55" />
+                    <div className="absolute inset-0 bg-white/65" />
                   )}
 
                   {/* Content */}
@@ -458,7 +460,7 @@ export default function HomeView() {
                     {/* Header row: label */}
                     <div className="w-full">
                       <div className="text-center w-full">
-                        <p className="text-white/90 text-[15px] font-semibold mb-2.5">
+                        <p className="text-black/90 text-[15px] font-semibold mb-2.5">
                           {formatVerseLabel(content.date)}
                         </p>
                         
@@ -468,15 +470,15 @@ export default function HomeView() {
                             {dailyVerses.map((_: any, displayPos: number) => {
                               const dataIndex = dailyVerses.length - 1 - displayPos;
                               return (
-                                <button
-                                  key={displayPos}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCurrentVerseSlide(dataIndex);
-                                  }}
-                                  className={`h-1.5 rounded-full transition-all ${index === dataIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/60'}`}
-                                  aria-label={`Go to slide ${dataIndex + 1}`}
-                                />
+                                  <button
+                                    key={displayPos}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCurrentVerseSlide(dataIndex);
+                                    }}
+                                    className={`h-1.5 rounded-full transition-all ${index === dataIndex ? 'w-6 bg-black' : 'w-1.5 bg-black/40 hover:bg-black/60'}`}
+                                    aria-label={`Go to slide ${dataIndex + 1}`}
+                                  />
                               );
                             })}
                           </div>
@@ -484,8 +486,8 @@ export default function HomeView() {
                       </div>
 
                       <div className="mt-6">
-                        <h4 className="text-white/80 text-xs font-bold tracking-wider mb-0.5">Daily Verse</h4>
-                        <h3 className="text-white text-lg font-bold tracking-tight truncate">
+                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily Verse</h4>
+                        <h3 className="text-black text-lg font-bold tracking-tight truncate">
                           {content.verseReference || 'Reference'} {content.version || 'KJV'}
                         </h3>
                       </div>
@@ -493,7 +495,7 @@ export default function HomeView() {
 
                     {/* Verse text — clamped to 4 lines; card height stays constant */}
                     <div className="flex-1 flex flex-col justify-start mt-4 overflow-hidden">
-                      <p className="text-white text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 line-clamp-4 overflow-hidden text-ellipsis w-full">
+                      <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 line-clamp-4 overflow-hidden text-ellipsis w-full">
                         {(() => {
                           const verseNumber = content.verseNumber || content.verseReference?.split(':')?.[1]?.trim();
                           return verseNumber ? (
@@ -520,20 +522,20 @@ export default function HomeView() {
                       />
                       <button
                         onClick={(e) => { e.stopPropagation(); handleCommentClick(content._id, 'daily-verse'); }}
-                        className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
+                        className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                       >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <MessageCircle className="size-4" />
+                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                          <MessageCircle className="size-4 text-black" />
                         </div>
                         <span className="text-xs">{content.verseCommentCount || 'Comment'}</span>
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleShare(content, 'daily-verse'); }}
-                        className={`flex flex-col items-center space-y-1 text-white transition-all ${sharingStates.has(`${content._id}-daily-verse`) ? 'opacity-50 cursor-not-allowed' : 'md:hover:scale-110 active:scale-95'}`}
+                        className={`flex flex-col items-center space-y-1 text-black transition-all ${sharingStates.has(`${content._id}-daily-verse`) ? 'opacity-50 cursor-not-allowed' : 'md:hover:scale-110 active:scale-95'}`}
                         disabled={sharingStates.has(`${content._id}-daily-verse`)}
                       >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Forward className="size-4" />
+                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                          <Forward className="size-4 text-black" />
                         </div>
                         <span className="text-xs">{content.verseShareCount > 0 ? content.verseShareCount : 'Share'}</span>
                       </button>
@@ -543,10 +545,10 @@ export default function HomeView() {
                             e.stopPropagation();
                             setOpenVerseKebabIndex(openVerseKebabIndex === index ? null : index);
                           }}
-                          className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
+                          className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                         >
-                          <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                            <MoreVertical className="size-4" />
+                          <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                            <MoreVertical className="size-4 text-black" />
                           </div>
                           <span className="text-xs">More</span>
                         </button>
@@ -591,9 +593,9 @@ export default function HomeView() {
             ))}
           </PremiumCarousel>
         ) : (
-          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[395px] flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg, #0B7A81 0%, #14b8a6 50%, #2dd4bf 100%)' }}>
-            <div className="absolute inset-0 bg-black/20" />
-            <p className="relative z-10">No daily verses available yet.</p>
+          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[395px] flex items-center justify-center text-black" style={{ backgroundImage: `url(${verseTexture.src})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+            <div className="absolute inset-0 bg-white/65" />
+            <p className="relative z-10 font-medium">No daily verses available yet.</p>
           </div>
         )}
       </div>
@@ -615,13 +617,13 @@ export default function HomeView() {
                     ? { backgroundImage: `url(${content.devotionalBackgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                     : content.backgroundImage
                       ? { backgroundImage: `url(${content.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center' }
-                      : { background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 50%, #db2777 100%)' }
+                      : { backgroundImage: `url(${devotionalTexture.src})`, backgroundSize: 'cover', backgroundPosition: 'center' }
                   }
                   onClick={() => openDetailModal(index, 'devotional')}
                 >
-                  {/* Consistent dark overlay - only for default linear gradients */}
+                  {/* Consistent light overlay - only for default linear gradients */}
                   {!(content.devotionalBackgroundImage || content.backgroundImage) && (
-                    <div className="absolute inset-0 bg-black/55" />
+                    <div className="absolute inset-0 bg-white/65" />
                   )}
 
                   {/* Content */}
@@ -629,7 +631,7 @@ export default function HomeView() {
                     {/* Header row: label + indicators */}
                     <div className="w-full">
                       <div className="text-center w-full">
-                        <p className="text-white/90 text-[15px] font-semibold mb-2.5">
+                        <p className="text-black/90 text-[15px] font-semibold mb-2.5">
                           {formatVerseLabel(content.date) === 'Verse of the Day' ? 'Devotion of the Day' : formatVerseLabel(content.date)}
                         </p>
 
@@ -639,15 +641,15 @@ export default function HomeView() {
                             {dailyDevotions.map((_: any, displayPos: number) => {
                               const dataIndex = dailyDevotions.length - 1 - displayPos;
                               return (
-                                <button
-                                  key={displayPos}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setCurrentDevotionSlide(dataIndex);
-                                  }}
-                                  className={`h-1.5 rounded-full transition-all ${index === dataIndex ? 'w-6 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/60'}`}
-                                  aria-label={`Go to slide ${dataIndex + 1}`}
-                                />
+                                  <button
+                                    key={displayPos}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setCurrentDevotionSlide(dataIndex);
+                                    }}
+                                    className={`h-1.5 rounded-full transition-all ${index === dataIndex ? 'w-6 bg-black' : 'w-1.5 bg-black/40 hover:bg-black/60'}`}
+                                    aria-label={`Go to slide ${dataIndex + 1}`}
+                                  />
                               );
                             })}
                           </div>
@@ -655,12 +657,12 @@ export default function HomeView() {
                       </div>
 
                       <div className="mt-6">
-                        <h4 className="text-white/80 text-xs font-bold tracking-wider mb-0.5">Daily Devotional</h4>
-                        <h3 className="text-white text-lg font-bold tracking-tight truncate">
+                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily Devotional</h4>
+                        <h3 className="text-black text-lg font-bold tracking-tight truncate">
                           {content.devotionalTitle}
                         </h3>
                         {content.devotionalVerseRef && (
-                          <p className="text-xs mt-0.5 font-semibold text-white/80 truncate">
+                          <p className="text-xs mt-0.5 font-semibold text-black/80 truncate">
                             {content.devotionalVerseRef}
                           </p>
                         )}
@@ -669,7 +671,7 @@ export default function HomeView() {
 
                     {/* Devotional content preview — clamped to 4 lines; card height stays constant */}
                     <div className="flex-1 flex flex-col justify-start mt-4 overflow-hidden">
-                      <p className="text-white/90 text-sm md:text-base leading-relaxed text-left line-clamp-4 overflow-hidden text-ellipsis w-full">
+                      <p className="text-black/90 text-sm md:text-base leading-relaxed text-left line-clamp-4 overflow-hidden text-ellipsis w-full">
                         {content.devotionalContent}
                       </p>
                     </div>
@@ -688,20 +690,20 @@ export default function HomeView() {
                       />
                       <button
                         onClick={(e) => { e.stopPropagation(); handleCommentClick(content._id, 'daily-devotion'); }}
-                        className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
+                        className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                       >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <MessageCircle className="size-4" />
+                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                          <MessageCircle className="size-4 text-black" />
                         </div>
                         <span className="text-xs">{content.devotionCommentCount || 'Comment'}</span>
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); handleShare(content, 'daily-devotion'); }}
-                        className={`flex flex-col items-center space-y-1 text-white transition-all ${sharingStates.has(`${content._id}-daily-devotion`) ? 'opacity-50 cursor-not-allowed' : 'md:hover:scale-110 active:scale-95'}`}
+                        className={`flex flex-col items-center space-y-1 text-black transition-all ${sharingStates.has(`${content._id}-daily-devotion`) ? 'opacity-50 cursor-not-allowed' : 'md:hover:scale-110 active:scale-95'}`}
                         disabled={sharingStates.has(`${content._id}-daily-devotion`)}
                       >
-                        <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                          <Forward className="size-4" />
+                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                          <Forward className="size-4 text-black" />
                         </div>
                         <span className="text-xs">{content.devotionShareCount > 0 ? content.devotionShareCount : 'Share'}</span>
                       </button>
@@ -711,10 +713,10 @@ export default function HomeView() {
                             e.stopPropagation();
                             setOpenDevotionKebabIndex(openDevotionKebabIndex === index ? null : index);
                           }}
-                          className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
+                          className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                         >
-                          <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                            <MoreVertical className="size-4" />
+                          <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                            <MoreVertical className="size-4 text-black" />
                           </div>
                           <span className="text-xs">More</span>
                         </button>
@@ -738,10 +740,10 @@ export default function HomeView() {
                       {content.audioUrl && (
                         <button
                           onClick={(e) => { e.stopPropagation(); toggleAudio(content.audioUrl); }}
-                          className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
+                          className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                         >
-                          <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
-                            {audioPlaying === content.audioUrl ? <Pause className="size-4" /> : <Play className="size-4 ml-0.5" />}
+                          <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                            {audioPlaying === content.audioUrl ? <Pause className="size-4 text-black" /> : <Play className="size-4 ml-0.5 text-black" />}
                           </div>
                           <span className="text-xs">Listen</span>
                         </button>
@@ -753,9 +755,9 @@ export default function HomeView() {
             ))}
           </PremiumCarousel>
         ) : (
-          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[395px] flex items-center justify-center text-white" style={{ background: 'linear-gradient(135deg, #f472b6 0%, #ec4899 50%, #db2777 100%)' }}>
-            <div className="absolute inset-0 bg-black/20" />
-            <p className="relative z-10">No daily devotionals available yet.</p>
+          <div className="w-full rounded-2xl overflow-hidden shadow-xl relative h-[395px] flex items-center justify-center text-black" style={{ backgroundImage: `url(${devotionalTexture.src})`, backgroundSize: 'cover', backgroundPosition: 'center' }}>
+            <div className="absolute inset-0 bg-white/65" />
+            <p className="relative z-10 font-medium">No daily devotionals available yet.</p>
           </div>
         )}
       </div>

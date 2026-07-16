@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, Play, Pause, Forward, MessageCircle, MoreVertical, CheckCircle2, CheckCheck, ChevronLeft, ChevronRight } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LikeButton } from './LikeButton';
+import { PremiumCarousel } from './PremiumCarousel';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/context/ToastContext';
@@ -134,13 +135,6 @@ export function DailyDetailModal({
     const [isSpeaking, setIsSpeaking] = React.useState(false);
     const [isPaused, setIsPaused] = React.useState(false);
     const [openKebab, setOpenKebab] = React.useState(false);
-
-    // Swipe gesture state
-    const swipeStartXRef = useRef(0);
-    const swipeStartYRef = useRef(0);
-    const swipeStartTimeRef = useRef(0);
-    const swipeIsHorizontalRef = useRef<boolean | null>(null);
-    const swipeIsDraggingRef = useRef(false);
 
     // Progress state — keyed by date so switching days works correctly
     const [progressByDate, setProgressByDate] = React.useState<Record<string, ProgressStatus>>({});
@@ -385,7 +379,7 @@ export function DailyDetailModal({
     };
 
     // ── Complete button handler ───────────────────────────────────────────────
-    const handleCompleteDevotional = useCallback(() => {
+    const handleCompleteDevotional = useCallback((date: string, progress: ProgressStatus) => {
         if (!isAuthenticated) {
             // Show login prompt (same pattern as verse highlight menu)
             toast.info('Sign in to track your devotional progress');
@@ -395,12 +389,12 @@ export function DailyDetailModal({
             return;
         }
 
-        if (!currentDate) return;
-        if (currentProgress === 'COMPLETED') return; // already done — idempotent guard
+        if (!date) return;
+        if (progress === 'COMPLETED') return; // already done — idempotent guard
 
-        updateProgress(currentDate, 'COMPLETED');
+        updateProgress(date, 'COMPLETED');
         toast.success('Devotional completed! Keep it up 🙏');
-    }, [isAuthenticated, currentDate, currentProgress, updateProgress, router]);
+    }, [isAuthenticated, updateProgress, router]);
 
     // Stop speaking when day, content, or section changes
     useEffect(() => {
@@ -419,29 +413,31 @@ export function DailyDetailModal({
         };
     }, []);
 
-    const renderActionButtons = (type: 'verse' | 'devotional') => {
+    const renderActionButtons = (type: 'verse' | 'devotional', content: IDailyContent) => {
         const isVerse = type === 'verse';
         const contentType = isVerse ? 'daily-verse' : 'daily-devotion';
-        const isLiked = isVerse ? currentContent.isVerseLiked : currentContent.isDevotionLiked;
-        const likeCount = isVerse ? currentContent.verseLikeCount : currentContent.devotionLikeCount;
-        const commentCount = isVerse ? currentContent.verseCommentCount : currentContent.devotionCommentCount;
-        const shareCount = isVerse ? currentContent.verseShareCount : currentContent.devotionShareCount;
+        const isLiked = isVerse ? content.isVerseLiked : content.isDevotionLiked;
+        const likeCount = isVerse ? content.verseLikeCount : content.devotionLikeCount;
+        const commentCount = isVerse ? content.verseCommentCount : content.devotionCommentCount;
+        const shareCount = isVerse ? content.verseShareCount : content.devotionShareCount;
 
-        if (isVerse && !currentContent.verse) return null;
-        if (!isVerse && !currentContent.devotionalContent) return null;
+        if (isVerse && !content.verse) return null;
+        if (!isVerse && !content.devotionalContent) return null;
+
+        const progress = progressByDate[content.date] ?? content.devotionalProgress?.status ?? 'INCOMPLETE';
 
         return (
             <div className="flex flex-col gap-6 w-full max-w-md mx-auto pt-6">
                 <div className="flex items-center justify-around">
                     <LikeButton
-                        contentId={currentContent._id || ''}
+                        contentId={content._id || ''}
                         contentType={contentType}
                         initialLiked={isLiked || false}
                         initialCount={likeCount || 0}
                         variant="carousel"
                     />
                     <button
-                        onClick={() => onCommentClick?.(currentContent._id || '', contentType)}
+                        onClick={() => onCommentClick?.(content._id || '', contentType)}
                         className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all"
                     >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
@@ -450,7 +446,7 @@ export function DailyDetailModal({
                         <span className="text-xs">{commentCount || 'Comment'}</span>
                     </button>
                     <button
-                        onClick={() => onShareClick?.(currentContent, contentType)}
+                        onClick={() => onShareClick?.(content, contentType)}
                         className="flex flex-col items-center space-y-1 text-white hover:scale-110 active:scale-95 transition-all"
                     >
                         <div className="bg-white/20 backdrop-blur-sm p-2 rounded-full">
@@ -481,7 +477,7 @@ export function DailyDetailModal({
                                         <button
                                             onClick={() => {
                                                 setOpenKebab(false);
-                                                onReadFullChapter?.(currentContent);
+                                                onReadFullChapter?.(content);
                                             }}
                                             className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                                         >
@@ -496,16 +492,16 @@ export function DailyDetailModal({
 
                 {!isVerse && (
                     <button
-                        onClick={handleCompleteDevotional}
-                        disabled={currentProgress === 'COMPLETED'}
+                        onClick={() => handleCompleteDevotional(content.date, progress)}
+                        disabled={progress === 'COMPLETED'}
                         className={`w-full py-3.5 font-extrabold rounded-2xl shadow-xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none flex items-center justify-center gap-2 ${
-                            currentProgress === 'COMPLETED'
+                            progress === 'COMPLETED'
                                 ? 'bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 cursor-default'
-                                : 'bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] text-white'
+                                : 'bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-50 hover:to-cyan-600 active:scale-[0.98] text-white'
                         }`}
-                        aria-label={currentProgress === 'COMPLETED' ? 'Devotional already completed' : 'Mark devotional as complete'}
+                        aria-label={progress === 'COMPLETED' ? 'Devotional already completed' : 'Mark devotional as complete'}
                     >
-                        {currentProgress === 'COMPLETED' ? (
+                        {progress === 'COMPLETED' ? (
                             <>
                                 <CheckCheck className="size-4" />
                                 Completed
@@ -521,58 +517,6 @@ export function DailyDetailModal({
 
     if (!isOpen || contents.length === 0) return null;
 
-    // ── Swipe navigation ──────────────────────────────────────────────────────
-    const handleSwipeStart = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (e.button !== 0 && e.pointerType === 'mouse') return;
-        swipeStartXRef.current = e.clientX;
-        swipeStartYRef.current = e.clientY;
-        swipeStartTimeRef.current = Date.now();
-        swipeIsHorizontalRef.current = null;
-        swipeIsDraggingRef.current = true;
-    };
-
-    const handleSwipeMove = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (!swipeIsDraggingRef.current) return;
-        const deltaX = Math.abs(e.clientX - swipeStartXRef.current);
-        const deltaY = Math.abs(e.clientY - swipeStartYRef.current);
-        if (swipeIsHorizontalRef.current === null && (deltaX > 8 || deltaY > 8)) {
-            const isHorizontal = deltaX > deltaY;
-            swipeIsHorizontalRef.current = isHorizontal;
-            if (isHorizontal) {
-                try {
-                    e.currentTarget.setPointerCapture(e.pointerId);
-                } catch {}
-            }
-        }
-        if (swipeIsHorizontalRef.current === true) {
-            e.preventDefault();
-        }
-    };
-
-    const handleSwipeEnd = (e: React.PointerEvent<HTMLDivElement>) => {
-        if (!swipeIsDraggingRef.current) return;
-        swipeIsDraggingRef.current = false;
-        try {
-            e.currentTarget.releasePointerCapture(e.pointerId);
-        } catch {}
-        if (swipeIsHorizontalRef.current !== true) return;
-
-        const deltaX = e.clientX - swipeStartXRef.current;
-        const elapsed = Date.now() - swipeStartTimeRef.current;
-        const velocity = Math.abs(deltaX) / (elapsed || 1);
-        const THRESHOLD = 50;
-        const VELOCITY = 0.35;
-
-        if (deltaX > THRESHOLD || (deltaX > 0 && velocity > VELOCITY)) {
-            // Swipe right → go to older entry (higher index)
-            if (currentIndex < contents.length - 1) setCurrentIndex(currentIndex + 1);
-        } else if (deltaX < -THRESHOLD || (deltaX < 0 && velocity > VELOCITY)) {
-            // Swipe left → go to newer entry (lower index)
-            if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
-        }
-    };
-
-
     return (
         <AnimatePresence>
             <motion.div
@@ -580,23 +524,25 @@ export function DailyDetailModal({
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 50 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="fixed inset-0 z-[100] flex flex-col bg-slate-900 overflow-hidden"
-                onPointerDown={handleSwipeStart}
-                onPointerMove={handleSwipeMove}
-                onPointerUp={handleSwipeEnd}
-                onPointerCancel={() => { swipeIsDraggingRef.current = false; }}
+                className="fixed inset-0 z-[100] flex flex-col bg-slate-50 overflow-hidden"
             >
                 {/* Dynamic Background Image */}
                 {initialSection === 'devotional' && (currentContent.devotionalBackgroundImage || currentContent.backgroundImage) ? (
-                    <div
-                        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
-                        style={{ backgroundImage: `url(${currentContent.devotionalBackgroundImage || currentContent.backgroundImage})` }}
-                    />
+                    <>
+                        <div
+                            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
+                            style={{ backgroundImage: `url(${currentContent.devotionalBackgroundImage || currentContent.backgroundImage})` }}
+                        />
+                        <div className="absolute inset-0 z-0 bg-white/70 transition-all duration-700" />
+                    </>
                 ) : initialSection === 'verse' && currentContent.backgroundImage ? (
-                    <div
-                        className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
-                        style={{ backgroundImage: `url(${currentContent.backgroundImage})` }}
-                    />
+                    <>
+                        <div
+                            className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat transition-all duration-700"
+                            style={{ backgroundImage: `url(${currentContent.backgroundImage})` }}
+                        />
+                        <div className="absolute inset-0 z-0 bg-white/70 transition-all duration-700" />
+                    </>
                 ) : initialSection === 'devotional' ? (
                     <div className="absolute inset-0 z-0 bg-cover bg-center bg-no-repeat opacity-40 transition-all duration-700" style={{ backgroundImage: `url(${devotionalTexture.src})` }} />
                 ) : (
@@ -607,23 +553,23 @@ export function DailyDetailModal({
                 <div className="relative z-10 flex items-center justify-between p-4">
                     <button
                         onClick={() => onClose(currentIndex)}
-                        className="p-2 rounded-full shadow-sm bg-white/20 hover:bg-white/30 text-white transition-colors"
+                        className="p-2 rounded-full shadow-sm bg-black/10 hover:bg-black/20 text-black transition-colors"
                         aria-label="Back"
                     >
                         <ArrowLeft className="size-6" />
                     </button>
 
                     <div className="text-center flex-1">
-                        <h2 className="text-white font-bold text-lg">{getRelativeLabel(currentContent.date)}</h2>
-                        <p className="text-white/60 text-xs">{currentContent.date}</p>
+                        <h2 className="text-black font-bold text-lg">{getRelativeLabel(currentContent.date)}</h2>
+                        <p className="text-black/60 text-xs">{currentContent.date}</p>
                     </div>
 
                     <button
                         onClick={handlePlayPause}
-                        className={`p-2 rounded-full shadow-sm text-white transition-all flex items-center justify-center ${
+                        className={`p-2 rounded-full shadow-sm text-black transition-all flex items-center justify-center ${
                             isSpeaking && !isPaused
-                            ? 'bg-teal-500 hover:bg-teal-600 animate-pulse scale-105 shadow-teal-500/20'
-                            : 'bg-white/20 hover:bg-white/30'
+                            ? 'bg-teal-500 hover:bg-teal-600 animate-pulse scale-105 shadow-teal-500/20 text-white'
+                            : 'bg-black/10 hover:bg-black/20'
                         }`}
                         title={isSpeaking ? (isPaused ? 'Resume Narration' : 'Pause Narration') : 'Start Narration'}
                         aria-label="Narrate"
@@ -636,238 +582,247 @@ export function DailyDetailModal({
                     </button>
                 </div>
 
-                {/* Top Carousel for Switching Days */}
-                {/* <div className="relative z-10 w-full overflow-x-auto pb-2 scrollbar-hide px-4 flex space-x-3 snap-x">
-                    {contents.map((item, index) => (
-                        <button
-                            key={item.date}
-                            onClick={() => setCurrentIndex(index)}
-                            className={`snap-center shrink-0 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                                currentIndex === index
-                                ? 'bg-white text-slate-900 shadow-md scale-105'
-                                : 'bg-white/20 text-white hover:bg-white/30'
-                            }`}
-                        >
-                            {getRelativeLabel(item.date)}
-                        </button>
-                    ))}
-                </div> */}
-
                 {/* Content Sections */}
-                <ScrollArea className="relative z-10 flex-1 px-4 sm:px-8 pb-12 mt-4" ref={scrollRef}>
-                    <div className="max-w-2xl mx-auto flex flex-col space-y-12 py-8">
+                <PremiumCarousel
+                    activeIndex={currentIndex}
+                    onChange={setCurrentIndex}
+                    ariaLabel="Daily Detail Carousel"
+                    className="flex-1"
+                    style={{ borderRadius: 0 }}
+                    fullHeight={true}
+                >
+                    {contents.map((item, index) => {
+                        const progress = progressByDate[item.date] ?? item.devotionalProgress?.status ?? 'INCOMPLETE';
+                        return (
+                            <ScrollArea
+                                key={item.date || index}
+                                className="relative z-10 h-full w-full px-4 sm:px-8 pb-12 mt-4"
+                                ref={index === currentIndex ? scrollRef : null}
+                            >
+                                <div className="max-w-2xl mx-auto flex flex-col space-y-12 py-8">
 
-                        {/* ─── Section 1: Daily Verse ─────────────────────────────────────── */}
-                        {initialSection === 'verse' && (
-                            <div id="section-verse" className="flex flex-col space-y-2">
-                                {currentContent.verse ? (
-                                    <>
-                                        <div className="w-full">
-                                            <div className="text-center w-full">
-                                                <p className="text-white/90 text-[17px] font-semibold mb-3">
-                                                    {formatVerseLabel(currentContent.date)}
-                                                </p>
+                                    {/* ─── Section 1: Daily Verse ─────────────────────────────────────── */}
+                                    {initialSection === 'verse' && (
+                                        <div id="section-verse" className="flex flex-col space-y-2">
+                                            {item.verse ? (
+                                                <>
+                                                    <div className="w-full">
+                                                        <div className="text-center w-full">
+                                                            <p className="text-black/90 text-[15px] font-semibold mb-2.5">
+                                                                {formatVerseLabel(item.date)}
+                                                            </p>
 
-                                                {/* Centered Pagination Dots — visual only; swipe to navigate */}
-                                                {contents.length > 1 && (
-                                                    <div className="flex justify-center space-x-2 mb-3">
-                                                        {contents.map((_: any, displayPos: number) => {
-                                                            const dataIndex = contents.length - 1 - displayPos;
-                                                            return (
-                                                                <div
-                                                                    key={displayPos}
-                                                                    className={`h-2 rounded-full transition-all ${currentIndex === dataIndex ? 'w-8 bg-white' : 'w-2 bg-white/40'}`}
-                                                                    aria-label={`Slide ${dataIndex + 1} of ${contents.length}`}
-                                                                />
-                                                            );
-                                                        })}
+                                                            {/* Centered Pagination Dots — visual only; swipe to navigate */}
+                                                            {contents.length > 1 && (
+                                                                <div className="flex justify-center space-x-1.5 mb-2">
+                                                                    {contents.map((_: any, displayPos: number) => {
+                                                                        const dataIndex = contents.length - 1 - displayPos;
+                                                                        return (
+                                                                            <div
+                                                                                key={displayPos}
+                                                                                className={`h-1.5 rounded-full transition-all ${currentIndex === dataIndex ? 'w-6 bg-black' : 'w-1.5 bg-black/40'}`}
+                                                                                aria-label={`Slide ${dataIndex + 1} of ${contents.length}`}
+                                                                            />
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                            )}
+                                                        </div>
+
+                                                        <div className="mt-6 text-left w-full">
+                                                            <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily Verse</h4>
+                                                            <h3 className="text-black text-lg font-bold tracking-tight truncate">
+                                                                {item.verseReference || 'Reference'} {(item as any).version || 'KJV'}
+                                                            </h3>
+                                                        </div>
                                                     </div>
-                                                )}
-                                            </div>
 
-                                            <h3 className="text-white text-4xl md:text-5xl font-extrabold tracking-tight truncate mt-8">
-                                                {currentContent.verseReference || 'Reference'} {(currentContent as any).version || 'KJV'}
-                                            </h3>
-                                        </div>
+                                                    <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 w-full mt-4">
+                                                        &ldquo;{item.verse}&rdquo;
+                                                    </p>
 
-                                        <p className="text-white text-2xl md:text-3xl leading-relaxed font-serif italic text-left pl-2 drop-shadow-md w-full mt-8">
-                                            &ldquo;{currentContent.verse}&rdquo;
-                                        </p>
+                                                    {/* Premium Divider */}
+                                                    <div className="h-px bg-gradient-to-r from-transparent via-black/15 to-transparent w-full mt-12" />
 
-                                        {/* Premium Divider */}
-                                        <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent w-full mt-12" />
-
-                                        <div className="mt-8 w-full">
-                                            {renderActionButtons('verse')}
-                                        </div>
-                                    </>
-                                ) : (
-                                    <div className="text-center py-10 opacity-70">
-                                        <p className="text-white/70 text-xs mb-2 uppercase tracking-widest font-bold">Daily Verse</p>
-                                        <p className="text-white text-lg">Today&apos;s verse will be available soon.</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {/* ─── Section 2: Daily Devotional ────────────────────────────────── */}
-                        {initialSection === 'devotional' && (
-                            <div id="section-devotional" className="flex flex-col space-y-12">
-                                {currentContent.devotionalContent ? (
-                                    <>
-                                        {/* ── A. Aligned Header (matches Daily Verse) ─────────── */}
-                                        <div className="flex flex-col items-center text-center w-full">
-                                            {/* Title — "Devotion of the Day" or "Tuesday, 8th July" */}
-                                            <p className="text-white/90 text-[17px] font-semibold mb-3">
-                                                {formatDevotionLabel(currentContent.date)}
-                                            </p>
-
-                                            {/* Pagination dots — visual only; swipe to navigate */}
-                                            {contents.length > 1 && (
-                                                <div className="flex justify-center space-x-2 mb-3">
-                                                    {contents.map((_: any, displayPos: number) => {
-                                                        const dataIndex = contents.length - 1 - displayPos;
-                                                        return (
-                                                            <div
-                                                                key={displayPos}
-                                                                className={`h-2 rounded-full transition-all ${currentIndex === dataIndex ? 'w-8 bg-white' : 'w-2 bg-white/40'}`}
-                                                                aria-label={`Slide ${dataIndex + 1} of ${contents.length}`}
-                                                            />
-                                                        );
-                                                    })}
+                                                    <div className="mt-8 w-full">
+                                                        {renderActionButtons('verse', item)}
+                                                    </div>
+                                                </>
+                                            ) : (
+                                                <div className="text-center py-10 opacity-70">
+                                                    <p className="text-black/70 text-xs mb-2 uppercase tracking-widest font-bold">Daily Verse</p>
+                                                    <p className="text-black text-lg">Today&apos;s verse will be available soon.</p>
                                                 </div>
                                             )}
+                                        </div>
+                                    )}
 
-                                            {/* ── Multi-block verse references (new) ── */}
-                                            {currentContent.devotionalVerseBlocks && currentContent.devotionalVerseBlocks.length > 0 ? (
-                                                // New: render each verse block in order
-                                                currentContent.devotionalVerseBlocks.map((block, blockIdx) => (
-                                                    <React.Fragment key={blockIdx}>
-                                                        <h3 className="text-white text-4xl md:text-5xl font-extrabold tracking-tight mt-8">
-                                                            {block.ref}
-                                                        </h3>
-                                                        {block.text && (
-                                                            <div className="flex flex-col items-center text-center mt-4">
-                                                                <p className="text-white text-xl md:text-2xl leading-relaxed font-serif italic max-w-xl mx-auto drop-shadow-md">
-                                                                    &ldquo;{block.text}&rdquo;
+                                    {/* ─── Section 2: Daily Devotional ────────────────────────────────── */}
+                                    {initialSection === 'devotional' && (
+                                        <div id="section-devotional" className="flex flex-col space-y-12">
+                                            {item.devotionalContent ? (
+                                                <>
+                                                    {/* ── A. Aligned Header (matches Daily Verse) ─────────── */}
+                                                    <div className="flex flex-col items-center text-center w-full">
+                                                        {/* Title — "Devotion of the Day" or "Tuesday, 8th July" */}
+                                                        <p className="text-black/90 text-[15px] font-semibold mb-2.5">
+                                                            {formatDevotionLabel(item.date)}
+                                                        </p>
+
+                                                        {/* Pagination dots — visual only; swipe to navigate */}
+                                                        {contents.length > 1 && (
+                                                            <div className="flex justify-center space-x-1.5 mb-2">
+                                                                {contents.map((_: any, displayPos: number) => {
+                                                                    const dataIndex = contents.length - 1 - displayPos;
+                                                                    return (
+                                                                        <div
+                                                                            key={displayPos}
+                                                                            className={`h-1.5 rounded-full transition-all ${currentIndex === dataIndex ? 'w-6 bg-black' : 'w-1.5 bg-black/40'}`}
+                                                                            aria-label={`Slide ${dataIndex + 1} of ${contents.length}`}
+                                                                        />
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        )}
+
+                                                        {/* ── Multi-block verse references (new) ── */}
+                                                        {item.devotionalVerseBlocks && item.devotionalVerseBlocks.length > 0 ? (
+                                                            item.devotionalVerseBlocks.map((block, blockIdx) => (
+                                                                <React.Fragment key={blockIdx}>
+                                                                    <div className="mt-6 text-left w-full">
+                                                                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily Devotional</h4>
+                                                                        <h3 className="text-black text-lg font-bold tracking-tight mt-0.5">
+                                                                            {block.ref}
+                                                                        </h3>
+                                                                    </div>
+                                                                    {block.text && (
+                                                                        <div className="flex flex-col items-start mt-4 w-full">
+                                                                            <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 w-full">
+                                                                                &ldquo;{block.text}&rdquo;
+                                                                            </p>
+                                                                        </div>
+                                                                    )}
+                                                                    {blockIdx < (item.devotionalVerseBlocks?.length ?? 0) - 1 && (
+                                                                        <div className="h-px bg-black/10 w-full mt-8" />
+                                                                    )}
+                                                                </React.Fragment>
+                                                            ))
+                                                        ) : (
+                                                            <>
+                                                                {item.devotionalVerseRef && (
+                                                                    <div className="mt-6 text-left w-full">
+                                                                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily Devotional</h4>
+                                                                        <h3 className="text-black text-lg font-bold tracking-tight mt-0.5">
+                                                                            {item.devotionalVerseRef}
+                                                                        </h3>
+                                                                    </div>
+                                                                )}
+                                                            </>
+                                                        )}
+                                                    </div>
+
+                                                    {/* ── B. Legacy single verse text (shown only for old records without blocks) ── */}
+                                                    {(!item.devotionalVerseBlocks || item.devotionalVerseBlocks.length === 0) &&
+                                                        item.devotionalVerseText && (
+                                                            <div className="flex flex-col items-start text-left w-full">
+                                                                <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 w-full">
+                                                                    &ldquo;{item.devotionalVerseText}&rdquo;
                                                                 </p>
                                                             </div>
                                                         )}
-                                                        {/* Thin divider between multiple verse blocks (not after last) */}
-                                                        {blockIdx < (currentContent.devotionalVerseBlocks?.length ?? 0) - 1 && (
-                                                            <div className="h-px bg-white/10 w-2/3 mx-auto mt-8" />
-                                                        )}
-                                                    </React.Fragment>
-                                                ))
-                                            ) : (
-                                                // Legacy fallback: single verse ref + text
-                                                <>
-                                                    {currentContent.devotionalVerseRef && (
-                                                        <h3 className="text-white text-4xl md:text-5xl font-extrabold tracking-tight mt-8">
-                                                            {currentContent.devotionalVerseRef}
-                                                        </h3>
-                                                    )}
-                                                </>
-                                            )}
-                                        </div>
 
-                                        {/* ── B. Legacy single verse text (shown only for old records without blocks) ── */}
-                                        {(!currentContent.devotionalVerseBlocks || currentContent.devotionalVerseBlocks.length === 0) &&
-                                            currentContent.devotionalVerseText && (
-                                                <div className="flex flex-col items-center text-center">
-                                                    <p className="text-white text-xl md:text-2xl leading-relaxed font-serif italic max-w-xl mx-auto drop-shadow-md">
-                                                        &ldquo;{currentContent.devotionalVerseText}&rdquo;
-                                                    </p>
-                                                </div>
-                                            )}
+                                                    {/* Premium Divider */}
+                                                    <div className="h-px bg-gradient-to-r from-transparent via-black/15 to-transparent w-full" />
 
-                                        {/* Premium Divider */}
-                                        <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent w-full" />
-
-                                        {/* ── C. Devotional Content (Title & Body) ────────────── */}
-                                        <div className="flex flex-col space-y-6">
-                                            <p className="text-white/70 text-xs uppercase tracking-widest font-bold text-center">Devotional Reading</p>
-                                            <h3 className="text-white text-3xl font-extrabold text-center tracking-tight leading-tight">{currentContent.devotionalTitle}</h3>
-                                            <p className="text-white/90 text-lg leading-loose text-justify whitespace-pre-wrap drop-shadow-sm font-medium font-sans">
-                                                {currentContent.devotionalContent}
-                                            </p>
-                                        </div>
-
-                                        {/* ── D. Optional Prayer Section ──────────────────────── */}
-                                        {currentContent.prayerContent && (
-                                            <>
-                                                {/* Premium Divider */}
-                                                <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent w-full" />
-                                                <div id="section-prayer" className="flex flex-col space-y-6">
-                                                    <p className="text-white/70 text-xs uppercase tracking-widest font-bold text-center">Daily Prayer</p>
-                                                    {currentContent.prayerTitle && (
-                                                        <h4 className="text-white text-2xl font-extrabold text-center tracking-tight">{currentContent.prayerTitle}</h4>
-                                                    )}
-                                                    <div className="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/25 shadow-2xl max-w-xl mx-auto">
-                                                        <p className="text-white text-xl leading-relaxed font-serif italic text-center">
-                                                            {currentContent.prayerContent}
+                                                    {/* ── C. Devotional Content (Title & Body) ────────────── */}
+                                                    <div className="flex flex-col space-y-4">
+                                                        <div className="text-left w-full">
+                                                            <p className="text-black/70 text-xs uppercase tracking-widest font-bold">Devotional Reading</p>
+                                                            <h3 className="text-black text-lg font-bold tracking-tight mt-0.5">{item.devotionalTitle}</h3>
+                                                        </div>
+                                                        <p className="text-black/90 text-sm md:text-base leading-relaxed text-left whitespace-pre-wrap font-sans mt-2">
+                                                            {item.devotionalContent}
                                                         </p>
                                                     </div>
-                                                </div>
-                                            </>
-                                        )}
 
-                                        {/* ── E. Bottom CTA Area ───────────────────────────────── */}
-                                        <div className="pt-6 pb-4 flex flex-col items-center justify-center gap-6 w-full max-w-md mx-auto">
+                                                    {/* ── D. Optional Prayer Section ──────────────────────── */}
+                                                    {item.prayerContent && (
+                                                        <>
+                                                            <div className="h-px bg-gradient-to-r from-transparent via-black/15 to-transparent w-full" />
+                                                            <div id="section-prayer" className="flex flex-col space-y-4">
+                                                                <div className="text-left w-full">
+                                                                    <p className="text-black/70 text-xs uppercase tracking-widest font-bold">Daily Prayer</p>
+                                                                    {item.prayerTitle && (
+                                                                        <h4 className="text-black text-lg font-bold tracking-tight mt-0.5">{item.prayerTitle}</h4>
+                                                                    )}
+                                                                </div>
+                                                                <div className="bg-white/10 backdrop-blur-md p-6 rounded-3xl border border-black/25 shadow-2xl max-w-xl mx-auto w-full">
+                                                                    <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1">
+                                                                        {item.prayerContent}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </>
+                                                    )}
 
-                                            {/* Weekly Progress Indicator */}
-                                            <div className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/15">
-                                                <div>
-                                                    <p className="text-white/60 text-xs uppercase tracking-widest font-semibold mb-0.5">Weekly Progress</p>
-                                                    <p className="text-white font-bold text-base">
-                                                        {weeklyCompletedCount} of {contents.length} Completed
-                                                    </p>
-                                                </div>
-                                                <div className="flex gap-1">
-                                                    {contents.map((c: IDailyContent) => {
-                                                        const s = progressByDate[c.date] ?? c.devotionalProgress?.status ?? 'INCOMPLETE';
-                                                        return (
-                                                            <div
-                                                                key={c.date}
-                                                                className={`h-2 w-2 rounded-full transition-all ${
-                                                                    s === 'COMPLETED'
-                                                                        ? 'bg-emerald-400'
-                                                                        : s === 'IN_PROGRESS'
-                                                                        ? 'bg-amber-400'
-                                                                        : 'bg-white/25'
-                                                                }`}
-                                                                title={s}
-                                                            />
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
+                                                    {/* ── E. Bottom CTA Area ───────────────────────────────── */}
+                                                    <div className="pt-6 pb-4 flex flex-col items-center justify-center gap-6 w-full max-w-md mx-auto">
+                                                        {/* Weekly Progress Indicator */}
+                                                        <div className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-black/15">
+                                                            <div>
+                                                                <p className="text-black/60 text-xs uppercase tracking-widest font-semibold mb-0.5">Weekly Progress</p>
+                                                                <p className="text-black font-bold text-base">
+                                                                    {weeklyCompletedCount} of {contents.length} Completed
+                                                                </p>
+                                                            </div>
+                                                            <div className="flex gap-1">
+                                                                {contents.map((c: IDailyContent) => {
+                                                                    const s = progressByDate[c.date] ?? c.devotionalProgress?.status ?? 'INCOMPLETE';
+                                                                    return (
+                                                                        <div
+                                                                            key={c.date}
+                                                                            className={`h-2 w-2 rounded-full transition-all ${
+                                                                                s === 'COMPLETED'
+                                                                                    ? 'bg-emerald-400'
+                                                                                    : s === 'IN_PROGRESS'
+                                                                                    ? 'bg-amber-400'
+                                                                                    : 'bg-black/20'
+                                                                            }`}
+                                                                            title={s}
+                                                                        />
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
 
-                                            {/* Completed Badge — shown only when COMPLETED */}
-                                            {currentProgress === 'COMPLETED' && (
-                                                <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 backdrop-blur-sm w-full justify-center">
-                                                    <CheckCircle2 className="size-5 text-emerald-400 flex-shrink-0" />
-                                                    <span className="text-emerald-300 text-sm font-semibold tracking-wide">Devotional Completed</span>
+                                                        {/* Completed Badge — shown only when COMPLETED */}
+                                                        {progress === 'COMPLETED' && (
+                                                            <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 backdrop-blur-sm w-full justify-center">
+                                                                <CheckCircle2 className="size-5 text-emerald-400 flex-shrink-0" />
+                                                                <span className="text-emerald-300 text-sm font-semibold tracking-wide">Devotional Completed</span>
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Premium Divider */}
+                                                    <div className="h-px bg-gradient-to-r from-transparent via-black/15 to-transparent w-full" />
+
+                                                    {renderActionButtons('devotional', item)}
+                                                </>
+                                            ) : (
+                                                <div className="text-center py-12 bg-white/5 rounded-3xl border border-black/10">
+                                                    <p className="text-black/70 text-sm uppercase tracking-widest font-semibold">Daily Devotional</p>
+                                                    <p className="text-black/50 text-sm mt-2">Not available for this day.</p>
                                                 </div>
                                             )}
                                         </div>
+                                    )}
 
-                                        {/* Premium Divider */}
-                                        <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent w-full" />
-
-                                        {renderActionButtons('devotional')}
-                                    </>
-                                ) : (
-                                    <div className="text-center py-12 bg-white/5 rounded-3xl border border-white/10">
-                                        <p className="text-white/70 text-sm uppercase tracking-widest font-semibold">Daily Devotional</p>
-                                        <p className="text-white/50 text-sm mt-2">Not available for this day.</p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                    </div>
-                </ScrollArea>
+                                </div>
+                            </ScrollArea>
+                        );
+                    })}
+                </PremiumCarousel>
 
 
                 {/* Desktop Navigation Arrows */}
@@ -878,7 +833,7 @@ export function DailyDetailModal({
                                 if (currentIndex < contents.length - 1) setCurrentIndex(currentIndex + 1);
                             }}
                             disabled={currentIndex === contents.length - 1}
-                            className="absolute left-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex items-center justify-center size-12 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/25 shadow-2xl transition-all hover:scale-110 active:scale-95 disabled:opacity-0 disabled:pointer-events-none"
+                            className="absolute left-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex items-center justify-center size-12 rounded-full bg-black/10 hover:bg-black/20 text-black border border-black/15 shadow-2xl transition-all hover:scale-110 active:scale-95 disabled:opacity-0 disabled:pointer-events-none"
                             aria-label="Previous slide (older)"
                         >
                             <ChevronLeft className="size-6" />
@@ -888,7 +843,7 @@ export function DailyDetailModal({
                                 if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
                             }}
                             disabled={currentIndex === 0}
-                            className="absolute right-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex items-center justify-center size-12 rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/25 shadow-2xl transition-all hover:scale-110 active:scale-95 disabled:opacity-0 disabled:pointer-events-none"
+                            className="absolute right-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex items-center justify-center size-12 rounded-full bg-black/10 hover:bg-black/20 text-black border border-black/15 shadow-2xl transition-all hover:scale-110 active:scale-95 disabled:opacity-0 disabled:pointer-events-none"
                             aria-label="Next slide (newer)"
                         >
                             <ChevronRight className="size-6" />

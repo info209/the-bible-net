@@ -8,9 +8,20 @@ interface PremiumCarouselProps {
   activeIndex: number;
   onChange: (index: number) => void;
   ariaLabel?: string;
+  className?: string;
+  style?: React.CSSProperties;
+  fullHeight?: boolean;
 }
 
-export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: PremiumCarouselProps) {
+export function PremiumCarousel({
+  children,
+  activeIndex,
+  onChange,
+  ariaLabel,
+  className = "",
+  style = {},
+  fullHeight = false
+}: PremiumCarouselProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   
@@ -200,8 +211,8 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
   return (
     <div
       ref={containerRef}
-      className="relative overflow-hidden w-full touch-pan-y select-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-teal)]/50 focus-visible:ring-offset-2 group"
-      style={{ borderRadius: 'var(--radius-md)' }}
+      className={`relative overflow-hidden w-full touch-pan-y select-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-teal)]/50 focus-visible:ring-offset-2 group ${fullHeight ? 'h-full' : ''} ${className}`}
+      style={{ borderRadius: 'var(--radius-md)', ...style }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -215,7 +226,7 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
     >
       <div
         ref={trackRef}
-        className="flex w-full will-change-transform"
+        className={`flex w-full will-change-transform ${fullHeight ? 'h-full' : ''}`}
         style={{
           transform: `translate3d(-${(count - 1 - activeIndex) * 100}%, 0, 0)`,
           transition: 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)'
@@ -226,7 +237,7 @@ export function PremiumCarousel({ children, activeIndex, onChange, ariaLabel }: 
           return (
             <div
               key={index}
-              className="w-full flex-shrink-0"
+              className={`w-full flex-shrink-0 ${fullHeight ? 'h-full' : ''}`}
               role="group"
               aria-roledescription="slide"
               aria-label={`Slide ${index + 1} of ${count}`}
