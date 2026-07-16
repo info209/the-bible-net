@@ -16,8 +16,8 @@ import { DailyDetailModal } from './DailyDetailModal';
 import { PremiumCarousel } from './PremiumCarousel';
 import { LikeButton } from './LikeButton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/app/components/ui/avatar';
-import verseTexture from '@/assets/textures/verse-texture.svg';
-import devotionalTexture from '@/assets/textures/devotional-texture.svg';
+import verseTexture from '../../../assets/textures/verse-texture.svg';
+import devotionalTexture from '../../../assets/textures/devotional-texture.svg';
 
 const getGreetingByHour = (hour: number): string => {
   if (hour >= 5 && hour < 12) return 'Good Morning';
