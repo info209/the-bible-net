@@ -37,7 +37,7 @@ export function ImageUploadManager() {
         setError(null);
         setUploadedUrl(null);
 
-        const allowedExt = ['.jpg', '.jpeg', '.png', '.webp'];
+        const allowedExt = ['.jpg', '.jpeg', '.png', '.webp', '.svg'];
         const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
         if (!allowedExt.includes(ext)) {
             setError('Only JPG, PNG, and WEBP images are supported.');
@@ -104,7 +104,7 @@ export function ImageUploadManager() {
                 <input
                     id="image-upload-input"
                     type="file"
-                    accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+                    accept="image/jpeg,image/png,image/webp,image/svg,.jpg,.jpeg,.png,.webp,.svg"
                     className="hidden"
                     onChange={(e) => { const f = e.target.files?.[0]; if (f) handleUpload(f); e.target.value = ''; }}
                     disabled={uploading}
@@ -122,7 +122,7 @@ export function ImageUploadManager() {
                         <p className="text-white font-semibold">
                             {uploading ? 'Uploading image...' : 'Drop your image here or click to browse'}
                         </p>
-                        <p className="text-gray-500 text-sm mt-1">JPG · PNG · WEBP · Max 10MB</p>
+                        <p className="text-gray-500 text-sm mt-1">JPG · PNG · WEBP · SVG · Max 10MB</p>
                     </div>
                 </div>
 
