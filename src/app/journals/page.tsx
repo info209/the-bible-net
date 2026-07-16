@@ -8,7 +8,7 @@ import {
   ArrowLeft, Search, SlidersHorizontal, Plus, MoreVertical,
   Pin, Bookmark, Check, X, Edit2, Trash2, Mic, Play, Pause,
   Bold, Italic, List, ChevronUp, ChevronDown,
-  BookOpen, Sliders
+  BookOpen, Sliders, ListOrdered, Strikethrough
 } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmContext';
@@ -81,8 +81,12 @@ function JournalsContent() {
   // Editor states
   const [isEditing, setIsEditing] = useState(false);
   const [editorType, setEditorType] = useState<ItemType>('journal');
-  const [editorMode, setEditorMode] = useState<'create' | 'edit'>('create');
+  const [editorMode, setEditorMode] = useState<'create' | 'edit' | 'view'>('create');
   const [editorId, setEditorId] = useState<string | null>(null);
+  
+  // Custom features states
+  const [showSearchBar, setShowSearchBar] = useState(false);
+  const [showColorMenu, setShowColorMenu] = useState<'text' | 'bg' | null>(null);
   
   // Editor Fields
   const [editTitle, setEditTitle] = useState('');
@@ -287,8 +291,26 @@ function JournalsContent() {
       return;
     }
     
-    // Open Editor in view/edit mode
-    handleOpenEditor(item, type);
+    // Open detail read-only view
+    handleOpenReader(item, type);
+  };
+
+  // Open item in read-only mode
+  const handleOpenReader = (item: any, type: ItemType) => {
+    setEditorType(type);
+    setEditorMode('view');
+    setEditorId(item._id);
+    setEditTitle(item.title || '');
+    setEditContent(item.content || '');
+    setEditType('text');
+    setEditLabels(item.labels || []);
+    setEditVerses(item.verses || []);
+    setEditFolderId(item.folderId?._id || item.folderId || '');
+    setEditAudioUrl('');
+    setEditChecklistItems([]);
+    setEditIsPinned(!!item.isPinned);
+    setEditIsBookmarked(!!item.isBookmarked);
+    setIsEditing(true);
   };
 
   // Editor Actions
@@ -536,7 +558,7 @@ function JournalsContent() {
         showToast('Failed to update prayer status');
         fetchData(); // rollback
       } else {
-        showToast('Prayer marked as Prayed 🙏');
+        showToast('Prayer moved to prayed 🙏');
       }
     } catch {
       showToast('Network error');
@@ -842,13 +864,16 @@ function JournalsContent() {
       list = list.filter(item => item._itemType === 'journal');
     } else if (activeTab === 'Prayers') {
       list = list.filter(item => item._itemType === 'prayer');
-      // Apply prayer status sub-filter
-      if (prayerStatusFilter === 'Active') {
-        list = list.filter(item => !item.status || item.status === 'active');
-      } else if (prayerStatusFilter === 'Prayed') {
-        list = list.filter(item => item.status === 'prayed');
-      }
-      // 'All' shows both active and prayed prayers
+    }
+
+    // Apply prayer status sub-filter
+    if (prayerStatusFilter !== 'All') {
+      list = list.filter(item => {
+        if (item._itemType !== 'prayer') return true;
+        if (prayerStatusFilter === 'Active') return !item.status || item.status === 'active';
+        if (prayerStatusFilter === 'Prayed') return item.status === 'prayed';
+        return true;
+      });
     }
 
     // Text search query matching: title, content, labels, or linked bible verses
@@ -923,7 +948,7 @@ function JournalsContent() {
         <main className="p-4 space-y-4">
           <div className="h-8 w-full bg-gray-200 animate-pulse rounded-full" />
           {[1, 2, 3].map(n => (
-            <div key={n} className="h-28 bg-white dark:bg-[#111111] rounded-2xl p-4 border border-gray-100 dark:border-white/[0.08] space-y-2">
+            <div key={n} className="h-28 bg-white dark:bg-[#111111] rounded-xl p-4 border border-gray-100 dark:border-white/[0.08] space-y-2">
               <div className="h-5 w-2/3 bg-gray-200 animate-pulse rounded" />
               <div className="h-4 w-full bg-gray-200 animate-pulse rounded" />
               <div className="h-3 w-1/3 bg-gray-200 animate-pulse rounded" />
@@ -945,7 +970,7 @@ function JournalsContent() {
         <p className="text-sm text-gray-500 mb-6 max-w-xs">Please sign in to view and save your private journals, track audio prayers, and utilize custom labels.</p>
         <button
           onClick={() => router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`)}
-          className="px-6 py-2.5 bg-[#0B7A81] text-white rounded-full text-sm font-semibold shadow-md active:opacity-90"
+          className="px-6 py-2.5 bg-[#0B7A81] text-white rounded-xl text-sm font-semibold shadow-md active:opacity-90"
         >
           Sign In
         </button>
@@ -1026,6 +1051,14 @@ function JournalsContent() {
                   </>
                 ) : (
                   <>
+                    {/* Search Bar Toggle */}
+                    <button
+                      onClick={() => setShowSearchBar(!showSearchBar)}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06] ${showSearchBar ? 'text-[#0B7A81]' : ''}`}
+                      title="Search"
+                    >
+                      <Search className="w-[18px] h-[18px]" />
+                    </button>
                     {/* Sort Selector Toggle */}
                     <button
                       onClick={() => setSortBy(sortBy === 'pinned_recent' ? 'recent' : 'pinned_recent')}
@@ -1047,26 +1080,38 @@ function JournalsContent() {
             </header>
 
             {/* Search Input Bar (Matches Figma Debounce) */}
-            <div className="px-4 py-2 bg-transparent sticky top-[64px] z-20">
-              <div className="relative flex items-center bg-white dark:bg-[#111111] border border-[#E6E6E6] dark:border-white/[0.08] rounded-xl px-3.5 py-2.5 shadow-sm">
-                <Search className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
-                <input
-                  type="text"
-                  placeholder="Search title, contents, labels, or verses..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="bg-transparent border-none outline-none focus:ring-0 w-full text-[16px] md:text-sm placeholder:text-gray-400"
-                />
-                {searchQuery && (
-                  <button onClick={() => setSearchQuery('')} className="p-0.5 hover:bg-gray-200 dark:hover:bg-white/[0.08] rounded-full shrink-0">
-                    <X className="w-3.5 h-3.5 text-gray-400" />
-                  </button>
-                )}
-              </div>
-            </div>
+            <AnimatePresence>
+              {showSearchBar && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="px-4 py-2 bg-transparent sticky top-[64px] z-20 overflow-hidden"
+                >
+                  <div className="relative flex items-center bg-white dark:bg-[#111111] border border-[#E6E6E6] dark:border-white/[0.08] rounded-xl px-3.5 py-2.5 shadow-sm">
+                    <Search className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
+                    <input
+                      type="text"
+                      placeholder="Search Journals and Prayers..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="bg-transparent border-none outline-none focus:ring-0 w-full text-[16px] md:text-sm placeholder:text-gray-400"
+                    />
+                    {searchQuery && (
+                      <button onClick={() => setSearchQuery('')} className="p-0.5 hover:bg-gray-200 dark:hover:bg-white/[0.08] rounded-full shrink-0">
+                        <X className="w-3.5 h-3.5 text-gray-400" />
+                      </button>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Category Chips */}
-            <div className="flex px-4 gap-2 overflow-x-auto scrollbar-none py-3 sticky top-[120px] bg-white dark:bg-[#000000] z-20 select-none">
+            <div
+              style={{ top: showSearchBar ? '120px' : '64px' }}
+              className="flex px-4 gap-2 overflow-x-auto scrollbar-none py-3 sticky bg-white dark:bg-[#000000] z-20 select-none transition-all duration-200"
+            >
               {(['All', 'Journals', 'Prayers'] as Tab[]).map((tabName) => {
                 const isSelected = activeTab === tabName;
                 return (
@@ -1077,7 +1122,7 @@ function JournalsContent() {
                       // Reset prayer sub-filter when leaving Prayers tab
                       if (tabName !== 'Prayers') setPrayerStatusFilter('All');
                     }}
-                    className="h-8 px-4 rounded-full text-xs font-semibold whitespace-nowrap shrink-0 transition-all flex items-center justify-center active:scale-95"
+                    className="h-8 px-4 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all flex items-center justify-center active:scale-95"
                     style={{
                       backgroundColor: isSelected ? '#0B7A81' : '#F1F2F3',
                       color: isSelected ? '#FFFFFF' : '#666666'
@@ -1088,26 +1133,6 @@ function JournalsContent() {
                 );
               })}
             </div>
-
-            {/* Prayer Status Sub-Filter (shown only when Prayers tab active) */}
-            {activeTab === 'Prayers' && (
-              <div className="flex px-4 gap-2 pb-2 bg-white dark:bg-[#000000] sticky top-[168px] z-10 select-none">
-                {(['All', 'Active', 'Prayed'] as PrayerStatusFilter[]).map((f) => (
-                  <button
-                    key={f}
-                    onClick={() => setPrayerStatusFilter(f)}
-                    className="h-7 px-3.5 rounded-full text-[11px] font-bold whitespace-nowrap shrink-0 transition-all active:scale-95 border"
-                    style={{
-                      backgroundColor: prayerStatusFilter === f ? (f === 'Prayed' ? '#6B7280' : '#0B7A81') : 'transparent',
-                      borderColor: prayerStatusFilter === f ? (f === 'Prayed' ? '#6B7280' : '#0B7A81') : '#D1D5DB',
-                      color: prayerStatusFilter === f ? '#FFFFFF' : '#6B7280',
-                    }}
-                  >
-                    {f === 'Active' ? '🔥 Active' : f === 'Prayed' ? '✓ Prayed' : 'All'}
-                  </button>
-                ))}
-              </div>
-            )}
 
             {/* Empty State */}
             {processedItems.length === 0 && (
@@ -1152,7 +1177,7 @@ function JournalsContent() {
                     className="w-full relative transition-all duration-200 select-none active:scale-[0.99] cursor-pointer"
                   >
                     <div
-                      className={`w-full rounded-2xl p-4 border flex flex-col relative transition-shadow shadow-sm hover:shadow ${
+                      className={`w-full rounded-xl p-4 border flex flex-col relative transition-shadow shadow-sm hover:shadow ${
                         isSelected 
                           ? 'border-[#0B7A81] bg-[#F4FAFA] dark:bg-[#0B7A81]/10' 
                           : isJ
@@ -1316,13 +1341,13 @@ function JournalsContent() {
                   <ArrowLeft className="w-5 h-5" />
                 </button>
                 <h2 className="text-[18px] font-bold">
-                  {editorMode === 'create' ? `Create ${editorType === 'journal' ? 'Journal' : 'Prayer'}` : 'Edit'}
+                  {editorMode === 'view'
+                    ? (editorType === 'journal' ? 'Journal Details' : 'Prayer Details')
+                    : (editorMode === 'create' ? `Create ${editorType === 'journal' ? 'Journal' : 'Prayer'}` : 'Edit')}
                 </h2>
               </div>
 
               <div className="flex items-center space-x-2.5">
-                {/* Autosave subtle status removed */}
-                
                 {/* Header Actions */}
                 <button
                   onClick={() => handleTogglePin(editorId || 'temp', editorType, editIsPinned)}
@@ -1332,52 +1357,43 @@ function JournalsContent() {
                   <Pin className={`w-[17px] h-[17px] ${editIsPinned ? 'fill-[#0B7A81]' : ''}`} />
                 </button>
                 
-                <button
-                  onClick={() => saveOrUpdateEditor(false)}
-                  className="h-9 px-5 bg-[#0B7A81] hover:bg-[#086369] text-white rounded-full text-sm font-semibold active:scale-95 transition-all shadow-sm"
-                >
-                  Save
-                </button>
+                {editorMode === 'view' ? (
+                  <button
+                    onClick={() => setEditorMode('edit')}
+                    className="h-9 px-5 bg-[#0B7A81] hover:bg-[#086369] text-white rounded-xl text-sm font-semibold active:scale-95 transition-all shadow-sm"
+                  >
+                    Edit
+                  </button>
+                ) : (
+                  <button
+                    onClick={() => saveOrUpdateEditor(false)}
+                    className="h-9 px-5 bg-[#0B7A81] hover:bg-[#086369] text-white rounded-xl text-sm font-semibold active:scale-95 transition-all shadow-sm"
+                  >
+                    Save
+                  </button>
+                )}
               </div>
             </header>
 
             <div className="px-5 py-4 max-w-5xl mx-auto w-full space-y-5 flex-1 flex flex-col">
               
-              {/* Type Switcher Selector (Only if Journal and in Create Mode) */}
-              {editorType === 'journal' && editorMode === 'create' && (
-                <div className="flex bg-[#F1F2F3] dark:bg-white/[0.04] p-1 rounded-xl w-fit">
-                  {(['text', 'checklist', 'audio'] as const).map(t => (
-                    <button
-                      key={t}
-                      type="button"
-                      onClick={() => setEditType(t)}
-                      className={`text-xs px-3.5 py-1.5 rounded-lg font-bold capitalize transition-all ${
-                        editType === t 
-                          ? 'bg-white dark:bg-[#111111] text-[#0B7A81] shadow-sm' 
-                          : 'text-gray-500'
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              )}
-
               {/* Labels Header chips system "Label +" */}
               <div className="flex flex-wrap gap-2 py-1 select-none">
-                <button
-                  onClick={() => setLabelInputOpen(true)}
-                  className="h-8 px-3.5 bg-white dark:bg-[#111111] text-[#0B7A81] border border-[#0B7A81] rounded-full text-xs font-semibold flex items-center hover:opacity-90 shrink-0"
-                >
-                  Label +
-                </button>
+                {editorMode !== 'view' && (
+                  <button
+                    onClick={() => setLabelInputOpen(true)}
+                    className="h-8 px-3.5 bg-white dark:bg-[#111111] text-[#0B7A81] border border-[#0B7A81] rounded-xl text-xs font-semibold flex items-center hover:opacity-90 shrink-0"
+                  >
+                    Label +
+                  </button>
+                )}
                 {editLabels.map(l => (
                   <span
                     key={l}
-                    onClick={() => handleRemoveLabel(l)}
-                    className="h-8 px-3.5 bg-[#E8EFF0] text-[#222222] rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 hover:bg-red-100 hover:text-red-700 cursor-pointer"
+                    onClick={() => editorMode !== 'view' && handleRemoveLabel(l)}
+                    className={`h-8 px-3.5 bg-[#E8EFF0] text-[#222222] rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 ${editorMode !== 'view' ? 'hover:bg-red-100 hover:text-red-700 cursor-pointer' : ''}`}
                   >
-                    #{l} <span className="text-[10px] text-gray-400">✕</span>
+                    #{l} {editorMode !== 'view' && <span className="text-[10px] text-gray-400">✕</span>}
                   </span>
                 ))}
               </div>
@@ -1390,7 +1406,7 @@ function JournalsContent() {
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-2xl w-full max-w-xs p-5 shadow-2xl"
+                      className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-xl w-full max-w-xs p-5 shadow-2xl"
                     >
                       <h4 className="font-bold text-sm text-gray-800 dark:text-[#F5F5F5]">Add Custom Label</h4>
                       <input
@@ -1399,18 +1415,18 @@ function JournalsContent() {
                         value={newLabelText}
                         onChange={(e) => setNewLabelText(e.target.value)}
                         onKeyDown={(e) => { if (e.key === 'Enter') handleCreateLabel(); }}
-                        className="w-full h-10 mt-3 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
+                        className="w-full h-10 mt-3 rounded-xl border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
                       />
                       <div className="flex gap-2 mt-4">
                         <button
                           onClick={() => setLabelInputOpen(false)}
-                          className="flex-1 h-9 rounded-lg border border-gray-200 text-xs font-semibold text-gray-500"
+                          className="flex-1 h-9 rounded-xl border border-gray-200 text-xs font-semibold text-gray-500"
                         >
                           Cancel
                         </button>
                         <button
                           onClick={handleCreateLabel}
-                          className="flex-1 h-9 bg-[#0B7A81] text-white rounded-lg text-xs font-semibold"
+                          className="flex-1 h-9 bg-[#0B7A81] text-white rounded-xl text-xs font-semibold"
                         >
                           Create
                         </button>
@@ -1423,186 +1439,37 @@ function JournalsContent() {
 
               {/* Title Input field */}
               <div className="relative">
-                <input
-                  type="text"
-                  placeholder="Title (Max 120 characters)"
-                  value={editTitle}
-                  onChange={(e) => setEditTitle(e.target.value.substring(0, 120))}
-                  className="w-full bg-transparent border-none text-[22px] font-bold text-gray-800 dark:text-white placeholder:text-gray-300 focus:outline-none focus:ring-0"
-                />
-                <span className="absolute right-0 bottom-[-14px] text-[9px] text-gray-400 font-bold uppercase tracking-wider">
-                  {editTitle.length} / 120
-                </span>
+                {editorMode === 'view' ? (
+                  <h1 className="w-full text-[22px] font-bold text-gray-800 dark:text-white py-1">
+                    {editTitle || 'Untitled'}
+                  </h1>
+                ) : (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Title (Max 120 characters)"
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value.substring(0, 120))}
+                      className="w-full bg-transparent border-none text-[22px] font-bold text-gray-800 dark:text-white placeholder:text-gray-300 focus:outline-none focus:ring-0"
+                    />
+                    <span className="absolute right-0 bottom-[-14px] text-[9px] text-gray-400 font-bold uppercase tracking-wider">
+                      {editTitle.length} / 120
+                    </span>
+                  </>
+                )}
               </div>
 
               <div className="border-b border-gray-100 dark:border-white/[0.04] pt-2" />
 
-              {/* Checklist Editor Section */}
-              {editorType === 'journal' && editType === 'checklist' && (
-                <div className="space-y-2.5 flex-1 select-none">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Checklist Items</span>
-                    <button
-                      type="button"
-                      onClick={handleAddChecklistItem}
-                      className="text-xs font-semibold text-[#0B7A81] flex items-center gap-1 active:scale-95"
-                    >
-                      <Plus className="w-3.5 h-3.5" /> Add Item
-                    </button>
-                  </div>
-
-                  {editChecklistItems.length === 0 ? (
-                    <div className="p-8 text-center text-gray-400 text-xs italic bg-white dark:bg-white/[0.02] border rounded-xl border-dashed">
-                      Checklist is empty. Tap add item to start.
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {editChecklistItems.map((ci, idx) => (
-                        <div key={idx} className="flex items-center space-x-2 bg-white dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04] p-2 rounded-xl group">
-                          {/* Checkbox */}
-                          <input
-                            type="checkbox"
-                            checked={!!ci.checked}
-                            onChange={() => handleToggleChecklistItem(idx)}
-                            className="w-4 h-4 rounded text-[#0B7A81] focus:ring-[#0B7A81]"
-                          />
-                          
-                          {/* Input text */}
-                          <input
-                            type="text"
-                            placeholder="Enter item description..."
-                            value={ci.text}
-                            onChange={(e) => handleUpdateChecklistItemText(idx, e.target.value)}
-                            className={`w-full bg-transparent border-none text-[16px] md:text-sm outline-none focus:ring-0 ${
-                              ci.checked ? 'line-through text-gray-400' : ''
-                            }`}
-                          />
-
-                          {/* Reordering and Actions */}
-                          <div className="flex items-center space-x-1 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity">
-                            <button type="button" onClick={() => handleMoveChecklistItem(idx, 'up')} className="p-0.5 hover:text-[#0B7A81]">
-                              <ChevronUp className="w-3.5 h-3.5" />
-                            </button>
-                            <button type="button" onClick={() => handleMoveChecklistItem(idx, 'down')} className="p-0.5 hover:text-[#0B7A81]">
-                              <ChevronDown className="w-3.5 h-3.5" />
-                            </button>
-                            <button type="button" onClick={() => handleDeleteChecklistItem(idx)} className="p-0.5 text-red-500">
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+              {editorMode === 'view' ? (
+                <div className="flex-1 flex flex-col min-h-[300px]">
+                  <div
+                    className="w-full flex-1 p-4 bg-white dark:bg-white/[0.02] border border-[#E6E6E6] dark:border-white/[0.08] rounded-xl text-base outline-none min-h-[260px] overflow-y-auto leading-relaxed select-text"
+                    dangerouslySetInnerHTML={{ __html: editContent || '<span class="text-gray-400 italic">No content</span>' }}
+                  />
                 </div>
-              )}
-
-              {/* Audio Voice Recording System UI */}
-              {editorType === 'journal' && editType === 'audio' && (
-                <div className="space-y-4 flex flex-col items-center justify-center p-6 bg-white dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.06] rounded-2xl select-none">
-                  <div className="text-center">
-                    <p className="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Audio Voice Record</p>
-                    <p className="text-[28px] font-bold text-slate-800 dark:text-slate-100 font-mono tracking-wider">{formatTime(audioTimer)}</p>
-                    <span className="text-[10px] bg-red-100 text-red-700 font-extrabold uppercase px-2 py-0.5 rounded-full animate-pulse" style={{ display: recordingState === 'recording' ? 'inline-block' : 'none' }}>
-                      Recording Live
-                    </span>
-                    <span className="text-[10px] bg-amber-100 text-amber-700 font-extrabold uppercase px-2 py-0.5 rounded-full" style={{ display: recordingState === 'paused' ? 'inline-block' : 'none' }}>
-                      Paused
-                    </span>
-                  </div>
-
-                  {/* Wave Visualizer Real-time Canvas */}
-                  <div className="w-full max-w-sm h-16 bg-slate-50 dark:bg-black/40 rounded-xl overflow-hidden relative flex items-center justify-center border border-gray-100 dark:border-white/[0.04]">
-                    {recordingState === 'idle' && (
-                      <span className="text-xs text-gray-400 italic">Sine wave visualization displays here...</span>
-                    )}
-                    <canvas ref={canvasRef} width={384} height={64} className="w-full h-full" style={{ display: recordingState !== 'idle' ? 'block' : 'none' }} />
-                  </div>
-
-                  {/* Attachment metadata status */}
-                  {editAudioUrl && (
-                    <div className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-4 py-2.5 rounded-xl w-full text-center flex items-center justify-center gap-1.5 font-semibold">
-                      <span>✓ Audio attached and saved</span>
-                      <a href={editAudioUrl} target="_blank" className="underline font-bold hover:text-emerald-900" rel="noreferrer">Listen Preview</a>
-                    </div>
-                  )}
-
-                  {/* Action buttons */}
-                  <div className="flex flex-wrap gap-2.5 items-center justify-center mt-2">
-                    {recordingState === 'idle' && (
-                      <button
-                        type="button"
-                        onClick={startRecordingAudio}
-                        className="px-6 py-2.5 bg-red-600 text-white rounded-full text-xs font-semibold flex items-center gap-1.5 hover:bg-red-700 shadow-sm active:scale-95 transition-all"
-                      >
-                        <Mic className="w-3.5 h-3.5" /> Start Recording
-                      </button>
-                    )}
-
-                    {recordingState === 'recording' && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={pauseRecordingAudio}
-                          className="px-4 py-2.5 bg-amber-600 text-white rounded-full text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all"
-                        >
-                          <Pause className="w-3.5 h-3.5" /> Pause
-                        </button>
-                        <button
-                          type="button"
-                          onClick={saveRecordedAudio}
-                          className="px-4 py-2.5 bg-emerald-600 text-white rounded-full text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all"
-                        >
-                          <Check className="w-3.5 h-3.5" strokeWidth={3} /> Finish & Complete
-                        </button>
-                      </>
-                    )}
-
-                    {recordingState === 'paused' && (
-                      <>
-                        <button
-                          type="button"
-                          onClick={resumeRecordingAudio}
-                          className="px-4 py-2.5 bg-[#0B7A81] text-white rounded-full text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all"
-                        >
-                          <Play className="w-3.5 h-3.5 ml-0.5" /> Resume
-                        </button>
-                        <button
-                          type="button"
-                          onClick={saveRecordedAudio}
-                          className="px-4 py-2.5 bg-emerald-600 text-white rounded-full text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all"
-                        >
-                          <Check className="w-3.5 h-3.5" strokeWidth={3} /> Complete
-                        </button>
-                      </>
-                    )}
-
-                    {(recordingState === 'recording' || recordingState === 'paused' || recordingState === 'completed') && (
-                      <button
-                        type="button"
-                        onClick={deleteRecordedAudio}
-                        className="px-4 py-2.5 bg-gray-500 hover:bg-gray-600 text-white rounded-full text-xs font-semibold flex items-center gap-1.5 active:scale-95 transition-all"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" /> Delete
-                      </button>
-                    )}
-
-                    {recordingState === 'completed' && audioBlob && !editAudioUrl && (
-                      <button
-                        type="button"
-                        disabled={isUploadingAudio}
-                        onClick={handleUploadAudio}
-                        className="px-5 py-2.5 bg-[#0B7A81] text-white rounded-full text-xs font-semibold flex items-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed hover:bg-[#086369] transition-all"
-                      >
-                        {isUploadingAudio ? 'Uploading...' : 'Upload Audio Attachment'}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Primary Content Rich Text Editor (contentEditable / textarea) */}
-              {(editType === 'text' || editorType === 'prayer') && (
+              ) : (
+                /* Primary Content Rich Text Editor (contentEditable / textarea) */
                 <div className="flex-1 flex flex-col min-h-[300px]">
                   {/* Rich Editor Toolbar */}
                   <div className="h-[48px] px-3.5 bg-[#F7F7F7] dark:bg-white/[0.04] rounded-t-xl flex items-center space-x-4 border border-b-0 border-[#E6E6E6] dark:border-white/[0.08]">
@@ -1624,12 +1491,101 @@ function JournalsContent() {
                     </button>
                     <button
                       type="button"
+                      onClick={() => executeCommand('strikeThrough')}
+                      className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
+                      title="Strikethrough"
+                    >
+                      <Strikethrough className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => executeCommand('insertUnorderedList')}
                       className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
                       title="Bullet List"
                     >
                       <List className="w-4 h-4" />
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => executeCommand('insertOrderedList')}
+                      className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
+                      title="Numbered List"
+                    >
+                      <ListOrdered className="w-4 h-4" />
+                    </button>
+
+                    {/* Text Color Picker */}
+                    <div className="relative flex items-center">
+                      <button
+                        type="button"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center space-x-1"
+                        title="Text Color"
+                        onClick={() => setShowColorMenu(showColorMenu === 'text' ? null : 'text')}
+                      >
+                        <span className="font-bold border-b-2 border-black dark:border-white px-0.5 leading-none text-xs">A</span>
+                      </button>
+                      {showColorMenu === 'text' && (
+                        <>
+                          <div className="fixed inset-0 z-45" onClick={() => setShowColorMenu(null)} />
+                          <div className="absolute top-8 left-0 z-50 bg-white dark:bg-[#111111] border border-gray-200 dark:border-white/[0.08] p-1.5 rounded-lg shadow-lg flex space-x-1">
+                            {['#000000', '#FF4D4F', '#1890FF', '#52C41A', '#FADB14', '#722ED1'].map(color => (
+                              <button
+                                key={color}
+                                type="button"
+                                onClick={() => {
+                                  document.execCommand('foreColor', false, color);
+                                  setShowColorMenu(null);
+                                }}
+                                className="w-5 h-5 rounded-full border border-gray-300"
+                                style={{ backgroundColor: color }}
+                              />
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                document.execCommand('foreColor', false, '#000000');
+                                setShowColorMenu(null);
+                              }}
+                              className="text-[10px] px-1 hover:bg-gray-100 rounded dark:text-white"
+                            >
+                              Clear
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Text Highlight Color Picker */}
+                    <div className="relative flex items-center">
+                      <button
+                        type="button"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center space-x-1"
+                        title="Highlight Color"
+                        onClick={() => setShowColorMenu(showColorMenu === 'bg' ? null : 'bg')}
+                      >
+                        <span className="font-bold bg-yellow-200 text-black px-0.5 rounded leading-none text-xs">H</span>
+                      </button>
+                      {showColorMenu === 'bg' && (
+                        <>
+                          <div className="fixed inset-0 z-45" onClick={() => setShowColorMenu(null)} />
+                          <div className="absolute top-8 left-0 z-50 bg-white dark:bg-[#111111] border border-gray-200 dark:border-white/[0.08] p-1.5 rounded-lg shadow-lg flex space-x-1">
+                            {['transparent', '#FFE58F', '#FFCCC7', '#D9F7BE', '#BAE7FF', '#EFDBFF'].map(color => (
+                              <button
+                                key={color}
+                                type="button"
+                                onClick={() => {
+                                  document.execCommand('hiliteColor', false, color);
+                                  setShowColorMenu(null);
+                                }}
+                                className="w-5 h-5 rounded-full border border-gray-300"
+                                style={{ backgroundColor: color === 'transparent' ? '#FFFFFF' : color }}
+                                title={color === 'transparent' ? 'Clear' : color}
+                              />
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* contentEditable Large Rich Canvas */}
@@ -1659,9 +1615,11 @@ function JournalsContent() {
                           <BookOpen className="w-4 h-4" />
                           <span className="text-xs font-bold">{v.bookName} {v.chapter}:{v.verses.join(', ')}</span>
                         </div>
-                        <button type="button" onClick={() => handleRemoveVerse(idx)} className="p-1 text-gray-400 hover:text-red-500">
-                          <X className="w-4 h-4" />
-                        </button>
+                        {editorMode !== 'view' && (
+                          <button type="button" onClick={() => handleRemoveVerse(idx)} className="p-1 text-gray-400 hover:text-red-500">
+                            <X className="w-4 h-4" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -1669,13 +1627,15 @@ function JournalsContent() {
               )}
 
               {/* Add Verse Trigger Button */}
-              <button
-                type="button"
-                onClick={() => setVersePickerOpen(true)}
-                className="w-fit text-sm font-semibold text-[#0B7A81] flex items-center gap-1.5 active:scale-95 py-1"
-              >
-                <Plus className="w-4 h-4" /> Add Verse
-              </button>
+              {editorMode !== 'view' && (
+                <button
+                  type="button"
+                  onClick={() => setVersePickerOpen(true)}
+                  className="w-fit text-sm font-semibold text-[#0B7A81] flex items-center gap-1.5 active:scale-95 py-1"
+                >
+                  <Plus className="w-4 h-4" /> Add Verse
+                </button>
+              )}
 
               {/* Dynamic Scripture Reference selection Dialog */}
               <AnimatePresence>
@@ -1685,7 +1645,7 @@ function JournalsContent() {
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-2xl w-full max-w-sm p-5 shadow-2xl select-none"
+                      className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-xl w-full max-w-sm p-5 shadow-2xl select-none"
                     >
                       <h3 className="font-bold text-base text-gray-800 dark:text-[#F5F5F5]">Link Bible Scripture</h3>
                       <div className="mt-4 space-y-3.5">
@@ -1695,7 +1655,7 @@ function JournalsContent() {
                           <select
                             value={pickerBook}
                             onChange={(e) => setPickerBook(e.target.value)}
-                            className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-2 text-[16px] md:text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
+                            className="w-full h-10 mt-1 rounded-xl border border-gray-300 dark:border-white/[0.08] px-2 text-[16px] md:text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
                           >
                             {BIBLE_BOOKS.map(b => (
                               <option key={b} value={b}>{b}</option>
@@ -1712,7 +1672,7 @@ function JournalsContent() {
                               min={1}
                               value={pickerChapter}
                               onChange={(e) => setPickerChapter(Math.max(1, Number(e.target.value)))}
-                              className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
+                              className="w-full h-10 mt-1 rounded-xl border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
                             />
                           </div>
                           <div>
@@ -1726,7 +1686,7 @@ function JournalsContent() {
                                 setPickerVerseStart(val);
                                 if (pickerVerseEnd < val) setPickerVerseEnd(val);
                               }}
-                              className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
+                              className="w-full h-10 mt-1 rounded-xl border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
                             />
                           </div>
                           <div>
@@ -1736,7 +1696,7 @@ function JournalsContent() {
                               min={1}
                               value={pickerVerseEnd}
                               onChange={(e) => setPickerVerseEnd(Math.max(pickerVerseStart, Number(e.target.value)))}
-                              className="w-full h-10 mt-1 rounded-lg border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
+                              className="w-full h-10 mt-1 rounded-xl border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
                             />
                           </div>
                         </div>
@@ -1788,16 +1748,15 @@ function JournalsContent() {
                 top: kebabPosition.top,
                 right: kebabPosition.right,
               }}
-              className="kebab-menu w-[180px] bg-white dark:bg-[#111111] rounded-2xl shadow-xl border border-gray-100 dark:border-white/[0.08] py-1.5 overflow-hidden z-50"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Mark as Prayed — only for active prayers */}
+              {/* Move to prayed — only for active prayers */}
               {activeKebabType === 'prayer' && !isActivePrayerPrayed && (
                 <button
                   onClick={() => handleTriggerMarkAsPrayed(activeKebabId)}
                   className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-emerald-600 dark:text-emerald-400"
                 >
-                  <span>Mark as Prayed</span>
+                  <span>Move to prayed</span>
                   <Check className="w-3.5 h-3.5" strokeWidth={3} />
                 </button>
               )}
@@ -1831,7 +1790,7 @@ function JournalsContent() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="bg-white dark:bg-[#111111] rounded-t-[32px] w-full max-w-lg p-6 shadow-2xl flex flex-col"
+              className="bg-white dark:bg-[#111111] rounded-t-xl w-full max-w-lg p-6 shadow-2xl flex flex-col"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-[100px] h-[5px] bg-gray-300 dark:bg-white/[0.12] rounded-full mx-auto mb-5 select-none shrink-0" />
@@ -1840,17 +1799,17 @@ function JournalsContent() {
               <div className="grid grid-cols-2 gap-4 pb-4 select-none">
                 <button
                   onClick={() => handleOpenEditor(null, 'journal')}
-                  className="bg-slate-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04] p-5 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-100 transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="bg-slate-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04] p-5 rounded-xl flex flex-col items-center justify-center hover:bg-slate-100 transition-all cursor-pointer shadow-xs active:scale-95"
                 >
                   <span className="text-3xl mb-2">📓</span>
-                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Journal Note</span>
+                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Journal</span>
                 </button>
                 <button
                   onClick={() => handleOpenEditor(null, 'prayer')}
-                  className="bg-slate-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04] p-5 rounded-2xl flex flex-col items-center justify-center hover:bg-slate-100 transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="bg-slate-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04] p-5 rounded-xl flex flex-col items-center justify-center hover:bg-slate-100 transition-all cursor-pointer shadow-xs active:scale-95"
                 >
                   <span className="text-3xl mb-2">🙏</span>
-                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Personal Prayer</span>
+                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Prayer</span>
                 </button>
               </div>
             </motion.div>
@@ -1867,7 +1826,7 @@ function JournalsContent() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="bg-white dark:bg-[#111111] rounded-t-[32px] w-full max-w-lg p-6 shadow-2xl flex flex-col select-none"
+              className="bg-white dark:bg-[#111111] rounded-t-xl w-full max-w-lg p-6 shadow-2xl flex flex-col select-none"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-[100px] h-[5px] bg-gray-300 dark:bg-white/[0.12] rounded-full mx-auto mb-5 select-none shrink-0" />
@@ -1906,7 +1865,7 @@ function JournalsContent() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-              className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-2xl w-full max-w-sm p-6 shadow-2xl select-none"
+              className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-xl w-full max-w-sm p-6 shadow-2xl select-none"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex flex-col items-center text-center">
@@ -1916,11 +1875,11 @@ function JournalsContent() {
                 </div>
                 
                 <h3 className="font-extrabold text-lg text-gray-900 dark:text-[#F5F5F5] mb-2">
-                  Mark as Prayed?
+                  Move to prayed?
                 </h3>
                 
                 <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mb-6">
-                  This action is <span className="font-semibold text-red-500">irreversible</span>. Once marked as prayed, this prayer will be archived in the "Prayed" category and cannot be moved back to active status.
+                  This action is <span className="font-semibold text-red-500">irreversible</span>. Once moved to prayed, this prayer will be archived in the "Prayed" category and cannot be moved back to active status.
                 </p>
 
                 <div className="flex w-full gap-3">
@@ -1952,7 +1911,7 @@ function JournalsContent() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="bg-white dark:bg-[#111111] rounded-t-[32px] w-full max-w-lg p-6 shadow-2xl flex flex-col select-none"
+              className="bg-white dark:bg-[#111111] rounded-t-xl w-full max-w-lg p-6 shadow-2xl flex flex-col select-none"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="w-[100px] h-[5px] bg-gray-300 dark:bg-white/[0.12] rounded-full mx-auto mb-5 select-none shrink-0" />
@@ -1965,6 +1924,7 @@ function JournalsContent() {
                     setFilterPinned(null);
                     setFilterBookmarked(null);
                     setFilterDate('all');
+                    setPrayerStatusFilter('All');
                     showToast('Filters cleared');
                   }}
                   className="text-xs font-bold text-gray-400 hover:text-[#0B7A81]"
@@ -1994,13 +1954,33 @@ function JournalsContent() {
                   </div>
                 </div>
 
+                {/* Conditional Prayer Status Filter */}
+                {(filterType === 'prayer' || filterType === 'all') && (
+                  <div>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1.5">Prayer Status</span>
+                    <div className="flex gap-2">
+                      {(['All', 'Active', 'Prayed'] as PrayerStatusFilter[]).map((f) => (
+                        <button
+                          key={f}
+                          onClick={() => setPrayerStatusFilter(f)}
+                          className={`text-xs px-3.5 py-1.5 border rounded-xl font-bold ${
+                            prayerStatusFilter === f ? 'bg-[#0B7A81] border-[#0B7A81] text-white' : 'border-gray-200 text-gray-500'
+                          }`}
+                        >
+                          {f === 'Active' ? '🔥 Active' : f === 'Prayed' ? '✓ Prayed' : 'All'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Filter Pinning */}
                 <div>
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1.5">Pinned Status</span>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setFilterPinned(null)}
-                      className={`text-xs px-3.5 py-1.5 border rounded-lg font-bold ${
+                      className={`text-xs px-3.5 py-1.5 border rounded-xl font-bold ${
                         filterPinned === null ? 'bg-[#0B7A81] border-[#0B7A81] text-white' : 'border-gray-200 text-gray-500'
                       }`}
                     >
@@ -2008,7 +1988,7 @@ function JournalsContent() {
                     </button>
                     <button
                       onClick={() => setFilterPinned(true)}
-                      className={`text-xs px-3.5 py-1.5 border rounded-lg font-bold flex items-center gap-1 ${
+                      className={`text-xs px-3.5 py-1.5 border rounded-xl font-bold flex items-center gap-1 ${
                         filterPinned === true ? 'bg-[#0B7A81] border-[#0B7A81] text-white' : 'border-gray-200 text-gray-500'
                       }`}
                     >
@@ -2016,7 +1996,7 @@ function JournalsContent() {
                     </button>
                     <button
                       onClick={() => setFilterPinned(false)}
-                      className={`text-xs px-3.5 py-1.5 border rounded-lg font-bold ${
+                      className={`text-xs px-3.5 py-1.5 border rounded-xl font-bold ${
                         filterPinned === false ? 'bg-[#0B7A81] border-[#0B7A81] text-white' : 'border-gray-200 text-gray-500'
                       }`}
                     >
@@ -2031,7 +2011,7 @@ function JournalsContent() {
                   <div className="flex gap-2">
                     <button
                       onClick={() => setFilterBookmarked(null)}
-                      className={`text-xs px-3.5 py-1.5 border rounded-lg font-bold ${
+                      className={`text-xs px-3.5 py-1.5 border rounded-xl font-bold ${
                         filterBookmarked === null ? 'bg-[#0B7A81] border-[#0B7A81] text-white' : 'border-gray-200 text-gray-500'
                       }`}
                     >
@@ -2039,7 +2019,7 @@ function JournalsContent() {
                     </button>
                     <button
                       onClick={() => setFilterBookmarked(true)}
-                      className={`text-xs px-3.5 py-1.5 border rounded-lg font-bold flex items-center gap-1 ${
+                      className={`text-xs px-3.5 py-1.5 border rounded-xl font-bold flex items-center gap-1 ${
                         filterBookmarked === true ? 'bg-[#0B7A81] border-[#0B7A81] text-white' : 'border-gray-200 text-gray-500'
                       }`}
                     >
@@ -2056,7 +2036,7 @@ function JournalsContent() {
                       <button
                         key={d}
                         onClick={() => setFilterDate(d)}
-                        className={`text-xs px-3.5 py-1.5 border rounded-lg font-bold capitalize ${
+                        className={`text-xs px-3.5 py-1.5 border rounded-xl font-bold capitalize ${
                           filterDate === d ? 'bg-[#0B7A81] border-[#0B7A81] text-white' : 'border-gray-200 text-gray-500'
                         }`}
                       >

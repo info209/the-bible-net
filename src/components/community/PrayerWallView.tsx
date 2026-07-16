@@ -171,7 +171,7 @@ export default function PrayerWallView() {
           </div>
           <button
             onClick={() => setShowPostModal(true)}
-            className="flex items-center space-x-2 bg-[var(--color-primary-teal)] text-white px-4 py-2 rounded-full font-bold text-sm shadow-lg shadow-teal-700/20 hover:scale-105 active:scale-95 transition-all"
+            className="flex items-center space-x-2 bg-[var(--color-primary-teal)] text-white px-4 py-2 rounded-xl font-bold text-sm shadow-lg shadow-teal-700/20 hover:scale-105 active:scale-95 transition-all"
           >
             <Plus className="size-4" />
             <span>Post a Prayer</span>
@@ -189,12 +189,12 @@ export default function PrayerWallView() {
               placeholder="Search prayers or names..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-2xl py-2.5 pl-10 pr-4 text-[16px] md:text-sm focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 focus:border-[var(--color-primary-teal)] outline-none transition-all shadow-sm"
+              className="w-full bg-white border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-[16px] md:text-sm focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 focus:border-[var(--color-primary-teal)] outline-none transition-all shadow-sm"
             />
           </div>
 
           <div className="flex items-center space-x-2">
-            <div className="bg-white border border-gray-200 rounded-2xl p-1 flex">
+            <div className="bg-white border border-gray-200 rounded-xl p-1 flex">
               <button
                 onClick={() => setFilter('newest')}
                 className={`flex items-center space-x-1.5 px-4 py-1.5 rounded-xl text-xs font-bold transition-all ${filter === 'newest' ? 'bg-[#e6f0f1] text-[var(--color-primary-teal)]' : 'text-gray-500 hover:bg-gray-50'}`}
@@ -211,7 +211,7 @@ export default function PrayerWallView() {
               </button>
             </div>
 
-            <div className="bg-white border border-gray-200 rounded-2xl p-1 flex">
+            <div className="bg-white border border-gray-200 rounded-xl p-1 flex">
               <button
                 onClick={() => setLayout('grid')}
                 className={`p-1.5 rounded-xl transition-all ${layout === 'grid' ? 'bg-gray-100 text-gray-900' : 'text-gray-400 hover:bg-gray-50'}`}
@@ -232,7 +232,7 @@ export default function PrayerWallView() {
         {loading ? (
           <div className={`grid gap-6 ${layout === 'grid' ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1'}`}>
             {[1, 2, 3, 4, 5, 6].map(i => (
-              <div key={i} className="bg-white rounded-3xl p-6 shadow-sm border border-gray-100 animate-pulse">
+              <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 animate-pulse">
                 <div className="flex items-center space-x-3 mb-4">
                   <div className="size-10 bg-gray-200 rounded-full" />
                   <div className="space-y-2">
@@ -248,7 +248,7 @@ export default function PrayerWallView() {
             ))}
           </div>
         ) : filteredPrayers.length === 0 ? (
-          <div className="bg-white rounded-[32px] p-20 text-center shadow-lg border border-teal-100/30">
+          <div className="bg-white rounded-xl p-20 text-center shadow-lg border border-teal-100/30">
             <div className="bg-teal-50 size-20 rounded-full flex items-center justify-center mx-auto mb-6">
               <Plus className="size-10 text-[var(--color-primary-teal)] opacity-50" />
             </div>
@@ -267,7 +267,7 @@ export default function PrayerWallView() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9 }}
-                  className="bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all border border-gray-100 relative overflow-hidden group"
+                  className="bg-white rounded-xl p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all border border-gray-100 relative overflow-hidden group"
                 >
                   <div className="absolute top-0 right-0 p-4 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button className="p-2 hover:bg-gray-50 rounded-full text-gray-400 hover:text-gray-600">
@@ -314,7 +314,7 @@ export default function PrayerWallView() {
                   <div className="flex items-center justify-between pt-4 border-t border-gray-50">
                     <button
                       onClick={() => handleIntercede(prayer._id)}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-2xl transition-all ${prayer.intercessors?.includes((session?.user as any)?.id)
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all ${prayer.intercessors?.includes((session?.user as any)?.id)
                           ? 'bg-orange-50 text-orange-600 font-bold'
                           : 'bg-teal-50 text-[var(--color-primary-teal)] font-bold hover:bg-teal-100'
                         }`}
@@ -343,7 +343,7 @@ export default function PrayerWallView() {
           <motion.div
             initial={{ opacity: 0, y: 100 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-[32px] overflow-hidden shadow-2xl"
+            className="bg-white rounded-xl overflow-hidden shadow-2xl"
           >
             <DialogHeader className="p-6 pb-2 flex flex-row items-center justify-between space-y-0">
               <div className="flex items-center space-x-3">
@@ -369,7 +369,7 @@ export default function PrayerWallView() {
                   value={newPrayerText}
                   onChange={(e) => setNewPrayerText(e.target.value)}
                   placeholder="What would you like the community to pray for?"
-                  className="w-full bg-gray-50/50 rounded-2xl p-4 text-gray-800 placeholder:text-gray-400 outline-none ring-2 ring-transparent focus:ring-[var(--color-primary-teal)]/20 focus:bg-white transition-all min-h-[160px] resize-none font-medium"
+                  className="w-full bg-gray-50/50 rounded-xl p-4 text-gray-800 placeholder:text-gray-400 outline-none ring-2 ring-transparent focus:ring-[var(--color-primary-teal)]/20 focus:bg-white transition-all min-h-[160px] resize-none font-medium"
                 />
                 <div className="absolute bottom-4 right-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                   {newPrayerText.length}/1000
@@ -379,7 +379,7 @@ export default function PrayerWallView() {
               <div className="flex flex-col sm:flex-row gap-4">
                 <button
                   onClick={() => setIsAnonymous(!isAnonymous)}
-                  className={`flex-1 flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${isAnonymous
+                  className={`flex-1 flex items-center justify-between p-4 rounded-xl border-2 transition-all ${isAnonymous
                       ? 'border-[var(--color-primary-teal)] bg-teal-50/30'
                       : 'border-gray-100 hover:border-gray-200'
                     }`}
@@ -398,7 +398,7 @@ export default function PrayerWallView() {
 
                 <button
                   onClick={() => setIsPublic(!isPublic)}
-                  className={`flex-1 flex items-center justify-between p-4 rounded-2xl border-2 transition-all ${isPublic
+                  className={`flex-1 flex items-center justify-between p-4 rounded-xl border-2 transition-all ${isPublic
                       ? 'border-[var(--color-primary-teal)] bg-teal-50/30'
                       : 'border-gray-100 hover:border-gray-200'
                     }`}
@@ -419,7 +419,7 @@ export default function PrayerWallView() {
               <button
                 onClick={handlePostPrayer}
                 disabled={submitting || !newPrayerText.trim()}
-                className="w-full py-4 bg-[var(--color-primary-teal)] text-white rounded-2xl font-extrabold shadow-xl shadow-teal-700/30 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center space-x-3 disabled:opacity-50 disabled:scale-100 disabled:shadow-none"
+                className="w-full py-4 bg-[var(--color-primary-teal)] text-white rounded-xl font-extrabold shadow-xl shadow-teal-700/30 hover:shadow-2xl hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center space-x-3 disabled:opacity-50 disabled:scale-100 disabled:shadow-none"
               >
                 {submitting ? (
                   <div className="size-5 border-2 border-white border-t-transparent animate-spin rounded-full" />
