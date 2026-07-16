@@ -84,8 +84,15 @@ const getOrdinalSuffix = (day: number): string => {
 };
 
 const formatVerseLabel = (dateStr: string): string => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    if (dateStr === todayStr) return 'Verse of the Day';
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    if (dateStr === todayStr) return 'Today';
+
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(today.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    if (dateStr === yesterdayStr) return 'Yesterday';
+
     const d = new Date(dateStr);
     const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
     const day = d.getUTCDate();
@@ -94,8 +101,15 @@ const formatVerseLabel = (dateStr: string): string => {
 };
 
 const formatDevotionLabel = (dateStr: string): string => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    if (dateStr === todayStr) return 'Devotion of the Day';
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    if (dateStr === todayStr) return 'Today';
+
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(today.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    if (dateStr === yesterdayStr) return 'Yesterday';
+
     const d = new Date(dateStr);
     const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
     const day = d.getUTCDate();
@@ -560,8 +574,8 @@ export function DailyDetailModal({
                     </button>
 
                     <div className="text-center flex-1">
-                        <h2 className="text-black font-bold text-lg">{getRelativeLabel(currentContent.date)}</h2>
-                        <p className="text-black/60 text-xs">{currentContent.date}</p>
+                        {/* <h2 className="text-black font-bold text-lg">{getRelativeLabel(currentContent.date)}</h2>
+                        <p className="text-black/60 text-xs">{currentContent.date}</p> */}
                     </div>
 
                     <button
@@ -596,7 +610,7 @@ export function DailyDetailModal({
                         return (
                             <ScrollArea
                                 key={item.date || index}
-                                className="relative z-10 h-full w-full px-4 sm:px-8 pb-12 mt-4"
+                                className="relative z-10 h-full w-full px-4 sm:px-8 pb-12 mt-4 touch-pan-y"
                                 ref={index === currentIndex ? scrollRef : null}
                             >
                                 <div className="max-w-2xl mx-auto flex flex-col space-y-12 py-8">

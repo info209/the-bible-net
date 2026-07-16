@@ -360,8 +360,15 @@ export default function HomeView() {
   };
 
   const formatVerseLabel = (dateStr: string): string => {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
     if (dateStr === todayStr) return 'Today';
+
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(today.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    if (dateStr === yesterdayStr) return 'Yesterday';
+
     const d = new Date(dateStr);
     const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
     const day = d.getUTCDate();
@@ -486,7 +493,7 @@ export default function HomeView() {
                       </div>
 
                       <div className="mt-6">
-                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily Verse</h4>
+                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily verse</h4>
                         <h3 className="text-black text-lg font-bold tracking-tight truncate">
                           {content.verseReference || 'Reference'} {content.version || 'KJV'}
                         </h3>
@@ -632,7 +639,7 @@ export default function HomeView() {
                     <div className="w-full">
                       <div className="text-center w-full">
                         <p className="text-black/90 text-[15px] font-semibold mb-2.5">
-                          {formatVerseLabel(content.date) === 'Verse of the Day' ? 'Devotion of the Day' : formatVerseLabel(content.date)}
+                          {formatVerseLabel(content.date)}
                         </p>
 
                         {/* Slide indicators inside the card */}
@@ -657,7 +664,7 @@ export default function HomeView() {
                       </div>
 
                       <div className="mt-6">
-                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily Devotional</h4>
+                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily devotional</h4>
                         <h3 className="text-black text-lg font-bold tracking-tight truncate">
                           {content.devotionalTitle}
                         </h3>
