@@ -179,6 +179,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [showChapterSelector, setShowChapterSelector] = useState(false);
   const [showVersionSelector, setShowVersionSelector] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [narrationActive, setNarrationActive] = useState(false);
   const [audioControlExpanded, setAudioControlExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [showMusicSelector, setShowMusicSelector] = useState(false);
@@ -1026,6 +1027,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     narrationVerseIndexRef.current = fromVerse - 1;
     setNarrationPlaying(true);
     narrationPlayingRef.current = true;
+    setNarrationActive(true);
     console.log('Starting to read verse index:', fromVerse - 1);
     readNextVerse(verses, fromVerse - 1);
   };
@@ -1100,7 +1102,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         // Highlight and scroll ONLY when speech actually starts
         verseUtterance.onstart = () => {
           console.log('Speech started for verse:', verseNumber);
-          setSelectedVerse(verseNumber);
           setCurrentReadingVerse(verseNumber);
           console.log('Setting currentReadingVerse to:', verseNumber);
 
@@ -1134,6 +1135,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           narrationPlayingRef.current = false;
           setCurrentReadingVerse(null);
           setAudioPlaying(false);
+          setNarrationActive(false);
         };
 
         utteranceRef.current = verseUtterance;
@@ -1157,6 +1159,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         narrationPlayingRef.current = false;
         setCurrentReadingVerse(null);
         setAudioPlaying(false);
+        setNarrationActive(false);
         return;
       } else if (repeatModeRef.current === 'chapter') {
         // Repeat the chapter - go back to the beginning
@@ -1174,6 +1177,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         narrationPlayingRef.current = false;
         setCurrentReadingVerse(null);
         setAudioPlaying(false);
+        setNarrationActive(false);
         return;
       }
 
@@ -1210,6 +1214,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         narrationPlayingRef.current = false;
         setCurrentReadingVerse(null);
         setAudioPlaying(false);
+        setNarrationActive(false);
         return;
       }
 
@@ -1262,6 +1267,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         narrationPlayingRef.current = false;
         setCurrentReadingVerse(null);
         setAudioPlaying(false);
+        setNarrationActive(false);
         isAutoAdvancingRef.current = false;
         return;
       }
@@ -1322,7 +1328,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
     // Highlight verse and scroll ONLY when speech actually starts (prevents fake-playback)
     utterance.onstart = () => {
-      setSelectedVerse(verseNumber);
       setCurrentReadingVerse(verseNumber);
       console.log('Speech started for verse:', verseNumber);
 
@@ -1378,6 +1383,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       narrationPlayingRef.current = false;
       setCurrentReadingVerse(null);
       setAudioPlaying(false);
+      setNarrationActive(false);
     };
 
     utteranceRef.current = utterance;
@@ -1457,6 +1463,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     narrationPlayingRef.current = false;
     setCurrentReadingVerse(null);
     setAudioPlaying(false);
+    setAudioCurrentTime(0);
+    setNarrationActive(false);
   };
 
   // Handle play/pause for narration
@@ -1474,6 +1482,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       resumeNarration();
       // THEN update UI state so progress ring and icons reflect playing
       setAudioPlaying(true);
+      setNarrationActive(true);
     }
   };
 
@@ -2203,11 +2212,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   style={{ color: currentTheme.text }}
                 >
                   {musicLoopMode === 'shuffle' ? (
-                    <><Shuffle className="size-5" /><span className="text-sm">Shuffle</span></>
+                    <><span className="text-sm">Shuffle</span><Shuffle className="size-5" /></>
                   ) : musicLoopMode === 'repeat-all' ? (
-                    <><Repeat className="size-5" /><span className="text-sm">Repeat All</span></>
+                    <><span className="text-sm">Repeat All</span><Repeat className="size-5" /></>
                   ) : (
-                    <><Repeat1 className="size-5" /><span className="text-sm">Repeat One</span></>
+                    <><span className="text-sm">Repeat One</span><Repeat1 className="size-5" /></>
                   )}
                 </button>
 
@@ -2292,16 +2301,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                           : 'transparent',
                       }}
                     >
-                      {/* Left side: Play/Pause icon + Thumbnail + Label */}
+                      {/* Left side: Thumbnail + Label */}
                       <div className="flex items-center space-x-3.5 min-w-0">
-                        <div className="flex-shrink-0" style={{ color: currentTrack?.id === track.id ? currentTheme.verseNumber : currentTheme.text }}>
-                          {currentTrack?.id === track.id && ambientPlaying ? (
-                            <Pause className="size-5 fill-current" />
-                          ) : (
-                            <Play className="size-5 fill-current" />
-                          )}
-                        </div>
-
                         {/* Thumbnail */}
                         <div className="relative size-10 rounded-lg overflow-hidden flex-shrink-0 bg-black/5 flex items-center justify-center border border-black/5">
                           {track.thumbnail_url ? (
@@ -2607,10 +2608,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           onPlayPause={handleNarrationPlayPause}
           onNext={handleNext}
           onPrev={handlePrevious}
-          title={`${selectedBook} ${selectedChapter}:${selectedVerse ?? 1}`}
+          title={`${selectedBook} ${selectedChapter}:${(narrationActive ? currentReadingVerse : selectedVerse) ?? 1}`}
           subtitle={selectedVersion}
           onOpenPanel={() => setShowAudioControlPanel(true)}
-          isNarrationActive={currentReadingVerse !== null || audioPlaying}
+          isNarrationActive={narrationActive}
           onStop={stopNarration}
         />
       )}

@@ -152,7 +152,7 @@ export default function AudioFloatingPlayer({
                     animate={{ width: 52, opacity: 1, x: 0 }}
                     exit={{ width: 0, opacity: 0, x: 20 }}
                     transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                    onClick={onOpenPanel}
+                    onClick={(e) => { e.stopPropagation(); onOpenPanel(); }}
                     className="h-11 w-[52px] bg-[var(--color-bg-primary)]/95 backdrop-blur-md
                       border border-r-0 border-[var(--color-border)]
                       rounded-l-full pl-4 pr-0 -mr-4 flex items-center justify-start
@@ -174,7 +174,7 @@ export default function AudioFloatingPlayer({
                   color="var(--color-accent-rose)"
                 >
                   <motion.button
-                    onClick={onPlayPause}
+                    onClick={(e) => { e.stopPropagation(); onPlayPause(); }}
                     whileTap={{ scale: 0.9 }}
                     className="size-11 rounded-full flex items-center justify-center
                       bg-[var(--color-primary-teal)]
@@ -200,7 +200,7 @@ export default function AudioFloatingPlayer({
                     animate={{ width: 52, opacity: 1, x: 0 }}
                     exit={{ width: 0, opacity: 0, x: -20 }}
                     transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                    onClick={() => onStop?.()}
+                    onClick={(e) => { e.stopPropagation(); onStop?.(); }}
                     className="h-11 w-[52px] bg-[var(--color-bg-primary)]/95 backdrop-blur-md
                       border border-l-0 border-[var(--color-border)]
                       rounded-r-full pl-0 pr-4 -ml-4 flex items-center justify-end
@@ -208,7 +208,7 @@ export default function AudioFloatingPlayer({
                       overflow-hidden whitespace-nowrap"
                     aria-label="Stop narration"
                   >
-                    <Square className="size-[18px] text-[var(--color-text-secondary)] fill-[var(--color-text-secondary)] shrink-0" />
+                    <Square className="size-[18px] text-[var(--color-accent-rose)] fill-[var(--color-accent-rose)] shrink-0" />
                   </motion.button>
                 )}
               </AnimatePresence>

@@ -563,6 +563,23 @@ export default function HomeView() {
                               >
                                 Read chapter
                               </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setOpenVerseKebabIndex(null);
+                                  if (content.verse) {
+                                    navigator.clipboard.writeText(content.verse)
+                                      .then(() => toast.success('Verse text copied to clipboard!'))
+                                      .catch((err) => {
+                                        console.error('Failed to copy text:', err);
+                                        toast.error('Failed to copy text.');
+                                      });
+                                  }
+                                }}
+                                className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100"
+                              >
+                                Copy verse
+                              </button>
                             </div>
                           </>
                         )}
