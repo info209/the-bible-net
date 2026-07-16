@@ -40,7 +40,7 @@ export function ImageUploadManager() {
         const allowedExt = ['.jpg', '.jpeg', '.png', '.webp', '.svg'];
         const ext = file.name.toLowerCase().slice(file.name.lastIndexOf('.'));
         if (!allowedExt.includes(ext)) {
-            setError('Only JPG, PNG, and WEBP images are supported.');
+            setError('Only JPG, PNG, WEBP, and SVG images are supported.');
             return;
         }
         if (file.size > 10 * 1024 * 1024) {

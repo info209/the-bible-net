@@ -23,14 +23,14 @@ export async function POST(req: NextRequest) {
         }
 
         // Validate file type
-        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
-        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+        const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/svg+xml'];
+        const allowedExtensions = ['.jpg', '.jpeg', '.png', '.webp', '.svg'];
         const ext = file.name.slice(file.name.lastIndexOf('.')).toLowerCase();
 
         if (!allowedTypes.includes(file.type) && !allowedExtensions.includes(ext)) {
             return NextResponse.json({
                 success: false,
-                error: 'Only JPG, PNG, and WEBP images are supported.'
+                error: 'Only JPG, PNG, WEBP, and SVG images are supported.'
             }, { status: 400 });
         }
 
