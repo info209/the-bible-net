@@ -33,7 +33,8 @@ export default function HomeView() {
   // Independent slide tracking for each carousel
   const [currentVerseSlide, setCurrentVerseSlide] = useState(0);
   // Tracks which verse card's kebab menu is open (by carousel index)
-  const [openKebabIndex, setOpenKebabIndex] = useState<number | null>(null);
+  const [openVerseKebabIndex, setOpenVerseKebabIndex] = useState<number | null>(null);
+  const [openDevotionKebabIndex, setOpenDevotionKebabIndex] = useState<number | null>(null);
   const [currentDevotionSlide, setCurrentDevotionSlide] = useState(0);
 
   const [showCommentModal, setShowCommentModal] = useState(false);
@@ -369,7 +370,7 @@ export default function HomeView() {
   // Navigate to Bible reader at the exact verse context (feature #7)
   const handleReadFullChapter = (content: any, e: React.MouseEvent) => {
     e.stopPropagation();
-    setOpenKebabIndex(null);
+    setOpenVerseKebabIndex(null);
     const version = encodeURIComponent(content.version || preferredVersion);
     const book    = encodeURIComponent(content.verseBook || '');
     const chapter = encodeURIComponent(content.verseChapter || '');
@@ -540,7 +541,7 @@ export default function HomeView() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOpenKebabIndex(openKebabIndex === index ? null : index);
+                            setOpenVerseKebabIndex(openVerseKebabIndex === index ? null : index);
                           }}
                           className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
                         >
@@ -549,11 +550,11 @@ export default function HomeView() {
                           </div>
                           <span className="text-xs">More</span>
                         </button>
-                        {openKebabIndex === index && (
+                        {openVerseKebabIndex === index && (
                           <>
                             <div
                               className="fixed inset-0 z-10"
-                              onClick={(e) => { e.stopPropagation(); setOpenKebabIndex(null); }}
+                              onClick={(e) => { e.stopPropagation(); setOpenVerseKebabIndex(null); }}
                             />
                             <div className="absolute right-0 bottom-full mb-2 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
                               <button
@@ -691,7 +692,7 @@ export default function HomeView() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
-                            setOpenKebabIndex(openKebabIndex === index ? null : index);
+                            setOpenDevotionKebabIndex(openDevotionKebabIndex === index ? null : index);
                           }}
                           className="flex flex-col items-center space-y-1 text-white md:hover:scale-110 active:scale-95 transition-all"
                         >
@@ -700,11 +701,11 @@ export default function HomeView() {
                           </div>
                           <span className="text-xs">More</span>
                         </button>
-                        {openKebabIndex === index && (
+                        {openDevotionKebabIndex === index && (
                           <>
                             <div
                               className="fixed inset-0 z-10"
-                              onClick={(e) => { e.stopPropagation(); setOpenKebabIndex(null); }}
+                              onClick={(e) => { e.stopPropagation(); setOpenDevotionKebabIndex(null); }}
                             />
                             <div className="absolute right-0 bottom-full mb-2 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
                               <button

@@ -2610,6 +2610,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           title={`${selectedBook} ${selectedChapter}:${selectedVerse ?? 1}`}
           subtitle={selectedVersion}
           onOpenPanel={() => setShowAudioControlPanel(true)}
+          isNarrationActive={currentReadingVerse !== null || audioPlaying}
+          onStop={stopNarration}
         />
       )}
 

@@ -1,14 +1,13 @@
 "use client";
 
-import { useRef, useCallback, useEffect, useState } from "react";
-import { Play, Pause, ChevronUp, ChevronLeft, ChevronRight } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Play, Pause, ChevronUp, ChevronLeft, ChevronRight, Sliders, Square } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProgressRing from "./ui/ProgressRing";
 
 // Sits above BottomNav (64px) with 12px breathing room + safe-area
 const BOTTOM_NAV_HEIGHT = 64; // px
 const BREATHING = 12; // px gap above nav
-const LONG_PRESS_DURATION = 500; // ms
 
 interface Props {
   playerState: "default" | "minimized";
@@ -22,6 +21,8 @@ interface Props {
   onOpenPanel: () => void;
   /** When true the bottom nav is hidden — shift buttons down to sit at safe-area-inset */
   isReadingMode?: boolean;
+  isNarrationActive?: boolean;
+  onStop?: () => void;
 }
 
 export default function AudioFloatingPlayer({
@@ -35,13 +36,9 @@ export default function AudioFloatingPlayer({
   subtitle,
   onOpenPanel,
   isReadingMode = false,
+  isNarrationActive = false,
+  onStop,
 }: Props) {
-  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  // Tracks whether the current press crossed the 2-second threshold
-  const isLongPressRef = useRef(false);
-  // Prevents mouse-event handlers from firing after a touch event (synthetic events)
-  const isTouchActiveRef = useRef(false);
-
   const [sheetOffset, setSheetOffset] = useState(0);
 
   useEffect(() => {
@@ -114,84 +111,6 @@ export default function AudioFloatingPlayer({
   const finalOffset = sheetOffset > 0 ? sheetOffset + 20 : baselineBottom;
   const bottomValue = `calc(${finalOffset}px + env(safe-area-inset-bottom))`;
 
-  /** Start the 2-second long-press timer. Called on pointer-down. */
-  const startPressTimer = useCallback(() => {
-    isLongPressRef.current = false;
-    longPressTimer.current = setTimeout(() => {
-      isLongPressRef.current = true;
-      onOpenPanel();
-    }, LONG_PRESS_DURATION);
-  }, [onOpenPanel]);
-
-  /** Cancel the long-press timer without triggering any action. */
-  const cancelPressTimer = useCallback(() => {
-    if (longPressTimer.current) {
-      clearTimeout(longPressTimer.current);
-      longPressTimer.current = null;
-    }
-  }, []);
-
-  // ── Touch handlers ──────────────────────────────────────────────────────────
-  // Touch events are always handled first; we suppress the synthetic mouse
-  // events that follow by gating on isTouchActiveRef.
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    e.stopPropagation();
-    isTouchActiveRef.current = true;
-    startPressTimer();
-  }, [startPressTimer]);
-
-  /**
-   * onTouchMove fires when the finger moves — treat as a scroll intent.
-   * Cancel the timer but do NOT trigger play (user is scrolling, not tapping).
-   */
-  const handleTouchMove = useCallback(() => {
-    cancelPressTimer();
-    // Don't clear isLongPress here — if 2s already elapsed, keep it true
-  }, [cancelPressTimer]);
-
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    e.stopPropagation();
-    cancelPressTimer();
-    // Quick tap → play/pause. Long press already opened the sheet.
-    if (!isLongPressRef.current) {
-      onPlayPause();
-    }
-    isLongPressRef.current = false;
-    // Suppress the synthetic mouse-up / click that the browser fires ~300ms later
-    setTimeout(() => { isTouchActiveRef.current = false; }, 400);
-  }, [cancelPressTimer, onPlayPause]);
-
-  const handleTouchCancel = useCallback(() => {
-    cancelPressTimer();
-    isLongPressRef.current = false;
-    setTimeout(() => { isTouchActiveRef.current = false; }, 400);
-  }, [cancelPressTimer]);
-
-  // ── Mouse handlers (desktop) — skip if a touch event already handled this ──
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (isTouchActiveRef.current) return;
-    e.stopPropagation();
-    startPressTimer();
-  }, [startPressTimer]);
-
-  const handleMouseUp = useCallback((e: React.MouseEvent) => {
-    if (isTouchActiveRef.current) return;
-    e.stopPropagation();
-    cancelPressTimer();
-    if (!isLongPressRef.current) {
-      onPlayPause();
-    }
-    isLongPressRef.current = false;
-  }, [cancelPressTimer, onPlayPause]);
-
-  /** Pointer leaves the button — cancel timer, do NOT trigger play. */
-  const handleMouseLeave = useCallback(() => {
-    cancelPressTimer();
-    isLongPressRef.current = false;
-  }, [cancelPressTimer]);
-
   return (
     <AnimatePresence mode="wait">
 
@@ -224,41 +143,75 @@ export default function AudioFloatingPlayer({
               <ChevronLeft className="size-[18px] text-[var(--color-text-secondary)]" strokeWidth={2.5} />
             </motion.button>
 
-            <div className="pointer-events-auto">
-              <ProgressRing
-                progress={progress}
-                size={58}
-                strokeWidth={2.5}
-                trackColor="var(--color-bg-tertiary)"
-                color="var(--color-accent-rose)"
-              >
-                <motion.button
-                  // Touch events — handled first; suppress synthetic mouse events
-                  onTouchStart={handleTouchStart}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  onTouchCancel={handleTouchCancel}
-                  // Mouse events — only fire on desktop (gated by isTouchActiveRef)
-                  onMouseDown={handleMouseDown}
-                  onMouseUp={handleMouseUp}
-                  onMouseLeave={handleMouseLeave}
-                  // No onClick — play/pause is handled in onTouchEnd / onMouseUp
-                  // to avoid the double-fire issue on touch devices.
-                  whileTap={{ scale: 0.9 }}
-                  className="size-11 rounded-full flex items-center justify-center
-                    bg-[var(--color-primary-teal)]
-                    shadow-[0_2px_12px_rgba(65,173,176,0.4)]
-                    select-none"
-                  aria-label={isPlaying ? "Pause" : "Play"}
-                  style={{ userSelect: "none", WebkitUserSelect: "none" }}
+            <div className="flex items-center justify-center pointer-events-auto">
+              <AnimatePresence>
+                {isNarrationActive && (
+                  <motion.button
+                    key="settings-pill"
+                    initial={{ width: 0, opacity: 0, x: 20 }}
+                    animate={{ width: 52, opacity: 1, x: 0 }}
+                    exit={{ width: 0, opacity: 0, x: 20 }}
+                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                    onClick={onOpenPanel}
+                    className="h-11 w-[52px] bg-[var(--color-bg-primary)]/95 backdrop-blur-md
+                      border border-r-0 border-[var(--color-border)]
+                      rounded-l-full pl-4 pr-0 -mr-4 flex items-center justify-start
+                      shadow-md hover:bg-[var(--color-bg-secondary)] transition-colors
+                      overflow-hidden whitespace-nowrap"
+                    aria-label="Audio settings"
+                  >
+                    <Sliders className="size-[18px] text-[var(--color-text-secondary)] shrink-0" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
+              <div className="z-10 relative">
+                <ProgressRing
+                  progress={progress}
+                  size={58}
+                  strokeWidth={2.5}
+                  trackColor="var(--color-bg-tertiary)"
+                  color="var(--color-accent-rose)"
                 >
-                  {isPlaying ? (
-                    <Pause className="size-[18px] fill-white text-white" strokeWidth={0} />
-                  ) : (
-                    <Play className="size-[18px] fill-white text-white ml-0.5" strokeWidth={0} />
-                  )}
-                </motion.button>
-              </ProgressRing>
+                  <motion.button
+                    onClick={onPlayPause}
+                    whileTap={{ scale: 0.9 }}
+                    className="size-11 rounded-full flex items-center justify-center
+                      bg-[var(--color-primary-teal)]
+                      shadow-[0_2px_12px_rgba(65,173,176,0.4)]
+                      select-none"
+                    aria-label={isPlaying ? "Pause" : "Play"}
+                    style={{ userSelect: "none", WebkitUserSelect: "none" }}
+                  >
+                    {isPlaying ? (
+                      <Pause className="size-[18px] fill-white text-white" strokeWidth={0} />
+                    ) : (
+                      <Play className="size-[18px] fill-white text-white ml-0.5" strokeWidth={0} />
+                    )}
+                  </motion.button>
+                </ProgressRing>
+              </div>
+
+              <AnimatePresence>
+                {isNarrationActive && (
+                  <motion.button
+                    key="stop-pill"
+                    initial={{ width: 0, opacity: 0, x: -20 }}
+                    animate={{ width: 52, opacity: 1, x: 0 }}
+                    exit={{ width: 0, opacity: 0, x: -20 }}
+                    transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
+                    onClick={() => onStop?.()}
+                    className="h-11 w-[52px] bg-[var(--color-bg-primary)]/95 backdrop-blur-md
+                      border border-l-0 border-[var(--color-border)]
+                      rounded-r-full pl-0 pr-4 -ml-4 flex items-center justify-end
+                      shadow-md hover:bg-[var(--color-bg-secondary)] transition-colors
+                      overflow-hidden whitespace-nowrap"
+                    aria-label="Stop narration"
+                  >
+                    <Square className="size-[18px] text-[var(--color-text-secondary)] fill-[var(--color-text-secondary)] shrink-0" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
             </div>
 
             {/* → Next */}
