@@ -234,7 +234,7 @@ function ChapterContent({
         <div className="space-y-3 leading-loose text-justify" style={{ fontFamily: font, fontSize: `${fontSize}px` }}>
           {apiContent.verses?.map((verse: { number: number; text: string }) => {
             const isSelected = selectedVerses.includes(verse.number);
-            const isReading = scrollToVerse === verse.number;
+            const isReading = readingVerse === verse.number;
             const isSavedVerse = savedVerseIds.includes(verse.number);
             const highlight = highlights.find(h =>
               h.metadata?.verse === verse.number &&

@@ -72,7 +72,7 @@ export function PremiumCarousel({
       const absX = Math.abs(deltaX);
       const absY = Math.abs(deltaY);
 
-      if (absX > 10 || absY > 10) {
+      if (absX > 20 || absY > 20) {
         if (absX > absY) {
           isSwipeActionRef.current = true;
           // Capture the pointer to handle drag outside container boundaries now that horizontal swiping has started
@@ -132,7 +132,12 @@ export function PremiumCarousel({
       } catch {}
     }
 
-    if (isSwipeActionRef.current !== true) return;
+    if (isSwipeActionRef.current !== true) {
+      setTimeout(() => {
+        isSwipeActionRef.current = null;
+      }, 50);
+      return;
+    }
 
     const deltaX = e.clientX - startXRef.current;
     const elapsedTime = Date.now() - startTimeRef.current;
@@ -164,6 +169,10 @@ export function PremiumCarousel({
     if (newIndex !== activeIndex) {
       onChange(newIndex);
     }
+
+    setTimeout(() => {
+      isSwipeActionRef.current = null;
+    }, 50);
   };
 
   const handlePointerCancel = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -182,6 +191,10 @@ export function PremiumCarousel({
       trackRef.current.style.transition = 'transform 300ms cubic-bezier(0.16, 1, 0.3, 1)';
       trackRef.current.style.transform = `translate3d(-${(count - 1 - activeIndex) * 100}%, 0, 0)`;
     }
+
+    setTimeout(() => {
+      isSwipeActionRef.current = null;
+    }, 50);
   };
 
   const handleClickCapture = (e: React.MouseEvent) => {

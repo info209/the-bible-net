@@ -226,6 +226,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const repeatModeRef = useRef<'none' | 'chapter' | 'verse'>(repeatMode);
   useEffect(() => { repeatModeRef.current = repeatMode; }, [repeatMode]);
 
+  const skipNextVerseNavigationEffectRef = useRef(false);
+  const wasStoppedRef = useRef(false);
+
 
   const handleRepeatModeToggle = () => {
     // Functional update avoids stale-closure on rapid taps.
@@ -840,6 +843,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   // NOTE: This effect is intentionally skipped during slider drag (isSeekingRef.current === true).
   // Seeking is handled atomically by handleSeekToVerse() which is called once on drag release.
   useEffect(() => {
+    // If the change in selectedVerse was explicitly handled by seek or step, skip the effect
+    if (skipNextVerseNavigationEffectRef.current) {
+      console.log('[Verse Navigation] Skipping selectedVerse effect: already handled by seek or step');
+      skipNextVerseNavigationEffectRef.current = false;
+      return;
+    }
+
     // Do nothing while the user is dragging the slider — handleSeekToVerse() owns that flow.
     if (isSeekingRef.current) return;
 
@@ -886,6 +896,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
     // 2. Commit the verse to React state.
     //    Both selectedVerse and currentReadingVerse must agree so resumeNarration picks up correctly.
+    skipNextVerseNavigationEffectRef.current = true;
+    wasStoppedRef.current = false;
     setSelectedVerse(verse);
     setCurrentReadingVerse(verse);
     narrationVerseIndexRef.current = verse - 1;
@@ -936,6 +948,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     narrationPlayingRef.current = false;
 
     // 2. Commit verse to state
+    skipNextVerseNavigationEffectRef.current = true;
+    wasStoppedRef.current = false;
     setSelectedVerse(verse);
     setCurrentReadingVerse(verse);
     narrationVerseIndexRef.current = verse - 1;
@@ -1412,7 +1426,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   };
 
   const resumeNarration = () => {
-    console.log('resumeNarration called. currentReadingVerse:', currentReadingVerse, 'selectedVerse:', selectedVerse);
+    console.log('resumeNarration called. currentReadingVerse:', currentReadingVerse, 'selectedVerse:', selectedVerse, 'wasStopped:', wasStoppedRef.current);
 
     // If there was a sleep timer active, check if it has already expired
     if (selectedTimer !== 'stop' && selectedTimer !== 'end-chapter') {
@@ -1435,7 +1449,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     // Resume from where we left off.
     // IMPORTANT: prefer selectedVerse first — this is the user's explicitly dragged-to position.
     // currentReadingVerse is the verse narration was ON before pause, which may differ after a seek.
-    const resumeFrom = selectedVerse || currentReadingVerse || 1;
+    let resumeFrom = selectedVerse || currentReadingVerse || 1;
+    if (wasStoppedRef.current) {
+      console.log('[Stop-Resume] Narration was stopped, forcing start from verse 1');
+      resumeFrom = 1;
+      wasStoppedRef.current = false;
+      setSelectedVerse(1);
+    }
     console.log('Resuming from verse:', resumeFrom);
 
     // Don't call startNarration as it would reset the timer
@@ -1459,9 +1479,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
     narrationStartTimeRef.current = null;
 
+    wasStoppedRef.current = true;
     setNarrationPlaying(false);
     narrationPlayingRef.current = false;
     setCurrentReadingVerse(null);
+    setSelectedVerse(1); // Set to 1 visually, but wasStoppedRef prevents immediate scroll jump in seek/step effects
     setAudioPlaying(false);
     setAudioCurrentTime(0);
     setNarrationActive(false);

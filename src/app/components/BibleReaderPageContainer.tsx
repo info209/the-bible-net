@@ -621,18 +621,35 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         if (urlChapter && parseInt(urlChapter) !== selectedChapter) {
           setSelectedChapter(parseInt(urlChapter) || 1);
         }
-      } else if (segments.length === 1 && latestProgress && !versionHydrated.current) {
-        // Just /bible opened - restore latest progress only if nothing has been
-        // hydrated yet (localStorage takes precedence over progress store).
-        setSelectedVersionId(latestProgress.versionId);
-        setDisplayVersionName(latestProgress.versionName || null);
-        setSelectedBookId(latestProgress.bookId);
-        setDisplayBookName(latestProgress.bookName || 'Genesis');
-        setSelectedChapter(latestProgress.chapter);
+      } else if (segments.length === 1) {
+        // Just /bible opened (e.g. from bottom nav) - set to defaults
+        const preferred = (session?.user as any)?.preferredBibleVersion;
+        const matchedPreferred = preferred ? bibleVersions.find((v: any) => v.name === preferred || v.id === preferred) : null;
+        const defaultVersion = matchedPreferred || bibleVersions.find((v: any) => v.name === 'KJV' || v.name === 'KJV-BSI') || bibleVersions[0];
+        
+        setSelectedVersionId(defaultVersion.id);
+        setDisplayVersionName(defaultVersion.name);
+        
+        // Default to Genesis chapter 1, verse 1 (represented by selectedVerse = 1 or null)
+        const ot = bibleBooksState['Old Testament'];
+        const nt = bibleBooksState['New Testament'];
+        const allNewBooks = [...ot, ...nt];
+        const genesisBook = allNewBooks.find(b => b.name === 'Genesis' || b.id === 'Genesis') || (ot.length > 0 ? ot[0] : null);
+        
+        if (genesisBook) {
+          setSelectedBookId(genesisBook.id);
+          setDisplayBookName(genesisBook.name);
+        } else {
+          setSelectedBookId('Genesis');
+          setDisplayBookName('Genesis');
+        }
+        
+        setSelectedChapter(1);
+        setSelectedVerse(1); // Set to verse 1 (fresh start)
         versionHydrated.current = true;
       }
     }
-  }, [pathname, searchParams, bibleVersions, bibleBooksState]); // Removed state dependencies to prevent resetting user selection back to URL state
+  }, [pathname, searchParams, bibleVersions, bibleBooksState, session]); // Removed state dependencies to prevent resetting user selection back to URL state
 
   const isAnyPopupOpen = showBookSelector || showChapterSelector ||
     showVersionSelector || showMoreMenu ||
@@ -699,12 +716,14 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   // Synchronize defaults when bibleVersions loaded
   useEffect(() => {
     if (bibleVersions.length > 0 && bibleVersions !== initialVersions && !versionHydrated.current) {
-      const kjvVersion = bibleVersions.find((v: any) => v.name === 'KJV' || v.name === 'KJV-BSI') || bibleVersions[0];
-      setSelectedVersionId(kjvVersion.id);
-      setDisplayVersionName(kjvVersion.name);
+      const preferred = (session?.user as any)?.preferredBibleVersion;
+      const matchedPreferred = preferred ? bibleVersions.find((v: any) => v.name === preferred || v.id === preferred) : null;
+      const defaultVersion = matchedPreferred || bibleVersions.find((v: any) => v.name === 'KJV' || v.name === 'KJV-BSI') || bibleVersions[0];
+      setSelectedVersionId(defaultVersion.id);
+      setDisplayVersionName(defaultVersion.name);
       versionHydrated.current = true;
     }
-  }, [bibleVersions]);
+  }, [bibleVersions, session]);
 
   // Synchronize book selection when books load
   useEffect(() => {
