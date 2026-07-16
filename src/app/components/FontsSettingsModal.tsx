@@ -109,7 +109,7 @@ export default function FontsSettingsModal({
       style={{ backgroundColor: backdropBg, backdropFilter: selectedTheme === 'dark' ? 'blur(8px)' : 'blur(4px)' }}
     >
       <div
-        className="w-full max-w-md rounded-2xl shadow-xl p-6 transition-all duration-300"
+        className="w-full max-w-md rounded-lg shadow-xl p-6 transition-all duration-300"
         style={{
           background: theme.bg,
           color: theme.text,
@@ -187,7 +187,7 @@ export default function FontsSettingsModal({
             Theme Selection
           </p>
 
-          <div className="flex justify-between items-center w-full px-2">
+          <div className="grid grid-cols-4 justify-items-center gap-2.5 w-full px-1">
             {([
               { id: "light", icon: Sun,      bg: "#ffffff", iconColor: "#f59e0b", label: "Light" },
               { id: "sepia", icon: Coffee,   bg: "#F7EFED", iconColor: "#92400e", label: "Sepia" },
@@ -196,28 +196,25 @@ export default function FontsSettingsModal({
             ] as const).map(({ id, icon: Icon, bg, iconColor, label }) => {
               const active = selectedTheme === id;
               return (
-                <div key={id} className="flex flex-col items-center gap-2">
+                <div key={id} className="flex flex-col items-center gap-1.5">
                   <button
                     onClick={() => onThemeChange(id)}
-                    className="relative flex items-center justify-center size-12 rounded-full transition-all duration-300 shadow-sm active:scale-95 group"
+                    className="relative flex items-center justify-center rounded-full transition-all duration-300 shadow-sm active:scale-95 group border"
                     style={{
+                      width: 52,
+                      height: 34,
                       background: bg,
                       borderColor: active ? "var(--color-primary-teal)" : theme.border,
                       borderWidth: active ? "2px" : "1px",
                     }}
                     aria-label={`Select ${label} theme`}
                   >
-                    <Icon size={20} style={{ color: iconColor }} className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`} />
-                    
-                    {/* Active Indicator Badge */}
-                    {active && (
-                      <div className="absolute -top-1 -right-1 bg-[var(--color-primary-teal)] text-white p-0.5 rounded-full shadow-md z-10 scale-90">
-                        <Check size={12} strokeWidth={3} />
-                      </div>
-                    )}
+                    <Icon size={16} style={{ color: iconColor }} className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`} />
                   </button>
-                  <span className="text-[10px] font-bold uppercase tracking-wide transition-colors duration-300"
-                        style={{ color: active ? "var(--color-primary-teal)" : theme.subText }}>
+                  <span
+                    className="text-[10px] font-bold uppercase tracking-wide transition-colors duration-300"
+                    style={{ color: active ? "var(--color-primary-teal)" : theme.subText }}
+                  >
                     {label}
                   </span>
                 </div>
@@ -232,7 +229,7 @@ export default function FontsSettingsModal({
             Page Transitions
           </p>
 
-          <div className="grid grid-cols-2 gap-3 w-full">
+          <div className="grid grid-cols-4 justify-items-center gap-2.5 w-full px-1">
             {TRANSITIONS.map((t) => {
               const active = pageTransition === t.id;
               const Icon = t.icon;
@@ -241,8 +238,10 @@ export default function FontsSettingsModal({
                 <button
                   key={t.id}
                   onClick={() => onPageTransitionChange(t.id)}
-                  className="relative rounded-xl p-3 flex flex-col items-center justify-center gap-1.5 transition-all duration-300 active:scale-95 group overflow-hidden border w-full"
+                  className="relative rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 active:scale-95 group overflow-hidden border"
                   style={{
+                    width: 52,
+                    height: 52,
                     borderColor: active ? "var(--color-primary-teal)" : theme.border,
                     borderWidth: active ? "2px" : "1px",
                     background: active
@@ -252,18 +251,18 @@ export default function FontsSettingsModal({
                     transform: active ? "translateY(-2px)" : "translateY(0)",
                   }}
                 >
-                  <div className={`p-2 rounded-xl transition-all duration-300 ${active ? 'scale-110' : 'group-hover:scale-110 group-hover:-translate-y-0.5'}`}
+                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${active ? 'scale-110' : 'group-hover:scale-110 group-hover:-translate-y-0.5'}`}
                        style={{ background: active ? 'rgba(65, 173, 176, 0.12)' : 'transparent' }}>
-                    <Icon size={20} style={{ color: active ? "var(--color-primary-teal)" : theme.text }} />
+                    <Icon size={16} style={{ color: active ? "var(--color-primary-teal)" : theme.text }} />
                   </div>
-                  <span className="text-[10px] font-bold uppercase tracking-tight"
+                  <span className="text-[9px] font-bold uppercase tracking-tight"
                         style={{ color: active ? "var(--color-primary-teal)" : theme.text }}>
                     {t.label}
                   </span>
 
                   {active && (
-                    <div className="absolute top-2 right-2 bg-[var(--color-primary-teal)] text-white p-0.5 rounded-full shadow-sm">
-                      <Check size={8} strokeWidth={4} />
+                    <div className="absolute top-1 right-1 bg-[var(--color-primary-teal)] text-white p-0.5 rounded-full shadow-sm">
+                      <Check size={6} strokeWidth={4} />
                     </div>
                   )}
                 </button>

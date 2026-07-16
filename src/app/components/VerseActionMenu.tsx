@@ -5,7 +5,7 @@ import { motion, AnimatePresence, PanInfo, useDragControls } from 'framer-motion
 import Link from 'next/link';
 import {
   BookmarkPlus, FileText, Plus, X, ChevronLeft,
-  CheckCircle2, MinusCircle, PenTool, ArrowRightLeft,
+  CheckCircle2, MinusCircle, ArrowRightLeft,
   Share2, Bookmark, Lock, Trash2, BookmarkCheck
 } from 'lucide-react';
 
@@ -434,26 +434,106 @@ export default function VerseActionMenu({
                     <>
                       {/* ── Action Button Grid ──────────────────────────── */}
                       <div className="grid grid-cols-4 gap-2.5">
-                        {/* Highlight */}
-                        <button
-                          onClick={() => setView('highlight')}
+                        {/* Highlight Colors (replacing the PenTool button) */}
+                        <div
                           id="verse-action-highlight"
-                          aria-label="Highlight verse"
-                          className="flex flex-col items-center justify-center gap-1 h-[58px] rounded-[14px] transition-all active:scale-95 animate-none"
+                          className="flex items-center justify-center h-[58px] rounded-[14px]"
                           style={{
-                            backgroundColor: existingHighlightColor ? 'rgba(49,196,190,0.16)' : actionBg,
-                            border: existingHighlightColor ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
+                            backgroundColor: existingHighlightColor && existingHighlightColor !== 'none' ? 'rgba(49,196,190,0.16)' : actionBg,
+                            border: existingHighlightColor && existingHighlightColor !== 'none' ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
                           }}
                         >
-                          <PenTool
-                            className="w-[18px] h-[18px]"
-                            strokeWidth={2}
-                            style={{ color: existingHighlightColor ? '#31C4BE' : iconColor }}
-                          />
-                          <span className="text-[10px] font-bold" style={{ color: existingHighlightColor ? '#31C4BE' : iconColor }}>
-                            Highlight
-                          </span>
-                        </button>
+                          <div className="grid grid-cols-2 gap-x-2.5 gap-y-1.5 justify-items-center items-center">
+                            {/* Color 1: Yellow */}
+                            <button
+                              onClick={() => {
+                                setSelectedColor('yellow');
+                                onHighlight('yellow');
+                                onClose();
+                              }}
+                              className="relative w-[15px] h-[15px] rounded-full transition-transform active:scale-75 cursor-pointer"
+                              style={{ backgroundColor: '#FFD234' }}
+                              title="Highlight Yellow"
+                            >
+                              {existingHighlightColor === 'yellow' && (
+                                <span
+                                  className="absolute rounded-full"
+                                  style={{ inset: -2.5, border: '1.5px solid #31C4BE' }}
+                                />
+                              )}
+                            </button>
+
+                            {/* Color 2: Green */}
+                            <button
+                              onClick={() => {
+                                setSelectedColor('green');
+                                onHighlight('green');
+                                onClose();
+                              }}
+                              className="relative w-[15px] h-[15px] rounded-full transition-transform active:scale-75 cursor-pointer"
+                              style={{ backgroundColor: '#4CD964' }}
+                              title="Highlight Green"
+                            >
+                              {existingHighlightColor === 'green' && (
+                                <span
+                                  className="absolute rounded-full"
+                                  style={{ inset: -2.5, border: '1.5px solid #31C4BE' }}
+                                />
+                              )}
+                            </button>
+
+                            {/* Color 3: Blue */}
+                            <button
+                              onClick={() => {
+                                setSelectedColor('blue');
+                                onHighlight('blue');
+                                onClose();
+                              }}
+                              className="relative w-[15px] h-[15px] rounded-full transition-transform active:scale-75 cursor-pointer"
+                              style={{ backgroundColor: '#34AADC' }}
+                              title="Highlight Blue"
+                            >
+                              {existingHighlightColor === 'blue' && (
+                                <span
+                                  className="absolute rounded-full"
+                                  style={{ inset: -2.5, border: '1.5px solid #31C4BE' }}
+                                />
+                              )}
+                            </button>
+
+                            {/* Overlapping Colors (Pink & Purple) to Expand */}
+                            <button
+                              onClick={() => setView('highlight')}
+                              className="relative w-[21px] h-[15px] transition-transform active:scale-75 cursor-pointer"
+                              title="More Colors"
+                            >
+                              {/* Purple (underneath/right) */}
+                              <span
+                                className="absolute right-0 top-0 w-[15px] h-[15px] rounded-full border border-white dark:border-[#1c1c1e]"
+                                style={{ backgroundColor: '#A66CFF' }}
+                              />
+                              {/* Pink (on top/left) */}
+                              <span
+                                className="absolute left-0 top-0 w-[15px] h-[15px] rounded-full border border-white dark:border-[#1c1c1e]"
+                                style={{ backgroundColor: '#FF6B9D' }}
+                              />
+                              {/* Show active indicator on the overlapping circles if active color is one of the other colors */}
+                              {existingHighlightColor && !['yellow', 'green', 'blue', 'none'].includes(existingHighlightColor) && (
+                                <span
+                                  className="absolute rounded-full"
+                                  style={{
+                                    left: -2,
+                                    top: -2,
+                                    width: 25,
+                                    height: 19,
+                                    border: '1.5px solid #31C4BE',
+                                    borderRadius: '5px'
+                                  }}
+                                />
+                              )}
+                            </button>
+                          </div>
+                        </div>
 
                         {/* Save */}
                         <button
