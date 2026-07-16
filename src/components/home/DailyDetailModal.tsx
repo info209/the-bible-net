@@ -612,8 +612,9 @@ export function DailyDetailModal({
                                 key={item.date || index}
                                 className="relative z-10 h-full w-full px-4 sm:px-8 pb-12 mt-4 touch-pan-y"
                                 ref={index === currentIndex ? scrollRef : null}
+                                style={{ paddingBottom: '0px' }}
                             >
-                                <div className="max-w-2xl mx-auto flex flex-col space-y-12 py-8">
+                                <div className="max-w-2xl mx-auto flex flex-col space-y-12">
 
                                     {/* ─── Section 1: Daily Verse ─────────────────────────────────────── */}
                                     {initialSection === 'verse' && (
