@@ -853,20 +853,29 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     // Do nothing while the user is dragging the slider — handleSeekToVerse() owns that flow.
     if (isSeekingRef.current) return;
 
-    if (narrationPlayingRef.current && selectedVerse && selectedVerse > 0) {
-      console.log('[Verse Navigation] User changed verse to:', selectedVerse, 'during narration');
-      // Stop current narration and restart from the selected verse
-      window.speechSynthesis.cancel();
+    if (selectedVerse && selectedVerse > 0) {
+      if (narrationPlayingRef.current) {
+        console.log('[Verse Navigation] User changed verse to:', selectedVerse, 'during narration');
+        // Stop current narration and restart from the selected verse
+        window.speechSynthesis.cancel();
 
-      // Slight delay to ensure cancellation is processed
-      setTimeout(() => {
-        const verses = getBibleContent();
-        if (verses.length >= selectedVerse) {
-          console.log('[Verse Navigation] Restarting narration from verse:', selectedVerse);
-          narrationVerseIndexRef.current = selectedVerse - 1;
-          readNextVerse(verses, selectedVerse - 1);
-        }
-      }, 100);
+        // Slight delay to ensure cancellation is processed
+        setTimeout(() => {
+          const verses = getBibleContent();
+          if (verses.length >= selectedVerse) {
+            console.log('[Verse Navigation] Restarting narration from verse:', selectedVerse);
+            setCurrentReadingVerse(selectedVerse);
+            narrationVerseIndexRef.current = selectedVerse - 1;
+            readNextVerse(verses, selectedVerse - 1);
+          }
+        }, 100);
+      } else if (narrationActive) {
+        // Narration is active but paused — sync the resume position to the newly selected verse
+        // so that pressing play resumes from the user-chosen verse, not from wherever TTS was.
+        console.log('[Verse Navigation] User changed verse to:', selectedVerse, 'while paused (narrationActive). Syncing resume position.');
+        setCurrentReadingVerse(selectedVerse);
+        narrationVerseIndexRef.current = selectedVerse - 1;
+      }
     }
   }, [selectedVerse]);
 
@@ -1447,10 +1456,12 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
 
     // Resume from where we left off.
-    // IMPORTANT: prefer selectedVerse first — this is the user's explicitly dragged-to position.
-    // currentReadingVerse is the verse narration was ON before pause, which may differ after a seek.
-    let resumeFrom = selectedVerse || currentReadingVerse || 1;
+    // Prioritize currentReadingVerse over selectedVerse: selectedVerse defaults to 1 and
+    // is NOT updated during natural playback progression, so using it would cause narration
+    // to incorrectly restart from verse 1 instead of the actual paused verse.
+    let resumeFrom = currentReadingVerse || selectedVerse || 1;
     if (wasStoppedRef.current) {
+      // User explicitly pressed Stop — force a fresh start from verse 1.
       console.log('[Stop-Resume] Narration was stopped, forcing start from verse 1');
       resumeFrom = 1;
       wasStoppedRef.current = false;
@@ -1458,8 +1469,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
     console.log('Resuming from verse:', resumeFrom);
 
-    // Don't call startNarration as it would reset the timer
-    // Instead, manually start the narration
+    // Don't call startNarration as it would reset the sleep timer.
+    // Instead, manually bootstrap the narration from the resume point.
     const verses = getBibleContent();
     if (verses.length === 0) return;
 
@@ -1491,20 +1502,32 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
   // Handle play/pause for narration
   const handleNarrationPlayPause = () => {
-    console.log('handleNarrationPlayPause clicked. audioPlaying:', audioPlaying, 'selectedVerse:', selectedVerse, 'currentReadingVerse:', currentReadingVerse);
+    console.log('handleNarrationPlayPause clicked. audioPlaying:', audioPlaying, 'narrationActive:', narrationActive, 'currentReadingVerse:', currentReadingVerse, 'selectedVerse:', selectedVerse);
     if (audioPlaying) {
+      // ── PAUSE ──────────────────────────────────────────────────────────────
+      // User tapped play in the expanded state while audio is playing → pause.
+      // We cancel the in-flight utterance (TTS has no true "pause" API) and
+      // remember currentReadingVerse so resume picks up from the right verse.
       console.log('Pausing narration');
-      // ACTION first — cancel speech synthesis immediately
-      pauseNarration();
-      // THEN update UI state
+      pauseNarration();        // cancels speech, keeps currentReadingVerse
       setAudioPlaying(false);
     } else {
-      console.log('Resuming/starting narration');
-      // ACTION first — start speech synthesis immediately (no dependency on state updates)
-      resumeNarration();
-      // THEN update UI state so progress ring and icons reflect playing
-      setAudioPlaying(true);
-      setNarrationActive(true);
+      if (!narrationActive) {
+        // ── INITIAL PLAY ────────────────────────────────────────────────────
+        // Narration has never started, or it was fully stopped.
+        // Always begin from verse 1 of the current chapter.
+        console.log('Starting narration from verse 1 (initial or post-stop)');
+        startNarration(1);     // sets narrationActive=true internally
+        setAudioPlaying(true);
+      } else {
+        // ── RESUME ─────────────────────────────────────────────────────────
+        // Narration was started then paused. Resume from the remembered verse
+        // (currentReadingVerse), NOT from selectedVerse which defaults to 1.
+        console.log('Resuming narration from paused position');
+        resumeNarration();     // uses currentReadingVerse || selectedVerse || 1
+        setAudioPlaying(true);
+        setNarrationActive(true);
+      }
     }
   };
 

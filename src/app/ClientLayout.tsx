@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import AppHeader from "./components/AppHeader";
 import BibleReaderPageContainer from "./components/BibleReaderPageContainer";
 import BottomNav from "./components/BottomNav";
+import NetworkStatusModal from "@/components/NetworkStatusModal";
 
 const isBibleReadingRoute = (path: string) => path === '/bible' || path.startsWith('/bible/');
 
@@ -64,6 +65,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   return (
     <>
+      <NetworkStatusModal />
       {/* 
         Optimization: 
         1. On /bible, BibleReaderPage renders its own AppHeader (internal to its design).
