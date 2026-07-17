@@ -278,6 +278,24 @@ function JournalsContent() {
     }
   };
 
+  // Google Photos-style checkbox click: enters selection mode on first check,
+  // toggles selection on subsequent checks, exits selection mode when all unchecked.
+  const handleCheckboxClick = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation(); // prevent card open
+    e.preventDefault();
+    if (selectedIds.includes(id)) {
+      const next = selectedIds.filter((sid) => sid !== id);
+      setSelectedIds(next);
+      if (next.length === 0) setSelectionMode(false);
+    } else {
+      if (!selectionMode) {
+        setSelectionMode(true);
+        showToast('Multi-select mode activated');
+      }
+      setSelectedIds((prev) => [...prev, id]);
+    }
+  };
+
   // Card Clicks
   const handleCardClick = (item: any, type: ItemType) => {
     if (selectionMode) {
@@ -1174,7 +1192,7 @@ function JournalsContent() {
                     onMouseLeave={stopPressTimer}
                     onTouchStart={() => startPressTimer(item._id)}
                     onTouchEnd={stopPressTimer}
-                    className="w-full relative transition-all duration-200 select-none active:scale-[0.99] cursor-pointer"
+                    className="group w-full relative transition-all duration-200 select-none active:scale-[0.99] cursor-pointer"
                   >
                     <div
                       className={`w-full rounded-xl p-4 border flex flex-col relative transition-shadow shadow-sm hover:shadow ${
@@ -1187,8 +1205,60 @@ function JournalsContent() {
                               : 'bg-[#F4FAFA] dark:bg-[#111618] border-[#0B7A81]/20 dark:border-[#0B7A81]/25'
                       }`}
                     >
+                      {/* ── Google Photos-style selection checkbox ──
+                          Desktop only (hidden on mobile/touch devices).
+                          Visible when: card is hovered OR item is selected.
+                          Clicking it enters/toggles selection without opening the item. */}
+                      <button
+                        onClick={(e) => handleCheckboxClick(e, item._id)}
+                        onMouseDown={(e) => e.stopPropagation()} // prevent long-press timer
+                        aria-label={isSelected ? `Deselect ${item.title}` : `Select ${item.title}`}
+                        aria-checked={isSelected}
+                        role="checkbox"
+                        className={[
+                          // Positioning: absolute top-left with comfortable hit area
+                          'absolute top-2.5 left-2.5 z-10',
+                          // Size & shape
+                          'w-6 h-6 rounded-full flex items-center justify-center',
+                          // Transition
+                          'transition-all duration-150 ease-out',
+                          // Focus ring for keyboard accessibility
+                          'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0B7A81] focus-visible:ring-offset-1',
+                          // Desktop-only hover reveal:
+                          // hidden on mobile (no fine pointer), visible on hover or when selected
+                          isSelected
+                            ? // Selected state: teal filled circle with white check
+                              'opacity-100 bg-[#0B7A81] border-2 border-[#0B7A81] shadow-md scale-100'
+                            : // Unselected state: subtle gray circle, appears on desktop hover or when in selection mode
+                              [
+                                'bg-white/90 dark:bg-[#1a1a1a]/90 border-2 border-gray-300 dark:border-gray-600',
+                                'backdrop-blur-sm shadow-sm',
+                                // Always visible in selection mode; otherwise show only on group hover (desktop)
+                                selectionMode
+                                  ? 'opacity-80'
+                                  : 'opacity-0 md:group-hover:opacity-100',
+                                'scale-90 md:group-hover:scale-100',
+                              ].join(' '),
+                        ].join(' ')}
+                      >
+                        {isSelected && (
+                          <Check
+                            className="w-3.5 h-3.5 text-white"
+                            strokeWidth={3}
+                            aria-hidden="true"
+                          />
+                        )}
+                        {!isSelected && selectionMode && (
+                          // Empty circle indicator when in selection mode but not selected
+                          <span className="w-2.5 h-2.5 rounded-full border border-gray-400 dark:border-gray-500" aria-hidden="true" />
+                        )}
+                      </button>
+
                       {/* Top Badges / Indicators */}
-                      <div className="flex items-center justify-between mb-1.5">
+                      {/* pl-8 on md+ ensures badges clear the absolute checkbox on hover/selection */}
+                      <div className={`flex items-center justify-between mb-1.5 transition-all duration-150 ${
+                        isSelected || selectionMode ? 'pl-8' : 'md:group-hover:pl-8'
+                      }`}>
                         <div className="flex items-center space-x-1.5">
                           {/* Mixed Type Badge */}
                           <span className={`text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full ${
@@ -1210,15 +1280,6 @@ function JournalsContent() {
                             </span>
                           )}
                         </div>
-
-                        {/* Multi-select check Indicator */}
-                        {selectionMode && (
-                          <div className={`w-[20px] h-[20px] rounded-full border-2 flex items-center justify-center ${
-                            isSelected ? 'bg-[#0B7A81] border-[#0B7A81]' : 'border-gray-300'
-                          }`}>
-                            {isSelected && <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />}
-                          </div>
-                        )}
                       </div>
 
                       {/* Card Content Header */}

@@ -12,6 +12,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useReadingProgress } from '@/lib/useReadingProgress';
 import { getRelativeTime } from '@/utils/time';
 import HomeSkeleton from '@/app/components/HomeSkeleton';
+import { CarouselCardSkeleton, PrayerSkeleton } from '@/app/components/HomeSkeleton';
 import { DailyDetailModal } from './DailyDetailModal';
 import { PremiumCarousel } from './PremiumCarousel';
 import { LikeButton } from './LikeButton';
@@ -94,7 +95,25 @@ export default function HomeView() {
   const preferredVersion = (session?.user as any)?.preferredBibleVersion || 'KJV';
   const todayStr = new Date().toISOString().split('T')[0];
 
-  const { data: dailyContentData, isLoading: dailyLoading } = useQuery({
+  // ── Query 1: Today only (fast — renders the carousel immediately) ──────────
+  const { data: todayData, isLoading: todayLoading } = useQuery({
+    queryKey: ['daily-content-today', preferredVersion, todayStr],
+    queryFn: async () => {
+      const res = await fetch(`/api/daily?days=1&version=${encodeURIComponent(preferredVersion)}`);
+      if (!res.ok) throw new Error('Failed to fetch today content');
+      const data = await res.json();
+      const items = data.data || [];
+      items.forEach((item: any) => {
+        queryClient.setQueryData(['daily-verse', item.date, preferredVersion], item);
+        queryClient.setQueryData(['daily-devotion', item.date, preferredVersion], item);
+      });
+      return items;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // ── Query 2: Full 7-day history (background — fires after today resolves) ───
+  const { data: historyData } = useQuery({
     queryKey: ['daily-content-list', preferredVersion, todayStr],
     queryFn: async () => {
       const res = await fetch(`/api/daily?days=7&version=${encodeURIComponent(preferredVersion)}`);
@@ -107,7 +126,14 @@ export default function HomeView() {
       });
       return items;
     },
+    // Don't start until today's fast query has resolved
+    enabled: !todayLoading && !!todayData,
+    staleTime: 5 * 60 * 1000,
   });
+
+  // Merge: show today immediately, replace with full history once available
+  const dailyContentData = historyData ?? todayData;
+  const dailyLoading = todayLoading;
 
   const dailyVerses = useMemo(() => {
     return (dailyContentData || []).filter((item: any) => item.verseBook && item.verseBook !== 'Unknown');
@@ -126,8 +152,6 @@ export default function HomeView() {
     },
     staleTime: 60 * 1000,
   });
-
-  const loading = dailyLoading || prayersLoading;
 
   // Modal states
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -331,9 +355,7 @@ export default function HomeView() {
     }
   };
 
-  if (loading || progressLoading) {
-    return <HomeSkeleton />;
-  }
+  // No full-page gate — each section renders its own skeleton independently
 
   const getRelativeLabel = (dateStr: string) => {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -440,7 +462,9 @@ export default function HomeView() {
 
       {/* Daily Verse Carousel (7-Day History) */}
       <div className="relative overflow-hidden mb-8 w-full">
-        {dailyVerses.length > 0 ? (
+        {dailyLoading && dailyVerses.length === 0 ? (
+          <CarouselCardSkeleton />
+        ) : dailyVerses.length > 0 ? (
           <PremiumCarousel
             activeIndex={currentVerseSlide}
             onChange={setCurrentVerseSlide}
@@ -609,7 +633,9 @@ export default function HomeView() {
 
       {/* Daily Devotional Carousel (7-Day History) */}
       <div className="relative overflow-hidden mb-6 w-full">
-        {dailyDevotions.length > 0 ? (
+        {dailyLoading && dailyDevotions.length === 0 ? (
+          <CarouselCardSkeleton />
+        ) : dailyDevotions.length > 0 ? (
           <PremiumCarousel
             activeIndex={currentDevotionSlide}
             onChange={setCurrentDevotionSlide}
@@ -877,67 +903,72 @@ export default function HomeView() {
 
       {/* Community Prayer Wall - Figma Design */}
       <div className="relative overflow-hidden w-full" style={{ borderRadius: 'var(--radius-md)' }}>
-        <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl p-6 shadow-xl">
-          <h3 className="text-xl font-bold text-gray-800 mb-4">Community Prayer Requests</h3>
-          <div className="space-y-3">
-            {prayers.length === 0 ? (
-              <div className="bg-white/50 rounded-lg p-8 text-center text-gray-500 italic">
-                No public prayer requests yet.
-              </div>
-            ) : (
-              prayers.map((request: any) => (
-                <div key={request._id} className="bg-white/80 backdrop-blur-sm rounded-lg p-4 hover:bg-white transition-colors">
-                  <div className="flex items-start space-x-3">
-                    {!request.anonymous && request.userId?.image ? (
-                      <img
-                        src={request.userId.image}
-                        alt={request.userId.firstName || 'User'}
-                        className="size-10 rounded-full object-cover"
-                      />
-                    ) : (
-                      <div className="size-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold uppercase text-xs">
-                        {request.anonymous 
-                          ? 'A' 
-                          : request.userId 
-                            ? `${request.userId.firstName?.[0] || ''}${request.userId.lastName?.[0] || ''}`.toUpperCase() || 'U'
-                            : 'U'
-                        }
-                      </div>
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <p className="font-semibold text-gray-800">
+        {prayersLoading ? (
+          <PrayerSkeleton />
+        ) : (
+          <div className="bg-gradient-to-br from-amber-50 to-orange-100 rounded-2xl p-6 shadow-xl">
+            <h3 className="text-xl font-bold text-gray-800 mb-4">Community Prayer Requests</h3>
+            <div className="space-y-3">
+              {prayers.length === 0 ? (
+                <div className="bg-white/50 rounded-lg p-8 text-center text-gray-500 italic">
+                  No public prayer requests yet.
+                </div>
+              ) : (
+                prayers.map((request: any) => (
+                  <div key={request._id} className="bg-white/80 backdrop-blur-sm rounded-lg p-4 hover:bg-white transition-colors">
+                    <div className="flex items-start space-x-3">
+                      {!request.anonymous && request.userId?.image ? (
+                        <img
+                          src={request.userId.image}
+                          alt={request.userId.firstName || 'User'}
+                          className="size-10 rounded-full object-cover"
+                        />
+                      ) : (
+                        <div className="size-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold uppercase text-xs">
                           {request.anonymous 
-                            ? 'Anonymous' 
-                            : `${request.userId?.firstName || 'User'}${request.userId?.lastName?.[0] ? ' ' + request.userId.lastName[0] + '.' : ''}`
+                            ? 'A' 
+                            : request.userId 
+                              ? `${request.userId.firstName?.[0] || ''}${request.userId.lastName?.[0] || ''}`.toUpperCase() || 'U'
+                              : 'U'
                           }
-                        </p>
-                        <span className="text-xs text-gray-500">{getRelativeTime(request.createdAt)}</span>
+                        </div>
+                      )}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between mb-1">
+                          <p className="font-semibold text-gray-800">
+                            {request.anonymous 
+                              ? 'Anonymous' 
+                              : `${request.userId?.firstName || 'User'}${request.userId?.lastName?.[0] ? ' ' + request.userId.lastName[0] + '.' : ''}`
+                            }
+                          </p>
+                          <span className="text-xs text-gray-500">{getRelativeTime(request.createdAt)}</span>
+                        </div>
+                        <p className="text-sm text-gray-600 line-clamp-2">{request.text}</p>
+                        <button
+                          onClick={() => handleIntercede(request._id)}
+                          className={`text-xs font-medium mt-2 hover:underline flex items-center gap-1.5 ${request.intercessors?.includes((session?.user as any)?.id)
+                              ? 'text-orange-600'
+                              : 'text-[var(--color-primary-teal)]'
+                            }`}
+                        >
+                          <span>🙏</span> {request.intercessionCount > 0 ? `${request.intercessionCount} praying` : 'Pray for this'}
+                        </button>
                       </div>
-                      <p className="text-sm text-gray-600 line-clamp-2">{request.text}</p>
-                      <button
-                        onClick={() => handleIntercede(request._id)}
-                        className={`text-xs font-medium mt-2 hover:underline flex items-center gap-1.5 ${request.intercessors?.includes((session?.user as any)?.id)
-                            ? 'text-orange-600'
-                            : 'text-[var(--color-primary-teal)]'
-                          }`}
-                      >
-                        <span>🙏</span> {request.intercessionCount > 0 ? `${request.intercessionCount} praying` : 'Pray for this'}
-                      </button>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
+                ))
+              )}
+            </div>
+            <button
+              onClick={() => router.push('/community/prayers')}
+              className="w-full mt-4 py-3 bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] text-white rounded-xl font-medium hover:shadow-lg transition-all"
+            >
+              View All Prayers
+            </button>
           </div>
-          <button
-            onClick={() => router.push('/community/prayers')}
-            className="w-full mt-4 py-3 bg-gradient-to-r from-[var(--color-primary-teal)] to-[var(--color-primary-teal-light)] text-white rounded-xl font-medium hover:shadow-lg transition-all"
-          >
-            View All Prayers
-          </button>
-        </div>
+        )}
       </div>
+
 
       {/* Footer Section - Figma Replica */}
       <footer className="w-full bg-white border-t border-gray-100/80 mt-12 py-10 px-6 flex flex-col items-center select-none">
