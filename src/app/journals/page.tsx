@@ -11,7 +11,7 @@ import {
   BookOpen, Sliders, ListOrdered, Strikethrough,
   Underline as UnderlineIcon,
   Heading1, Heading2, Quote,
-  AlignLeft, AlignCenter, AlignRight
+  AlignLeft, AlignCenter, AlignRight, Loader2
 } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmContext';
@@ -24,6 +24,8 @@ import TextAlign from '@tiptap/extension-text-align';
 import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
+import { VerseLink } from '@/app/components/VerseLink';
+import BibleVerseSearchSelector from '@/app/components/BibleVerseSearchSelector';
 
 type Tab = 'All' | 'Journals' | 'Prayers';
 type ItemType = 'journal' | 'prayer';
@@ -125,6 +127,256 @@ function JournalsContent() {
   const [pickerChapter, setPickerChapter] = useState(3);
   const [pickerVerseStart, setPickerVerseStart] = useState(16);
   const [pickerVerseEnd, setPickerVerseEnd] = useState(16);
+
+  // New inline verse selection states
+  const [atTriggerPosition, setAtTriggerPosition] = useState<number | null>(null);
+  const [isVerseSearchOpen, setIsVerseSearchOpen] = useState(false);
+
+  const handleSelectVerse = (verseRef: {
+    bookName: string;
+    chapter: number;
+    verses: number[];
+    label: string;
+    version: string;
+  }) => {
+    if (editor) {
+      if (atTriggerPosition !== null) {
+        // Double check character at trigger position is @
+        const charAtPos = editor.state.doc.textBetween(atTriggerPosition - 1, atTriggerPosition);
+        if (charAtPos === '@') {
+          editor.chain()
+            .focus()
+            .deleteRange({ from: atTriggerPosition - 1, to: atTriggerPosition })
+            .insertContent({
+              type: 'text',
+              text: verseRef.label,
+              marks: [
+                {
+                  type: 'verseLink',
+                  attrs: {
+                    book: verseRef.bookName,
+                    chapter: verseRef.chapter,
+                    startVerse: verseRef.verses[0],
+                    endVerse: verseRef.verses[verseRef.verses.length - 1],
+                    version: verseRef.version,
+                  }
+                }
+              ]
+            })
+            .run();
+        } else {
+          editor.chain()
+            .focus()
+            .insertContent({
+              type: 'text',
+              text: verseRef.label,
+              marks: [
+                {
+                  type: 'verseLink',
+                  attrs: {
+                    book: verseRef.bookName,
+                    chapter: verseRef.chapter,
+                    startVerse: verseRef.verses[0],
+                    endVerse: verseRef.verses[verseRef.verses.length - 1],
+                    version: verseRef.version,
+                  }
+                }
+              ]
+            })
+            .run();
+        }
+      } else {
+        editor.chain()
+          .focus()
+          .insertContent({
+            type: 'text',
+            text: verseRef.label,
+            marks: [
+              {
+                type: 'verseLink',
+                attrs: {
+                  book: verseRef.bookName,
+                  chapter: verseRef.chapter,
+                  startVerse: verseRef.verses[0],
+                  endVerse: verseRef.verses[verseRef.verses.length - 1],
+                  version: verseRef.version,
+                }
+              }
+            ]
+          })
+          .run();
+      }
+    }
+  };
+
+  // Hover / Touch Verse Preview Tooltip State
+  interface TooltipState {
+    isOpen: boolean;
+    x: number;
+    y: number;
+    loading: boolean;
+    error: string | null;
+    verses: Array<{ number: number; text: string }>;
+    label: string;
+  }
+
+  const [tooltip, setTooltip] = useState<TooltipState>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    loading: false,
+    error: null,
+    verses: [],
+    label: '',
+  });
+
+  const closeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    const handleMouseOver = async (e: MouseEvent) => {
+      const target = (e.target as HTMLElement).closest('[data-verse-link]') || (e.target as HTMLElement).closest('[data-verse-tooltip]');
+      if (!target) return;
+
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+
+      // If it's the tooltip itself we hovered over, keep it open and don't re-fetch
+      if (target.hasAttribute('data-verse-tooltip')) return;
+
+      const book = target.getAttribute('data-verse-book');
+      const chapter = target.getAttribute('data-verse-chapter');
+      const start = target.getAttribute('data-verse-start');
+      const end = target.getAttribute('data-verse-end');
+      const version = target.getAttribute('data-verse-version') || 'KJV';
+
+      if (!book || !chapter || !start || !end) return;
+
+      const rect = target.getBoundingClientRect();
+      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+      // Position tooltip directly below the link, with a fallback if offscreen right
+      const xPos = Math.min(window.innerWidth - 340, Math.max(16, rect.left + scrollX));
+      const yPos = rect.bottom + scrollY + 8;
+
+      setTooltip({
+        isOpen: true,
+        x: xPos,
+        y: yPos,
+        loading: true,
+        error: null,
+        verses: [],
+        label: `${book} ${chapter}:${start}${start === end ? '' : `-${end}`} (${version})`,
+      });
+
+      try {
+        const res = await fetch(`/api/v1/bible/${version}/${book}/${chapter}`);
+        const data = await res.json();
+        if (data.success && data.data.verses) {
+          const startNum = parseInt(start);
+          const endNum = parseInt(end);
+          const filtered = data.data.verses.filter((v: any) => v.number >= startNum && v.number <= endNum);
+          setTooltip(prev => ({
+            ...prev,
+            loading: false,
+            verses: filtered,
+          }));
+        } else {
+          throw new Error('Failed to load verses');
+        }
+      } catch (err: any) {
+        setTooltip(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Could not load scripture text.',
+        }));
+      }
+    };
+
+    const handleMouseOut = (e: MouseEvent) => {
+      const target = (e.target as HTMLElement).closest('[data-verse-link]') || (e.target as HTMLElement).closest('[data-verse-tooltip]');
+      if (!target) return;
+
+      closeTimeoutRef.current = setTimeout(() => {
+        setTooltip(prev => ({ ...prev, isOpen: false }));
+      }, 300);
+    };
+
+    const handleTouchStart = async (e: TouchEvent) => {
+      const target = (e.target as HTMLElement).closest('[data-verse-link]');
+      if (!target) {
+        // Tap outside closes
+        setTooltip(prev => ({ ...prev, isOpen: false }));
+        return;
+      }
+
+      if (closeTimeoutRef.current) {
+        clearTimeout(closeTimeoutRef.current);
+        closeTimeoutRef.current = null;
+      }
+
+      const book = target.getAttribute('data-verse-book');
+      const chapter = target.getAttribute('data-verse-chapter');
+      const start = target.getAttribute('data-verse-start');
+      const end = target.getAttribute('data-verse-end');
+      const version = target.getAttribute('data-verse-version') || 'KJV';
+
+      if (!book || !chapter || !start || !end) return;
+
+      const rect = target.getBoundingClientRect();
+      const scrollX = window.pageXOffset || document.documentElement.scrollLeft;
+      const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+      const xPos = Math.min(window.innerWidth - 340, Math.max(16, rect.left + scrollX));
+      const yPos = rect.bottom + scrollY + 8;
+
+      setTooltip({
+        isOpen: true,
+        x: xPos,
+        y: yPos,
+        loading: true,
+        error: null,
+        verses: [],
+        label: `${book} ${chapter}:${start}${start === end ? '' : `-${end}`} (${version})`,
+      });
+
+      try {
+        const res = await fetch(`/api/v1/bible/${version}/${book}/${chapter}`);
+        const data = await res.json();
+        if (data.success && data.data.verses) {
+          const startNum = parseInt(start);
+          const endNum = parseInt(end);
+          const filtered = data.data.verses.filter((v: any) => v.number >= startNum && v.number <= endNum);
+          setTooltip(prev => ({
+            ...prev,
+            loading: false,
+            verses: filtered,
+          }));
+        } else {
+          throw new Error('Failed to load verses');
+        }
+      } catch (err: any) {
+        setTooltip(prev => ({
+          ...prev,
+          loading: false,
+          error: 'Could not load scripture text.',
+        }));
+      }
+    };
+
+    document.addEventListener('mouseover', handleMouseOver);
+    document.addEventListener('mouseout', handleMouseOut);
+    document.addEventListener('touchstart', handleTouchStart);
+
+    return () => {
+      document.removeEventListener('mouseover', handleMouseOver);
+      document.removeEventListener('mouseout', handleMouseOut);
+      document.removeEventListener('touchstart', handleTouchStart);
+      if (closeTimeoutRef.current) clearTimeout(closeTimeoutRef.current);
+    };
+  }, []);
 
   // Audio Recording States
   const [recordingState, setRecordingState] = useState<'idle' | 'recording' | 'paused' | 'completed'>('idle');
@@ -438,6 +690,7 @@ function JournalsContent() {
       Color,
       TextStyle,
       Highlight.configure({ multicolor: true }),
+      VerseLink,
     ],
     content: editContent,
     editorProps: {
@@ -445,6 +698,17 @@ function JournalsContent() {
         class: 'tiptap-editor',
         'data-placeholder': 'Start drafting content here...',
       },
+      handleTextInput: (view, from, to, text) => {
+        if (text === '@') {
+          // Only trigger popup if preceded by a space or start of line
+          const prevChar = from > 1 ? view.state.doc.textBetween(from - 1, from) : ' ';
+          if (prevChar === ' ' || prevChar === '\n') {
+            setAtTriggerPosition(from + 1);
+            setIsVerseSearchOpen(true);
+          }
+        }
+        return false;
+      }
     },
     onUpdate: ({ editor }) => {
       setEditContent(editor.getHTML());
@@ -457,7 +721,7 @@ function JournalsContent() {
       // Use queueMicrotask so the editor is fully mounted before we set content
       queueMicrotask(() => {
         if (editor && !editor.isDestroyed) {
-          editor.commands.setContent(editContent || '', false);
+          editor.commands.setContent(editContent || '', { emitUpdate: false });
         }
       });
     }
@@ -1782,6 +2046,24 @@ function JournalsContent() {
                         </>
                       )}
                     </div>
+
+                    {/* Separator */}
+                    <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
+
+                    {/* Insert Verse Button */}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setAtTriggerPosition(null);
+                        setIsVerseSearchOpen(true);
+                      }}
+                      className="p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center"
+                      title="Insert Verse"
+                      aria-label="Insert Verse"
+                    >
+                      <BookOpen className="w-4 h-4" />
+                    </button>
                   </div>
 
                   {/* ── Tiptap Editor Canvas ── */}
@@ -2246,6 +2528,60 @@ function JournalsContent() {
         )}
       </AnimatePresence>
 
+      {/* Bible Verse Search Selector popup */}
+      <BibleVerseSearchSelector
+        isOpen={isVerseSearchOpen}
+        onClose={() => setIsVerseSearchOpen(false)}
+        onSelect={handleSelectVerse}
+      />
+
+      {/* Hover / Touch Verse Preview Card */}
+      {tooltip.isOpen && (
+        <div
+          data-verse-tooltip="true"
+          onMouseEnter={() => {
+            if (closeTimeoutRef.current) {
+              clearTimeout(closeTimeoutRef.current);
+              closeTimeoutRef.current = null;
+            }
+          }}
+          onMouseLeave={() => {
+            closeTimeoutRef.current = setTimeout(() => {
+              setTooltip(prev => ({ ...prev, isOpen: false }));
+            }, 300);
+          }}
+          className="absolute z-[9999] w-[320px] max-h-[220px] overflow-y-auto bg-white/95 dark:bg-[#121214]/95 backdrop-blur-md border border-gray-200/50 dark:border-white/[0.08] p-3.5 rounded-xl shadow-xl transition-all duration-200 animate-in fade-in zoom-in-95"
+          style={{
+            left: `${tooltip.x}px`,
+            top: `${tooltip.y}px`,
+          }}
+        >
+          <div className="flex flex-col space-y-1.5">
+            <span className="text-xs font-extrabold text-[#0B7A81] dark:text-[#14B8A6] uppercase tracking-wider block">
+              {tooltip.label}
+            </span>
+            {tooltip.loading ? (
+              <div className="flex items-center space-x-2 py-2 text-gray-400 text-xs">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Fetching scripture...</span>
+              </div>
+            ) : tooltip.error ? (
+              <span className="text-xs text-red-500">{tooltip.error}</span>
+            ) : (
+              <div className="space-y-1.5 max-h-[160px] overflow-y-auto text-sm text-gray-700 dark:text-gray-300 leading-relaxed font-normal">
+                {tooltip.verses.map(v => (
+                  <p key={v.number} className="text-xs md:text-sm">
+                    <span className="font-extrabold text-[#0B7A81] dark:text-[#14B8A6] mr-1.5 text-[10px] md:text-xs align-super">
+                      {v.number}
+                    </span>
+                    {v.text}
+                  </p>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
