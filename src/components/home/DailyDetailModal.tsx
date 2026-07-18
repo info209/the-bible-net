@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Play, Pause, Forward, MessageCircle, MoreVertical, CheckCircle2, CheckCheck, ChevronLeft, ChevronRight, Bookmark, Copy } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Forward, MessageCircle, MoreVertical, CheckCircle2, CheckCheck, ChevronLeft, ChevronRight, Bookmark, Copy, BookOpen } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LikeButton } from './LikeButton';
 import { PremiumCarousel } from './PremiumCarousel';
@@ -565,62 +565,7 @@ export function DailyDetailModal({
                     </button>
                 )}
 
-                {/* Fixed-position kebab dropdown — renders outside scroll area to avoid clipping */}
-                <AnimatePresence>
-                    {openKebab && kebabMenuPos && (
-                        <>
-                            <div className="fixed inset-0 z-[200]" onClick={() => setOpenKebab(null)} />
-                            <motion.div
-                                key="kebab-dropdown"
-                                initial={{ opacity: 0, scale: 0.95, y: -4 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.95, y: -4 }}
-                                transition={{ duration: 0.12 }}
-                                style={{ position: 'fixed', top: kebabMenuPos.top, left: kebabMenuPos.left, zIndex: 210 }}
-                                className="w-48 bg-white rounded-xl shadow-2xl overflow-hidden border border-gray-100"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                {isVerse && (
-                                    <>
-                                        <button
-                                            onClick={() => {
-                                                setOpenKebab(null);
-                                                onReadFullChapter?.(content);
-                                            }}
-                                            className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
-                                        >
-                                            Read Full Chapter
-                                        </button>
-                                        <button
-                                            onClick={handleCopyVerse}
-                                            className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
-                                        >
-                                            <Copy className="w-3.5 h-3.5 text-gray-500" />
-                                            Copy Verse
-                                        </button>
-                                        <button
-                                            onClick={handleSaveVerseFromModal}
-                                            className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
-                                        >
-                                            <Bookmark className={`w-3.5 h-3.5 ${isVerseAlreadySaved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} />
-                                            <span className="text-gray-800">{isVerseAlreadySaved ? 'Saved' : 'Save Verse'}</span>
-                                        </button>
-                                    </>
-                                )}
-                                {!isVerse && (
-                                    <button
-                                        onClick={handleSaveVerseFromModal}
-                                        className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-2"
-                                        disabled={!bookId}
-                                    >
-                                        <Bookmark className={`w-3.5 h-3.5 ${isVerseAlreadySaved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} />
-                                        <span className="text-gray-800">{isVerseAlreadySaved ? 'Saved' : 'Save Verse'}</span>
-                                    </button>
-                                )}
-                            </motion.div>
-                        </>
-                    )}
-                </AnimatePresence>
+                {/* Fixed-position kebab dropdown — lifted out via outer portal, nothing rendered here */}
             </div>
         );
     };
@@ -934,32 +879,103 @@ export function DailyDetailModal({
                     })}
                 </PremiumCarousel>
 
-
-                {/* Desktop Navigation Arrows */}
-                {contents.length > 1 && (
-                    <>
-                        <button
-                            onClick={() => {
-                                if (currentIndex < contents.length - 1) setCurrentIndex(currentIndex + 1);
-                            }}
-                            disabled={currentIndex === contents.length - 1}
-                            className="absolute left-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex items-center justify-center size-12 rounded-full bg-black/10 hover:bg-black/20 text-black border border-black/15 shadow-2xl transition-all hover:scale-110 active:scale-95 disabled:opacity-0 disabled:pointer-events-none"
-                            aria-label="Previous slide (older)"
-                        >
-                            <ChevronLeft className="size-6" />
-                        </button>
-                        <button
-                            onClick={() => {
-                                if (currentIndex > 0) setCurrentIndex(currentIndex - 1);
-                            }}
-                            disabled={currentIndex === 0}
-                            className="absolute right-6 top-1/2 -translate-y-1/2 z-50 hidden md:flex items-center justify-center size-12 rounded-full bg-black/10 hover:bg-black/20 text-black border border-black/15 shadow-2xl transition-all hover:scale-110 active:scale-95 disabled:opacity-0 disabled:pointer-events-none"
-                            aria-label="Next slide (newer)"
-                        >
-                            <ChevronRight className="size-6" />
-                        </button>
-                    </>
-                )}
+                {/* Kebab portal — rendered outside PremiumCarousel/ScrollArea so fixed position is never clipped */}
+                <AnimatePresence>
+                    {openKebab && kebabMenuPos && (
+                        <>
+                            <div className="fixed inset-0 z-[200]" onClick={() => setOpenKebab(null)} />
+                            <motion.div
+                                key="kebab-dropdown"
+                                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                                transition={{ duration: 0.12 }}
+                                style={{ position: 'fixed', top: kebabMenuPos.top, left: kebabMenuPos.left, zIndex: 210 }}
+                                className="w-52 bg-white rounded-xl shadow-2xl overflow-hidden border border-gray-100"
+                                onClick={(e) => e.stopPropagation()}
+                            >
+                                {openKebab === 'verse' && (
+                                    <>
+                                        <button
+                                            onClick={() => { setOpenKebab(null); onReadFullChapter?.(contents[currentIndex]); }}
+                                            className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-2"
+                                        >
+                                            <BookOpen className="w-3.5 h-3.5 text-gray-500" />
+                                            Read Full Chapter
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setOpenKebab(null);
+                                                const verse = contents[currentIndex]?.verse;
+                                                if (verse) {
+                                                    navigator.clipboard.writeText(verse)
+                                                        .then(() => toast.success('Verse copied to clipboard!'))
+                                                        .catch(() => toast.error('Failed to copy verse.'));
+                                                }
+                                            }}
+                                            className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
+                                        >
+                                            <Copy className="w-3.5 h-3.5 text-gray-500" />
+                                            Copy Verse
+                                        </button>
+                                        <button
+                                            onClick={() => {
+                                                setOpenKebab(null);
+                                                const c = contents[currentIndex] as any;
+                                                const bId = c?.verseBook || '';
+                                                const bName = c?.verseBook || '';
+                                                const ch = Number(c?.verseChapter) || 1;
+                                                const vNum = Number(c?.verseNumber) || 1;
+                                                const vs = [vNum];
+                                                const vrt = bId ? buildVerseRangeText(bName, ch, vs) : '';
+                                                const ver = c?.version || 'KJV';
+                                                if (!session?.user) {
+                                                    toast.info('Sign in to save verses');
+                                                    setTimeout(() => router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`), 800);
+                                                    return;
+                                                }
+                                                if (!bId) { toast.error('Verse reference not available.'); return; }
+                                                saveVerse({ bookId: bId, bookName: bName, chapter: ch, verses: vs, verseRangeText: vrt, version: ver })
+                                                    .then(() => toast.success('Verse saved! View in your Saved page.'))
+                                                    .catch(() => toast.error('Failed to save verse.'));
+                                            }}
+                                            className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
+                                        >
+                                            {(() => { const c = contents[currentIndex] as any; const bId = c?.verseBook || ''; const ch = Number(c?.verseChapter) || 1; const vNum = Number(c?.verseNumber) || 1; const saved = bId ? isSaved(bId, ch, [vNum]) : false; return (<><Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} /><span className="text-gray-800">{saved ? 'Saved' : 'Save Verse'}</span></>); })()}
+                                        </button>
+                                    </>
+                                )}
+                                {openKebab === 'devotional' && (
+                                    <button
+                                        onClick={() => {
+                                            setOpenKebab(null);
+                                            const c = contents[currentIndex] as any;
+                                            const bId = c?.verseBook || '';
+                                            const bName = c?.verseBook || '';
+                                            const ch = Number(c?.verseChapter) || 1;
+                                            const vNum = Number(c?.verseNumber) || 1;
+                                            const vs = [vNum];
+                                            const vrt = bId ? buildVerseRangeText(bName, ch, vs) : '';
+                                            const ver = c?.version || 'KJV';
+                                            if (!session?.user) {
+                                                toast.info('Sign in to save verses');
+                                                setTimeout(() => router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`), 800);
+                                                return;
+                                            }
+                                            if (!bId) { toast.error('Verse reference not available.'); return; }
+                                            saveVerse({ bookId: bId, bookName: bName, chapter: ch, verses: vs, verseRangeText: vrt, version: ver })
+                                                .then(() => toast.success('Verse saved! View in your Saved page.'))
+                                                .catch(() => toast.error('Failed to save verse.'));
+                                        }}
+                                        className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-2"
+                                    >
+                                        {(() => { const c = contents[currentIndex] as any; const bId = c?.verseBook || ''; const ch = Number(c?.verseChapter) || 1; const vNum = Number(c?.verseNumber) || 1; const saved = bId ? isSaved(bId, ch, [vNum]) : false; return (<><Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} /><span className="text-gray-800">{saved ? 'Saved' : 'Save Verse'}</span></>); })()}
+                                    </button>
+                                )}
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
             </motion.div>
         </AnimatePresence>
     );
