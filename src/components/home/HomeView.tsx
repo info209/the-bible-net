@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, MessageCircle, Forward, Pause, X, Send, MoreVertical, Check, Bookmark } from 'lucide-react';
+import { Play, MessageCircle, Forward, Pause, X, Send, MoreVertical, Check, Bookmark, BookOpen, Copy } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -623,8 +623,9 @@ export default function HomeView() {
                             <div className="absolute right-0 bottom-full mb-2 z-20 w-48 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
                               <button
                                 onClick={(e) => handleReadFullChapter(content, e)}
-                                className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                                className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-2"
                               >
+                                <BookOpen className="w-3.5 h-3.5 text-gray-500" />
                                 Read chapter
                               </button>
                               <button
@@ -640,8 +641,9 @@ export default function HomeView() {
                                       });
                                   }
                                 }}
-                                className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100"
+                                className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
                               >
+                                <Copy className="w-3.5 h-3.5 text-gray-500" />
                                 Copy verse
                               </button>
                               <button
@@ -802,10 +804,22 @@ export default function HomeView() {
                             <div className="absolute right-0 bottom-full mb-2 z-20 w-48 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
                               <button
                                 onClick={() => openDetailModal(index, 'devotional')}
-                                className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
+                                className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-2"
                               >
+                                <BookOpen className="w-3.5 h-3.5 text-gray-500" />
                                 Read devotional
                               </button>
+                              {content.verseBook && content.verseBook !== 'Unknown' && (
+                                <button
+                                  onClick={(e) => handleSaveVerse(content, e)}
+                                  className="w-full text-left px-4 py-3 text-sm font-medium flex items-center gap-2 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100"
+                                >
+                                  <Bookmark className="w-3.5 h-3.5 text-[#0B7A81]" />
+                                  <span className="text-gray-800">
+                                    {isSaved(content.verseBook || '', Number(content.verseChapter) || 1, [Number(content.verseNumber) || 1]) ? 'Saved' : 'Save Verse'}
+                                  </span>
+                                </button>
+                              )}
                             </div>
                           </>
                         )}
