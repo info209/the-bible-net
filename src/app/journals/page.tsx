@@ -8,10 +8,22 @@ import {
   ArrowLeft, Search, SlidersHorizontal, Plus, MoreVertical,
   Pin, Bookmark, Check, X, Edit2, Trash2, Mic, Play, Pause,
   Bold, Italic, List, ChevronUp, ChevronDown,
-  BookOpen, Sliders, ListOrdered, Strikethrough
+  BookOpen, Sliders, ListOrdered, Strikethrough,
+  Underline as UnderlineIcon,
+  Heading1, Heading2, Quote,
+  AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmContext';
+
+// ── Tiptap Rich Text Editor ──────────────────────────────────────────────────
+import { useEditor, EditorContent } from '@tiptap/react';
+import StarterKit from '@tiptap/starter-kit';
+import Underline from '@tiptap/extension-underline';
+import TextAlign from '@tiptap/extension-text-align';
+import { Color } from '@tiptap/extension-color';
+import { TextStyle } from '@tiptap/extension-text-style';
+import Highlight from '@tiptap/extension-highlight';
 
 type Tab = 'All' | 'Journals' | 'Prayers';
 type ItemType = 'journal' | 'prayer';
@@ -100,8 +112,8 @@ function JournalsContent() {
   const [editIsPinned, setEditIsPinned] = useState(false);
   const [editIsBookmarked, setEditIsBookmarked] = useState(false);
 
-  // Rich Text Editor ContentEditable Ref
-  const richTextRef = useRef<HTMLDivElement>(null);
+  // Rich Text Editor — Tiptap instance
+  // (replaces the old contentEditable ref + execCommand approach)
 
   // Labels system additions
   const [labelInputOpen, setLabelInputOpen] = useState(false);
@@ -351,12 +363,7 @@ function JournalsContent() {
       setEditIsPinned(!!item.isPinned);
       setEditIsBookmarked(!!item.isBookmarked);
       
-      // Delay syncing rich text to allow editor panel mounting
-      setTimeout(() => {
-        if (richTextRef.current) {
-          richTextRef.current.innerHTML = item.content || '';
-        }
-      }, 50);
+      // Sync Tiptap content — done via the useEffect that watches editorId
     } else {
       // Create mode
       setEditorMode('create');
@@ -371,9 +378,6 @@ function JournalsContent() {
       setEditChecklistItems([]);
       setEditIsPinned(false);
       setEditIsBookmarked(false);
-      if (richTextRef.current) {
-        richTextRef.current.innerHTML = '';
-      }
     }
     
     setIsEditing(true);
@@ -422,13 +426,43 @@ function JournalsContent() {
     setEditVerses(editVerses.filter((_, i) => i !== idx));
   };
 
-  // Rich text formatting execution
-  const executeCommand = (command: string) => {
-    document.execCommand(command, false, undefined);
-    if (richTextRef.current) {
-      setEditContent(richTextRef.current.innerHTML);
+  // ── Tiptap Editor Instance ──────────────────────────────────────────────
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({
+        heading: { levels: [1, 2, 3] },
+        // History (undo/redo) is included in StarterKit by default
+      }),
+      Underline,
+      TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      Color,
+      TextStyle,
+      Highlight.configure({ multicolor: true }),
+    ],
+    content: editContent,
+    editorProps: {
+      attributes: {
+        class: 'tiptap-editor',
+        'data-placeholder': 'Start drafting content here...',
+      },
+    },
+    onUpdate: ({ editor }) => {
+      setEditContent(editor.getHTML());
+    },
+  });
+
+  // Sync editor content when opening a different item
+  useEffect(() => {
+    if (editor && isEditing) {
+      // Use queueMicrotask so the editor is fully mounted before we set content
+      queueMicrotask(() => {
+        if (editor && !editor.isDestroyed) {
+          editor.commands.setContent(editContent || '', false);
+        }
+      });
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editorId, isEditing]);
 
   // Checklist Actions
   const handleAddChecklistItem = () => {
@@ -998,13 +1032,6 @@ function JournalsContent() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5] pb-24 relative select-none">
-      <style dangerouslySetInnerHTML={{ __html: `
-        [contenteditable]:empty:before {
-          content: attr(data-placeholder);
-          color: #a0aec0;
-          cursor: text;
-        }
-      ` }} />
 
       <AnimatePresence mode="wait">
         {!isEditing ? (
@@ -1532,55 +1559,144 @@ function JournalsContent() {
               ) : (
                 /* Primary Content Rich Text Editor (contentEditable / textarea) */
                 <div className="flex-1 flex flex-col min-h-[300px]">
-                  {/* Rich Editor Toolbar */}
-                  <div className="h-[48px] px-3.5 bg-[#F7F7F7] dark:bg-white/[0.04] rounded-t-xl flex items-center space-x-4 border border-b-0 border-[#E6E6E6] dark:border-white/[0.08]">
+                  {/* ── Rich Editor Toolbar ──────────────────────────────── */}
+                  <div className="px-2 py-1 bg-[#F7F7F7] dark:bg-white/[0.04] rounded-t-xl flex items-center gap-0.5 border border-b-0 border-[#E6E6E6] dark:border-white/[0.08] overflow-x-auto scrollbar-none flex-wrap min-h-[44px]">
+
+                    {/* ── Inline Marks Group ── */}
                     <button
                       type="button"
-                      onClick={() => executeCommand('bold')}
-                      className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
-                      title="Bold"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBold().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive('bold') ? 'tiptap-btn-active' : '' }`}
+                      title="Bold (Ctrl+B)"
+                      aria-label="Bold"
                     >
                       <Bold className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => executeCommand('italic')}
-                      className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
-                      title="Italic"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleItalic().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive('italic') ? 'tiptap-btn-active' : '' }`}
+                      title="Italic (Ctrl+I)"
+                      aria-label="Italic"
                     >
                       <Italic className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => executeCommand('strikeThrough')}
-                      className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
-                      title="Strikethrough"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleUnderline().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive('underline') ? 'tiptap-btn-active' : '' }`}
+                      title="Underline (Ctrl+U)"
+                      aria-label="Underline"
                     >
-                      <Strikethrough className="w-4 h-4" />
+                      <UnderlineIcon className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => executeCommand('insertUnorderedList')}
-                      className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleStrike().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive('strike') ? 'tiptap-btn-active' : '' }`}
+                      title="Strikethrough"
+                      aria-label="Strikethrough"
+                    >
+                      <Strikethrough className="w-4 h-4" />
+                    </button>
+
+                    {/* Separator */}
+                    <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
+
+                    {/* ── Headings Group ── */}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 1 }).run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive('heading', { level: 1 }) ? 'tiptap-btn-active' : '' }`}
+                      title="Heading 1"
+                      aria-label="Heading 1"
+                    >
+                      <Heading1 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 2 }).run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive('heading', { level: 2 }) ? 'tiptap-btn-active' : '' }`}
+                      title="Heading 2"
+                      aria-label="Heading 2"
+                    >
+                      <Heading2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBlockquote().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive('blockquote') ? 'tiptap-btn-active' : '' }`}
+                      title="Blockquote"
+                      aria-label="Blockquote"
+                    >
+                      <Quote className="w-4 h-4" />
+                    </button>
+
+                    {/* Separator */}
+                    <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
+
+                    {/* ── Lists Group ── */}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBulletList().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive('bulletList') ? 'tiptap-btn-active' : '' }`}
                       title="Bullet List"
+                      aria-label="Bullet List"
                     >
                       <List className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
-                      onClick={() => executeCommand('insertOrderedList')}
-                      className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleOrderedList().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive('orderedList') ? 'tiptap-btn-active' : '' }`}
                       title="Numbered List"
+                      aria-label="Numbered List"
                     >
                       <ListOrdered className="w-4 h-4" />
                     </button>
 
-                    {/* Text Color Picker */}
+                    {/* Separator */}
+                    <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
+
+                    {/* ── Text Alignment Group ── */}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('left').run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive({ textAlign: 'left' }) ? 'tiptap-btn-active' : '' }`}
+                      title="Align Left"
+                      aria-label="Align Left"
+                    >
+                      <AlignLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('center').run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive({ textAlign: 'center' }) ? 'tiptap-btn-active' : '' }`}
+                      title="Align Center"
+                      aria-label="Align Center"
+                    >
+                      <AlignCenter className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('right').run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 ${ editor?.isActive({ textAlign: 'right' }) ? 'tiptap-btn-active' : '' }`}
+                      title="Align Right"
+                      aria-label="Align Right"
+                    >
+                      <AlignRight className="w-4 h-4" />
+                    </button>
+
+                    {/* Separator */}
+                    <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
+
+                    {/* ── Text Color Picker ── */}
                     <div className="relative flex items-center">
                       <button
                         type="button"
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center space-x-1"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center"
                         title="Text Color"
+                        aria-label="Text Color"
                         onClick={() => setShowColorMenu(showColorMenu === 'text' ? null : 'text')}
                       >
                         <span className="font-bold border-b-2 border-black dark:border-white px-0.5 leading-none text-xs">A</span>
@@ -1593,21 +1709,24 @@ function JournalsContent() {
                               <button
                                 key={color}
                                 type="button"
-                                onClick={() => {
-                                  document.execCommand('foreColor', false, color);
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  editor?.chain().focus().setColor(color).run();
                                   setShowColorMenu(null);
                                 }}
                                 className="w-5 h-5 rounded-full border border-gray-300"
                                 style={{ backgroundColor: color }}
+                                aria-label={`Text color ${color}`}
                               />
                             ))}
                             <button
                               type="button"
-                              onClick={() => {
-                                document.execCommand('foreColor', false, '#000000');
+                              onMouseDown={(e) => {
+                                e.preventDefault();
+                                editor?.chain().focus().unsetColor().run();
                                 setShowColorMenu(null);
                               }}
-                              className="text-[10px] px-1 hover:bg-gray-100 rounded dark:text-white"
+                              className="text-[10px] px-1 hover:bg-gray-100 dark:hover:bg-white/[0.08] rounded dark:text-white"
                             >
                               Clear
                             </button>
@@ -1616,12 +1735,13 @@ function JournalsContent() {
                       )}
                     </div>
 
-                    {/* Text Highlight Color Picker */}
+                    {/* ── Text Highlight Color Picker ── */}
                     <div className="relative flex items-center">
                       <button
                         type="button"
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center space-x-1"
+                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center"
                         title="Highlight Color"
+                        aria-label="Highlight Color"
                         onClick={() => setShowColorMenu(showColorMenu === 'bg' ? null : 'bg')}
                       >
                         <span className="font-bold bg-yellow-200 text-black px-0.5 rounded leading-none text-xs">H</span>
@@ -1630,18 +1750,33 @@ function JournalsContent() {
                         <>
                           <div className="fixed inset-0 z-45" onClick={() => setShowColorMenu(null)} />
                           <div className="absolute top-8 left-0 z-50 bg-white dark:bg-[#111111] border border-gray-200 dark:border-white/[0.08] p-1.5 rounded-lg shadow-lg flex space-x-1">
-                            {['transparent', '#FFE58F', '#FFCCC7', '#D9F7BE', '#BAE7FF', '#EFDBFF'].map(color => (
+                            {[
+                              { label: 'Clear', color: 'none' },
+                              { label: 'Yellow', color: '#FFE58F' },
+                              { label: 'Red', color: '#FFCCC7' },
+                              { label: 'Green', color: '#D9F7BE' },
+                              { label: 'Blue', color: '#BAE7FF' },
+                              { label: 'Purple', color: '#EFDBFF' },
+                            ].map(({ label, color }) => (
                               <button
                                 key={color}
                                 type="button"
-                                onClick={() => {
-                                  document.execCommand('hiliteColor', false, color);
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  if (color === 'none') {
+                                    editor?.chain().focus().unsetHighlight().run();
+                                  } else {
+                                    editor?.chain().focus().toggleHighlight({ color }).run();
+                                  }
                                   setShowColorMenu(null);
                                 }}
-                                className="w-5 h-5 rounded-full border border-gray-300"
-                                style={{ backgroundColor: color === 'transparent' ? '#FFFFFF' : color }}
-                                title={color === 'transparent' ? 'Clear' : color}
-                              />
+                                className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center text-[8px]"
+                                style={{ backgroundColor: color === 'none' ? '#FFFFFF' : color }}
+                                title={label}
+                                aria-label={`Highlight ${label}`}
+                              >
+                                {color === 'none' && <X className="w-2.5 h-2.5 text-gray-500" />}
+                              </button>
                             ))}
                           </div>
                         </>
@@ -1649,18 +1784,10 @@ function JournalsContent() {
                     </div>
                   </div>
 
-                  {/* contentEditable Large Rich Canvas */}
-                  <div
-                    ref={(el) => {
-                      (richTextRef as any).current = el;
-                      if (el && el.innerHTML !== editContent) {
-                        el.innerHTML = editContent;
-                      }
-                    }}
-                    contentEditable
-                    onInput={(e) => setEditContent(e.currentTarget.innerHTML)}
-                    data-placeholder="Start drafting content here..."
-                    className="w-full flex-1 p-4 bg-white dark:bg-white/[0.02] border border-[#E6E6E6] dark:border-white/[0.08] rounded-b-xl text-base outline-none min-h-[260px] overflow-y-auto leading-relaxed focus:ring-1 focus:ring-[#0B7A81]"
+                  {/* ── Tiptap Editor Canvas ── */}
+                  <EditorContent
+                    editor={editor}
+                    className="w-full flex-1 p-4 bg-white dark:bg-white/[0.02] border border-[#E6E6E6] dark:border-white/[0.08] rounded-b-xl text-base min-h-[260px] overflow-y-auto focus-within:ring-1 focus-within:ring-[#0B7A81] cursor-text"
                   />
                 </div>
               )}

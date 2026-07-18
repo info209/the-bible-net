@@ -528,6 +528,105 @@ html, body, #__next {
   }
 }
 
+/* ── Tiptap Rich Text Editor Prose Styles ─────────────────────────────────
+ * These styles apply inside the .tiptap-editor canvas only.
+ * The toolbar and surrounding container keep their existing Tailwind classes.
+ */
+.tiptap-editor {
+  outline: none;
+  min-height: 260px;
+  line-height: 1.7;
+  word-break: break-word;
+}
+
+/* Headings */
+.tiptap-editor h1 {
+  font-size: 1.625rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0.75rem 0 0.25rem;
+  color: inherit;
+}
+.tiptap-editor h2 {
+  font-size: 1.3rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 0.6rem 0 0.2rem;
+  color: inherit;
+}
+.tiptap-editor h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin: 0.5rem 0 0.15rem;
+  color: inherit;
+}
+
+/* Paragraphs */
+.tiptap-editor p {
+  margin: 0.25rem 0;
+}
+
+/* Lists */
+.tiptap-editor ul {
+  list-style: disc;
+  padding-left: 1.5rem;
+  margin: 0.4rem 0;
+}
+.tiptap-editor ol {
+  list-style: decimal;
+  padding-left: 1.5rem;
+  margin: 0.4rem 0;
+}
+.tiptap-editor li {
+  margin: 0.15rem 0;
+}
+.tiptap-editor li p {
+  margin: 0;
+}
+
+/* Blockquote */
+.tiptap-editor blockquote {
+  border-left: 3px solid #0B7A81;
+  padding: 0.3rem 0 0.3rem 1rem;
+  color: #6b7280;
+  font-style: italic;
+  margin: 0.5rem 0;
+  background: rgba(11, 122, 129, 0.04);
+  border-radius: 0 4px 4px 0;
+}
+
+/* Inline marks */
+.tiptap-editor strong { font-weight: 700; }
+.tiptap-editor em     { font-style: italic; }
+.tiptap-editor u      { text-decoration: underline; }
+.tiptap-editor s      { text-decoration: line-through; }
+
+/* Placeholder (empty editor) */
+.tiptap-editor p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: #a0aec0;
+  pointer-events: none;
+  float: left;
+  height: 0;
+}
+
+/* Dark mode overrides */
+.dark .tiptap-editor blockquote {
+  color: #9ca3af;
+  background: rgba(11, 122, 129, 0.08);
+}
+
+/* Toolbar active button state helper class */
+.tiptap-btn-active {
+  background-color: rgba(209, 213, 219, 1) !important; /* gray-200 */
+  color: #0B7A81 !important;
+}
+.dark .tiptap-btn-active {
+  background-color: rgba(255, 255, 255, 0.12) !important;
+  color: #0B7A81 !important;
+}
+
 @supports (-webkit-touch-callout: none) {
   input,
   textarea,
