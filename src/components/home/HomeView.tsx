@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, MessageCircle, Forward, Pause, X, Send, MoreVertical, Check } from 'lucide-react';
+import { Play, MessageCircle, Forward, Pause, X, Send, MoreVertical, Check, Bookmark } from 'lucide-react';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -10,6 +10,7 @@ import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useReadingProgress } from '@/lib/useReadingProgress';
+import { useSavedVerses, buildVerseRangeText } from '@/lib/useSavedVerses';
 import { getRelativeTime } from '@/utils/time';
 import HomeSkeleton from '@/app/components/HomeSkeleton';
 import { CarouselCardSkeleton, PrayerSkeleton } from '@/app/components/HomeSkeleton';
@@ -39,6 +40,9 @@ export default function HomeView() {
   const [openVerseKebabIndex, setOpenVerseKebabIndex] = useState<number | null>(null);
   const [openDevotionKebabIndex, setOpenDevotionKebabIndex] = useState<number | null>(null);
   const [currentDevotionSlide, setCurrentDevotionSlide] = useState(0);
+
+  // Saved verses hook
+  const { saveVerse, isSaved } = useSavedVerses();
 
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [activeContent, setActiveContent] = useState<{ id: string, type: 'daily-verse' | 'daily-devotion' } | null>(null);
@@ -409,6 +413,33 @@ export default function HomeView() {
     router.push(`/bible?version=${version}&book=${book}&chapter=${chapter}&verse=${verse}`);
   };
 
+  // Save daily verse to saved page
+  const handleSaveVerse = async (content: any, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setOpenVerseKebabIndex(null);
+    setOpenDevotionKebabIndex(null);
+
+    if (!session) {
+      router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`);
+      return;
+    }
+
+    try {
+      const bookId   = content.verseBook || '';
+      const bookName = content.verseBook || '';
+      const chapter  = Number(content.verseChapter) || 1;
+      const verseNum = Number(content.verseNumber) || 1;
+      const verses   = [verseNum];
+      const verseRangeText = buildVerseRangeText(bookName, chapter, verses);
+      const version  = content.version || preferredVersion;
+
+      await saveVerse({ bookId, bookName, chapter, verses, verseRangeText, version });
+      toast.success('Verse saved! View in your Saved page.');
+    } catch (err) {
+      toast.error('Failed to save verse.');
+    }
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -589,7 +620,7 @@ export default function HomeView() {
                               className="fixed inset-0 z-10"
                               onClick={(e) => { e.stopPropagation(); setOpenVerseKebabIndex(null); }}
                             />
-                            <div className="absolute right-0 bottom-full mb-2 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
+                            <div className="absolute right-0 bottom-full mb-2 z-20 w-48 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
                               <button
                                 onClick={(e) => handleReadFullChapter(content, e)}
                                 className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
@@ -612,6 +643,15 @@ export default function HomeView() {
                                 className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100"
                               >
                                 Copy verse
+                              </button>
+                              <button
+                                onClick={(e) => handleSaveVerse(content, e)}
+                                className="w-full text-left px-4 py-3 text-sm font-medium flex items-center gap-2 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100"
+                              >
+                                <Bookmark className="w-3.5 h-3.5 text-[#0B7A81]" />
+                                <span className="text-gray-800">
+                                  {isSaved(content.verseBook || '', Number(content.verseChapter) || 1, [Number(content.verseNumber) || 1]) ? 'Saved' : 'Save Verse'}
+                                </span>
                               </button>
                             </div>
                           </>
@@ -759,7 +799,7 @@ export default function HomeView() {
                               className="fixed inset-0 z-10"
                               onClick={(e) => { e.stopPropagation(); setOpenDevotionKebabIndex(null); }}
                             />
-                            <div className="absolute right-0 bottom-full mb-2 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
+                            <div className="absolute right-0 bottom-full mb-2 z-20 w-48 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
                               <button
                                 onClick={() => openDetailModal(index, 'devotional')}
                                 className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"

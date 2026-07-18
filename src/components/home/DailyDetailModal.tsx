@@ -1,12 +1,13 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Play, Pause, Forward, MessageCircle, MoreVertical, CheckCircle2, CheckCheck, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Play, Pause, Forward, MessageCircle, MoreVertical, CheckCircle2, CheckCheck, ChevronLeft, ChevronRight, Bookmark, Copy } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LikeButton } from './LikeButton';
 import { PremiumCarousel } from './PremiumCarousel';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/context/ToastContext';
+import { useSavedVerses, buildVerseRangeText } from '@/lib/useSavedVerses';
 import verseTexture from '../../../assets/textures/verse-texture.svg';
 import devotionalTexture from '../../../assets/textures/devotional-texture.svg';
 
@@ -148,7 +149,14 @@ export function DailyDetailModal({
     const [currentIndex, setCurrentIndex] = React.useState(initialIndex);
     const [isSpeaking, setIsSpeaking] = React.useState(false);
     const [isPaused, setIsPaused] = React.useState(false);
-    const [openKebab, setOpenKebab] = React.useState(false);
+    const [openKebab, setOpenKebab] = React.useState<'verse' | 'devotional' | null>(null);
+    // Fixed position for the kebab dropdown so it never clips outside the modal
+    const [kebabMenuPos, setKebabMenuPos] = React.useState<{ top: number; left: number } | null>(null);
+    const kebabButtonRef = useRef<HTMLButtonElement | null>(null);
+    const devKebabButtonRef = useRef<HTMLButtonElement | null>(null);
+
+    // Saved verses hook
+    const { saveVerse, isSaved } = useSavedVerses();
 
     // Progress state — keyed by date so switching days works correctly
     const [progressByDate, setProgressByDate] = React.useState<Record<string, ProgressStatus>>({});
@@ -440,6 +448,69 @@ export function DailyDetailModal({
 
         const progress = progressByDate[content.date] ?? content.devotionalProgress?.status ?? 'INCOMPLETE';
 
+        // ── Compute save verse data (from the daily content's verse fields) ──
+        const bookId   = (content as any).verseBook || '';
+        const bookName = (content as any).verseBook || '';
+        const chapter  = Number((content as any).verseChapter) || 1;
+        const verseNum = Number((content as any).verseNumber) || 1;
+        const verses   = [verseNum];
+        const verseRangeText = bookId ? buildVerseRangeText(bookName, chapter, verses) : '';
+        const version  = (content as any).version || 'KJV';
+        const isVerseAlreadySaved = bookId ? isSaved(bookId, chapter, verses) : false;
+
+        const handleSaveVerseFromModal = async () => {
+            setOpenKebab(null);
+            if (!session?.user) {
+                toast.info('Sign in to save verses');
+                setTimeout(() => router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`), 800);
+                return;
+            }
+            if (!bookId) {
+                toast.error('Verse reference not available.');
+                return;
+            }
+            try {
+                await saveVerse({ bookId, bookName, chapter, verses, verseRangeText, version });
+                toast.success('Verse saved! View in your Saved page.');
+            } catch {
+                toast.error('Failed to save verse.');
+            }
+        };
+
+        const handleCopyVerse = () => {
+            setOpenKebab(null);
+            if (content.verse) {
+                navigator.clipboard.writeText(content.verse)
+                    .then(() => toast.success('Verse copied to clipboard!'))
+                    .catch(() => toast.error('Failed to copy verse.'));
+            }
+        };
+
+        const openKebabMenu = (e: React.MouseEvent, kebabType: 'verse' | 'devotional') => {
+            e.stopPropagation();
+            const rect = (e.currentTarget as HTMLButtonElement).getBoundingClientRect();
+            const menuWidth = 192; // w-48 = 12rem = 192px
+            const menuHeight = kebabType === 'verse' ? 132 : 88; // estimated heights
+            const padding = 8;
+
+            let top = rect.top - menuHeight - padding;
+            let left = rect.left + rect.width / 2 - menuWidth / 2;
+
+            // Prevent overflow on right
+            if (left + menuWidth > window.innerWidth - padding) {
+                left = window.innerWidth - menuWidth - padding;
+            }
+            // Prevent overflow on left
+            if (left < padding) left = padding;
+            // If going above viewport, show below the button
+            if (top < padding) {
+                top = rect.bottom + padding;
+            }
+
+            setKebabMenuPos({ top, left });
+            setOpenKebab(openKebab === kebabType ? null : kebabType);
+        };
+
         return (
             <div className="flex flex-col gap-6 w-full max-w-md mx-auto pt-6">
                 <div className="flex items-center justify-around">
@@ -470,61 +541,86 @@ export function DailyDetailModal({
                             {shareCount && shareCount > 0 ? shareCount : 'Share'}
                         </span>
                     </button>
-                    {isVerse ? (
-                        <div className="relative">
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setOpenKebab(!openKebab);
-                                }}
-                                className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
+                    {/* Kebab Menu — shown for both verse and devotional views */}
+                    <div className="relative">
+                        <button
+                            onClick={(e) => openKebabMenu(e, isVerse ? 'verse' : 'devotional')}
+                            className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
+                        >
+                            <div className="bg-black/20 backdrop-blur-sm p-2 rounded-full">
+                                <MoreVertical className="size-4" />
+                            </div>
+                            <span className="text-xs">More</span>
+                        </button>
+                    </div>
+                </div>
+
+                {!isVerse && progress !== 'COMPLETED' && (
+                    <button
+                        onClick={() => handleCompleteDevotional(content.date, progress)}
+                        className="w-full py-3.5 font-extrabold rounded-2xl shadow-xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none flex items-center justify-center gap-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] text-white"
+                        aria-label="Mark devotional as complete"
+                    >
+                        Complete Devotion
+                    </button>
+                )}
+
+                {/* Fixed-position kebab dropdown — renders outside scroll area to avoid clipping */}
+                <AnimatePresence>
+                    {openKebab && kebabMenuPos && (
+                        <>
+                            <div className="fixed inset-0 z-[200]" onClick={() => setOpenKebab(null)} />
+                            <motion.div
+                                key="kebab-dropdown"
+                                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                                transition={{ duration: 0.12 }}
+                                style={{ position: 'fixed', top: kebabMenuPos.top, left: kebabMenuPos.left, zIndex: 210 }}
+                                className="w-48 bg-white rounded-xl shadow-2xl overflow-hidden border border-gray-100"
+                                onClick={(e) => e.stopPropagation()}
                             >
-                                <div className="bg-black/20 backdrop-blur-sm p-2 rounded-full">
-                                    <MoreVertical className="size-4" />
-                                </div>
-                                <span className="text-xs">More</span>
-                            </button>
-                            {openKebab && (
-                                <>
-                                    <div className="fixed inset-0 z-10" onClick={() => setOpenKebab(false)} />
-                                    <div className="absolute left-1/2 -translate-x-1/2 bottom-full mb-2 z-20 w-44 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
+                                {isVerse && (
+                                    <>
                                         <button
                                             onClick={() => {
-                                                setOpenKebab(false);
+                                                setOpenKebab(null);
                                                 onReadFullChapter?.(content);
                                             }}
                                             className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors"
                                         >
                                             Read Full Chapter
                                         </button>
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    ) : null}
-                </div>
-
-                {!isVerse && (
-                    <button
-                        onClick={() => handleCompleteDevotional(content.date, progress)}
-                        disabled={progress === 'COMPLETED'}
-                        className={`w-full py-3.5 font-extrabold rounded-2xl shadow-xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none flex items-center justify-center gap-2 ${
-                            progress === 'COMPLETED'
-                                ? 'bg-emerald-500/30 border border-emerald-400/40 text-emerald-300 cursor-default'
-                                : 'bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-50 hover:to-cyan-600 active:scale-[0.98] text-white'
-                        }`}
-                        aria-label={progress === 'COMPLETED' ? 'Devotional already completed' : 'Mark devotional as complete'}
-                    >
-                        {progress === 'COMPLETED' ? (
-                            <>
-                                <CheckCheck className="size-4" />
-                                Completed
-                            </>
-                        ) : (
-                            'Complete Devotion'
-                        )}
-                    </button>
-                )}
+                                        <button
+                                            onClick={handleCopyVerse}
+                                            className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
+                                        >
+                                            <Copy className="w-3.5 h-3.5 text-gray-500" />
+                                            Copy Verse
+                                        </button>
+                                        <button
+                                            onClick={handleSaveVerseFromModal}
+                                            className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
+                                        >
+                                            <Bookmark className={`w-3.5 h-3.5 ${isVerseAlreadySaved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} />
+                                            <span className="text-gray-800">{isVerseAlreadySaved ? 'Saved' : 'Save Verse'}</span>
+                                        </button>
+                                    </>
+                                )}
+                                {!isVerse && (
+                                    <button
+                                        onClick={handleSaveVerseFromModal}
+                                        className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-2"
+                                        disabled={!bookId}
+                                    >
+                                        <Bookmark className={`w-3.5 h-3.5 ${isVerseAlreadySaved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} />
+                                        <span className="text-gray-800">{isVerseAlreadySaved ? 'Saved' : 'Save Verse'}</span>
+                                    </button>
+                                )}
+                            </motion.div>
+                        </>
+                    )}
+                </AnimatePresence>
             </div>
         );
     };
@@ -610,11 +706,10 @@ export function DailyDetailModal({
                         return (
                             <ScrollArea
                                 key={item.date || index}
-                                className="relative z-10 h-full w-full px-4 sm:px-8 pb-12 mt-4 touch-pan-y"
+                                className="relative z-10 h-full w-full px-4 sm:px-8 mt-4 touch-pan-y"
                                 ref={index === currentIndex ? scrollRef : null}
-                                style={{ paddingBottom: '0px' }}
                             >
-                                <div className="max-w-2xl mx-auto flex flex-col space-y-12">
+                                <div className="max-w-2xl mx-auto flex flex-col space-y-12 pb-24">
 
                                     {/* ─── Section 1: Daily Verse ─────────────────────────────────────── */}
                                     {initialSection === 'verse' && (
