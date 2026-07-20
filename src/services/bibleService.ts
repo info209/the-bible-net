@@ -231,27 +231,13 @@ export class BibleService {
             const cached = await this.getFromCache(cacheKey);
             if (cached) return cached;
 
-            const escapeRegex = (str: string) => str.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
-
             // Find version
             let version = null;
             if (mongoose.Types.ObjectId.isValid(versionId)) {
                 version = await BibleVersion.findById(versionId).lean();
             }
             if (!version) {
-                version = await BibleVersion.findOne({
-                    $or: [
-                        { abbreviation: versionId.toUpperCase() },
-                        { name: { $regex: new RegExp(`^${escapeRegex(versionId)}$`, 'i') } }
-                    ]
-                }).lean();
-            }
-
-            // Fallback to active version or default NKJV/KJV if requested version not found
-            if (!version) {
-                version = await BibleVersion.findOne({ abbreviation: 'NKJV' }).lean() ||
-                          await BibleVersion.findOne({ abbreviation: 'KJV' }).lean() ||
-                          await BibleVersion.findOne({ isActive: true }).lean();
+                version = await BibleVersion.findOne({ abbreviation: versionId.toUpperCase() }).lean();
             }
 
             if (!version) {
@@ -260,11 +246,6 @@ export class BibleService {
             }
 
             const resolvedVersionId = version._id;
-
-            // Normalize bookId (e.g. "1John" -> "1 John", "1-john" -> "1 john")
-            const normalizedBookId = bookId.replace(/^(\d+)([a-zA-Z]+)/, '$1 $2').replace(/-/g, ' ').trim();
-            const rawEscaped = escapeRegex(bookId);
-            const normEscaped = escapeRegex(normalizedBookId);
 
             // Find initial book
             let book = null;
@@ -276,10 +257,8 @@ export class BibleService {
                 book = await Book.findOne({
                     version: resolvedVersionId,
                     $or: [
-                        { name: { $regex: new RegExp(`^${normEscaped}$`, 'i') } },
-                        { name: { $regex: new RegExp(`^${rawEscaped}$`, 'i') } },
-                        { abbreviation: { $regex: new RegExp(`^${normEscaped}$`, 'i') } },
-                        { abbreviation: { $regex: new RegExp(`^${rawEscaped}$`, 'i') } }
+                        { name: { $regex: new RegExp(`^${bookId.replace(/-/g, ' ')}$`, 'i') } },
+                        { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } }
                     ]
                 }).lean();
                 
@@ -287,10 +266,8 @@ export class BibleService {
                 if (!book) {
                     book = await Book.findOne({
                         $or: [
-                            { name: { $regex: new RegExp(`^${normEscaped}$`, 'i') } },
-                            { name: { $regex: new RegExp(`^${rawEscaped}$`, 'i') } },
-                            { abbreviation: { $regex: new RegExp(`^${normEscaped}$`, 'i') } },
-                            { abbreviation: { $regex: new RegExp(`^${rawEscaped}$`, 'i') } }
+                            { name: { $regex: new RegExp(`^${bookId.replace(/-/g, ' ')}$`, 'i') } },
+                            { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } }
                         ]
                     }).lean();
                 }

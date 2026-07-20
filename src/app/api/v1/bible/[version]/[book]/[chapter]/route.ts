@@ -65,8 +65,8 @@ export async function GET(
 ) {
     try {
         await connectDB();
-        const versionId = decodeURIComponent(params.version || '');
-        const bookId = decodeURIComponent(params.book || '');
+        const versionId = params.version;
+        const bookId = params.book;
         const chapterNum = parseInt(params.chapter);
 
         if (isNaN(chapterNum)) {
@@ -75,40 +75,11 @@ export async function GET(
 
         const { searchParams } = new URL(req.url);
         const q = searchParams.get('q');
-        const verseParam = searchParams.get('verse') || searchParams.get('verses');
-
-        const content = (await BibleService.getChapterContent(versionId, bookId, chapterNum, q || undefined)) as any;
-
-        let filteredVerses = content.verses || [];
-        if (verseParam) {
-            let targetNumbers: number[] = [];
-            if (verseParam.includes('-')) {
-                const [start, end] = verseParam.split('-').map(n => parseInt(n.trim()));
-                if (!isNaN(start) && !isNaN(end)) {
-                    for (let i = start; i <= end; i++) targetNumbers.push(i);
-                }
-            } else if (verseParam.includes(',')) {
-                targetNumbers = verseParam.split(',').map(n => parseInt(n.trim())).filter(n => !isNaN(n));
-            } else {
-                const singleNum = parseInt(verseParam.trim());
-                if (!isNaN(singleNum)) targetNumbers.push(singleNum);
-            }
-
-            if (targetNumbers.length > 0) {
-                const set = new Set(targetNumbers);
-                filteredVerses = filteredVerses.filter((v: any) => set.has(v.number));
-            }
-        }
-
-        const finalData = {
-            ...content,
-            verses: filteredVerses
-        };
+        const data = await BibleService.getChapterContent(versionId, bookId, chapterNum, q || undefined);
 
         return NextResponse.json({
             success: true,
-            data: finalData,
-            verses: filteredVerses
+            data
         });
     } catch (error: any) {
         console.error('Error fetching chapter content:', error);
