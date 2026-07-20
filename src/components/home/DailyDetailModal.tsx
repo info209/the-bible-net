@@ -541,18 +541,20 @@ export function DailyDetailModal({
                             {shareCount && shareCount > 0 ? shareCount : 'Share'}
                         </span>
                     </button>
-                    {/* Kebab Menu — shown for both verse and devotional views */}
-                    <div className="relative">
-                        <button
-                            onClick={(e) => openKebabMenu(e, isVerse ? 'verse' : 'devotional')}
-                            className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
-                        >
-                            <div className="bg-black/20 backdrop-blur-sm p-2 rounded-full">
-                                <MoreVertical className="size-4" />
-                            </div>
-                            <span className="text-xs">More</span>
-                        </button>
-                    </div>
+                    {/* Kebab Menu — shown for verse view only */}
+                    {isVerse && (
+                        <div className="relative">
+                            <button
+                                onClick={(e) => openKebabMenu(e, 'verse')}
+                                className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
+                            >
+                                <div className="bg-black/20 backdrop-blur-sm p-2 rounded-full">
+                                    <MoreVertical className="size-4" />
+                                </div>
+                                <span className="text-xs">More</span>
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {!isVerse && progress !== 'COMPLETED' && (
@@ -692,7 +694,7 @@ export function DailyDetailModal({
                                                         </div>
                                                     </div>
 
-                                                    <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 w-full mt-4">
+                                                    <p className="text-black text-[16px] md:text-[18px] leading-relaxed text-left pl-1 w-full mt-4">
                                                         &ldquo;{item.verse}&rdquo;
                                                     </p>
 
@@ -717,9 +719,9 @@ export function DailyDetailModal({
                                         <div id="section-devotional" className="flex flex-col space-y-12">
                                             {item.devotionalContent ? (
                                                 <>
-                                                    {/* ── A. Aligned Header (matches Daily Verse) ─────────── */}
+                                                    {/* ── A. Header (Title at the top, like banner page) ─────────── */}
                                                     <div className="flex flex-col items-center text-center w-full">
-                                                        {/* Title — "Devotion of the Day" or "Tuesday, 8th July" */}
+                                                        {/* Date label */}
                                                         <p className="text-black/90 text-[15px] font-semibold mb-2.5">
                                                             {formatDevotionLabel(item.date)}
                                                         </p>
@@ -740,60 +742,55 @@ export function DailyDetailModal({
                                                             </div>
                                                         )}
 
-                                                        {/* ── Multi-block verse references (new) ── */}
-                                                        {item.devotionalVerseBlocks && item.devotionalVerseBlocks.length > 0 ? (
-                                                            item.devotionalVerseBlocks.map((block, blockIdx) => (
-                                                                <React.Fragment key={blockIdx}>
-                                                                    <div className="mt-6 text-left w-full">
-                                                                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily devotional</h4>
-                                                                        <h3 className="text-black text-lg font-bold tracking-tight mt-0.5">
-                                                                            {block.ref}
-                                                                        </h3>
-                                                                    </div>
-                                                                    {block.text && (
-                                                                        <div className="flex flex-col items-start mt-4 w-full">
-                                                                            <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 w-full">
-                                                                                &ldquo;{block.text}&rdquo;
-                                                                            </p>
-                                                                        </div>
-                                                                    )}
-                                                                    {blockIdx < (item.devotionalVerseBlocks?.length ?? 0) - 1 && (
-                                                                        <div className="h-px bg-black/10 w-full mt-8" />
-                                                                    )}
-                                                                </React.Fragment>
-                                                            ))
-                                                        ) : (
-                                                            <>
-                                                                {item.devotionalVerseRef && (
-                                                                    <div className="mt-6 text-left w-full">
-                                                                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily Devotional</h4>
-                                                                        <h3 className="text-black text-lg font-bold tracking-tight mt-0.5">
-                                                                            {item.devotionalVerseRef}
-                                                                        </h3>
-                                                                    </div>
-                                                                )}
-                                                            </>
-                                                        )}
+                                                        {/* Devotional Heading AT THE TOP */}
+                                                        <div className="mt-6 text-left w-full">
+                                                            <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily devotional</h4>
+                                                            <h3 className="text-black text-xl md:text-2xl font-bold tracking-tight mt-0.5">
+                                                                {item.devotionalTitle}
+                                                            </h3>
+                                                        </div>
                                                     </div>
 
-                                                    {/* ── B. Legacy single verse text (shown only for old records without blocks) ── */}
-                                                    {(!item.devotionalVerseBlocks || item.devotionalVerseBlocks.length === 0) &&
-                                                        item.devotionalVerseText && (
-                                                            <div className="flex flex-col items-start text-left w-full">
-                                                                <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 w-full">
-                                                                    &ldquo;{item.devotionalVerseText}&rdquo;
-                                                                </p>
+                                                    {/* ── B. Linked Verses ── */}
+                                                    {item.devotionalVerseBlocks && item.devotionalVerseBlocks.length > 0 ? (
+                                                        <div className="flex flex-col space-y-6 w-full">
+                                                            {item.devotionalVerseBlocks.map((block, blockIdx) => (
+                                                                <div key={blockIdx} className="flex flex-col space-y-1 text-left w-full">
+                                                                    <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Key verse</h4>
+                                                                    <h4 className="text-black text-base md:text-lg font-bold tracking-tight">
+                                                                        {block.ref}
+                                                                    </h4>
+                                                                    {block.text && (
+                                                                        <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 w-full mt-2">
+                                                                            &ldquo;{block.text}&rdquo;
+                                                                        </p>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        item.devotionalVerseRef && (
+                                                            <div className="flex flex-col space-y-1 text-left w-full">
+                                                                <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Key verse</h4>
+                                                                <h4 className="text-black text-base md:text-lg font-bold tracking-tight">
+                                                                    {item.devotionalVerseRef}
+                                                                </h4>
+                                                                {item.devotionalVerseText && (
+                                                                    <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 w-full mt-2">
+                                                                        &ldquo;{item.devotionalVerseText}&rdquo;
+                                                                    </p>
+                                                                )}
                                                             </div>
-                                                        )}
+                                                        )
+                                                    )}
 
                                                     {/* Premium Divider */}
                                                     <div className="h-px bg-gradient-to-r from-transparent via-black/15 to-transparent w-full" />
 
-                                                    {/* ── C. Devotional Content (Title & Body) ────────────── */}
+                                                    {/* ── C. Devotional Content (Body) ────────────── */}
                                                     <div className="flex flex-col space-y-4">
                                                         <div className="text-left w-full">
                                                             <p className="text-black/70 text-xs tracking-widest font-bold">Devotional reading</p>
-                                                            <h3 className="text-black text-lg font-bold tracking-tight mt-0.5">{item.devotionalTitle}</h3>
                                                         </div>
                                                         <p className="text-black/90 text-sm md:text-base leading-relaxed text-left whitespace-pre-wrap font-sans mt-2">
                                                             {item.devotionalContent}
@@ -944,33 +941,6 @@ export function DailyDetailModal({
                                             {(() => { const c = contents[currentIndex] as any; const bId = c?.verseBook || ''; const ch = Number(c?.verseChapter) || 1; const vNum = Number(c?.verseNumber) || 1; const saved = bId ? isSaved(bId, ch, [vNum]) : false; return (<><Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} /><span className="text-gray-800">{saved ? 'Saved' : 'Save verse'}</span></>); })()}
                                         </button>
                                     </>
-                                )}
-                                {openKebab === 'devotional' && (
-                                    <button
-                                        onClick={() => {
-                                            setOpenKebab(null);
-                                            const c = contents[currentIndex] as any;
-                                            const bId = c?.verseBook || '';
-                                            const bName = c?.verseBook || '';
-                                            const ch = Number(c?.verseChapter) || 1;
-                                            const vNum = Number(c?.verseNumber) || 1;
-                                            const vs = [vNum];
-                                            const vrt = bId ? buildVerseRangeText(bName, ch, vs) : '';
-                                            const ver = c?.version || 'KJV';
-                                            if (!session?.user) {
-                                                toast.info('Sign in to save verses');
-                                                setTimeout(() => router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`), 800);
-                                                return;
-                                            }
-                                            if (!bId) { toast.error('Verse reference not available.'); return; }
-                                            saveVerse({ bookId: bId, bookName: bName, chapter: ch, verses: vs, verseRangeText: vrt, version: ver })
-                                                .then(() => toast.success('Verse saved! View in your Saved page.'))
-                                                .catch(() => toast.error('Failed to save verse.'));
-                                        }}
-                                        className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-2"
-                                    >
-                                        {(() => { const c = contents[currentIndex] as any; const bId = c?.verseBook || ''; const ch = Number(c?.verseChapter) || 1; const vNum = Number(c?.verseNumber) || 1; const saved = bId ? isSaved(bId, ch, [vNum]) : false; return (<><Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} /><span className="text-gray-800">{saved ? 'Saved' : 'Save verse'}</span></>); })()}
-                                    </button>
                                 )}
                             </motion.div>
                         </>

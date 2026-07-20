@@ -557,7 +557,7 @@ export default function HomeView() {
 
                     {/* Verse text — clamped to 4 lines; card height stays constant */}
                     <div className="flex-1 flex flex-col justify-start mt-4 overflow-hidden">
-                      <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 line-clamp-4 overflow-hidden text-ellipsis w-full">
+                      <p className="text-black text-[16px] md:text-[18px] leading-relaxed text-left pl-1 line-clamp-4 overflow-hidden text-ellipsis w-full">
                         {(() => {
                           const verseNumber = content.verseNumber || content.verseReference?.split(':')?.[1]?.trim();
                           return verseNumber ? (
@@ -809,17 +809,6 @@ export default function HomeView() {
                                 <BookOpen className="w-3.5 h-3.5 text-gray-500" />
                                 Read devotional
                               </button>
-                              {content.verseBook && content.verseBook !== 'Unknown' && (
-                                <button
-                                  onClick={(e) => handleSaveVerse(content, e)}
-                                  className="w-full text-left px-4 py-3 text-sm font-medium flex items-center gap-2 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100"
-                                >
-                                  <Bookmark className="w-3.5 h-3.5 text-[#0B7A81]" />
-                                  <span className="text-gray-800">
-                                    {isSaved(content.verseBook || '', Number(content.verseChapter) || 1, [Number(content.verseNumber) || 1]) ? 'Saved' : 'Save verse'}
-                                  </span>
-                                </button>
-                              )}
                             </div>
                           </>
                         )}

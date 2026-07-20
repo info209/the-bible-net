@@ -2218,6 +2218,7 @@ function JournalsContent() {
                 top: kebabPosition.top,
                 right: kebabPosition.right,
               }}
+              className="w-48 bg-white dark:bg-[#1A1A1A] rounded-xl shadow-xl border border-gray-100 dark:border-white/[0.08] overflow-hidden py-1 z-50"
               onClick={(e) => e.stopPropagation()}
             >
               {/* Move to prayed — only for active prayers */}
@@ -2236,12 +2237,12 @@ function JournalsContent() {
                 className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-gray-800 dark:text-gray-200"
               >
                 <span>{activeKebabType === 'prayer' ? 'Edit prayer' : 'Edit journal'}</span>
-                <Edit2 className="w-3.5 h-3.5" />
+                <Edit2 className="w-3.5 h-3.5 text-gray-500" />
               </button>
               {/* Delete — for both */}
               <button
                 onClick={() => handleTriggerDelete(activeKebabId, activeKebabType)}
-                className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[#FF4D4F]"
+                className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[#FF4D4F] border-t border-gray-100 dark:border-white/[0.04]"
               >
                 <span>{activeKebabType === 'prayer' ? 'Delete prayer' : 'Delete journal'}</span>
                 <Trash2 className="w-3.5 h-3.5" />
