@@ -2135,7 +2135,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           >
             {/* Header */}
             <ModalHeader
-              title="Bible Version Selection"
+              title="Bible version selection"
               onClose={() => setShowVersionSelector(false)}
               textCol={currentTheme.text}
               borderCol={selectedTheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : selectedTheme === 'sepia' || selectedTheme === 'cream' ? 'rgba(92, 74, 58, 0.15)' : 'rgba(0,0,0,0.1)'}

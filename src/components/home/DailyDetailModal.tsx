@@ -685,7 +685,7 @@ export function DailyDetailModal({
                                                         </div>
 
                                                         <div className="mt-6 text-left w-full">
-                                                            <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily Verse</h4>
+                                                            <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily verse</h4>
                                                             <h3 className="text-black text-lg font-bold tracking-tight truncate">
                                                                 {item.verseReference || 'Reference'} {(item as any).version || 'KJV'}
                                                             </h3>
@@ -901,7 +901,7 @@ export function DailyDetailModal({
                                             className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-2"
                                         >
                                             <BookOpen className="w-3.5 h-3.5 text-gray-500" />
-                                            Read Full Chapter
+                                            Read chapter
                                         </button>
                                         <button
                                             onClick={() => {
@@ -916,7 +916,7 @@ export function DailyDetailModal({
                                             className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
                                         >
                                             <Copy className="w-3.5 h-3.5 text-gray-500" />
-                                            Copy Verse
+                                            Copy verse
                                         </button>
                                         <button
                                             onClick={() => {
@@ -941,7 +941,7 @@ export function DailyDetailModal({
                                             }}
                                             className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
                                         >
-                                            {(() => { const c = contents[currentIndex] as any; const bId = c?.verseBook || ''; const ch = Number(c?.verseChapter) || 1; const vNum = Number(c?.verseNumber) || 1; const saved = bId ? isSaved(bId, ch, [vNum]) : false; return (<><Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} /><span className="text-gray-800">{saved ? 'Saved' : 'Save Verse'}</span></>); })()}
+                                            {(() => { const c = contents[currentIndex] as any; const bId = c?.verseBook || ''; const ch = Number(c?.verseChapter) || 1; const vNum = Number(c?.verseNumber) || 1; const saved = bId ? isSaved(bId, ch, [vNum]) : false; return (<><Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} /><span className="text-gray-800">{saved ? 'Saved' : 'Save verse'}</span></>); })()}
                                         </button>
                                     </>
                                 )}
@@ -969,7 +969,7 @@ export function DailyDetailModal({
                                         }}
                                         className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-2"
                                     >
-                                        {(() => { const c = contents[currentIndex] as any; const bId = c?.verseBook || ''; const ch = Number(c?.verseChapter) || 1; const vNum = Number(c?.verseNumber) || 1; const saved = bId ? isSaved(bId, ch, [vNum]) : false; return (<><Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} /><span className="text-gray-800">{saved ? 'Saved' : 'Save Verse'}</span></>); })()}
+                                        {(() => { const c = contents[currentIndex] as any; const bId = c?.verseBook || ''; const ch = Number(c?.verseChapter) || 1; const vNum = Number(c?.verseNumber) || 1; const saved = bId ? isSaved(bId, ch, [vNum]) : false; return (<><Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} /><span className="text-gray-800">{saved ? 'Saved' : 'Save verse'}</span></>); })()}
                                     </button>
                                 )}
                             </motion.div>
