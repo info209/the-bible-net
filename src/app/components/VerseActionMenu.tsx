@@ -747,8 +747,8 @@ export default function VerseActionMenu({
 
                     {/* ── Saved Labels section ─────────────────────────── */}
                     <div className="mb-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: sectionTxt }}>
-                        Saved Labels
+                      <p className="text-[10px] font-semibold tracking-widest mb-1.5" style={{ color: sectionTxt }}>
+                        Saved labels
                       </p>
                       {allUserLabels.length === 0 ? (
                         <p className="text-[11px]" style={{ color: subText }}>No saved labels yet</p>
@@ -785,7 +785,7 @@ export default function VerseActionMenu({
 
                     {/* ── Suggestions section ──────────────────────────── */}
                     <div className="mb-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: sectionTxt }}>
+                      <p className="text-[10px] font-semibold tracking-widest mb-1.5" style={{ color: sectionTxt }}>
                         Suggestions
                       </p>
                       <div className="flex flex-wrap gap-1.5">
@@ -953,8 +953,8 @@ export default function VerseActionMenu({
 
                     {/* Saved Labels section */}
                     <div className="mb-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: sectionTxt }}>
-                        Saved Labels
+                      <p className="text-[10px] font-semibold tracking-widest mb-1.5" style={{ color: sectionTxt }}>
+                        Saved labels
                       </p>
                       {allUserLabels.length === 0 ? (
                         <p className="text-[11px]" style={{ color: subText }}>No saved labels yet</p>
@@ -991,7 +991,7 @@ export default function VerseActionMenu({
 
                     {/* Suggestions section */}
                     <div className="mb-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-widest mb-1.5" style={{ color: sectionTxt }}>
+                      <p className="text-[10px] font-semibold tracking-widest mb-1.5" style={{ color: sectionTxt }}>
                         Suggestions
                       </p>
                       <div className="flex flex-wrap gap-1.5">

@@ -154,7 +154,7 @@ function ProfileSetupContent() {
                 {/* Basic Info */}
                 <div className="space-y-4">
                     <div className="space-y-1.5">
-                        <label className="text-sm font-bold text-slate-700 ml-1">First Name</label>
+                        <label className="text-sm font-bold text-slate-700 ml-1">First name</label>
                         <input
                             type="text"
                             value={formData.firstName}
@@ -164,7 +164,7 @@ function ProfileSetupContent() {
                         />
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Last Name</label>
+                        <label className="text-sm font-bold text-slate-700 ml-1">Last name</label>
                         <input
                             type="text"
                             value={formData.lastName}
@@ -176,7 +176,7 @@ function ProfileSetupContent() {
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
+                    <label className="text-sm font-bold text-slate-700 ml-1">Email address</label>
                     <input
                         type="email"
                         value={formData.email}
@@ -206,7 +206,7 @@ function ProfileSetupContent() {
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Preferred Language</label>
+                    <label className="text-sm font-bold text-slate-700 ml-1">Preferred language</label>
                     <div className="relative group">
                         <Languages className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-primary-teal)] transition-colors" />
                         <select
@@ -224,7 +224,7 @@ function ProfileSetupContent() {
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Preferred Bible Version</label>
+                    <label className="text-sm font-bold text-slate-700 ml-1">Preferred Bible version</label>
                     <div className="relative group">
                         <Book className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-primary-teal)] transition-colors" />
                         <select
@@ -244,13 +244,13 @@ function ProfileSetupContent() {
                 <button
                     onClick={handleSubmit}
                     disabled={loading}
-                    className="w-full bg-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-dark)] text-white font-black py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg lowercase tracking-tight"
+                    className="w-full bg-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-dark)] text-white font-black py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg tracking-tight"
                 >
                     {loading ? (
                         <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                         <>
-                            {(session?.user as any)?.onboardingCompleted ? 'Update Changes' : 'Get Started'} <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                            {(session?.user as any)?.onboardingCompleted ? 'Update changes' : 'Get started'} <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
                         </>
                     )}
                 </button>

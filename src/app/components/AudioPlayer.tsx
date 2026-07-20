@@ -302,7 +302,7 @@ export default function AudioPlayer({
               <div className="flex flex-col min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-[#31393a] truncate">{bookName} {chapterNumber}</span>
-                  {useSpeechFallback && <span className="text-[10px] px-1.5 py-0.5 bg-rose-100 text-rose-600 rounded-full font-bold uppercase tracking-tighter">TTS Fallback</span>}
+                  {useSpeechFallback && <span className="text-[10px] px-1.5 py-0.5 bg-rose-100 text-rose-600 rounded-full font-bold tracking-tighter">TTS fallback</span>}
                 </div>
                 <span className="text-xs text-[#31393a]/60 truncate">
                    Verse {currentVerse || 1} • {useSpeechFallback ? 'Narrating...' : `${formatTime(currentTime)} / ${formatTime(duration)}`}

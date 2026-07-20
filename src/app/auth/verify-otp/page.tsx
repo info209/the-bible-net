@@ -116,7 +116,7 @@ function VerifyOTPContent() {
                 body: JSON.stringify({ userId, email }),
             });
             if (res.ok) {
-                toast.success('New OTP sent!');
+                toast.success('New OTP sent');
             } else {
                 const data = await res.json();
                 const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Failed to resend. Try again later.', 'otp');
@@ -144,7 +144,7 @@ function VerifyOTPContent() {
                     <ShieldCheck className="w-10 h-10 text-[var(--color-primary-teal)]" />
                 </div>
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight font-sans">Verify Identity</h1>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight font-sans">Verify identity</h1>
                     <p className="text-slate-500/80 font-medium px-4 leading-relaxed">
                         We sent a 6-digit code to <span className="text-slate-900 font-bold block mt-1 underline decoration-[var(--color-primary-teal)]/30 underline-offset-4">{email || 'your email'}</span>
                     </p>
@@ -188,7 +188,7 @@ function VerifyOTPContent() {
                         <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                         <>
-                            Verify & Continue <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                            Verify &amp; continue <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
                         </>
                     )}
                 </button>
@@ -201,14 +201,14 @@ function VerifyOTPContent() {
                     className="text-slate-500 font-bold text-sm hover:text-[var(--color-primary-teal)] transition-colors flex items-center justify-center gap-2 mx-auto disabled:opacity-50"
                 >
                     <RefreshCcw className={`w-4 h-4 ${resending ? 'animate-spin' : ''}`} />
-                    Resend Code
+                    Resend code
                 </button>
 
                 <button
                     onClick={() => router.back()}
                     className="text-[var(--color-primary-teal)] text-sm font-extrabold block mx-auto hover:underline underline-offset-4"
                 >
-                    Change Email Address
+                    Change email address
                 </button>
             </div>
         </motion.div>

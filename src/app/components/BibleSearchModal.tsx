@@ -208,7 +208,7 @@ function BookModeView({
                     {data.displayName || data.book}
                 </h2>
                 <span
-                    className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-widest"
+                    className="text-[10px] px-2 py-0.5 rounded-full font-bold tracking-widest"
                     style={{ backgroundColor: t.accentLight, color: t.accent }}
                 >
                     {data.testament === 'OT' ? 'Old Testament' : 'New Testament'}
@@ -265,7 +265,7 @@ function ExactVerseModeView({
 }) {
     return (
         <div className="p-4">
-            <p className="text-xs font-bold uppercase tracking-widest mb-2" style={{ color: t.accent }}>
+            <p className="text-xs font-bold tracking-widest mb-2" style={{ color: t.accent }}>
                 {data.reference}
             </p>
             <blockquote
@@ -277,7 +277,7 @@ function ExactVerseModeView({
 
             {data.availableVersions.length > 0 && (
                 <div className="mb-4">
-                    <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: t.subText }}>
+                    <p className="text-[10px] font-bold tracking-widest mb-2" style={{ color: t.subText }}>
                         Version
                     </p>
                     <div className="flex flex-wrap gap-2">
@@ -426,7 +426,7 @@ function HybridModeView({
 
     return (
         <div className="p-4 space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-wider" style={{ color: t.subText }}>
+            <p className="text-[10px] font-bold tracking-wider" style={{ color: t.subText }}>
                 {data.total} result{data.total !== 1 ? 's' : ''}
             </p>
             {data.results.slice(0, 50).map((r, i) => (
@@ -723,7 +723,7 @@ export default function BibleSearchModal({
                     {!hasQuery && history.length > 0 && (
                         <div className="p-4">
                             <div className="flex items-center justify-between mb-3">
-                                <h3 className="text-xs font-bold uppercase tracking-wider" style={{ color: t.subText }}>Recent</h3>
+                                <h3 className="text-xs font-bold tracking-wider" style={{ color: t.subText }}>Recent</h3>
                                 <button
                                     onClick={clearHistory}
                                     className="flex items-center gap-1 text-xs font-bold"

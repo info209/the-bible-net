@@ -356,7 +356,7 @@ export default function BibleSearch({
 
               {!isSearching && searchResults.length > 0 && (
                 <>
-                  <div className="mb-4 text-xs font-bold uppercase tracking-wider" style={{ color: subTextCol }}>
+                  <div className="mb-4 text-xs font-bold tracking-wider" style={{ color: subTextCol }}>
                     Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
                   </div>
                   <div className="space-y-3">

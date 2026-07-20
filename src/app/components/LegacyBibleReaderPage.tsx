@@ -2197,7 +2197,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               {/* Header */}
               <div className="flex items-center justify-between p-4 border-b border-gray-100 bg-white shrink-0">
                 <div className="w-12"></div>
-                <h2 className="text-lg font-semibold text-[#31393a]">Fonts & Settings</h2>
+                <h2 className="text-lg font-semibold text-[#31393a]">Fonts &amp; settings</h2>
                 <button
                   onClick={() => setShowSettingsModal(false)}
                   className="w-12 text-right text-sm font-medium text-gray-400 hover:text-gray-800 transition-colors"
@@ -2210,7 +2210,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               <div className="flex-1 p-6 space-y-8 bg-[#f9f9f9] overflow-y-auto custom-scrollbar">
                 {/* Font Selector */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Font family</label>
+                  <label className="text-xs font-semibold text-gray-400 tracking-wide">Font family</label>
                   <div className="relative">
                     <select
                       value={selectedFont}
@@ -2229,7 +2229,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
                 {/* Font Size */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Font size</label>
+                  <label className="text-xs font-semibold text-gray-400 tracking-wide">Font size</label>
                   <div className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl px-4 py-3">
                     <span className="text-xs font-medium text-gray-400">A-</span>
                     <input
@@ -2243,7 +2243,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
                 {/* Theme Selector */}
                 <div className="space-y-3">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Theme</label>
+                  <label className="text-xs font-semibold text-gray-400 tracking-wide">Theme</label>
                   <div className="flex items-center gap-4">
                     {Object.keys(themeConfig).map((theme) => (
                       <button
@@ -2259,12 +2259,12 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
                 {/* Navigation Style */}
                 <div className="space-y-2">
-                  <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Page transitions</label>
+                  <label className="text-xs font-semibold text-gray-400 tracking-wide">Page transitions</label>
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       { id: 'slide', label: 'Slide', icon: ArrowRightLeft },
                       { id: 'curl', label: 'Curl', icon: FileText },
-                      { id: 'fade', label: 'Fast Fade', icon: Zap },
+                      { id: 'fade', label: 'Fast fade', icon: Zap },
                       { id: 'scroll', label: 'Scroll', icon: ScrollText }
                     ].map((mode) => (
                       <button

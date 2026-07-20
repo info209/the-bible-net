@@ -75,14 +75,14 @@ export default function RegisterStep1() {
                 whileTap={{ scale: 0.9 }}
                 onClick={() => router.back()}
                 className="absolute left-6 top-6 p-2 rounded-full bg-white/10 text-slate-500 hover:text-[var(--color-primary-teal)] hover:bg-white/20 transition-all outline-none backdrop-blur-sm"
-                title="Go Back"
+                title="Go back"
             >
                 <ChevronLeft className="w-5 h-5" />
             </motion.button>
 
             <div className="text-center space-y-3 pt-4">
                 <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-sans">Join The Bible</h1>
-                <p className="text-slate-500/80 font-medium">Step 1 of 3: Basic Details</p>
+                <p className="text-slate-500/80 font-medium">Step 1 of 3: Basic details</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -99,7 +99,7 @@ export default function RegisterStep1() {
 
                 <div className="grid grid-cols-1 gap-4">
                     <div className="space-y-1.5">
-                        <label className="text-sm font-bold text-slate-700 ml-1">First Name</label>
+                        <label className="text-sm font-bold text-slate-700 ml-1">First name</label>
                         <div className="relative group">
                             <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
                             <input
@@ -113,7 +113,7 @@ export default function RegisterStep1() {
                         </div>
                     </div>
                     <div className="space-y-1.5">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Last Name</label>
+                        <label className="text-sm font-bold text-slate-700 ml-1">Last name</label>
                         <div className="relative group">
                             <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
                             <input
@@ -129,7 +129,7 @@ export default function RegisterStep1() {
                 </div>
 
                 <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
+                    <label className="text-sm font-bold text-slate-700 ml-1">Email address</label>
                     <div className="relative group">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
                         <input
@@ -178,7 +178,7 @@ export default function RegisterStep1() {
                         />
                     </div>
                     <label htmlFor="tnc" className="text-sm text-slate-600 font-medium cursor-pointer leading-relaxed">
-                        I agree to the <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'terms' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Terms & Conditions</button>.
+                        I agree to the <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'terms' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Terms & conditions</button>.
                     </label>
 
                 </div>
@@ -192,7 +192,7 @@ export default function RegisterStep1() {
                         <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                         <>
-                            Get Started <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                            Get started <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
                         </>
                     )}
                 </button>
@@ -202,7 +202,7 @@ export default function RegisterStep1() {
                 <p className="text-slate-500 text-sm font-medium">
                     Already have an account?{' '}
                     <Link href="/auth/login" className="text-[var(--color-primary-teal)] font-extrabold hover:underline underline-offset-4 font-sans">
-                        Sign In
+                        Sign in
                     </Link>
                 </p>
             </div>

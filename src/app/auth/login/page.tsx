@@ -87,13 +87,13 @@ export default function LoginPage() {
                 whileTap={{ scale: 0.9 }}
                 onClick={() => router.back()}
                 className="absolute left-6 top-6 p-2 rounded-full bg-white/10 text-slate-500 hover:text-[var(--color-primary-teal)] hover:bg-white/20 transition-all outline-none backdrop-blur-sm"
-                title="Go Back"
+                title="Go back"
             >
                 <ChevronLeft className="w-5 h-5" />
             </motion.button>
 
             <div className="text-center space-y-3 pt-4">
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-sans">Welcome Back</h1>
+                <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-sans">Welcome back</h1>
                 <p className="text-slate-500/80 font-medium">Please sign in to your account</p>
             </div>
 
@@ -152,10 +152,10 @@ export default function LoginPage() {
                             />
                             {rememberMe && <CheckCircle2 className="w-3.5 h-3.5 text-white stroke-[3px]" />}
                         </div>
-                        <span className="text-slate-600 font-bold">Remember Me</span>
+                        <span className="text-slate-600 font-bold">Remember me</span>
                     </label>
                     <Link href="/auth/forgot-password" className="text-[var(--color-primary-teal)] font-bold hover:underline underline-offset-4">
-                        Forgot Password?
+                        Forgot password?
                     </Link>
                 </div>
 
@@ -166,7 +166,7 @@ export default function LoginPage() {
                 >
                     {loading ? (
                         <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : 'Sign In'}
+                    ) : 'Sign in'}
                 </button>
             </form>
 
@@ -174,7 +174,7 @@ export default function LoginPage() {
                 <div className="absolute inset-0 flex items-center">
                     <div className="w-full border-t border-slate-200/60"></div>
                 </div>
-                <div className="relative flex justify-center text-xs uppercase tracking-widest font-bold text-slate-400">
+                <div className="relative flex justify-center text-xs tracking-widest font-bold text-slate-400">
                     <span className="bg-white/50 backdrop-blur-sm px-4 rounded-full">Or continue with</span>
                 </div>
             </div>
@@ -186,7 +186,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => signIn(social.name.toLowerCase())}
                         className="flex items-center justify-center p-3.5 border-none rounded-2xl bg-white/40 hover:bg-white/60 transition-all active:scale-[0.92] shadow-sm backdrop-blur-sm"
-                        title={`Login with ${social.name}`}
+                        title={`Log in with ${social.name}`}
                     >
                         {social.icon}
                     </button>
@@ -197,7 +197,7 @@ export default function LoginPage() {
                 <p className="text-slate-500 text-sm font-medium">
                     New to The Bible Net?{' '}
                     <Link href="/auth/register" className="text-[var(--color-primary-teal)] font-extrabold hover:underline underline-offset-4">
-                        Create Account
+                        Create account
                     </Link>
                 </p>
             </div>

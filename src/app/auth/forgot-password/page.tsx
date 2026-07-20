@@ -55,10 +55,10 @@ export default function ForgotPassword() {
                     className="text-slate-400 font-bold text-sm hover:text-[var(--color-primary-teal)] transition-colors flex items-center gap-1 mb-6 group"
                 >
                     <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                    Back to Login
+                    Back to log in
                 </button>
                 <div className="text-center space-y-3">
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight font-sans">Forgot Password</h1>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight font-sans">Forgot password</h1>
                     <p className="text-slate-500/80 font-medium">Enter the email associated with your account</p>
                 </div>
             </div>
@@ -76,7 +76,7 @@ export default function ForgotPassword() {
                 )}
 
                 <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Email Address</label>
+                    <label className="text-sm font-bold text-slate-700 ml-1">Email address</label>
                     <div className="relative group">
                         <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
                         <input
@@ -99,7 +99,7 @@ export default function ForgotPassword() {
                         <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
                     ) : (
                         <>
-                            Get Reset Link <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
+                            Get reset link <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
                         </>
                     )}
                 </button>

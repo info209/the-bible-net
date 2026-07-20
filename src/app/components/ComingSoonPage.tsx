@@ -270,8 +270,8 @@ export default function ComingSoonPage({
 
         {/* 2. Feature Title Context Header */}
         {title && (
-          <h2 className="text-xs font-bold uppercase tracking-widest text-[var(--color-text-tertiary)] dark:text-gray-500">
-            {title} Section
+          <h2 className="text-xs font-bold tracking-widest text-[var(--color-text-tertiary)] dark:text-gray-500">
+            {title} section
           </h2>
         )}
 

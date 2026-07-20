@@ -104,7 +104,7 @@ const VIEW_LABELS: Record<Exclude<ProfileView, null>, string> = {
   notes:      'Notes',
   highlights: 'Highlights',
   comments:   'Comments',
-  journals:   'Journals & Prayers',
+  journals:   'Journals & prayers',
   streaks:    'Streaks',
   share:      'Share',
   support:    'Support',
@@ -215,7 +215,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
           <ComingSoonPage
             variant="coming-soon"
             title={VIEW_LABELS[activeView]}
-            actionLabel="Back to Profile"
+            actionLabel="Back to profile"
             onAction={handleBackToMenu}
           />
         </div>

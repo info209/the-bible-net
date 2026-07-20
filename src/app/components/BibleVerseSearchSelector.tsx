@@ -366,7 +366,7 @@ export default function BibleVerseSearchSelector({
 
               {/* Sort controls */}
               <div className="flex justify-between items-center text-xs shrink-0 px-1 text-gray-400">
-                <span className="font-semibold uppercase tracking-wider">Books</span>
+                <span className="font-semibold tracking-wider">Books</span>
                 <div className="flex space-x-2">
                   <button
                     type="button"
@@ -402,7 +402,7 @@ export default function BibleVerseSearchSelector({
                     if (list.length === 0) return null;
                     return (
                       <div key={testament} className="space-y-2">
-                        <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider block px-1">
+                        <span className="text-[10px] font-bold text-gray-400 tracking-wider block px-1">
                           {testament}
                         </span>
                         <div className="grid grid-cols-2 gap-2">
@@ -486,7 +486,7 @@ export default function BibleVerseSearchSelector({
         {step === 'verse' && selectedVerseStart !== null && (
           <div className="p-4 border-t border-gray-100 dark:border-white/[0.08] bg-gray-50/50 dark:bg-white/[0.01] shrink-0 flex items-center justify-between">
             <div className="flex flex-col">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Reference Label</span>
+              <span className="text-[10px] text-gray-400 font-bold tracking-wider">Reference label</span>
               <span className="text-sm font-bold text-[#0B7A81] truncate max-w-[220px]">
                 {selectedBook && `${getLocalizedBookName(selectedBook.name, selectedVersionLang)} ${selectedChapter}:${selectedVerseStart}${selectedVerseStart === selectedVerseEnd ? '' : `-${selectedVerseEnd}`}`}
               </span>
@@ -496,7 +496,7 @@ export default function BibleVerseSearchSelector({
               onClick={handleInsert}
               className="px-5 py-2 bg-[#0B7A81] text-white font-semibold rounded-xl text-sm hover:bg-[#0B7A81]/90 transition-all active:scale-95 shadow-md shadow-[#0B7A81]/10"
             >
-              Insert Verse
+              Insert verse
             </button>
           </div>
         )}

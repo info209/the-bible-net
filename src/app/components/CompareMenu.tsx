@@ -147,8 +147,8 @@ export default function CompareMenu({
 
           <div className="flex-1 overflow-y-auto px-5 py-6">
             {/* 1. Currently comparing versions */}
-            <h3 className="text-xs font-bold uppercase tracking-widest mb-3" style={{ color: subTextCol }}>
-              Currently Comparing
+            <h3 className="text-xs font-bold tracking-widest mb-3" style={{ color: subTextCol }}>
+              Currently comparing
             </h3>
             <div className="space-y-2 mb-8">
               {selectedVersions.map((versionId) => {
@@ -168,7 +168,7 @@ export default function CompareMenu({
                       <span className="text-sm font-bold leading-tight" style={{ color: textCol }}>
                         {version.name}
                       </span>
-                      <span className="text-[11px] uppercase tracking-wider mt-0.5" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>
+                      <span className="text-[11px] tracking-wider mt-0.5" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>
                         {version.fullName}
                       </span>
                     </div>
@@ -197,8 +197,8 @@ export default function CompareMenu({
             {/* 2. Available versions */}
             {canAddMore && availableVersions.length > 0 && (
               <>
-                <h3 className="text-xs font-bold uppercase tracking-widest mb-3 flex items-center justify-between" style={{ color: subTextCol }}>
-                  <span>Available to Add</span>
+                <h3 className="text-xs font-bold tracking-widest mb-3 flex items-center justify-between" style={{ color: subTextCol }}>
+                  <span>Available to add</span>
                   <span className="px-2 py-0.5 rounded-full text-[10px]" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : '#f3f4f6', color: textCol }}>
                     Max 4
                   </span>
@@ -220,7 +220,7 @@ export default function CompareMenu({
                         <span className="text-sm font-bold group-hover:text-[var(--color-primary-teal)] leading-tight transition-colors" style={{ color: textCol }}>
                           {version.name}
                         </span>
-                        <span className="text-[11px] group-hover:text-[var(--color-primary-teal)]/70 uppercase tracking-wider mt-0.5 transition-colors" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>
+                        <span className="text-[11px] group-hover:text-[var(--color-primary-teal)]/70 tracking-wider mt-0.5 transition-colors" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>
                           {version.fullName}
                         </span>
                       </div>

@@ -460,7 +460,7 @@ export default function AudioControlPanel({
               <div className="size-7 flex items-center justify-center">
                 <Repeat className="size-[22px]" strokeWidth={2.2} />
               </div>
-              <span className="text-[8px] font-bold uppercase whitespace-nowrap leading-none">
+              <span className="text-[8px] font-bold whitespace-nowrap leading-none">
                 {repeatMode}
               </span>
             </button>
@@ -496,7 +496,7 @@ export default function AudioControlPanel({
               <div className="size-7 flex items-center justify-center">
                 <Timer className="size-[22px]" strokeWidth={2.2} />
               </div>
-              <span className="text-[8px] font-bold uppercase whitespace-nowrap leading-none">
+              <span className="text-[8px] font-bold whitespace-nowrap leading-none">
                 Timer
               </span>
             </button>

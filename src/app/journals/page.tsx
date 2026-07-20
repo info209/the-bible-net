@@ -1282,13 +1282,13 @@ function JournalsContent() {
         <div className="w-16 h-16 bg-[#0B7A81]/10 rounded-full flex items-center justify-center mb-4">
           <BookOpen className="w-8 h-8 text-[#0B7A81]" />
         </div>
-        <h2 className="text-lg font-bold mb-1">Access Private Journals & Prayers</h2>
+        <h2 className="text-lg font-bold mb-1">Access private journals &amp; prayers</h2>
         <p className="text-sm text-gray-500 mb-6 max-w-xs">Please sign in to view and save your private journals, track audio prayers, and utilize custom labels.</p>
         <button
           onClick={() => router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`)}
           className="px-6 py-2.5 bg-[#0B7A81] text-white rounded-xl text-sm font-semibold shadow-md active:opacity-90"
         >
-          Sign In
+          Sign in
         </button>
       </div>
     );
@@ -1326,7 +1326,7 @@ function JournalsContent() {
                   <ArrowLeft className="w-5 h-5" strokeWidth={2.5} />
                 </button>
                 <h1 className="text-[20px] font-bold tracking-tight">
-                  {selectionMode ? `${selectedIds.length} selected` : 'Journals & Prayers'}
+                  {selectionMode ? `${selectedIds.length} selected` : 'Journals & prayers'}
                 </h1>
               </div>
 
@@ -1337,14 +1337,14 @@ function JournalsContent() {
                     <button
                       onClick={handleBatchPin}
                       className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06]"
-                      title="Pin Selected"
+                      title="Pin selected"
                     >
                       <Pin className="w-[18px] h-[18px] text-[#0B7A81]" />
                     </button>
                     <button
                       onClick={handleBatchDelete}
                       className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06]"
-                      title="Delete Selected"
+                      title="Delete selected"
                     >
                       <Trash2 className="w-[18px] h-[18px] text-[#FF4D4F]" />
                     </button>
@@ -1401,7 +1401,7 @@ function JournalsContent() {
                     <Search className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
                     <input
                       type="text"
-                      placeholder="Search Journals and Prayers..."
+                      placeholder="Search journals and prayers..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="bg-transparent border-none outline-none focus:ring-0 w-full text-[16px] md:text-sm placeholder:text-gray-400"
@@ -1552,7 +1552,7 @@ function JournalsContent() {
                       }`}>
                         <div className="flex items-center space-x-1.5">
                           {/* Mixed Type Badge */}
-                          <span className={`text-[10px] uppercase tracking-wider font-extrabold px-2 py-0.5 rounded-full ${
+                          <span className={`text-[10px] tracking-wider font-extrabold px-2 py-0.5 rounded-full ${
                             isJ 
                               ? 'bg-gray-100 text-gray-600 dark:bg-white/[0.04] dark:text-gray-400' 
                               : 'bg-[#0B7A81]/10 text-[#0B7A81] dark:bg-[#0B7A81]/20'
@@ -1562,7 +1562,7 @@ function JournalsContent() {
                           
                           {/* Prayer Status Badge */}
                           {!isJ && (
-                            <span className={`text-[9px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+                            <span className={`text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded-full ${
                               item.status === 'prayed'
                                 ? 'bg-gray-100 text-gray-500 dark:bg-white/[0.04] dark:text-gray-500'
                                 : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
@@ -1610,7 +1610,7 @@ function JournalsContent() {
                       {isJ && item.type === 'audio' && item.audioUrl && (
                         <div className="flex items-center space-x-1.5 mt-2.5 text-orange-500 font-semibold text-xs">
                           <span>🎤</span>
-                          <span>Voice Note Attached</span>
+                          <span>Voice note attached</span>
                         </div>
                       )}
 
@@ -1694,8 +1694,8 @@ function JournalsContent() {
                 </button>
                 <h2 className="text-[18px] font-bold">
                   {editorMode === 'view'
-                    ? (editorType === 'journal' ? 'Journal Details' : 'Prayer Details')
-                    : (editorMode === 'create' ? `Create ${editorType === 'journal' ? 'Journal' : 'Prayer'}` : 'Edit')}
+                    ? (editorType === 'journal' ? 'Journal details' : 'Prayer details')
+                    : (editorMode === 'create' ? `Create ${editorType === 'journal' ? 'journal' : 'prayer'}` : 'Edit')}
                 </h2>
               </div>
 
@@ -1760,7 +1760,7 @@ function JournalsContent() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-xl w-full max-w-xs p-5 shadow-2xl"
                     >
-                      <h4 className="font-bold text-sm text-gray-800 dark:text-[#F5F5F5]">Add Custom Label</h4>
+                      <h4 className="font-bold text-sm text-gray-800 dark:text-[#F5F5F5]">Add custom label</h4>
                       <input
                         type="text"
                         placeholder="Label name (e.g. Hope)..."
@@ -1799,12 +1799,12 @@ function JournalsContent() {
                   <>
                     <input
                       type="text"
-                      placeholder="Title (Max 120 characters)"
+                      placeholder="Title (max 120 characters)"
                       value={editTitle}
                       onChange={(e) => setEditTitle(e.target.value.substring(0, 120))}
                       className="w-full bg-transparent border-none text-[22px] font-bold text-gray-800 dark:text-white placeholder:text-gray-300 focus:outline-none focus:ring-0"
                     />
-                    <span className="absolute right-0 bottom-[-14px] text-[9px] text-gray-400 font-bold uppercase tracking-wider">
+                    <span className="absolute right-0 bottom-[-14px] text-[9px] text-gray-400 font-bold tracking-wider">
                       {editTitle.length} / 120
                     </span>
                   </>
@@ -2077,7 +2077,7 @@ function JournalsContent() {
               {/* Linked Verses Previews Section */}
               {editVerses.length > 0 && (
                 <div className="space-y-2">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-wider block">Linked Scriptures</span>
+                  <span className="text-xs font-bold text-gray-400 tracking-wider block">Linked scriptures</span>
                   <div className="space-y-2">
                     {editVerses.map((v, idx) => (
                       <div key={idx} className="bg-white dark:bg-[#111111] p-3 rounded-xl border border-gray-100 dark:border-white/[0.06] flex items-center justify-between">
@@ -2103,7 +2103,7 @@ function JournalsContent() {
                   onClick={() => setVersePickerOpen(true)}
                   className="w-fit text-sm font-semibold text-[#0B7A81] flex items-center gap-1.5 active:scale-95 py-1"
                 >
-                  <Plus className="w-4 h-4" /> Add Verse
+                  <Plus className="w-4 h-4" /> Add verse
                 </button>
               )}
 
@@ -2117,7 +2117,7 @@ function JournalsContent() {
                       exit={{ opacity: 0, scale: 0.95 }}
                       className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-xl w-full max-w-sm p-5 shadow-2xl select-none"
                     >
-                      <h3 className="font-bold text-base text-gray-800 dark:text-[#F5F5F5]">Link Bible Scripture</h3>
+                      <h3 className="font-bold text-base text-gray-800 dark:text-[#F5F5F5]">Link Bible scripture</h3>
                       <div className="mt-4 space-y-3.5">
                         {/* Book Selector */}
                         <div>
@@ -2185,7 +2185,7 @@ function JournalsContent() {
                           onClick={handleAddVerse}
                           className="flex-1 h-10 bg-[#0B7A81] text-white rounded-xl text-sm font-semibold active:scale-95"
                         >
-                          Link Verse
+                          Link verse
                         </button>
                       </div>
                     </motion.div>
@@ -2235,7 +2235,7 @@ function JournalsContent() {
                 onClick={() => handleEditKebabItem(activeKebabId, activeKebabType)}
                 className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-gray-800 dark:text-gray-200"
               >
-                <span>{activeKebabType === 'prayer' ? 'Edit Prayer' : 'Edit Journal'}</span>
+                <span>{activeKebabType === 'prayer' ? 'Edit prayer' : 'Edit journal'}</span>
                 <Edit2 className="w-3.5 h-3.5" />
               </button>
               {/* Delete — for both */}
@@ -2243,7 +2243,7 @@ function JournalsContent() {
                 onClick={() => handleTriggerDelete(activeKebabId, activeKebabType)}
                 className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[#FF4D4F]"
               >
-                <span>{activeKebabType === 'prayer' ? 'Delete Prayer' : 'Delete Journal'}</span>
+                <span>{activeKebabType === 'prayer' ? 'Delete prayer' : 'Delete journal'}</span>
                 <Trash2 className="w-3.5 h-3.5" />
               </button>
             </motion.div>
@@ -2301,7 +2301,7 @@ function JournalsContent() {
             >
               <div className="w-[100px] h-[5px] bg-gray-300 dark:bg-white/[0.12] rounded-full mx-auto mb-5 select-none shrink-0" />
               <h3 className="font-extrabold text-base text-gray-800 dark:text-[#F5F5F5] mb-2 text-center">
-                Delete {targetItem?.type === 'journal' ? 'Journal' : 'Prayer'}?
+                Delete {targetItem?.type === 'journal' ? 'journal' : 'prayer'}?
               </h3>
               <p className="text-xs text-gray-400 mb-6 text-center leading-relaxed">
                 Are you sure you want to delete this item? This action is permanent and cannot be undone.
@@ -2363,7 +2363,7 @@ function JournalsContent() {
                     onClick={handleConfirmMarkAsPrayed}
                     className="flex-1 py-2.5 bg-[#0B7A81] hover:bg-[#086369] text-white rounded-xl text-xs font-bold active:scale-95 shadow-sm transition-all"
                   >
-                    Yes, Proceed
+                    Yes, proceed
                   </button>
                 </div>
               </div>
@@ -2387,7 +2387,7 @@ function JournalsContent() {
               <div className="w-[100px] h-[5px] bg-gray-300 dark:bg-white/[0.12] rounded-full mx-auto mb-5 select-none shrink-0" />
               
               <div className="flex items-center justify-between mb-4 border-b pb-3.5">
-                <h3 className="font-extrabold text-base text-gray-800 dark:text-[#F5F5F5]">Filter Content</h3>
+                <h3 className="font-extrabold text-base text-gray-800 dark:text-[#F5F5F5]">Filter content</h3>
                 <button
                   onClick={() => {
                     setFilterType('all');
@@ -2399,7 +2399,7 @@ function JournalsContent() {
                   }}
                   className="text-xs font-bold text-gray-400 hover:text-[#0B7A81]"
                 >
-                  Clear All
+                  Clear all
                 </button>
               </div>
 
@@ -2521,7 +2521,7 @@ function JournalsContent() {
                 onClick={() => setShowFilterSheet(false)}
                 className="w-full py-3.5 bg-[#0B7A81] hover:bg-[#086369] text-white rounded-xl text-xs font-extrabold text-center shadow-sm active:scale-95"
               >
-                Apply Filters
+                Apply filters
               </button>
             </motion.div>
           </div>
@@ -2557,7 +2557,7 @@ function JournalsContent() {
           }}
         >
           <div className="flex flex-col space-y-1.5">
-            <span className="text-xs font-extrabold text-[#0B7A81] dark:text-[#14B8A6] uppercase tracking-wider block">
+            <span className="text-xs font-extrabold text-[#0B7A81] dark:text-[#14B8A6] tracking-wider block">
               {tooltip.label}
             </span>
             {tooltip.loading ? (

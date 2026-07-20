@@ -184,7 +184,7 @@ export default function FontsSettingsModal({
         {/* THEME */}
         <div className="mb-6">
           <p className="text-xs mb-3 font-medium tracking-wider opacity-60" style={{ color: theme.subText }}>
-            Theme Selection
+            Theme selection
           </p>
 
           <div className="grid grid-cols-4 justify-items-center gap-2.5 w-full px-1">
@@ -212,7 +212,7 @@ export default function FontsSettingsModal({
                     <Icon size={16} style={{ color: iconColor }} className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`} />
                   </button>
                   <span
-                    className="text-[10px] font-bold uppercase tracking-wide transition-colors duration-300"
+                    className="text-[10px] font-bold tracking-wide transition-colors duration-300"
                     style={{ color: active ? "var(--color-primary-teal)" : theme.subText }}
                   >
                     {label}
@@ -226,7 +226,7 @@ export default function FontsSettingsModal({
         {/* TRANSITIONS */}
         <div>
           <p className="text-xs mb-3 font-medium tracking-wider opacity-60" style={{ color: theme.subText }}>
-            Page Transitions
+            Page transitions
           </p>
 
           <div className="grid grid-cols-4 justify-items-center gap-2.5 w-full px-1">
@@ -255,7 +255,7 @@ export default function FontsSettingsModal({
                        style={{ background: active ? 'rgba(65, 173, 176, 0.12)' : 'transparent' }}>
                     <Icon size={16} style={{ color: active ? "var(--color-primary-teal)" : theme.text }} />
                   </div>
-                  <span className="text-[9px] font-bold uppercase tracking-tight"
+                  <span className="text-[9px] font-bold tracking-tight"
                         style={{ color: active ? "var(--color-primary-teal)" : theme.text }}>
                     {t.label}
                   </span>

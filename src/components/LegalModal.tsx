@@ -51,7 +51,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
             <DialogContent className="max-w-[700px] w-[95vw] max-h-[85vh] p-0 overflow-hidden bg-white rounded-3xl border-none shadow-2xl">
                 <DialogHeader className="p-6 border-b border-gray-100 flex flex-row items-center justify-between sticky top-0 bg-white z-10">
                     <DialogTitle className="text-2xl font-bold text-slate-900">
-                        {type === 'terms' ? 'Terms & Conditions' : 'Privacy Policy'}
+                        {type === 'terms' ? 'Terms & conditions' : 'Privacy policy'}
                     </DialogTitle>
                     <DialogClose asChild>
                         <button className="p-2 hover:bg-gray-100 rounded-full transition-colors">
@@ -73,7 +73,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
                                 onClick={fetchContent}
                                 className="px-6 py-2 bg-[var(--color-primary-teal)] text-white rounded-xl font-bold hover:opacity-90 transition-opacity"
                             >
-                                Try Again
+                                Try again
                             </button>
                         </div>
                     ) : (
@@ -90,7 +90,7 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
                                             dangerouslySetInnerHTML={{ __html: content.content }}
                                         />
                                         <div className="mt-12 pt-6 border-t border-gray-100 text-sm text-slate-400 font-medium italic">
-                                            Last Updated: {new Date(content.lastUpdated).toLocaleDateString('en-US', {
+                                            Last updated: {new Date(content.lastUpdated).toLocaleDateString('en-US', {
                                                 year: 'numeric',
                                                 month: 'long',
                                                 day: 'numeric'

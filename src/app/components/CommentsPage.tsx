@@ -212,9 +212,9 @@ export default function CommentsPage({ onBack }: CommentsPageProps = {}) {
                   >
                     {/* Top Row: Type, Date & Relative Time */}
                     <div className="flex items-center justify-between text-xs text-gray-400 dark:text-gray-500 mb-3 select-none">
-                      <span className="font-semibold text-[#0B7A81] uppercase tracking-wider">
-                        {item.contentType === 'daily-verse' && 'Daily Verse'}
-                        {item.contentType === 'daily-devotion' && 'Daily Devotion'}
+                      <span className="font-semibold text-[#0B7A81] tracking-wider">
+                        {item.contentType === 'daily-verse' && 'Daily verse'}
+                        {item.contentType === 'daily-devotion' && 'Daily devotion'}
                         {item.contentType === 'verse' && 'Verse'}
                         {item.contentType === 'devotion' && 'Devotional'}
                       </span>

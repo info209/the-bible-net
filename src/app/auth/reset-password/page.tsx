@@ -76,7 +76,7 @@ function ResetPasswordContent() {
             className="w-full max-w-md glass-ios border-none p-8 space-y-8 relative overflow-hidden shadow-2xl"
         >
             <div className="text-center space-y-3 pt-2">
-                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">New Password</h1>
+                <h1 className="text-3xl font-extrabold text-slate-900 tracking-tight font-sans">New password</h1>
                 <p className="text-slate-500/80 font-medium leading-relaxed px-6">Secure your account with a fresh, strong password</p>
             </div>
 
@@ -94,7 +94,7 @@ function ResetPasswordContent() {
 
                 <div className="space-y-4">
                     <div className="space-y-1.5">
-                        <label className="text-sm font-bold text-slate-700 ml-1">New Password</label>
+                        <label className="text-sm font-bold text-slate-700 ml-1">New password</label>
                         <div className="relative group">
                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
                             <input
@@ -116,7 +116,7 @@ function ResetPasswordContent() {
                     </div>
 
                     <div className="space-y-1.5">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Confirm Password</label>
+                        <label className="text-sm font-bold text-slate-700 ml-1">Confirm password</label>
                         <div className="relative group">
                             <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
                             <input
@@ -133,7 +133,7 @@ function ResetPasswordContent() {
 
                 <div className="grid grid-cols-2 gap-2 p-4 bg-slate-50/50 backdrop-blur-sm rounded-2xl border border-slate-200/40 shadow-inner">
                     {validations.map((v, i) => (
-                        <div key={i} className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-wider transition-colors ${v.met ? 'text-[var(--color-primary-teal)]' : 'text-slate-400'}`}>
+                        <div key={i} className={`flex items-center gap-2 text-[10px] font-black tracking-wider transition-colors ${v.met ? 'text-[var(--color-primary-teal)]' : 'text-slate-400'}`}>
                             {v.met ? <Check className="w-3.5 h-3.5 stroke-[4px]" /> : <X className="w-3.5 h-3.5 stroke-[4px]" />}
                             {v.label}
                         </div>
@@ -147,7 +147,7 @@ function ResetPasswordContent() {
                 >
                     {loading ? (
                         <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : 'Confirm Reset'}
+                    ) : 'Confirm reset'}
                 </button>
             </form>
         </motion.div>

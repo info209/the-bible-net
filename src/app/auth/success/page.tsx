@@ -20,18 +20,18 @@ function SuccessPageContent() {
             showSkip: true,
         },
         profile: {
-            title: 'Profile Updated!',
+            title: 'Profile updated',
             message: 'Your profile has been successfully personalized. You are all set to explore!',
             icon: <CheckCircle className="w-12 h-12 text-white" />,
-            buttonText: 'Go to Home',
+            buttonText: 'Go to home',
             buttonAction: () => router.push('/home'),
             showSkip: false,
         },
         password: {
-            title: 'Password Updated Successfully',
+            title: 'Password updated successfully',
             message: 'Your password has been changed. You can now login with your new credentials.',
             icon: <ShieldCheck className="w-12 h-12 text-white" />,
-            buttonText: 'Go to Login',
+            buttonText: 'Go to log in',
             buttonAction: () => router.push('/auth/login'),
             showSkip: false,
         }
@@ -88,7 +88,7 @@ function SuccessPageContent() {
                 <button onClick={() => router.push('/home')} className="text-slate-400 hover:text-[var(--color-primary-teal)] transition-all hover:scale-110" title="Home">
                     <Home className="w-6 h-6" />
                 </button>
-                <button onClick={() => router.push('/auth/login')} className="text-slate-400 hover:text-[var(--color-primary-teal)] transition-all hover:scale-110" title="Sign In">
+                <button onClick={() => router.push('/auth/login')} className="text-slate-400 hover:text-[var(--color-primary-teal)] transition-all hover:scale-110" title="Sign in">
                     <LogIn className="w-6 h-6" />
                 </button>
             </div>

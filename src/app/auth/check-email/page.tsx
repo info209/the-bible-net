@@ -28,7 +28,7 @@ export default function CheckEmail() {
                     <MailOpen className="w-12 h-12 text-[var(--color-primary-teal)] relative z-10" />
                 </div>
                 <div className="space-y-3">
-                    <h1 className="text-4xl font-black text-slate-900 tracking-tighter font-sans">Check Inbox</h1>
+                    <h1 className="text-4xl font-black text-slate-900 tracking-tighter font-sans">Check inbox</h1>
                     <p className="text-slate-500/90 font-medium px-4 leading-relaxed">
                         A secure magic link has been dispatched to your email address. Follow it to reset your credentials.
                     </p>
@@ -42,7 +42,7 @@ export default function CheckEmail() {
                     className="w-full bg-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-dark)] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg"
                 >
                     <RefreshCw className={`w-5 h-5 ${resending ? 'animate-spin' : ''}`} />
-                    {resending ? 'Resending Link...' : 'Resend Email'}
+                    {resending ? 'Resending link...' : 'Resend email'}
                 </button>
                 
                 <button 
@@ -50,7 +50,7 @@ export default function CheckEmail() {
                     className="text-slate-500 font-bold text-sm hover:text-[var(--color-primary-teal)] transition-colors flex items-center gap-2 mx-auto group"
                 >
                     <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-                    Back to Sign In
+                    Back to sign in
                 </button>
             </div>
         </motion.div>
