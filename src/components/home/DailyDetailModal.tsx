@@ -745,7 +745,7 @@ export function DailyDetailModal({
                                                             item.devotionalVerseBlocks.map((block, blockIdx) => (
                                                                 <React.Fragment key={blockIdx}>
                                                                     <div className="mt-6 text-left w-full">
-                                                                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily Devotional</h4>
+                                                                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily devotional</h4>
                                                                         <h3 className="text-black text-lg font-bold tracking-tight mt-0.5">
                                                                             {block.ref}
                                                                         </h3>
