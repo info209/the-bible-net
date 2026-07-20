@@ -990,11 +990,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     setSelectedTimer('stop');
   };
 
-  const startNarration = (fromVerse: number = 1) => {
+  const startNarration = (fromVerse: number = 1): boolean => {
     console.log('startNarration called with fromVerse:', fromVerse);
     if (!('speechSynthesis' in window)) {
       toast.warning('Text-to-speech is not supported in your browser.');
-      return;
+      return false;
     }
 
     // ── Voice availability check ───────────────────────────────────────────────────
@@ -1013,7 +1013,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           `${langLabel} voice is not available on this device/browser. ` +
           `Please install a ${langLabel} TTS voice or use a mobile browser.`
         );
-        return;
+        return false;
       }
     }
     // Clear any previous error since the voice is available
@@ -1045,14 +1045,22 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
     const verses = getBibleContent();
     console.log('Got verses:', verses.length, 'verses');
-    if (verses.length === 0) return;
+    if (verses.length === 0) return false;
 
     narrationVerseIndexRef.current = fromVerse - 1;
     setNarrationPlaying(true);
     narrationPlayingRef.current = true;
     setNarrationActive(true);
     console.log('Starting to read verse index:', fromVerse - 1);
-    readNextVerse(verses, fromVerse - 1);
+
+    // Allow speechSynthesis.cancel() to fully settle in the browser's Web Speech API engine
+    // before dispatching the new utterance.
+    setTimeout(() => {
+      if (!narrationPlayingRef.current) return;
+      readNextVerse(verses, fromVerse - 1);
+    }, 60);
+
+    return true;
   };
 
   const readNextVerse = async (verses: any[], index: number) => {
@@ -1089,16 +1097,20 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       announcementUtterance.onerror = (event: any) => {
         // Check if this is a real error or just a cancellation
         if (event.error === 'canceled' || event.error === 'interrupted') {
-          console.log('Chapter announcement canceled/interrupted (expected)');
-          return;
+          console.log('Chapter announcement canceled/interrupted');
+          if (!narrationPlayingRef.current) {
+            return;
+          }
         }
 
         // Log actual errors with error type
         console.error('Chapter announcement error type:', event.error || 'unknown');
         console.error('Chapter announcement error details:', event);
 
-        // Continue anyway - don't let announcement errors block verse reading
-        continueReadingFromFirstVerse(verses);
+        // Continue anyway if narration is still supposed to be active
+        if (narrationPlayingRef.current) {
+          continueReadingFromFirstVerse(verses);
+        }
       };
 
       const continueReadingFromFirstVerse = (verses: any[]) => {
@@ -1434,8 +1446,33 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
   };
 
-  const resumeNarration = () => {
+  const resumeNarration = (): boolean => {
     console.log('resumeNarration called. currentReadingVerse:', currentReadingVerse, 'selectedVerse:', selectedVerse, 'wasStopped:', wasStoppedRef.current);
+
+    if (!('speechSynthesis' in window)) {
+      toast.warning('Text-to-speech is not supported in your browser.');
+      return false;
+    }
+
+    const currentVersionObj = (apiVersions || fallbackVersions).find(
+      v => v.name === selectedVersion || v.id === selectedVersion
+    );
+    const lang = currentVersionObj?.language;
+    const targetLang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
+    const isNonEnglish = targetLang !== 'en-US';
+
+    if (isNonEnglish) {
+      const matchedVoice = findVoiceForLang(targetLang);
+      if (!matchedVoice) {
+        const langLabel = lang === 'Telugu' ? 'Telugu' : lang === 'Hindi' ? 'Hindi' : lang;
+        setTtsVoiceError(
+          `${langLabel} voice is not available on this device/browser. ` +
+          `Please install a ${langLabel} TTS voice or use a mobile browser.`
+        );
+        return false;
+      }
+    }
+    setTtsVoiceError(null);
 
     // If there was a sleep timer active, check if it has already expired
     if (selectedTimer !== 'stop' && selectedTimer !== 'end-chapter') {
@@ -1444,7 +1481,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         if (remaining <= 0) {
           console.log('[Timer] Sleep timer already expired on resume, not resuming');
           handleTimerExpired();
-          return;
+          return false;
         }
         console.log(`[Timer] Resuming narration with active sleep timer (remaining: ${Math.round(remaining / 1000)}s)`);
       } else {
@@ -1469,15 +1506,22 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
     console.log('Resuming from verse:', resumeFrom);
 
-    // Don't call startNarration as it would reset the sleep timer.
-    // Instead, manually bootstrap the narration from the resume point.
     const verses = getBibleContent();
-    if (verses.length === 0) return;
+    if (verses.length === 0) return false;
+
+    // Ensure any lingering speech is cancelled with a brief settling delay before resume
+    window.speechSynthesis.cancel();
 
     narrationVerseIndexRef.current = resumeFrom - 1;
     setNarrationPlaying(true);
     narrationPlayingRef.current = true;
-    readNextVerse(verses, resumeFrom - 1);
+
+    setTimeout(() => {
+      if (!narrationPlayingRef.current) return;
+      readNextVerse(verses, resumeFrom - 1);
+    }, 60);
+
+    return true;
   };
 
   const stopNarration = () => {
@@ -1517,16 +1561,20 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         // Narration has never started, or it was fully stopped.
         // Always begin from verse 1 of the current chapter.
         console.log('Starting narration from verse 1 (initial or post-stop)');
-        startNarration(1);     // sets narrationActive=true internally
-        setAudioPlaying(true);
+        const started = startNarration(1);     // sets narrationActive=true internally
+        if (started) {
+          setAudioPlaying(true);
+        }
       } else {
         // ── RESUME ─────────────────────────────────────────────────────────
         // Narration was started then paused. Resume from the remembered verse
         // (currentReadingVerse), NOT from selectedVerse which defaults to 1.
         console.log('Resuming narration from paused position');
-        resumeNarration();     // uses currentReadingVerse || selectedVerse || 1
-        setAudioPlaying(true);
-        setNarrationActive(true);
+        const resumed = resumeNarration();     // uses currentReadingVerse || selectedVerse || 1
+        if (resumed) {
+          setAudioPlaying(true);
+          setNarrationActive(true);
+        }
       }
     }
   };

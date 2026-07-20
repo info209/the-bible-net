@@ -652,7 +652,7 @@ export default function HomeView() {
                               >
                                 <Bookmark className="w-3.5 h-3.5 text-[#0B7A81]" />
                                 <span className="text-gray-800">
-                                  {isSaved(content.verseBook || '', Number(content.verseChapter) || 1, [Number(content.verseNumber) || 1]) ? 'Saved' : 'Save Verse'}
+                                  {isSaved(content.verseBook || '', Number(content.verseChapter) || 1, [Number(content.verseNumber) || 1]) ? 'Saved' : 'Save verse'}
                                 </span>
                               </button>
                             </div>
