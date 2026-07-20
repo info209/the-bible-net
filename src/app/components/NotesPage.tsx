@@ -596,7 +596,7 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
             <div className="mt-4 flex flex-col">
               <div className="flex items-center gap-3">
                 <MessageSquare className="w-5 h-5 text-gray-400" />
-                <span className="text-xs text-gray-400 font-semibold uppercase tracking-wide">Write Note</span>
+                <span className="text-xs text-gray-400 font-semibold tracking-wide">Write note</span>
               </div>
               
               {/* Primary Large Editor text area */}
@@ -612,7 +612,7 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
             {/* Verse Previews list */}
             {noteVerses.length > 0 && (
               <div className="mt-6 space-y-4 pt-4 border-t border-gray-100 dark:border-white/[0.04]">
-                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Linked Verses</p>
+                <p className="text-xs font-semibold text-gray-400 tracking-wide">Linked verses</p>
                 {noteVerses.map((vRef, idx) => {
                   const r = `${vRef.bookName} ${vRef.chapter}:${vRef.verses.join(', ')}`;
                   return (

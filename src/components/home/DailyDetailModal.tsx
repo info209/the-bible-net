@@ -558,10 +558,10 @@ export function DailyDetailModal({
                 {!isVerse && progress !== 'COMPLETED' && (
                     <button
                         onClick={() => handleCompleteDevotional(content.date, progress)}
-                        className="w-full py-3.5 font-extrabold rounded-2xl shadow-xl transition-all duration-200 tracking-wider text-center uppercase text-sm select-none flex items-center justify-center gap-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] text-white"
+                        className="w-full py-3.5 font-extrabold rounded-2xl shadow-xl transition-all duration-200 tracking-wider text-center text-sm select-none flex items-center justify-center gap-2 bg-gradient-to-r from-teal-400 to-cyan-500 hover:from-teal-500 hover:to-cyan-600 active:scale-[0.98] text-white"
                         aria-label="Mark devotional as complete"
                     >
-                        Complete Devotion
+                        Complete devotion
                     </button>
                 )}
 
@@ -705,7 +705,7 @@ export function DailyDetailModal({
                                                 </>
                                             ) : (
                                                 <div className="text-center py-10 opacity-70">
-                                                    <p className="text-black/70 text-xs mb-2 uppercase tracking-widest font-bold">Daily Verse</p>
+                                                    <p className="text-black/70 text-xs mb-2 tracking-widest font-bold">Daily verse</p>
                                                     <p className="text-black text-lg">Today&apos;s verse will be available soon.</p>
                                                 </div>
                                             )}
@@ -792,7 +792,7 @@ export function DailyDetailModal({
                                                     {/* ── C. Devotional Content (Title & Body) ────────────── */}
                                                     <div className="flex flex-col space-y-4">
                                                         <div className="text-left w-full">
-                                                            <p className="text-black/70 text-xs uppercase tracking-widest font-bold">Devotional Reading</p>
+                                                            <p className="text-black/70 text-xs tracking-widest font-bold">Devotional reading</p>
                                                             <h3 className="text-black text-lg font-bold tracking-tight mt-0.5">{item.devotionalTitle}</h3>
                                                         </div>
                                                         <p className="text-black/90 text-sm md:text-base leading-relaxed text-left whitespace-pre-wrap font-sans mt-2">
@@ -806,7 +806,7 @@ export function DailyDetailModal({
                                                             <div className="h-px bg-gradient-to-r from-transparent via-black/15 to-transparent w-full" />
                                                             <div id="section-prayer" className="flex flex-col space-y-4">
                                                                 <div className="text-left w-full">
-                                                                    <p className="text-black/70 text-xs uppercase tracking-widest font-bold">Daily Prayer</p>
+                                                                    <p className="text-black/70 text-xs tracking-widest font-bold">Daily prayer</p>
                                                                     {item.prayerTitle && (
                                                                         <h4 className="text-black text-lg font-bold tracking-tight mt-0.5">{item.prayerTitle}</h4>
                                                                     )}
@@ -825,9 +825,9 @@ export function DailyDetailModal({
                                                         {/* Weekly Progress Indicator */}
                                                         <div className="w-full flex items-center justify-between px-4 py-3 rounded-2xl bg-white/10 backdrop-blur-sm border border-black/15">
                                                             <div>
-                                                                <p className="text-black/60 text-xs uppercase tracking-widest font-semibold mb-0.5">Weekly Progress</p>
+                                                                <p className="text-black/60 text-xs tracking-widest font-semibold mb-0.5">Weekly progress</p>
                                                                 <p className="text-black font-bold text-base">
-                                                                    {weeklyCompletedCount} of {contents.length} Completed
+                                                                    {weeklyCompletedCount} of {contents.length} completed
                                                                 </p>
                                                             </div>
                                                             <div className="flex gap-1">
@@ -866,7 +866,7 @@ export function DailyDetailModal({
                                                 </>
                                             ) : (
                                                 <div className="text-center py-12 bg-white/5 rounded-3xl border border-black/10">
-                                                    <p className="text-black/70 text-sm uppercase tracking-widest font-semibold">Daily Devotional</p>
+                                                    <p className="text-black/70 text-sm tracking-widest font-semibold">Daily devotional</p>
                                                     <p className="text-black/50 text-sm mt-2">Not available for this day.</p>
                                                 </div>
                                             )}

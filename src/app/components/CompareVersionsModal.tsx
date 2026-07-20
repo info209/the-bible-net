@@ -96,7 +96,7 @@ export default function CompareVersionsModal({
         >
           {/* Header */}
           <ModalHeader
-            title="Compare Versions"
+            title="Compare versions"
             onClose={onClose}
             textCol={textCol}
             borderCol={borderCol}
@@ -113,7 +113,7 @@ export default function CompareVersionsModal({
 
                 return (
                   <div key={language} className="space-y-2">
-                    <p className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: subTextCol }}>
+                    <p className="text-xs font-bold tracking-wider mb-2" style={{ color: subTextCol }}>
                       {language}
                     </p>
                     <div className="space-y-2">

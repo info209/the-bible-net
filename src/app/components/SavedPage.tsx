@@ -392,13 +392,13 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
               className="bg-white dark:bg-[#1a1a1a] rounded-2xl w-full max-w-sm p-5 shadow-xl border border-gray-100 dark:border-white/[0.08]"
             >
               <h3 className="text-[16px] font-[600] text-gray-900 dark:text-white">
-                Edit Labels & Privacy
+                Edit labels & privacy
               </h3>
               
               <div className="mt-4 space-y-4">
                 {/* Labels Edit */}
                 <div>
-                  <label className="text-[12px] font-semibold text-gray-400 uppercase tracking-wide">
+                  <label className="text-[12px] font-semibold text-gray-400 tracking-wide">
                     Labels
                   </label>
                   

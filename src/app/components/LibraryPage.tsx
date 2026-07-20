@@ -123,7 +123,7 @@ export default function LibraryPage() {
               <span>Journals</span>
             </h2>
             {activeTab === 'all' && (
-              <button className="text-[var(--color-primary-teal)] text-sm font-medium hover:underline">View All</button>
+              <button className="text-[var(--color-primary-teal)] text-sm font-medium hover:underline">View all</button>
             )}
           </div>
 
@@ -152,10 +152,10 @@ export default function LibraryPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-800 flex items-center space-x-2">
               <Heart className="size-5 text-[var(--color-accent-rose)]" />
-              <span>Prayer Requests</span>
+              <span>Prayer requests</span>
             </h2>
             {activeTab === 'all' && (
-              <button className="text-[var(--color-primary-teal)] text-sm font-medium hover:underline">View All</button>
+              <button className="text-[var(--color-primary-teal)] text-sm font-medium hover:underline">View all</button>
             )}
           </div>
 
@@ -177,7 +177,7 @@ export default function LibraryPage() {
                 </div>
                 <div className="flex space-x-2">
                   <button className="flex-1 py-2 bg-[#e6f0f1] text-[var(--color-primary-teal)] rounded-lg text-sm font-medium hover:bg-[#d0e5e7] transition-colors">
-                    View Details
+                    View details
                   </button>
                   <button className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg text-sm hover:bg-gray-200 transition-colors">
                     Edit
@@ -194,10 +194,10 @@ export default function LibraryPage() {
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-gray-800 flex items-center space-x-2">
               <BookOpen className="size-5 text-[var(--color-primary-teal)]" />
-              <span>Bookmarked Verses</span>
+              <span>Bookmarked verses</span>
             </h2>
             {activeTab === 'all' && (
-              <button className="text-[var(--color-primary-teal)] text-sm font-medium hover:underline">View All</button>
+              <button className="text-[var(--color-primary-teal)] text-sm font-medium hover:underline">View all</button>
             )}
           </div>
 

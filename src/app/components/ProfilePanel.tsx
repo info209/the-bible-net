@@ -70,8 +70,8 @@ const gridItems: Array<{
   { icon: FileText,      label: 'Notes',              view: 'notes'      },
   { icon: Highlighter,   label: 'Highlights',         view: 'highlights' },
   { icon: Heart,         label: 'Likes',              view: 'likes'      },
-  { icon: MessageCircle, label: 'Comment',            view: 'comments'   },
-  { icon: BookMarked,    label: 'Journals\n& Prayers', view: 'journals'   },
+  { icon: MessageCircle, label: 'Comments',           view: 'comments'   },
+  { icon: BookMarked,    label: 'Journals\n& prayers', view: 'journals'   },
   { icon: Zap,           label: 'Streaks',            view: 'streaks'    },
   { icon: Share2,        label: 'Share',              view: 'share'      },
   { icon: HandHeart,     label: 'Support',            view: 'support'    },
@@ -409,14 +409,14 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
                   </button>
                 </div>
 
-                {/* Logout */}
+                {/* Log out */}
                 <button
                   type="button"
                   onClick={handleLogout}
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-red-50 hover:bg-red-100 active:scale-[0.98] transition-all duration-150 border border-red-100"
                 >
                   <LogOut className="w-4 h-4 text-red-600" />
-                  <span className="text-sm font-semibold text-red-600">Logout</span>
+                  <span className="text-sm font-semibold text-red-600">Log out</span>
                 </button>
               </div>
             </ScrollArea>

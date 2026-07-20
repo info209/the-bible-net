@@ -27,7 +27,7 @@ export default async function ShareDevotionPage({ params }: { params: { id: stri
     return (
         <div className="min-h-screen bg-gradient-to-br from-pink-100 to-rose-200 flex items-center justify-center p-6">
             <div className="bg-white rounded-3xl p-8 shadow-2xl max-w-md w-full text-center">
-                <p className="text-rose-600 font-bold uppercase tracking-widest text-xs mb-4">Daily Devotional</p>
+                <p className="text-rose-600 font-bold tracking-widest text-xs mb-4">Daily devotional</p>
                 <h2 className="text-2xl font-bold text-gray-800 mb-2">{devotion.title}</h2>
                 <p className="text-gray-500 text-sm mb-6">{devotion.reference}</p>
                 <div className="h-px bg-gray-100 my-6" />
@@ -38,7 +38,7 @@ export default async function ShareDevotionPage({ params }: { params: { id: stri
                     href={`/devotion/${devotion._id}`}
                     className="inline-block bg-rose-500 text-white px-8 py-3 rounded-full font-bold shadow-lg hover:bg-rose-600 transition-all"
                 >
-                    Read Full Story
+                    Read full story
                 </Link>
             </div>
         </div>

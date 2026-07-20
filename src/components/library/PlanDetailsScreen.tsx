@@ -103,13 +103,13 @@ export default function PlanDetailsScreen({
                   : 'bg-red-100 text-red-700'
               }`}
             >
-              {plan.difficulty.charAt(0).toUpperCase() + plan.difficulty.slice(1)} Level
+              {plan.difficulty.charAt(0).toUpperCase() + plan.difficulty.slice(1)} level
             </span>
           </div>
 
           {/* About the Plan */}
           <div className="space-y-3">
-            <h3 className="text-xl font-bold text-gray-900">About This Plan</h3>
+            <h3 className="text-xl font-bold text-gray-900">About this plan</h3>
             <div className="text-gray-700 leading-relaxed space-y-3">
               {plan.description.split('\n\n').map((paragraph, idx) => (
                 <p key={idx}>{paragraph}</p>

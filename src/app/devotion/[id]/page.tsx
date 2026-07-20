@@ -10,10 +10,10 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
             return { title: 'Devotional' };
         }
         return {
-            title: devotion.title || 'Daily Devotional',
+            title: devotion.title || 'Daily devotional',
         };
     } catch {
-        return { title: 'Daily Devotional' };
+        return { title: 'Daily devotional' };
     }
 }
 
@@ -27,7 +27,7 @@ export default async function DevotionPage({ params }: { params: { id: string } 
     return (
         <div className="max-w-2xl mx-auto p-6 bg-white min-h-screen">
             <header className="mb-8">
-                <p className="text-teal-600 font-medium mb-1 uppercase tracking-wider text-sm">Daily Devotional</p>
+                <p className="text-teal-600 font-medium mb-1 tracking-wider text-sm">Daily devotional</p>
                 <h1 className="text-3xl font-bold text-gray-900 mb-2">{devotion.title}</h1>
                 <p className="text-gray-500">{devotion.reference}</p>
             </header>

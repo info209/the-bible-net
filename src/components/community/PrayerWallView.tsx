@@ -165,7 +165,7 @@ export default function PrayerWallView() {
               <ArrowLeft className="size-6 text-gray-700" />
             </button>
             <div>
-              <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Community Prayer Wall</h1>
+              <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Community prayer wall</h1>
               <p className="text-xs text-gray-500 font-medium">Supporting one another in faith</p>
             </div>
           </div>
@@ -299,7 +299,7 @@ export default function PrayerWallView() {
                           : `${prayer.userId?.firstName || 'User'}${prayer.userId?.lastName?.[0] ? ' ' + prayer.userId.lastName[0] : ''}`
                         }
                       </h4>
-                      <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                      <p className="text-[10px] font-bold tracking-wider text-gray-400">
                         {new Date(prayer.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>
@@ -371,7 +371,7 @@ export default function PrayerWallView() {
                   placeholder="What would you like the community to pray for?"
                   className="w-full bg-gray-50/50 rounded-xl p-4 text-gray-800 placeholder:text-gray-400 outline-none ring-2 ring-transparent focus:ring-[var(--color-primary-teal)]/20 focus:bg-white transition-all min-h-[160px] resize-none font-medium"
                 />
-                <div className="absolute bottom-4 right-4 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
+                <div className="absolute bottom-4 right-4 text-[10px] font-bold text-gray-400 tracking-widest">
                   {newPrayerText.length}/1000
                 </div>
               </div>

@@ -415,7 +415,7 @@ export default function VerseActionMenu({
                           <BookmarkPlus className="w-[18px] h-[18px] text-[#31C4BE]" />
                         </div>
                         <h3 className="text-[13px] font-bold mb-0.5" style={{ color: labelText }}>
-                          Login to Save & Highlight
+                          Log in to save & highlight
                         </h3>
                         <p className="text-[10px] mb-3 leading-relaxed" style={{ color: subText }}>
                           Sign in to save verses, highlight, and take personal notes.
@@ -425,7 +425,7 @@ export default function VerseActionMenu({
                             href="/auth/login"
                             className="flex-1 py-2 bg-[#31C4BE] text-white text-[12px] font-bold rounded-[12px] shadow-[0_4px_15px_rgba(49,196,190,0.22)] active:scale-95 transition-all text-center"
                           >
-                            Login
+                            Log in
                           </Link>
                         </div>
                       </div>

@@ -258,9 +258,9 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
 
                     {/* Top Row: Type & Date */}
                     <div className={`flex items-center justify-between text-xs mb-3 z-10 ${hasBgImage ? 'text-white/70' : 'text-gray-400 dark:text-gray-500'}`}>
-                      <span className={`font-semibold uppercase tracking-wider ${hasBgImage ? 'text-teal-300' : 'text-[#0B7A81]'}`}>
-                        {item.contentType === 'daily-verse' && 'Daily Verse'}
-                        {item.contentType === 'daily-devotion' && 'Daily Devotion'}
+                      <span className={`font-semibold tracking-wider ${hasBgImage ? 'text-teal-300' : 'text-[#0B7A81]'}`}>
+                        {item.contentType === 'daily-verse' && 'Daily verse'}
+                        {item.contentType === 'daily-devotion' && 'Daily devotion'}
                         {item.contentType === 'verse' && 'Verse'}
                         {item.contentType === 'devotion' && 'Devotional'}
                       </span>

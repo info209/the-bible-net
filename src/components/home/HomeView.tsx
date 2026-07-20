@@ -22,9 +22,9 @@ import verseTexture from '../../../assets/textures/verse-texture.svg';
 import devotionalTexture from '../../../assets/textures/devotional-texture.svg';
 
 const getGreetingByHour = (hour: number): string => {
-  if (hour >= 5 && hour < 12) return 'Good Morning';
-  if (hour >= 12 && hour < 17) return 'Good Afternoon';
-  return 'Good Evening';
+  if (hour >= 5 && hour < 12) return 'Good morning';
+  if (hour >= 12 && hour < 17) return 'Good afternoon';
+  return 'Good evening';
 };
 
 export default function HomeView() {

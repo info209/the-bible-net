@@ -96,11 +96,11 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
                 <DropdownMenuGroup className="py-1.5">
                   <DropdownMenuItem onClick={() => navigateTo('/auth/login')} className="px-4 py-3 gap-3 cursor-pointer font-medium">
                     <LogIn className="w-4 h-4 text-primary-teal" />
-                    <span>Login</span>
+                    <span>Log in</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigateTo('/auth/register')} className="px-4 py-3 gap-3 cursor-pointer">
                     <UserPlus className="w-4 h-4 text-gray-400" />
-                    <span>Create Account</span>
+                    <span>Create account</span>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
               </DropdownMenuContent>

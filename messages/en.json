@@ -1,13 +1,13 @@
 {
     "Index": {
         "title": "The Bible Net",
-        "subtitle": "Read, Study, and Share the Word of God",
-        "getStarted": "Get Started",
-        "learnMore": "Learn More"
+        "subtitle": "Read, study, and share the Word of God",
+        "getStarted": "Get started",
+        "learnMore": "Learn more"
     },
     "Auth": {
-        "signin": "Sign In",
-        "signout": "Sign Out",
+        "signin": "Sign in",
+        "signout": "Sign out",
         "register": "Register"
     },
     "Navigation": {

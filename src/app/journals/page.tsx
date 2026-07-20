@@ -2121,7 +2121,7 @@ function JournalsContent() {
                       <div className="mt-4 space-y-3.5">
                         {/* Book Selector */}
                         <div>
-                          <label className="text-[10px] font-bold text-gray-400 uppercase">Bible Book</label>
+                          <label className="text-[10px] font-bold text-gray-400">Bible book</label>
                           <select
                             value={pickerBook}
                             onChange={(e) => setPickerBook(e.target.value)}
@@ -2136,7 +2136,7 @@ function JournalsContent() {
                         {/* Chapter / Verse inputs */}
                         <div className="grid grid-cols-3 gap-2">
                           <div>
-                            <label className="text-[10px] font-bold text-gray-400 uppercase">Chapter</label>
+                            <label className="text-[10px] font-bold text-gray-400">Chapter</label>
                             <input
                               type="number"
                               min={1}
@@ -2146,7 +2146,7 @@ function JournalsContent() {
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] font-bold text-gray-400 uppercase">Verse Start</label>
+                            <label className="text-[10px] font-bold text-gray-400">Verse start</label>
                             <input
                               type="number"
                               min={1}
@@ -2160,7 +2160,7 @@ function JournalsContent() {
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] font-bold text-gray-400 uppercase">Verse End</label>
+                            <label className="text-[10px] font-bold text-gray-400">Verse end</label>
                             <input
                               type="number"
                               min={1}
@@ -2406,7 +2406,7 @@ function JournalsContent() {
               <div className="space-y-4 max-h-[300px] overflow-y-auto scrollbar-none pr-1 mb-6">
                 {/* Filter Category type */}
                 <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1.5">Document Type</span>
+                  <span className="text-[10px] font-bold text-gray-400 tracking-wide block mb-1.5">Document type</span>
                   <div className="flex bg-[#F1F2F3] dark:bg-white/[0.04] p-0.5 rounded-lg w-fit">
                     {(['all', 'journal', 'prayer'] as const).map(t => (
                       <button
@@ -2427,7 +2427,7 @@ function JournalsContent() {
                 {/* Conditional Prayer Status Filter */}
                 {(filterType === 'prayer' || filterType === 'all') && (
                   <div>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1.5">Prayer Status</span>
+                    <span className="text-[10px] font-bold text-gray-400 tracking-wide block mb-1.5">Prayer status</span>
                     <div className="flex gap-2">
                       {(['All', 'Active', 'Prayed'] as PrayerStatusFilter[]).map((f) => (
                         <button
@@ -2446,7 +2446,7 @@ function JournalsContent() {
 
                 {/* Filter Pinning */}
                 <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1.5">Pinned Status</span>
+                  <span className="text-[10px] font-bold text-gray-400 tracking-wide block mb-1.5">Pinned status</span>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setFilterPinned(null)}
@@ -2477,7 +2477,7 @@ function JournalsContent() {
 
                 {/* Filter Bookmarked */}
                 <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1.5">Bookmarked Status</span>
+                  <span className="text-[10px] font-bold text-gray-400 tracking-wide block mb-1.5">Bookmarked status</span>
                   <div className="flex gap-2">
                     <button
                       onClick={() => setFilterBookmarked(null)}
@@ -2500,7 +2500,7 @@ function JournalsContent() {
 
                 {/* Filter Date updated */}
                 <div>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide block mb-1.5">Last Modification Date</span>
+                  <span className="text-[10px] font-bold text-gray-400 tracking-wide block mb-1.5">Last modification date</span>
                   <div className="flex flex-wrap gap-2">
                     {(['all', 'today', 'week', 'month'] as const).map(d => (
                       <button
