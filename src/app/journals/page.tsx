@@ -1824,7 +1824,7 @@ function JournalsContent() {
                 /* Primary Content Rich Text Editor (contentEditable / textarea) */
                 <div className="flex-1 flex flex-col min-h-[300px]">
                   {/* ── Rich Editor Toolbar ──────────────────────────────── */}
-                  <div className="px-2 py-1 bg-[#F7F7F7] dark:bg-white/[0.04] rounded-t-xl flex items-center gap-0.5 border border-b-0 border-[#E6E6E6] dark:border-white/[0.08] overflow-x-auto scrollbar-none flex-wrap min-h-[44px]">
+                  <div className="relative z-10 px-2 py-1 bg-[#F7F7F7] dark:bg-white/[0.04] rounded-t-xl flex items-center gap-0.5 border border-b-0 border-[#E6E6E6] dark:border-white/[0.08] flex-wrap min-h-[44px]">
 
                     {/* ── Inline Marks Group ── */}
                     <button
@@ -1958,18 +1958,18 @@ function JournalsContent() {
                     <div className="relative flex items-center">
                       <button
                         type="button"
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center"
+                        className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center ${showColorMenu === 'text' ? 'bg-gray-200 dark:bg-white/[0.1]' : ''}`}
                         title="Text Color"
                         aria-label="Text Color"
                         onClick={() => setShowColorMenu(showColorMenu === 'text' ? null : 'text')}
                       >
-                        <span className="font-bold border-b-2 border-black dark:border-white px-0.5 leading-none text-xs">A</span>
+                        <span className="font-bold border-b-2 border-current px-0.5 leading-none text-xs">A</span>
                       </button>
                       {showColorMenu === 'text' && (
                         <>
-                          <div className="fixed inset-0 z-45" onClick={() => setShowColorMenu(null)} />
-                          <div className="absolute top-8 left-0 z-50 bg-white dark:bg-[#111111] border border-gray-200 dark:border-white/[0.08] p-1.5 rounded-lg shadow-lg flex space-x-1">
-                            {['#000000', '#FF4D4F', '#1890FF', '#52C41A', '#FADB14', '#722ED1'].map(color => (
+                          <div className="fixed inset-0 z-40" onClick={() => setShowColorMenu(null)} />
+                          <div className="absolute top-full mt-1.5 left-0 z-50 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/[0.12] p-2 rounded-xl shadow-xl flex items-center gap-1.5 min-w-max">
+                            {['#000000', '#E23744', '#1890FF', '#52C41A', '#FADB14', '#722ED1', '#FF7A00'].map(color => (
                               <button
                                 key={color}
                                 type="button"
@@ -1978,8 +1978,9 @@ function JournalsContent() {
                                   editor?.chain().focus().setColor(color).run();
                                   setShowColorMenu(null);
                                 }}
-                                className="w-5 h-5 rounded-full border border-gray-300"
+                                className="w-6 h-6 rounded-full border border-black/10 dark:border-white/20 transition-transform hover:scale-110 active:scale-95 shadow-sm"
                                 style={{ backgroundColor: color }}
+                                title={color}
                                 aria-label={`Text color ${color}`}
                               />
                             ))}
@@ -1990,9 +1991,9 @@ function JournalsContent() {
                                 editor?.chain().focus().unsetColor().run();
                                 setShowColorMenu(null);
                               }}
-                              className="text-[10px] px-1 hover:bg-gray-100 dark:hover:bg-white/[0.08] rounded dark:text-white"
+                              className="text-xs px-2 py-1 hover:bg-gray-100 dark:hover:bg-white/[0.08] rounded-md font-medium text-gray-600 dark:text-gray-300"
                             >
-                              Clear
+                              Default
                             </button>
                           </div>
                         </>
@@ -2003,17 +2004,17 @@ function JournalsContent() {
                     <div className="relative flex items-center">
                       <button
                         type="button"
-                        className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center"
+                        className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center ${showColorMenu === 'bg' ? 'bg-gray-200 dark:bg-white/[0.1]' : ''}`}
                         title="Highlight Color"
                         aria-label="Highlight Color"
                         onClick={() => setShowColorMenu(showColorMenu === 'bg' ? null : 'bg')}
                       >
-                        <span className="font-bold bg-yellow-200 text-black px-0.5 rounded leading-none text-xs">H</span>
+                        <span className="font-bold bg-yellow-200 text-black px-1 py-0.5 rounded leading-none text-xs">H</span>
                       </button>
                       {showColorMenu === 'bg' && (
                         <>
-                          <div className="fixed inset-0 z-45" onClick={() => setShowColorMenu(null)} />
-                          <div className="absolute top-8 left-0 z-50 bg-white dark:bg-[#111111] border border-gray-200 dark:border-white/[0.08] p-1.5 rounded-lg shadow-lg flex space-x-1">
+                          <div className="fixed inset-0 z-40" onClick={() => setShowColorMenu(null)} />
+                          <div className="absolute top-full mt-1.5 left-0 z-50 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/[0.12] p-2 rounded-xl shadow-xl flex items-center gap-1.5 min-w-max">
                             {[
                               { label: 'Clear', color: 'none' },
                               { label: 'Yellow', color: '#FFE58F' },
@@ -2021,6 +2022,7 @@ function JournalsContent() {
                               { label: 'Green', color: '#D9F7BE' },
                               { label: 'Blue', color: '#BAE7FF' },
                               { label: 'Purple', color: '#EFDBFF' },
+                              { label: 'Orange', color: '#FFE7BA' },
                             ].map(({ label, color }) => (
                               <button
                                 key={color}
@@ -2034,12 +2036,12 @@ function JournalsContent() {
                                   }
                                   setShowColorMenu(null);
                                 }}
-                                className="w-5 h-5 rounded-full border border-gray-300 flex items-center justify-center text-[8px]"
+                                className="w-6 h-6 rounded-full border border-black/10 dark:border-white/20 transition-transform hover:scale-110 active:scale-95 shadow-sm flex items-center justify-center text-[10px]"
                                 style={{ backgroundColor: color === 'none' ? '#FFFFFF' : color }}
                                 title={label}
                                 aria-label={`Highlight ${label}`}
                               >
-                                {color === 'none' && <X className="w-2.5 h-2.5 text-gray-500" />}
+                                {color === 'none' && <X className="w-3 h-3 text-gray-500" />}
                               </button>
                             ))}
                           </div>

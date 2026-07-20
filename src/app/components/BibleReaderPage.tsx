@@ -2193,80 +2193,48 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 py-4">
               <div className="space-y-3">
-                {/* English Section */}
-                <div className="space-y-2">
-                  <p className="text-sm mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>English</p>
-                  {(apiVersions || fallbackVersions).filter(v => v.language === 'English').map(version => (
-                    <button
-                      key={version.name}
-                      onClick={() => {
-                        setSelectedVersion(version.name);
-                        setShowVersionSelector(false);
-                      }}
-                      className="w-full text-left px-4 py-2.5 rounded transition-colors"
-                      style={{
-                        backgroundColor: selectedVersion === version.name
-                          ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
-                          : popupThemeConfig[selectedTheme].selectedBg,
-                        color: selectedVersion === version.name
-                          ? currentTheme.verseNumber
-                          : currentTheme.text,
-                      }}
-                    >
-                      <div className="text-base font-medium">{version.fullName} ({version.name})</div>
-                    </button>
-                  ))}
-                </div>
+                {(() => {
+                  const versionsList = (apiVersions && apiVersions.length > 0) ? apiVersions : fallbackVersions;
+                  const versionsByLang = versionsList.reduce((acc: Record<string, any[]>, ver: any) => {
+                    let lang = ver.language || 'English';
+                    if (lang === 'en') lang = 'English';
+                    else if (lang === 'te') lang = 'Telugu';
+                    else if (lang === 'hi') lang = 'Hindi';
+                    if (!acc[lang]) acc[lang] = [];
+                    acc[lang].push(ver);
+                    return acc;
+                  }, {});
 
-                {/* Telugu Section */}
-                <div className="space-y-2">
-                  <p className="text-sm mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>Telugu</p>
-                  {(apiVersions || fallbackVersions).filter(v => v.language === 'Telugu').map(version => (
-                    <button
-                      key={version.name}
-                      onClick={() => {
-                        setSelectedVersion(version.name);
-                        setShowVersionSelector(false);
-                      }}
-                      className="w-full text-left px-4 py-2.5 rounded transition-colors"
-                      style={{
-                        backgroundColor: selectedVersion === version.name
-                          ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
-                          : popupThemeConfig[selectedTheme].selectedBg,
-                        color: selectedVersion === version.name
-                          ? currentTheme.verseNumber
-                          : currentTheme.text,
-                      }}
-                    >
-                      <div className="text-base font-medium">{version.fullName} ({version.name})</div>
-                    </button>
-                  ))}
-                </div>
-
-                {/* Hindi Section */}
-                <div className="space-y-2">
-                  <p className="text-sm mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>Hindi</p>
-                  {(apiVersions || fallbackVersions).filter(v => v.language === 'Hindi').map(version => (
-                    <button
-                      key={version.name}
-                      onClick={() => {
-                        setSelectedVersion(version.name);
-                        setShowVersionSelector(false);
-                      }}
-                      className="w-full text-left px-4 py-2.5 rounded transition-colors"
-                      style={{
-                        backgroundColor: selectedVersion === version.name
-                          ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
-                          : popupThemeConfig[selectedTheme].selectedBg,
-                        color: selectedVersion === version.name
-                          ? currentTheme.verseNumber
-                          : currentTheme.text,
-                      }}
-                    >
-                      <div className="text-base font-medium">{version.fullName} ({version.name})</div>
-                    </button>
-                  ))}
-                </div>
+                  return Object.entries(versionsByLang).map(([lang, vGroup]) => (
+                    <div key={lang} className="space-y-2">
+                      <p className="text-sm mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>{lang}</p>
+                      {vGroup.map((version: any) => {
+                        const targetVal = version.name || version.id;
+                        const isSelected = selectedVersion === version.name || selectedVersion === version.id || selectedVersion === version.fullName;
+                        return (
+                          <button
+                            key={version.id || version.name}
+                            onClick={() => {
+                              setSelectedVersion(targetVal);
+                              setShowVersionSelector(false);
+                            }}
+                            className="w-full text-left px-4 py-2.5 rounded transition-colors"
+                            style={{
+                              backgroundColor: isSelected
+                                ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
+                                : popupThemeConfig[selectedTheme].selectedBg,
+                              color: isSelected
+                                ? currentTheme.verseNumber
+                                : currentTheme.text,
+                            }}
+                          >
+                            <div className="text-base font-medium">{version.fullName || version.name} ({version.name})</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ));
+                })()}
               </div>
             </div>
           </div>
@@ -2635,6 +2603,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             />
           ) : (
             <ChapterContent
+              key={`${selectedVersion}-${selectedBook}-${selectedChapter}`}
               book={selectedBook}
               chapter={selectedChapter}
               font={selectedFont}

@@ -491,6 +491,29 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     staleTime: Infinity,
   });
 
+  // Keep selectedBookId synchronized with the current bibleBooksState when version changes
+  useEffect(() => {
+    if (bibleBooksState && selectedVersionId) {
+      const ot = bibleBooksState['Old Testament'] || [];
+      const nt = bibleBooksState['New Testament'] || [];
+      const allNewBooks = [...ot, ...nt];
+      if (allNewBooks.length > 0) {
+        const matched = allNewBooks.find(b =>
+          b.id === selectedBookId ||
+          b.name === displayBookName ||
+          b.englishName === displayBookName ||
+          b.abbreviation === displayBookName
+        );
+        if (matched && matched.id !== selectedBookId) {
+          setSelectedBookId(matched.id);
+        } else if (!matched && allNewBooks.length > 0) {
+          setSelectedBookId(allNewBooks[0].id);
+          setDisplayBookName(allNewBooks[0].name);
+        }
+      }
+    }
+  }, [bibleBooksState, selectedVersionId, displayBookName, selectedBookId]);
+
   const { data: currentBookChapters = bookChapters[displayBookName] || 1 } = useQuery({
     queryKey: ['bible-chapters', selectedVersionId, selectedBookId],
     queryFn: async () => {
@@ -1704,7 +1727,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         }
       }}
       onVersionChange={(vId: string) => {
-        const matchingVer = bibleVersions.find((v: any) => v.id === vId || v.name === vId);
+        const matchingVer = bibleVersions.find((v: any) => v.id === vId || v.name === vId || v.fullName === vId);
         if (matchingVer) {
           setSelectedVersionId(matchingVer.id);
           setDisplayVersionName(matchingVer.name);

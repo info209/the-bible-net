@@ -2,7 +2,7 @@ import mongoose from 'mongoose';
 import { BibleVersion, Book, Chapter, Verse, IBibleVersion, IBook, IChapter, IVerse } from '@/models/Bible';
 import redis from '@/lib/redis';
 import { getPaginationMeta, PaginationMeta } from '@/utils/pagination';
-import { getBookDetails } from '@/utils/bibleBooks';
+import { getBookDetails, BIBLE_BOOKS, TELUGU_BOOK_NAMES } from '@/utils/bibleBooks';
 import connectDB from '@/lib/db';
 
 
@@ -253,20 +253,41 @@ export class BibleService {
                 book = await Book.findById(bookId).lean();
             }
             if (!book) {
-                // First try finding in the requested version
+                const normalizedBookId = bookId.replace(/-/g, ' ').trim();
+                // First try finding in the requested version by exact name or abbreviation
                 book = await Book.findOne({
                     version: resolvedVersionId,
                     $or: [
-                        { name: { $regex: new RegExp(`^${bookId.replace(/-/g, ' ')}$`, 'i') } },
+                        { name: { $regex: new RegExp(`^${normalizedBookId}$`, 'i') } },
                         { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } }
                     ]
                 }).lean();
                 
-                // If not found in the requested version, try finding in ANY version to support cross-version fallback
+                // If not found, try canonical order resolution for requested version
+                if (!book) {
+                    const canonicalEng = BIBLE_BOOKS.find(b => 
+                        b.name.toLowerCase() === normalizedBookId.toLowerCase() || 
+                        b.abbreviation.toLowerCase() === normalizedBookId.toLowerCase()
+                    );
+                    let canonicalOrder = canonicalEng?.order;
+                    if (!canonicalOrder) {
+                        for (const [engName, teName] of Object.entries(TELUGU_BOOK_NAMES)) {
+                            if (teName.toLowerCase() === normalizedBookId.toLowerCase() || normalizedBookId.includes(teName)) {
+                                const match = BIBLE_BOOKS.find(b => b.name === engName);
+                                if (match) { canonicalOrder = match.order; break; }
+                            }
+                        }
+                    }
+                    if (canonicalOrder) {
+                        book = await Book.findOne({ version: resolvedVersionId, order: canonicalOrder }).lean();
+                    }
+                }
+
+                // If still not found in the requested version, try finding in ANY version to support cross-version fallback
                 if (!book) {
                     book = await Book.findOne({
                         $or: [
-                            { name: { $regex: new RegExp(`^${bookId.replace(/-/g, ' ')}$`, 'i') } },
+                            { name: { $regex: new RegExp(`^${normalizedBookId}$`, 'i') } },
                             { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } }
                         ]
                     }).lean();
