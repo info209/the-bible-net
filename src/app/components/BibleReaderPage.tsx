@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, Home, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity } from 'lucide-react';
+import { ChevronDown, Home, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, Loader2 } from 'lucide-react';
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
 import { MdCompareArrows } from 'react-icons/md';
@@ -118,6 +118,7 @@ interface BibleReaderPageProps {
   pageTransition?: 'slide' | 'curl' | 'fade' | 'scroll';
   onPageTransitionChange?: (transition: 'slide' | 'curl' | 'fade' | 'scroll') => void;
   scrollToVerse?: number | null;
+  isLoadingContent?: boolean;
 }
 
 export default function BibleReaderPage(props: BibleReaderPageProps) {
@@ -138,6 +139,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     onVersionChange,
     selectedVerses = [],
     verses = [],
+    isLoadingContent = false,
     onVerseDoubleTap,
     onVerseTap,
     onSaveHighlight,
@@ -2136,32 +2138,42 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 py-4">
-              <div className="grid grid-cols-5 gap-2">
-                {Array.from({ length: 31 }, (_, i) => i + 1).map(verse => (
-                  <button
-                    key={verse}
-                    onClick={() => {
-                      setSelectedVerse(verse);
-                      setShowVerseSelector(false);
-                      setShowChapterSelector(false);
-                    }}
-                    className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedVerse === verse
-                      ? 'font-bold'
-                      : 'hover:opacity-80'
-                      }`}
-                    style={{
-                      backgroundColor: selectedVerse === verse
-                        ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
-                        : popupThemeConfig[selectedTheme].selectedBg,
-                      color: selectedVerse === verse
-                        ? currentTheme.verseNumber
-                        : currentTheme.text,
-                    }}
-                  >
-                    {verse.toString().padStart(2, '0')}
-                  </button>
-                ))}
-              </div>
+              {isLoadingContent ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#0B7A81]" />
+                </div>
+              ) : (
+                <div className="grid grid-cols-5 gap-2">
+                  {Array.from({
+                    length: (verses && verses.length > 0)
+                      ? (verses[verses.length - 1]?.number || verses.length)
+                      : 31
+                  }, (_, i) => i + 1).map(verse => (
+                    <button
+                      key={verse}
+                      onClick={() => {
+                        setSelectedVerse(verse);
+                        setShowVerseSelector(false);
+                        setShowChapterSelector(false);
+                      }}
+                      className={`aspect-square flex items-center justify-center rounded text-sm transition-colors ${selectedVerse === verse
+                        ? 'font-bold'
+                        : 'hover:opacity-80'
+                        }`}
+                      style={{
+                        backgroundColor: selectedVerse === verse
+                          ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
+                          : popupThemeConfig[selectedTheme].selectedBg,
+                        color: selectedVerse === verse
+                          ? currentTheme.verseNumber
+                          : currentTheme.text,
+                      }}
+                    >
+                      {verse.toString().padStart(2, '0')}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -1716,6 +1716,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       books={bibleBooksState}
       onNavigate={onNavigate}
       verses={currentChapterVerses}
+      isLoadingContent={isLoadingContent}
       chapter={selectedChapter}
       version={displayVersionName || 'KJV'}
       book={displayBookName || 'Genesis'}
