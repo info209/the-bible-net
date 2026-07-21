@@ -534,9 +534,12 @@ html, body, #__next {
  */
 .tiptap-editor {
   outline: none;
-  min-height: 260px;
-  line-height: 1.7;
+  min-height: 320px;
+  line-height: 1.75;
   word-break: break-word;
+  font-size: 1rem;
+  padding: 0.25rem 0 2rem;
+  color: inherit;
 }
 
 /* Headings */

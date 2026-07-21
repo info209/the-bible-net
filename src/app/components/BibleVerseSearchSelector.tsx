@@ -178,8 +178,18 @@ export default function BibleVerseSearchSelector({
     }
   }, [step, isOpen]);
 
-  // Reset state on close
+  // Dismiss dialog without full reset — preserves search query for next open
   const handleClose = () => {
+    setSelectedBook(null);
+    setSelectedChapter(null);
+    setSelectedVerseStart(null);
+    setSelectedVerseEnd(null);
+    setStep('book');
+    onClose();
+  };
+
+  // Full reset — used after a verse is successfully inserted
+  const handleFullReset = () => {
     setSearchQuery('');
     setSelectedBook(null);
     setSelectedChapter(null);
@@ -284,12 +294,12 @@ export default function BibleVerseSearchSelector({
     onSelect({
       bookName: selectedBook.name, // keep canonical English name in attributes
       chapter: selectedChapter,
-      verses: Array.from({ length: selectedVerseEnd - selectedVerseStart + 1 }, (_, i) => selectedVerseStart + i),
+      verses: Array.from({ length: selectedVerseEnd - selectedVerseStart + 1 }, (_, i) => selectedVerseStart! + i),
       label,
       version: selectedVersionName,
     });
     
-    handleClose();
+    handleFullReset();
   };
 
   if (!isOpen) return null;
@@ -299,8 +309,8 @@ export default function BibleVerseSearchSelector({
     : 0;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4 select-none">
-      <div className="bg-white dark:bg-[#121214] border border-gray-100 dark:border-white/[0.08] rounded-2xl w-full max-w-md h-[550px] overflow-hidden flex flex-col shadow-2xl transition-all">
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-end sm:items-center justify-center sm:p-4 select-none">
+      <div className="bg-white dark:bg-[#121214] border border-gray-100 dark:border-white/[0.08] rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md flex flex-col shadow-2xl transition-all" style={{ maxHeight: '92dvh' }}>
         {/* Header */}
         <div className="p-4 border-b border-gray-100 dark:border-white/[0.08] flex items-center justify-between shrink-0">
           <div className="flex items-center space-x-2">
@@ -321,16 +331,17 @@ export default function BibleVerseSearchSelector({
           </div>
 
           <div className="flex items-center space-x-2">
-            {/* Version Selector */}
+            {/* Version Selector — shows abbreviation, full name on hover */}
             {step === 'book' && versions.length > 0 && (
               <select
                 value={selectedVersionId}
                 onChange={(e) => handleVersionChange(e.target.value)}
-                className="text-xs font-semibold bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] rounded-lg px-2 py-1 outline-none text-[#0B7A81] focus:ring-1 focus:ring-[#0B7A81]"
+                title={versions.find(v => v.id === selectedVersionId)?.name ?? selectedVersionId}
+                className="text-xs font-semibold bg-gray-50 dark:bg-white/[0.04] border border-gray-200 dark:border-white/[0.08] rounded-lg px-2 py-1 outline-none text-[#0B7A81] focus:ring-1 focus:ring-[#0B7A81] max-w-[90px] sm:max-w-none"
               >
                 {versions.map(v => (
-                  <option key={v.id} value={v.id} className="bg-white dark:bg-[#121214] text-gray-800 dark:text-[#F5F5F5]">
-                    {v.name} ({v.language.toUpperCase()})
+                  <option key={v.id} value={v.id} title={v.name} className="bg-white dark:bg-[#121214] text-gray-800 dark:text-[#F5F5F5]">
+                    {v.abbreviation || v.id}
                   </option>
                 ))}
               </select>
@@ -339,7 +350,8 @@ export default function BibleVerseSearchSelector({
             <button
               type="button"
               onClick={handleClose}
-              className="p-1.5 hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-full transition-colors text-gray-500 dark:text-gray-400"
+              className="w-8 h-8 flex items-center justify-center hover:bg-gray-100 dark:hover:bg-white/[0.06] rounded-full transition-colors text-gray-500 dark:text-gray-400"
+              aria-label="Close verse search"
             >
               <X className="w-5 h-5" />
             </button>
