@@ -548,7 +548,7 @@ export default function HomeView() {
                       </div>
 
                       <div className="mt-6">
-                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily verse</h4>
+                        <h4 className="text-black/80 text-xs tracking-wider mb-0.5">Daily verse</h4>
                         <h3 className="text-black text-lg font-bold tracking-tight truncate">
                           {content.verseReference || 'Reference'} {content.version || 'KJV'}
                         </h3>
@@ -732,7 +732,7 @@ export default function HomeView() {
                       </div>
 
                       <div className="mt-6">
-                        <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily devotional</h4>
+                        <h4 className="text-black/80 text-xs tracking-wider mb-0.5">Daily devotional</h4>
                         <h3 className="text-black text-lg font-bold tracking-tight truncate">
                           {content.devotionalTitle}
                         </h3>
@@ -746,7 +746,7 @@ export default function HomeView() {
 
                     {/* Devotional content preview — clamped to 4 lines; card height stays constant */}
                     <div className="flex-1 flex flex-col justify-start mt-4 overflow-hidden">
-                      <p className="text-black/90 text-sm md:text-base leading-relaxed text-left line-clamp-4 overflow-hidden text-ellipsis w-full">
+                      <p className="text-black text-[16px] md:text-[18px] leading-relaxed pl-1 text-left line-clamp-4 overflow-hidden text-ellipsis w-full">
                         {content.devotionalContent}
                       </p>
                     </div>

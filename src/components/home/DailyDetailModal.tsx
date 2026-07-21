@@ -687,7 +687,7 @@ export function DailyDetailModal({
                                                         </div>
 
                                                         <div className="mt-6 text-left w-full">
-                                                            <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily verse</h4>
+                                                            <h4 className="text-black/80 text-xs tracking-wider mb-0.5">Daily verse</h4>
                                                             <h3 className="text-black text-lg font-bold tracking-tight truncate">
                                                                 {item.verseReference || 'Reference'} {(item as any).version || 'KJV'}
                                                             </h3>
@@ -761,7 +761,7 @@ export function DailyDetailModal({
                                                                         {block.ref}
                                                                     </h4>
                                                                     {block.text && (
-                                                                        <p className="text-black text-[16px] md:text-[18px] leading-relaxed font-serif italic text-left pl-1 w-full mt-2">
+                                                                        <p className="text-black text-[16px] md:text-[18px] leading-relaxed text-left pl-1 w-full mt-2">
                                                                             &ldquo;{block.text}&rdquo;
                                                                         </p>
                                                                     )}
