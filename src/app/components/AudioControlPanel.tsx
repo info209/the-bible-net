@@ -232,28 +232,31 @@ export default function AudioControlPanel({
       >
         {/* ── Drag handle + header actions ───────────────────────────────────── */}
         <div className="relative">
-          {/* Drag zone */}
+          {/* Drag zone (centered drag handle only to avoid blocking header buttons) */}
           <div
-            className="absolute top-0 left-0 right-0 h-10 flex items-center justify-center cursor-grab active:cursor-grabbing"
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-36 h-6 flex items-center justify-center cursor-grab active:cursor-grabbing z-0"
             onTouchStart={handleTouchStart}
             onTouchMove={handleTouchMove}
             onTouchEnd={handleTouchEnd}
             onMouseDown={handleMouseDown}
           >
-            <div className="w-[var(--drag-handle-width)] h-[var(--drag-handle-height)] bg-[var(--drag-handle-color)] rounded-full mt-3" />
+            <div className="w-[var(--drag-handle-width)] h-[var(--drag-handle-height)] bg-[var(--drag-handle-color)] rounded-full mt-2" />
           </div>
 
           {/* Header: reference (center) + Close (right) */}
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center px-4 pt-4 pb-2">
+          <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-center px-4 pt-3 pb-1">
             <div />
 
-            <h2 className="min-w-0 max-w-[150px] sm:max-w-[240px] truncate text-center text-sm font-semibold" style={{ color: textPrimary }}>
+            {/* <h2 className="min-w-0 max-w-[160px] sm:max-w-[240px] truncate text-center text-xs font-semibold tracking-tight" style={{ color: textPrimary }}>
               {panelTitle}
-            </h2>
+            </h2> */}
 
             <button
-              onClick={onClose}
-              className="justify-self-end size-7 rounded-full flex items-center justify-center transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              className="justify-self-end size-7 rounded-full flex items-center justify-center transition-colors hover:opacity-80 active:scale-95 cursor-pointer"
               style={{ backgroundColor: btnBg }}
               aria-label="Close player"
             >
@@ -264,23 +267,23 @@ export default function AudioControlPanel({
 
         {/* ── Scrollable content ──────────────────────────────────────────────── */}
         <div
-          className="px-4 pb-3 overflow-y-auto flex-1"
-          style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
+          className="px-4 pb-2 overflow-y-auto flex-1"
+          style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}
         >
 
           {/* Progress bar */}
-          <div className="mb-3 px-11">
-            <div className="relative h-5 mb-1" style={{ overflow: 'visible' }}>
+          <div className="mb-2 px-8">
+            <div className="relative h-4 mb-1" style={{ overflow: 'visible' }}>
               {/* Background track */}
-              <div className="absolute top-[8px] w-full h-[4px] rounded-sm" style={{ backgroundColor: sliderTrackBg }} />
+              <div className="absolute top-[6px] w-full h-[4px] rounded-sm" style={{ backgroundColor: sliderTrackBg }} />
               {/* Progress track — uses preview verse during drag */}
               <div
-                className="absolute top-[8px] h-[4px] bg-[var(--color-accent-rose)] rounded-sm"
+                className="absolute top-[6px] h-[4px] bg-[var(--color-accent-rose)] rounded-sm"
                 style={{ width: `${totalVerses > 0 ? (displayVerse / totalVerses) * 100 : 0}%` }}
               />
               {/* Thumb + tooltip — uses preview verse during drag */}
               <div
-                className="absolute top-0 w-5 h-5 bg-[var(--color-accent-rose)] border-4 border-[var(--color-accent-rose-light)] rounded-full -ml-2.5 pointer-events-none"
+                className="absolute top-0 w-4 h-4 bg-[var(--color-accent-rose)] border-2 border-white rounded-full -ml-2 pointer-events-none shadow-sm"
                 style={{ left: `${totalVerses > 0 ? (displayVerse / totalVerses) * 100 : 0}%` }}
               >
                 {/* Only show tooltip while actively dragging */}
@@ -302,12 +305,10 @@ export default function AudioControlPanel({
                 max={Math.max(totalVerses, 1)}
                 value={displayVerse}
                 onChange={(e) => {
-                  // During drag: only update the visual preview — do NOT commit to parent yet
                   setDragVersePreview(Number(e.target.value));
                 }}
                 onMouseDown={(e) => {
                   isDraggingSliderRef.current = true;
-                  // Seed the preview with the current committed verse
                   setDragVersePreview(Number((e.target as HTMLInputElement).value));
                   onSliderDragStart?.();
                 }}
@@ -319,7 +320,6 @@ export default function AudioControlPanel({
                 onMouseUp={(e) => {
                   isDraggingSliderRef.current = false;
                   const verse = Number((e.target as HTMLInputElement).value);
-                  // Commit: call parent ONCE on release
                   onVerseChange(verse);
                   setDragVersePreview(null);
                   onSliderDragEnd?.();
@@ -327,7 +327,6 @@ export default function AudioControlPanel({
                 onTouchEnd={(e) => {
                   isDraggingSliderRef.current = false;
                   const verse = Number((e.target as HTMLInputElement).value);
-                  // Commit: call parent ONCE on release
                   onVerseChange(verse);
                   setDragVersePreview(null);
                   onSliderDragEnd?.();
@@ -335,15 +334,15 @@ export default function AudioControlPanel({
                 className="absolute inset-0 w-full opacity-0 cursor-pointer"
               />
             </div>
-            {/* Verse counter — uses preview during drag */}
-            <div className="flex justify-between text-[11px] font-medium" style={{ color: textSecondary }}>
+            {/* Verse counter */}
+            <div className="flex justify-between text-[10px] font-medium" style={{ color: textSecondary }}>
               <span>Verse {displayVerse}</span>
               <span>Total {totalVerses}</span>
             </div>
           </div>
 
           {/* ── Main controls ─────────────────────────────────────────────────── */}
-          <div className="max-w-[400px] mx-auto flex items-center justify-between px-6 mb-5">
+          <div className="max-w-[280px] mx-auto flex items-center justify-between px-2 mb-3">
 
             {/* ← Chapter / Book back */}
             <button
@@ -362,7 +361,7 @@ export default function AudioControlPanel({
             </button>
 
             {/* Center group: Verse- / Play / Verse+ */}
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3">
 
               {/* V- */}
               <button
@@ -379,23 +378,23 @@ export default function AudioControlPanel({
               {/* Big play with ProgressRing */}
               <ProgressRing
                 progress={ringProgress}
-                size={72}
-                strokeWidth={3.5}
+                size={64}
+                strokeWidth={3}
                 trackColor={sliderTrackBg}
                 color="var(--color-accent-rose)"
               >
                 <button
                   onClick={onPlayPauseToggle}
-                  className="size-[52px] rounded-full flex items-center justify-center
+                  className="size-[46px] rounded-full flex items-center justify-center
                     bg-[var(--color-primary-teal-lighter)]
-                    shadow-[0px_2px_4px_0px_rgba(0,0,0,0.2)]
+                    shadow-[0px_2px_4px_0px_rgba(0,0,0,0.15)]
                     hover:scale-105 active:scale-95 transition-transform"
                   aria-label={audioPlaying ? "Pause" : "Play"}
                 >
                   {audioPlaying ? (
-                    <Pause className="size-5 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)]" strokeWidth={0} />
+                    <Pause className="size-4 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)]" strokeWidth={0} />
                   ) : (
-                    <Play className="size-5 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)] ml-0.5" strokeWidth={0} />
+                    <Play className="size-4 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)] ml-0.5" strokeWidth={0} />
                   )}
                 </button>
               </ProgressRing>
@@ -431,7 +430,7 @@ export default function AudioControlPanel({
           </div>
 
           {/* ── Secondary controls row ────────────────────────────────────────── */}
-          <div className={`flex items-center justify-center gap-5 rounded-[var(--radius-xl)] py-2 px-5 mx-auto w-fit shadow-glass mb-3 ${
+          <div className={`flex items-center justify-center gap-4 rounded-[var(--radius-lg)] py-1.5 px-4 mx-auto w-fit shadow-glass mb-2 ${
             dm ? '' : 'glass-light'
           }`}
             style={{
@@ -443,14 +442,14 @@ export default function AudioControlPanel({
             {/* Repeat */}
             <button
               onClick={onRepeatModeToggle}
-              className={`relative flex flex-col items-center justify-center gap-3
-                hover:scale-110 active:scale-95 transition-transform
+              className={`relative flex flex-col items-center justify-center gap-0.5
+                hover:scale-105 active:scale-95 transition-transform
                 ${repeatMode !== 'none' ? 'text-[var(--color-primary-teal)]' : ''}`}
               style={{ color: repeatMode !== 'none' ? undefined : textTertiary }}
               aria-label="Toggle repeat mode"
             >
-              <div className="size-7 flex items-center justify-center">
-                <Repeat className="size-[22px]" strokeWidth={2.2} />
+              <div className="size-5 flex items-center justify-center">
+                <Repeat className="size-4" strokeWidth={2.2} />
               </div>
               <span className="text-[8px] font-bold whitespace-nowrap leading-none">
                 {repeatMode}
@@ -464,13 +463,13 @@ export default function AudioControlPanel({
                 const currentIndex = speeds.indexOf(playbackSpeed);
                 onSpeedChange(speeds[(currentIndex + 1) % speeds.length]);
               }}
-              className="relative flex flex-col items-center justify-center gap-3
-                hover:scale-110 active:scale-95 transition-transform"
+              className="relative flex flex-col items-center justify-center gap-0.5
+                hover:scale-105 active:scale-95 transition-transform"
               style={{ color: textTertiary }}
               aria-label="Change playback speed"
             >
-              <div className="size-7 flex items-center justify-center">
-                <Gauge className="size-[22px]" strokeWidth={2.2} />
+              <div className="size-5 flex items-center justify-center">
+                <Gauge className="size-4" strokeWidth={2.2} />
               </div>
               <span className="text-[8px] font-bold whitespace-nowrap leading-none">
                 {playbackSpeed}x
@@ -480,13 +479,13 @@ export default function AudioControlPanel({
             {/* Timer */}
             <button
               onClick={onTimerClick}
-              className="relative flex flex-col items-center justify-center gap-3
-                hover:scale-110 active:scale-95 transition-transform"
+              className="relative flex flex-col items-center justify-center gap-0.5
+                hover:scale-105 active:scale-95 transition-transform"
               style={{ color: textTertiary }}
               aria-label="Set sleep timer"
             >
-              <div className="size-7 flex items-center justify-center">
-                <Timer className="size-[22px]" strokeWidth={2.2} />
+              <div className="size-5 flex items-center justify-center">
+                <Timer className="size-4" strokeWidth={2.2} />
               </div>
               <span className="text-[8px] font-bold whitespace-nowrap leading-none">
                 Timer
@@ -495,8 +494,8 @@ export default function AudioControlPanel({
           </div>
 
           {/* ── Volume row ───────────────────────────────────────────────────── */}
-          <div className="px-10 flex items-center gap-3 mt-1">
-            <Volume2 className="size-4 shrink-0" strokeWidth={2.5} style={{ color: textTertiary }} />
+          <div className="px-8 flex items-center gap-2.5 mt-1">
+            <Volume2 className="size-3.5 shrink-0" strokeWidth={2.5} style={{ color: textTertiary }} />
             <input
               type="range"
               min="0"
@@ -510,7 +509,7 @@ export default function AudioControlPanel({
               className="w-full accent-[var(--color-primary-teal)]"
               aria-label="Volume"
             />
-            <span className="text-xs font-bold shrink-0 w-8 text-right" style={{ color: textTertiary }}>
+            <span className="text-[11px] font-bold shrink-0 w-7 text-right" style={{ color: textTertiary }}>
               {Math.round(ttsVolume * 100)}%
             </span>
           </div>
