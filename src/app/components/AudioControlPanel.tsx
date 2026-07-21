@@ -1,11 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw, RotateCw, Repeat, Gauge, Timer, Volume2, Minimize2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw, RotateCw, Repeat, Gauge, Timer, Volume2, X } from 'lucide-react';
 import ProgressRing from './ui/ProgressRing';
 
 interface AudioControlPanelProps {
   isOpen: boolean;
   onClose: () => void;
-  onMinimize?: () => void;
+  onMinimize?: () => void; // kept for backwards compat — UI button removed
   selectedVerse: number;
   totalVerses: number;           // NEW: actual verse count for the chapter
   audioCurrentTime: number;
@@ -36,7 +36,7 @@ interface AudioControlPanelProps {
 export default function AudioControlPanel({
   isOpen,
   onClose,
-  onMinimize,
+
   selectedVerse,
   totalVerses,
   audioCurrentTime,
@@ -243,41 +243,33 @@ export default function AudioControlPanel({
             <div className="w-[var(--drag-handle-width)] h-[var(--drag-handle-height)] bg-[var(--drag-handle-color)] rounded-full mt-3" />
           </div>
 
-          {/* Header: Minimize (left) + reference (center) + Close (right) */}
-          <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 pt-6 pb-3">
-            <button
-              onClick={onMinimize ?? onClose}
-              className="justify-self-start flex items-center gap-1.5 px-3 py-1.5 rounded-full transition-colors"
-              style={{ backgroundColor: btnBg }}
-              aria-label="Minimize player"
-            >
-              <Minimize2 className="size-4" style={{ color: textSecondary }} />
-              <span className="text-xs font-medium" style={{ color: textSecondary }}>Minimize</span>
-            </button>
+          {/* Header: reference (center) + Close (right) */}
+          <div className="grid grid-cols-[1fr_auto_1fr] items-center px-4 pt-4 pb-2">
+            <div />
 
-            <h2 className="min-w-0 max-w-[150px] sm:max-w-[240px] truncate text-center text-base font-semibold" style={{ color: textPrimary }}>
+            <h2 className="min-w-0 max-w-[150px] sm:max-w-[240px] truncate text-center text-sm font-semibold" style={{ color: textPrimary }}>
               {panelTitle}
             </h2>
 
             <button
               onClick={onClose}
-              className="justify-self-end size-8 rounded-full flex items-center justify-center transition-colors"
+              className="justify-self-end size-7 rounded-full flex items-center justify-center transition-colors"
               style={{ backgroundColor: btnBg }}
               aria-label="Close player"
             >
-              <X className="size-4" style={{ color: textSecondary }} />
+              <X className="size-3.5" style={{ color: textSecondary }} />
             </button>
           </div>
         </div>
 
         {/* ── Scrollable content ──────────────────────────────────────────────── */}
         <div
-          className="px-4 pb-4 overflow-y-auto flex-1"
-          style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+          className="px-4 pb-3 overflow-y-auto flex-1"
+          style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
         >
 
           {/* Progress bar */}
-          <div className="mb-4 px-11">
+          <div className="mb-3 px-11">
             <div className="relative h-5 mb-1" style={{ overflow: 'visible' }}>
               {/* Background track */}
               <div className="absolute top-[8px] w-full h-[4px] rounded-sm" style={{ backgroundColor: sliderTrackBg }} />
@@ -351,7 +343,7 @@ export default function AudioControlPanel({
           </div>
 
           {/* ── Main controls ─────────────────────────────────────────────────── */}
-          <div className="max-w-[400px] mx-auto flex items-center justify-between px-6 mb-8">
+          <div className="max-w-[400px] mx-auto flex items-center justify-between px-6 mb-5">
 
             {/* ← Chapter / Book back */}
             <button
@@ -362,11 +354,11 @@ export default function AudioControlPanel({
                   onBookChange?.('prev');
                 }
               }}
-              className="size-9 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
+              className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
               style={{ backgroundColor: btnBg }}
               aria-label="Previous chapter"
             >
-              <ChevronLeft className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+              <ChevronLeft className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
             </button>
 
             {/* Center group: Verse- / Play / Verse+ */}
@@ -375,11 +367,11 @@ export default function AudioControlPanel({
               {/* V- */}
               <button
                 onClick={() => (onVerseStep ?? onVerseChange)(Math.max(1, selectedVerse - 1))}
-                className="size-9 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                className="size-8 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
                 aria-label="Previous verse"
               >
                 <div className="relative flex items-center justify-center">
-                  <RotateCcw className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+                  <RotateCcw className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
                   <span className="absolute text-[7px] font-bold text-[var(--color-primary-teal)] mt-0.5">V-</span>
                 </div>
               </button>
@@ -387,23 +379,23 @@ export default function AudioControlPanel({
               {/* Big play with ProgressRing */}
               <ProgressRing
                 progress={ringProgress}
-                size={80}
-                strokeWidth={4}
+                size={72}
+                strokeWidth={3.5}
                 trackColor={sliderTrackBg}
                 color="var(--color-accent-rose)"
               >
                 <button
                   onClick={onPlayPauseToggle}
-                  className="size-[58px] rounded-full flex items-center justify-center
+                  className="size-[52px] rounded-full flex items-center justify-center
                     bg-[var(--color-primary-teal-lighter)]
                     shadow-[0px_2px_4px_0px_rgba(0,0,0,0.2)]
                     hover:scale-105 active:scale-95 transition-transform"
                   aria-label={audioPlaying ? "Pause" : "Play"}
                 >
                   {audioPlaying ? (
-                    <Pause className="size-6 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)]" strokeWidth={0} />
+                    <Pause className="size-5 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)]" strokeWidth={0} />
                   ) : (
-                    <Play className="size-6 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)] ml-0.5" strokeWidth={0} />
+                    <Play className="size-5 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)] ml-0.5" strokeWidth={0} />
                   )}
                 </button>
               </ProgressRing>
@@ -411,11 +403,11 @@ export default function AudioControlPanel({
               {/* V+ */}
               <button
                 onClick={() => (onVerseStep ?? onVerseChange)(Math.min(totalVerses, selectedVerse + 1))}
-                className="size-9 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                className="size-8 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
                 aria-label="Next verse"
               >
                 <div className="relative flex items-center justify-center">
-                  <RotateCw className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+                  <RotateCw className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
                   <span className="absolute text-[7px] font-bold text-[var(--color-primary-teal)] mt-0.5">V+</span>
                 </div>
               </button>
@@ -430,16 +422,16 @@ export default function AudioControlPanel({
                   onBookChange?.('next');
                 }
               }}
-              className="size-9 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
+              className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
               style={{ backgroundColor: btnBg }}
               aria-label="Next chapter"
             >
-              <ChevronRight className="size-6 text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+              <ChevronRight className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
             </button>
           </div>
 
           {/* ── Secondary controls row ────────────────────────────────────────── */}
-          <div className={`flex items-center justify-center gap-6 rounded-[var(--radius-xl)] py-2 px-6 mx-auto w-fit shadow-glass mb-4 ${
+          <div className={`flex items-center justify-center gap-5 rounded-[var(--radius-xl)] py-2 px-5 mx-auto w-fit shadow-glass mb-3 ${
             dm ? '' : 'glass-light'
           }`}
             style={{
@@ -503,7 +495,7 @@ export default function AudioControlPanel({
           </div>
 
           {/* ── Volume row ───────────────────────────────────────────────────── */}
-          <div className="px-10 flex items-center gap-4 mt-2">
+          <div className="px-10 flex items-center gap-3 mt-1">
             <Volume2 className="size-4 shrink-0" strokeWidth={2.5} style={{ color: textTertiary }} />
             <input
               type="range"

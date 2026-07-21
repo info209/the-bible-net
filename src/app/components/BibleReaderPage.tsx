@@ -1614,6 +1614,27 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
   }, [playbackSpeed]);
 
+  // Apply volume changes to the active utterance instantly.
+  // The Web Speech API doesn't support mutating volume on a speaking utterance in most browsers,
+  // so we cancel and restart — same pattern as playbackSpeed above.
+  useEffect(() => {
+    if (utteranceRef.current && window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+      narrationPlayingRef.current = false;
+
+      if (audioPlaying) {
+        setTimeout(() => {
+          const allVerses = getBibleContent();
+          if (allVerses.length === 0) return;
+          const fromVerse = narrationVerseIndexRef.current;
+          setNarrationPlaying(true);
+          narrationPlayingRef.current = true;
+          readNextVerse(allVerses, fromVerse);
+        }, 100);
+      }
+    }
+  }, [ttsVolume]);
+
   // Handle sleep timer selection changes mid-playback
   useEffect(() => {
     if (selectedTimer !== 'stop' && selectedTimer !== 'end-chapter') {
