@@ -15,6 +15,11 @@ interface CompareVersionsModalProps {
   selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
 }
 
+function matchesVersion(v: { id: string; name: string; fullName?: string }, targetIdOrName?: string | null) {
+  if (!targetIdOrName || !v) return false;
+  return v.id === targetIdOrName || v.name === targetIdOrName || (v.fullName && v.fullName === targetIdOrName);
+}
+
 export default function CompareVersionsModal({
   isOpen,
   onClose,
@@ -26,14 +31,23 @@ export default function CompareVersionsModal({
   isDark = false,
   selectedTheme,
 }: CompareVersionsModalProps) {
+  // Find active version object matching activeVersionId or selectedVersions[0]
+  const activeVersionObj = versions.find(v => activeVersionId ? matchesVersion(v, activeVersionId) : false)
+    || versions.find(v => selectedVersions.some(s => matchesVersion(v, s)))
+    || (versions.length > 0 ? versions[0] : null);
+
+  const activeVersionCode = activeVersionObj ? activeVersionObj.id : (activeVersionId || selectedVersions[0]);
+  const activeVersionDisplay = activeVersionObj ? activeVersionObj.name : (activeVersionId || 'active version');
+
   // Derive effective selected versions ensuring active reading version is always included
-  const effectiveSelectedVersions = (activeVersionId && !selectedVersions.includes(activeVersionId))
-    ? [activeVersionId, ...selectedVersions]
+  const isActiveAlreadySelected = selectedVersions.some(s => matchesVersion(activeVersionObj || { id: activeVersionCode, name: activeVersionDisplay }, s));
+  const effectiveSelectedVersions = !isActiveAlreadySelected && activeVersionCode
+    ? [activeVersionCode, ...selectedVersions]
     : selectedVersions;
 
-  const activeVersion = activeVersionId || effectiveSelectedVersions[0];
-  const additionalCount = effectiveSelectedVersions.filter(v => v !== activeVersion).length;
-  const canCompare = effectiveSelectedVersions.includes(activeVersion) && additionalCount >= 1 && effectiveSelectedVersions.length <= 4;
+  // Calculate count of additional versions selected beyond active version
+  const additionalCount = effectiveSelectedVersions.filter(s => !matchesVersion(activeVersionObj || { id: activeVersionCode, name: activeVersionDisplay }, s)).length;
+  const canCompare = additionalCount >= 1 && effectiveSelectedVersions.length <= 4;
 
   // Premium Themes Styling Variables
   const theme = selectedTheme || (isDark ? 'dark' : 'light');
@@ -79,9 +93,6 @@ export default function CompareVersionsModal({
     cream: '#6e5f46',
     dark: '#8e8e93'
   }[theme];
-
-  const activeVersionObj = versions.find(v => v.id === activeVersion);
-  const activeVersionDisplay = activeVersionObj ? activeVersionObj.name : activeVersion;
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
@@ -158,8 +169,8 @@ export default function CompareVersionsModal({
                     </p>
                     <div className="space-y-2">
                       {languageVersions.map((version) => {
-                        const isActiveVersion = version.id === activeVersion;
-                        const isSelected = effectiveSelectedVersions.includes(version.id);
+                        const isActiveVersion = activeVersionObj ? matchesVersion(version, activeVersionObj.id) || matchesVersion(version, activeVersionObj.name) : false;
+                        const isSelected = effectiveSelectedVersions.some(s => matchesVersion(version, s));
                         const isDisabled = !isSelected && effectiveSelectedVersions.length >= 4;
 
                         // Dynamic colors for buttons

@@ -567,21 +567,30 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   // Compare mode handlers
   const handleToggleCompareVersion = (versionName: string) => {
     setCompareMode(prev => {
-      const isSelected = prev.selectedVersions.includes(versionName);
+      const allVers = apiVersions || fallbackVersions;
+      const targetVer = allVers.find(v => v.id === versionName || v.name === versionName || v.fullName === versionName);
+      const targetId = targetVer ? targetVer.id : versionName;
+      const targetName = targetVer ? targetVer.name : versionName;
+
+      const activeVer = allVers.find(v => v.id === selectedVersion || v.name === selectedVersion || v.fullName === selectedVersion);
+      const isActive = targetVer && activeVer ? targetVer.name === activeVer.name : (versionName === selectedVersion);
+
+      const isSelected = prev.selectedVersions.some(v => v === targetId || v === targetName || (targetVer && (v === targetVer.id || v === targetVer.name)));
+
       if (isSelected) {
         // Active reading version cannot be deselected as it serves as the base version
-        if (versionName === selectedVersion) {
+        if (isActive) {
           return prev;
         }
         return {
           ...prev,
-          selectedVersions: prev.selectedVersions.filter(v => v !== versionName)
+          selectedVersions: prev.selectedVersions.filter(v => v !== targetId && v !== targetName && (!targetVer || (v !== targetVer.id && v !== targetVer.name)))
         };
       } else {
         if (prev.selectedVersions.length < 4) {
           return {
             ...prev,
-            selectedVersions: [...prev.selectedVersions, versionName]
+            selectedVersions: [...prev.selectedVersions, targetId]
           };
         }
         return prev;
@@ -1839,10 +1848,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   } else {
                     if (showCompareSelector) return;
                     setCompareMode(prev => {
-                      if (!prev.selectedVersions.includes(selectedVersion)) {
+                      const allVers = apiVersions || fallbackVersions;
+                      const activeVerObj = allVers.find(v => v.id === selectedVersion || v.name === selectedVersion || v.fullName === selectedVersion);
+                      const activeCode = activeVerObj ? activeVerObj.id : selectedVersion;
+
+                      const isAlreadySelected = prev.selectedVersions.some(v => v === activeCode || v === selectedVersion || (activeVerObj && (v === activeVerObj.name || v === activeVerObj.id)));
+                      if (!isAlreadySelected) {
                         return {
                           ...prev,
-                          selectedVersions: [selectedVersion, ...prev.selectedVersions]
+                          selectedVersions: [activeCode, ...prev.selectedVersions]
                         };
                       }
                       return prev;
