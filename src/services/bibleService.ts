@@ -227,17 +227,28 @@ export class BibleService {
     static async getChapterContent(versionId: string, bookId: string, chapterNum: number, search?: string) {
         try {
             await connectDB();
-            const cacheKey = `bible:content:${versionId}:${bookId}:${chapterNum}${search ? `:search:${search}` : ''}`;
-            const cached = await this.getFromCache(cacheKey);
-            if (cached) return cached;
-
             // Find version
             let version = null;
             if (mongoose.Types.ObjectId.isValid(versionId)) {
                 version = await BibleVersion.findById(versionId).lean();
             }
             if (!version) {
-                version = await BibleVersion.findOne({ abbreviation: versionId.toUpperCase() }).lean();
+                const escapedVer = versionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                version = await BibleVersion.findOne({ abbreviation: new RegExp(`^${escapedVer}$`, 'i') }).lean();
+            }
+            if (!version) {
+                const escapedVer = versionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                version = await BibleVersion.findOne({ name: new RegExp(`^${escapedVer}$`, 'i') }).lean();
+            }
+            if (!version) {
+                const escapedVer = versionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                version = await BibleVersion.findOne({
+                    $or: [
+                        { abbreviation: new RegExp(escapedVer, 'i') },
+                        { name: new RegExp(escapedVer, 'i') },
+                        { language: new RegExp(`^${escapedVer}$`, 'i') }
+                    ]
+                }).lean();
             }
 
             if (!version) {
@@ -254,12 +265,13 @@ export class BibleService {
             }
             if (!book) {
                 const normalizedBookId = bookId.replace(/-/g, ' ').trim();
+                const escapedBookId = normalizedBookId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
                 // First try finding in the requested version by exact name or abbreviation
                 book = await Book.findOne({
                     version: resolvedVersionId,
                     $or: [
-                        { name: { $regex: new RegExp(`^${normalizedBookId}$`, 'i') } },
-                        { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } }
+                        { name: { $regex: new RegExp(`^${escapedBookId}$`, 'i') } },
+                        { abbreviation: { $regex: new RegExp(`^${escapedBookId}$`, 'i') } }
                     ]
                 }).lean();
                 
@@ -287,8 +299,8 @@ export class BibleService {
                 if (!book) {
                     book = await Book.findOne({
                         $or: [
-                            { name: { $regex: new RegExp(`^${normalizedBookId}$`, 'i') } },
-                            { abbreviation: { $regex: new RegExp(`^${bookId}$`, 'i') } }
+                            { name: { $regex: new RegExp(`^${escapedBookId}$`, 'i') } },
+                            { abbreviation: { $regex: new RegExp(`^${escapedBookId}$`, 'i') } }
                         ]
                     }).lean();
                 }
@@ -327,6 +339,11 @@ export class BibleService {
                 }
             }
 
+            // Calculate canonical cache key using resolved IDs
+            const cacheKey = `bible:content:${resolvedVersionId.toString()}:${targetBook._id.toString()}:${chapterNum}${search ? `:search:${search}` : ''}`;
+            const cached = await this.getFromCache(cacheKey);
+            if (cached) return cached;
+
             // Find chapter using the target book
             const chapter = await Chapter.findOne({
                 book: targetBook._id,
@@ -338,16 +355,16 @@ export class BibleService {
                 throw new Error(`Chapter ${chapterNum} not found for book ${targetBook.name} in version ${version.abbreviation}`);
             }
 
-            // Get verses
-            const verseQuery: any = { 
-                chapter: chapter._id,
-                version: resolvedVersionId // Be explicit
-            };
+            // Get verses for chapter
+            const verseQuery: any = { chapter: chapter._id };
             if (search) {
                 verseQuery.text = { $regex: search, $options: 'i' };
             }
 
             const verses = await Verse.find(verseQuery).sort({ number: 1 }).lean();
+            if (!verses || verses.length === 0) {
+                console.warn(`getChapterContent: No verses found for chapter ${chapter._id} (search: "${search || ''}")`);
+            }
             if (!verses || verses.length === 0) {
                 console.warn(`getChapterContent: No verses found for chapter ${chapter._id} (search: "${search || ''}")`);
             }

@@ -756,7 +756,6 @@ export function DailyDetailModal({
                                                         <div className="flex flex-col space-y-6 w-full">
                                                             {item.devotionalVerseBlocks.map((block, blockIdx) => (
                                                                 <div key={blockIdx} className="flex flex-col space-y-1 text-left w-full">
-                                                                    <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Key verse</h4>
                                                                     <h4 className="text-black text-base md:text-lg font-bold tracking-tight">
                                                                         {block.ref}
                                                                     </h4>
@@ -771,7 +770,6 @@ export function DailyDetailModal({
                                                     ) : (
                                                         item.devotionalVerseRef && (
                                                             <div className="flex flex-col space-y-1 text-left w-full">
-                                                                <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Key verse</h4>
                                                                 <h4 className="text-black text-base md:text-lg font-bold tracking-tight">
                                                                     {item.devotionalVerseRef}
                                                                 </h4>

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { BibleService } from '@/services/bibleService';
 import { connectDB } from '@/lib/db';
-import { Book } from '@/models/Bible';
+import { BibleVersion, Book } from '@/models/Bible';
+import { BIBLE_BOOKS, TELUGU_BOOK_NAMES } from '@/utils/bibleBooks';
+import mongoose from 'mongoose';
 
 export const dynamic = 'force-dynamic';
 
@@ -67,8 +69,55 @@ export async function GET(
         const page = searchParams.get('page') ? parseInt(searchParams.get('page')!) : undefined;
         const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
 
+        // Verify version exists
+        let version = null;
+        if (mongoose.Types.ObjectId.isValid(versionId)) {
+            version = await BibleVersion.findById(versionId).catch(() => null);
+        }
+        if (!version) {
+            const escaped = versionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            version = await BibleVersion.findOne({ abbreviation: new RegExp(`^${escaped}$`, 'i') }).catch(() => null);
+        }
+        if (!version) {
+            const escaped = versionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            version = await BibleVersion.findOne({ name: new RegExp(`^${escaped}$`, 'i') }).catch(() => null);
+        }
+
         // Verify Book exists
-        const book = await Book.findById(bookId).catch(() => null);
+        let book = null;
+        if (mongoose.Types.ObjectId.isValid(bookId)) {
+            book = await Book.findById(bookId).catch(() => null);
+        }
+        if (!book && version) {
+            const normalizedBookId = bookId.replace(/-/g, ' ').trim();
+            const escapedBookId = normalizedBookId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            book = await Book.findOne({
+                version: version._id,
+                $or: [
+                    { name: new RegExp(`^${escapedBookId}$`, 'i') },
+                    { abbreviation: new RegExp(`^${escapedBookId}$`, 'i') }
+                ]
+            }).catch(() => null);
+
+            if (!book) {
+                const canonicalEng = BIBLE_BOOKS.find(b => 
+                    b.name.toLowerCase() === normalizedBookId.toLowerCase() || 
+                    b.abbreviation.toLowerCase() === normalizedBookId.toLowerCase()
+                );
+                let canonicalOrder = canonicalEng?.order;
+                if (!canonicalOrder) {
+                    for (const [engName, teName] of Object.entries(TELUGU_BOOK_NAMES)) {
+                        if (teName.toLowerCase() === normalizedBookId.toLowerCase() || normalizedBookId.includes(teName)) {
+                            const match = BIBLE_BOOKS.find(b => b.name === engName);
+                            if (match) { canonicalOrder = match.order; break; }
+                        }
+                    }
+                }
+                if (canonicalOrder) {
+                    book = await Book.findOne({ version: version._id, order: canonicalOrder }).catch(() => null);
+                }
+            }
+        }
 
         if (!book) {
             return NextResponse.json({ success: false, error: 'Book not found' }, { status: 404 });

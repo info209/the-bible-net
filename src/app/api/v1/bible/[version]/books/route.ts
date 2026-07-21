@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { BibleService } from '@/services/bibleService';
 import { connectDB } from '@/lib/db';
 import { BibleVersion } from '@/models/Bible';
+import mongoose from 'mongoose';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,14 +63,24 @@ export async function GET(
         const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
 
         // Verify version exists
-        const version = await BibleService.getVersionByAbbreviation(versionId).catch(() => null) 
-            || await BibleVersion.findById(versionId).catch(() => null);
+        let version = null;
+        if (mongoose.Types.ObjectId.isValid(versionId)) {
+            version = await BibleVersion.findById(versionId).catch(() => null);
+        }
+        if (!version) {
+            const escaped = versionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            version = await BibleVersion.findOne({ abbreviation: new RegExp(`^${escaped}$`, 'i') }).catch(() => null);
+        }
+        if (!version) {
+            const escaped = versionId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            version = await BibleVersion.findOne({ name: new RegExp(`^${escaped}$`, 'i') }).catch(() => null);
+        }
 
         if (!version) {
             return NextResponse.json({ success: false, error: 'Version not found' }, { status: 404 });
         }
 
-        const data = await BibleService.getBooksByVersion(version._id, page, limit);
+        const data = await BibleService.getBooksByVersion(version._id.toString(), page, limit);
 
         return NextResponse.json({
             success: true,
