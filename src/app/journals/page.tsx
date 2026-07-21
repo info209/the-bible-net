@@ -874,7 +874,7 @@ function JournalsContent() {
         showToast('Failed to update prayer status');
         fetchData(); // rollback
       } else {
-        showToast('Prayer moved to prayed ðŸ™');
+        showToast('Prayer moved to prayed');
       }
     } catch {
       showToast('Network error');
@@ -1567,7 +1567,7 @@ function JournalsContent() {
                                 ? 'bg-gray-100 text-gray-500 dark:bg-white/[0.04] dark:text-gray-500'
                                 : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
                             }`}>
-                              {item.status === 'prayed' ? 'âœ“ Prayed' : 'ðŸ”¥ Active'}
+                              {item.status === 'prayed' ? 'Prayed' : 'Active'}
                             </span>
                           )}
                         </div>
@@ -2279,14 +2279,12 @@ function JournalsContent() {
                   onClick={() => handleOpenEditor(null, 'journal')}
                   className="bg-slate-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04] p-5 rounded-xl flex flex-col items-center justify-center hover:bg-slate-100 transition-all cursor-pointer shadow-xs active:scale-95"
                 >
-                  <span className="text-3xl mb-2">ðŸ““</span>
                   <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Journal</span>
                 </button>
                 <button
                   onClick={() => handleOpenEditor(null, 'prayer')}
                   className="bg-slate-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04] p-5 rounded-xl flex flex-col items-center justify-center hover:bg-slate-100 transition-all cursor-pointer shadow-xs active:scale-95"
                 >
-                  <span className="text-3xl mb-2">ðŸ™</span>
                   <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Prayer</span>
                 </button>
               </div>
@@ -2445,7 +2443,7 @@ function JournalsContent() {
                             prayerStatusFilter === f ? 'bg-[#0B7A81] border-[#0B7A81] text-white' : 'border-gray-200 text-gray-500'
                           }`}
                         >
-                          {f === 'Active' ? 'ðŸ”¥ Active' : f === 'Prayed' ? 'âœ“ Prayed' : 'All'}
+                          {f === 'Active' ? 'Active' : f === 'Prayed' ? 'Prayed' : 'All'}
                         </button>
                       ))}
                     </div>
