@@ -1,4 +1,5 @@
-import { X, Check } from 'lucide-react';
+import { useEffect } from 'react';
+import { X, Check, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ModalHeader from './ModalHeader';
 
@@ -9,6 +10,7 @@ interface CompareVersionsModalProps {
   selectedVersions: string[];
   onToggleVersion: (versionName: string) => void;
   onStartCompare: () => void;
+  activeVersionId?: string | null;
   isDark?: boolean;
   selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
 }
@@ -20,10 +22,18 @@ export default function CompareVersionsModal({
   selectedVersions,
   onToggleVersion,
   onStartCompare,
+  activeVersionId,
   isDark = false,
   selectedTheme,
 }: CompareVersionsModalProps) {
-  const canCompare = selectedVersions.length >= 2 && selectedVersions.length <= 4;
+  // Derive effective selected versions ensuring active reading version is always included
+  const effectiveSelectedVersions = (activeVersionId && !selectedVersions.includes(activeVersionId))
+    ? [activeVersionId, ...selectedVersions]
+    : selectedVersions;
+
+  const activeVersion = activeVersionId || effectiveSelectedVersions[0];
+  const additionalCount = effectiveSelectedVersions.filter(v => v !== activeVersion).length;
+  const canCompare = effectiveSelectedVersions.includes(activeVersion) && additionalCount >= 1 && effectiveSelectedVersions.length <= 4;
 
   // Premium Themes Styling Variables
   const theme = selectedTheme || (isDark ? 'dark' : 'light');
@@ -69,7 +79,10 @@ export default function CompareVersionsModal({
     cream: '#6e5f46',
     dark: '#8e8e93'
   }[theme];
-  
+
+  const activeVersionObj = versions.find(v => v.id === activeVersion);
+  const activeVersionDisplay = activeVersionObj ? activeVersionObj.name : activeVersion;
+
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center">
         {/* Backdrop */}
@@ -105,6 +118,33 @@ export default function CompareVersionsModal({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-4">
+            {/* Validation / Helper Notice */}
+            {!canCompare ? (
+              <div
+                className="mb-4 p-3 rounded-lg text-xs font-medium flex items-center gap-2.5 border"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.08)',
+                  borderColor: theme === 'dark' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.25)',
+                  color: theme === 'dark' ? '#fbbf24' : '#b45309'
+                }}
+              >
+                <Info className="size-4 shrink-0" />
+                <span>Select at least 1 additional version to compare with <strong>{activeVersionDisplay}</strong>.</span>
+              </div>
+            ) : (
+              <div
+                className="mb-4 p-3 rounded-lg text-xs font-medium flex items-center gap-2.5 border"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.12)' : 'rgba(34, 197, 94, 0.08)',
+                  borderColor: theme === 'dark' ? 'rgba(34, 197, 94, 0.3)' : 'rgba(34, 197, 94, 0.25)',
+                  color: theme === 'dark' ? '#4ade80' : '#15803d'
+                }}
+              >
+                <Check className="size-4 shrink-0" />
+                <span>Comparing <strong>{activeVersionDisplay}</strong> with {additionalCount} additional version{additionalCount > 1 ? 's' : ''}.</span>
+              </div>
+            )}
+
             <div className="space-y-4">
               {/* Group by language */}
               {['English', 'Telugu', 'Hindi'].map((language) => {
@@ -118,8 +158,9 @@ export default function CompareVersionsModal({
                     </p>
                     <div className="space-y-2">
                       {languageVersions.map((version) => {
-                        const isSelected = selectedVersions.includes(version.id);
-                        const isDisabled = !isSelected && selectedVersions.length >= 4;
+                        const isActiveVersion = version.id === activeVersion;
+                        const isSelected = effectiveSelectedVersions.includes(version.id);
+                        const isDisabled = !isSelected && effectiveSelectedVersions.length >= 4;
 
                         // Dynamic colors for buttons
                         let btnBg = '';
@@ -153,18 +194,41 @@ export default function CompareVersionsModal({
                         return (
                           <button
                             key={version.id}
-                            onClick={() => !isDisabled && onToggleVersion(version.id)}
+                            onClick={() => {
+                              if (isActiveVersion) {
+                                // Active version is locked as the base version
+                                return;
+                              }
+                              if (!isDisabled) {
+                                onToggleVersion(version.id);
+                              }
+                            }}
                             disabled={isDisabled}
                             className="w-full text-left px-4 py-2.5 rounded transition-all flex items-center justify-between border"
                             style={{
                               backgroundColor: btnBg,
                               color: btnText,
                               borderColor: btnBorder,
-                              cursor: isDisabled ? 'not-allowed' : 'pointer'
+                              cursor: isActiveVersion ? 'default' : (isDisabled ? 'not-allowed' : 'pointer')
                             }}
+                            title={isActiveVersion ? "Active reading version (required base version)" : undefined}
                           >
-                            <span className="text-sm font-semibold">{version.fullName} ({version.name})</span>
-                            {isSelected && <Check className="size-4" />}
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className="text-sm font-semibold truncate">{version.fullName} ({version.name})</span>
+                              {isActiveVersion && (
+                                <span
+                                  className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full shrink-0 uppercase"
+                                  style={{
+                                    backgroundColor: theme === 'dark' ? 'rgba(255, 71, 87, 0.25)' : 'rgba(226, 55, 68, 0.15)',
+                                    color: theme === 'dark' ? '#ff6b7b' : '#E23744',
+                                    border: `1px solid ${theme === 'dark' ? 'rgba(255, 71, 87, 0.4)' : 'rgba(226, 55, 68, 0.25)'}`
+                                  }}
+                                >
+                                  Active
+                                </span>
+                              )}
+                            </div>
+                            {isSelected && <Check className="size-4 shrink-0" />}
                           </button>
                         );
                       })}
@@ -210,3 +274,4 @@ export default function CompareVersionsModal({
       </div>
   );
 }
+

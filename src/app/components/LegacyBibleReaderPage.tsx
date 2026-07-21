@@ -1757,6 +1757,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               selectedVersions={tempComparisonIds}
               onToggleVersion={handleToggleCompareVersion}
               onStartCompare={handleStartCompare}
+              activeVersionId={selectedVersionId}
             />
           )}
         </AnimatePresence>

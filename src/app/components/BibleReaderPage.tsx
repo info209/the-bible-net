@@ -569,6 +569,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     setCompareMode(prev => {
       const isSelected = prev.selectedVersions.includes(versionName);
       if (isSelected) {
+        // Active reading version cannot be deselected as it serves as the base version
+        if (versionName === selectedVersion) {
+          return prev;
+        }
         return {
           ...prev,
           selectedVersions: prev.selectedVersions.filter(v => v !== versionName)
@@ -1834,6 +1838,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     setShowCompareMenu(true);
                   } else {
                     if (showCompareSelector) return;
+                    setCompareMode(prev => {
+                      if (!prev.selectedVersions.includes(selectedVersion)) {
+                        return {
+                          ...prev,
+                          selectedVersions: [selectedVersion, ...prev.selectedVersions]
+                        };
+                      }
+                      return prev;
+                    });
                     setShowCompareSelector(true);
                   }
                 }}
@@ -2767,6 +2780,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             selectedVersions={compareMode.selectedVersions}
             onToggleVersion={handleToggleCompareVersion}
             onStartCompare={handleStartCompare}
+            activeVersionId={selectedVersion}
             selectedTheme={selectedTheme}
           />
         )}
