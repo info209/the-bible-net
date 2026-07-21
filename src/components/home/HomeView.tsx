@@ -561,7 +561,7 @@ export default function HomeView() {
                         {(() => {
                           const verseNumber = content.verseNumber || content.verseReference?.split(':')?.[1]?.trim();
                           return verseNumber ? (
-                            <span className="text-[var(--color-accent-rose)] font-sans font-bold not-italic mr-1.5 text-[22px] md:text-[24px] align-middle">
+                            <span className="text-[var(--color-accent-rose)] font-sans font-bold not-italic mr-1.5 text-[16px] md:text-[18px] align-middle">
                               {verseNumber}
                             </span>
                           ) : null;

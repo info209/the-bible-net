@@ -790,7 +790,7 @@ export function DailyDetailModal({
                                                     {/* ── C. Devotional Content (Body) ────────────── */}
                                                     <div className="flex flex-col space-y-4">
                                                         <div className="text-left w-full">
-                                                            <p className="text-black/70 text-xs tracking-widest font-bold">Devotional reading</p>
+                                                            <h3 className="text-black text-xl md:text-2xl font-bold tracking-tight mt-0.5">Devotional reading</h3>
                                                         </div>
                                                         <p className="text-black/90 text-sm md:text-base leading-relaxed text-left whitespace-pre-wrap font-sans mt-2">
                                                             {item.devotionalContent}
@@ -803,7 +803,7 @@ export function DailyDetailModal({
                                                             <div className="h-px bg-gradient-to-r from-transparent via-black/15 to-transparent w-full" />
                                                             <div id="section-prayer" className="flex flex-col space-y-4">
                                                                 <div className="text-left w-full">
-                                                                    <p className="text-black/70 text-xs tracking-widest font-bold">Daily prayer</p>
+                                                                    <h3 className="text-black text-xl md:text-2xl font-bold tracking-tight mt-0.5">Daily prayer</h3>
                                                                     {item.prayerTitle && (
                                                                         <h4 className="text-black text-lg font-bold tracking-tight mt-0.5">{item.prayerTitle}</h4>
                                                                     )}
