@@ -2216,6 +2216,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                             key={version.id || version.name}
                             onClick={() => {
                               setSelectedVersion(targetVal);
+                              onVersionChange?.(targetVal);
                               setShowVersionSelector(false);
                             }}
                             className="w-full text-left px-4 py-2.5 rounded transition-colors"

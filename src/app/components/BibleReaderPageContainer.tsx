@@ -66,12 +66,12 @@ const bibleBooks = {
 
 // Initial versions as fallback
 const initialVersions = [
-  { name: 'NKJV', fullName: 'New King James Version', language: 'English' },
-  { name: 'KJV', fullName: 'King James Version', language: 'English' },
-  { name: 'NASB', fullName: 'New American Standard Bible', language: 'English' },
-  { name: 'AMP', fullName: 'Amplified Bible', language: 'English' },
-  { name: 'TEL', fullName: 'పవిత్ర గ్రంథము', language: 'Telugu' },
-  { name: 'HIN', fullName: 'पवित्र बाइबिल', language: 'Hindi' },
+  { id: 'NKJV', name: 'NKJV', fullName: 'New King James Version', language: 'English' },
+  { id: 'KJV', name: 'KJV', fullName: 'King James Version', language: 'English' },
+  { id: 'NASB', name: 'NASB', fullName: 'New American Standard Bible', language: 'English' },
+  { id: 'AMP', name: 'AMP', fullName: 'Amplified Bible', language: 'English' },
+  { id: 'TEL', name: 'TEL', fullName: 'పవిత్ర గ్రంథము', language: 'Telugu' },
+  { id: 'HIN', name: 'HIN', fullName: 'पवित्र बाइबिल', language: 'Hindi' },
 ];
 
 // Chapter counts for each book
@@ -487,7 +487,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         'New Testament': nt
       };
     },
-    enabled: isBiblePage && !!selectedVersionId && bibleVersions.length > 0 && bibleVersions !== initialVersions,
+    enabled: isBiblePage && !!selectedVersionId && bibleVersions.length > 0,
     staleTime: Infinity,
   });
 
@@ -645,31 +645,35 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
           setSelectedChapter(parseInt(urlChapter) || 1);
         }
       } else if (segments.length === 1) {
-        // Just /bible opened (e.g. from bottom nav) - set to defaults
-        const preferred = (session?.user as any)?.preferredBibleVersion;
-        const matchedPreferred = preferred ? bibleVersions.find((v: any) => v.name === preferred || v.id === preferred) : null;
-        const defaultVersion = matchedPreferred || bibleVersions.find((v: any) => v.name === 'KJV' || v.name === 'KJV-BSI') || bibleVersions[0];
-        
-        setSelectedVersionId(defaultVersion.id);
-        setDisplayVersionName(defaultVersion.name);
-        
-        // Default to Genesis chapter 1, verse 1 (represented by selectedVerse = 1 or null)
-        const ot = bibleBooksState['Old Testament'];
-        const nt = bibleBooksState['New Testament'];
-        const allNewBooks = [...ot, ...nt];
-        const genesisBook = allNewBooks.find(b => b.name === 'Genesis' || b.id === 'Genesis') || (ot.length > 0 ? ot[0] : null);
-        
-        if (genesisBook) {
-          setSelectedBookId(genesisBook.id);
-          setDisplayBookName(genesisBook.name);
-        } else {
-          setSelectedBookId('Genesis');
-          setDisplayBookName('Genesis');
+        // Just /bible opened (e.g. from bottom nav) - set to defaults ONLY IF NOT ALREADY HYDRATED OR SELECTED
+        if (!versionHydrated.current && !selectedVersionId) {
+          const preferred = (session?.user as any)?.preferredBibleVersion;
+          const matchedPreferred = preferred ? bibleVersions.find((v: any) => v.name === preferred || v.id === preferred) : null;
+          const defaultVersion = matchedPreferred || bibleVersions.find((v: any) => v.name === 'KJV' || v.name === 'KJV-BSI') || bibleVersions[0];
+          
+          if (defaultVersion) {
+            setSelectedVersionId(defaultVersion.id);
+            setDisplayVersionName(defaultVersion.name);
+          }
+          
+          // Default to Genesis chapter 1, verse 1 (represented by selectedVerse = 1 or null)
+          const ot = bibleBooksState['Old Testament'];
+          const nt = bibleBooksState['New Testament'];
+          const allNewBooks = [...ot, ...nt];
+          const genesisBook = allNewBooks.find(b => b.name === 'Genesis' || b.id === 'Genesis') || (ot.length > 0 ? ot[0] : null);
+          
+          if (genesisBook) {
+            setSelectedBookId(genesisBook.id);
+            setDisplayBookName(genesisBook.name);
+          } else {
+            setSelectedBookId('Genesis');
+            setDisplayBookName('Genesis');
+          }
+          
+          setSelectedChapter(1);
+          setSelectedVerse(1); // Set to verse 1 (fresh start)
+          versionHydrated.current = true;
         }
-        
-        setSelectedChapter(1);
-        setSelectedVerse(1); // Set to verse 1 (fresh start)
-        versionHydrated.current = true;
       }
     }
   }, [pathname, searchParams, bibleVersions, bibleBooksState, session]); // Removed state dependencies to prevent resetting user selection back to URL state
@@ -1731,6 +1735,11 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         if (matchingVer) {
           setSelectedVersionId(matchingVer.id);
           setDisplayVersionName(matchingVer.name);
+          versionHydrated.current = true;
+          try {
+            localStorage.setItem('bible-reader-version-id', matchingVer.id);
+            localStorage.setItem('bible-reader-version-name', matchingVer.name);
+          } catch (e) {}
         }
       }}
       onSaveHighlight={(verses: number[], color: string) => {
