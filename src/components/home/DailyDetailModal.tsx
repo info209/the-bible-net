@@ -937,7 +937,7 @@ export function DailyDetailModal({
                                             }}
                                             className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
                                         >
-                                            {(() => { const c = contents[currentIndex] as any; const bId = c?.verseBook || ''; const ch = Number(c?.verseChapter) || 1; const vNum = Number(c?.verseNumber) || 1; const saved = bId ? isSaved(bId, ch, [vNum]) : false; return (<><Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-[#0B7A81] text-[#0B7A81]' : 'text-[#0B7A81]'}`} /><span className="text-gray-800">{saved ? 'Saved' : 'Save verse'}</span></>); })()}
+                                            {(() => { const c = contents[currentIndex] as any; const bId = c?.verseBook || ''; const ch = Number(c?.verseChapter) || 1; const vNum = Number(c?.verseNumber) || 1; const saved = bId ? isSaved(bId, ch, [vNum]) : false; return (<><Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-black text-black' : 'text-gray-500'}`} /><span className="text-gray-800">{saved ? 'Saved' : 'Save verse'}</span></>); })()}
                                         </button>
                                     </>
                                 )}

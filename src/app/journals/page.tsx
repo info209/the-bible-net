@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmContext';
+import { LiaBookMedicalSolid, LiaBookSolid } from 'react-icons/lia';
 
 // â”€â”€ Tiptap Rich Text Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -2277,17 +2278,23 @@ function JournalsContent() {
               <div className="grid grid-cols-2 gap-4 pb-4 select-none">
                 <button
                   onClick={() => handleOpenEditor(null, 'journal')}
-                  className="bg-slate-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04] p-5 rounded-xl flex flex-col items-center justify-center hover:bg-slate-100 transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="group bg-slate-50 hover:bg-slate-100/90 dark:bg-white/[0.03] dark:hover:bg-white/[0.07] border border-gray-200/80 dark:border-white/[0.08] p-5 rounded-2xl flex flex-col items-center justify-center text-center transition-all cursor-pointer shadow-xs hover:shadow-md active:scale-95"
                 >
-                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Journal</span>
-                  <span>Thoughts, insights and reflections</span>
+                  <div className="p-3 rounded-xl bg-teal-500/10 dark:bg-teal-400/10 text-teal-600 dark:text-teal-400 mb-3 group-hover:scale-110 transition-transform duration-200">
+                    <LiaBookMedicalSolid className="w-7 h-7" />
+                  </div>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Journal</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-normal leading-relaxed">Thoughts, insights and reflections</span>
                 </button>
                 <button
                   onClick={() => handleOpenEditor(null, 'prayer')}
-                  className="bg-slate-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04] p-5 rounded-xl flex flex-col items-center justify-center hover:bg-slate-100 transition-all cursor-pointer shadow-xs active:scale-95"
+                  className="group bg-slate-50 hover:bg-slate-100/90 dark:bg-white/[0.03] dark:hover:bg-white/[0.07] border border-gray-200/80 dark:border-white/[0.08] p-5 rounded-2xl flex flex-col items-center justify-center text-center transition-all cursor-pointer shadow-xs hover:shadow-md active:scale-95"
                 >
-                  <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Prayer</span>
-                  <span>Personal prayer or prayer request</span>
+                  <div className="p-3 rounded-xl bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-600 dark:text-indigo-400 mb-3 group-hover:scale-110 transition-transform duration-200">
+                    <LiaBookSolid className="w-7 h-7" />
+                  </div>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Prayer</span>
+                  <span className="text-xs text-gray-500 dark:text-gray-400 font-normal leading-relaxed">Personal prayer or prayer request</span>
                 </button>
               </div>
             </motion.div>
