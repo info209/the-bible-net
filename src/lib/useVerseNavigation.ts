@@ -22,10 +22,7 @@ import { useEffect, useRef } from 'react';
 const HIGHLIGHT_CLASS = 'verse-nav-highlight';
 
 /** How long to wait for the verse element to appear before giving up (ms) */
-const OBSERVER_TIMEOUT_MS = 4000;
-
-/** Approximate header height to exclude from the viewport center calculation */
-const HEADER_OFFSET_PX = 60;
+const OBSERVER_TIMEOUT_MS = 5000;
 
 interface UseVerseNavigationParams {
   book: string;
@@ -41,17 +38,15 @@ export function useVerseNavigation({
   verseNumber,
   isChapterReady,
 }: UseVerseNavigationParams): void {
-  // Stable ref so the observer callback always reads the latest params
-  const paramsRef = useRef({ book, chapter, verseNumber, isChapterReady });
-  useEffect(() => {
-    paramsRef.current = { book, chapter, verseNumber, isChapterReady };
-  });
-
-  // Ref to the active MutationObserver so we can disconnect on cleanup
+  // Ref to observer and timers so we can clean up properly
   const observerRef = useRef<MutationObserver | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const rafRef = useRef<number | null>(null);
   const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const postScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Track last executed target key to prevent duplicate triggering during reading
+  const lastNavigatedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     // --- Guard: nothing to do ---
@@ -60,6 +55,12 @@ export function useVerseNavigation({
     }
 
     const targetId = `verse-${book}-${chapter}-${verseNumber}`;
+    const targetKey = targetId;
+
+    // Prevent duplicate navigation for the exact same target key if already executed
+    if (lastNavigatedKeyRef.current === targetKey) {
+      return;
+    }
 
     // --- Cleanup helper ---
     const cleanup = () => {
@@ -75,8 +76,10 @@ export function useVerseNavigation({
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
       }
-      // NOTE: We do NOT clear highlightTimeoutRef here because the fade
-      // animation should complete even if params change.
+      if (postScrollTimerRef.current !== null) {
+        clearTimeout(postScrollTimerRef.current);
+        postScrollTimerRef.current = null;
+      }
     };
 
     // --- Remove previous highlight from any verse ---
@@ -90,48 +93,92 @@ export function useVerseNavigation({
       }
     };
 
+    // Helper: Compute dynamic sticky header height
+    const getDynamicHeaderHeight = (): number => {
+      const stickyEl = document.querySelector('.sticky.top-0') || document.querySelector('header');
+      if (stickyEl) {
+        const rect = stickyEl.getBoundingClientRect();
+        if (rect.bottom > 0 && rect.bottom < 200) {
+          return rect.bottom;
+        }
+      }
+      return 60; // Fallback standard header height
+    };
+
+    // Calculate clamped centered scroll position
+    const calculateTargetScrollTop = (target: HTMLElement): number => {
+      const rect = target.getBoundingClientRect();
+      const headerHeight = getDynamicHeaderHeight();
+      const viewportHeight = window.innerHeight;
+      const usableHeight = Math.max(100, viewportHeight - headerHeight);
+
+      // Verse center relative to document top
+      const elementAbsoluteCenter = window.scrollY + rect.top + (rect.height / 2);
+      // Viewport target center is headerHeight + usableHeight / 2
+      const idealScrollTop = elementAbsoluteCenter - (headerHeight + usableHeight / 2);
+
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - viewportHeight);
+      return Math.max(0, Math.min(idealScrollTop, maxScroll));
+    };
+
     // --- Core scroll + highlight logic ---
     const scrollToVerse = (el: HTMLElement) => {
-      // Use two rAF frames to guarantee layout is fully settled
-      rafRef.current = requestAnimationFrame(() => {
-        rafRef.current = requestAnimationFrame(() => {
-          // Re-query: element may have been re-mounted by React between frames
-          const target = document.getElementById(targetId) ?? el;
+      lastNavigatedKeyRef.current = targetKey;
 
-          const rect = target.getBoundingClientRect();
-          const viewportHeight = window.innerHeight;
-          const usableHeight = viewportHeight - HEADER_OFFSET_PX;
+      let prevTop = -1;
+      let frameCount = 0;
 
-          // Calculate the scroll position that centers the verse in the usable viewport
-          const elementAbsoluteTop = window.scrollY + rect.top;
-          const idealScrollTop =
-            elementAbsoluteTop - HEADER_OFFSET_PX - usableHeight / 2 + rect.height / 2;
+      // Poll across animation frames to wait until DOM layout (fonts, framer-motion, etc.) settles
+      const checkAndScroll = () => {
+        const target = document.getElementById(targetId) ?? el;
+        if (!target) return;
 
-          // Clamp: never negative, never beyond the document's max scroll
-          const maxScroll =
-            document.documentElement.scrollHeight - window.innerHeight;
-          const clampedScrollTop = Math.max(0, Math.min(idealScrollTop, maxScroll));
+        const currentTop = target.getBoundingClientRect().top + window.scrollY;
 
-          // Single smooth scroll — no follow-up adjustments
-          window.scrollTo({ top: clampedScrollTop, behavior: 'smooth' });
+        // If position changed significantly or we haven't checked minimum frames, wait (up to 8 frames ~120ms max)
+        if (frameCount < 4 || (Math.abs(currentTop - prevTop) > 1 && frameCount < 10)) {
+          prevTop = currentTop;
+          frameCount++;
+          rafRef.current = requestAnimationFrame(checkAndScroll);
+          return;
+        }
 
-          // Apply temporary highlight
-          removeHighlight();
-          target.classList.add(HIGHLIGHT_CLASS);
+        // Layout has settled — compute position
+        const targetScrollTop = calculateTargetScrollTop(target);
 
-          // Remove the class after animation completes (matches CSS duration)
-          highlightTimeoutRef.current = setTimeout(() => {
-            target.classList.remove(HIGHLIGHT_CLASS);
-            highlightTimeoutRef.current = null;
-          }, 2000);
-        });
-      });
+        // Perform smooth scroll
+        window.scrollTo({ top: targetScrollTop, behavior: 'smooth' });
+
+        // Apply temporary highlight animation
+        removeHighlight();
+        target.classList.add(HIGHLIGHT_CLASS);
+
+        highlightTimeoutRef.current = setTimeout(() => {
+          target.classList.remove(HIGHLIGHT_CLASS);
+          highlightTimeoutRef.current = null;
+        }, 2000);
+
+        // Post-scroll alignment check: after smooth scroll finishes (~450ms),
+        // verify if layout shifted (e.g. late image/font load) and make minor non-disruptive correction if needed
+        postScrollTimerRef.current = setTimeout(() => {
+          const freshTarget = document.getElementById(targetId);
+          if (freshTarget) {
+            const finalScrollTop = calculateTargetScrollTop(freshTarget);
+            // Only adjust if drift is greater than 12px
+            if (Math.abs(window.scrollY - finalScrollTop) > 12) {
+              window.scrollTo({ top: finalScrollTop, behavior: 'auto' });
+            }
+          }
+        }, 450);
+      };
+
+      rafRef.current = requestAnimationFrame(checkAndScroll);
     };
 
     // --- Attempt immediate find (element already in DOM) ---
     const existingEl = document.getElementById(targetId);
     if (existingEl) {
-      cleanup(); // cancel any stale observer
+      cleanup();
       scrollToVerse(existingEl);
       return cleanup;
     }
@@ -159,7 +206,6 @@ export function useVerseNavigation({
     // Safety timeout: stop waiting after OBSERVER_TIMEOUT_MS
     timeoutRef.current = setTimeout(() => {
       cleanup();
-      // Graceful fallback: scroll to the nearest verse that exists
       const fallback = document.querySelector(`[id^="verse-${book}-${chapter}-"]`) as HTMLElement | null;
       if (fallback) {
         scrollToVerse(fallback);
@@ -167,6 +213,6 @@ export function useVerseNavigation({
     }, OBSERVER_TIMEOUT_MS);
 
     return cleanup;
-    // Re-run whenever the target verse, book, or chapter changes, or chapter becomes ready
   }, [book, chapter, verseNumber, isChapterReady]);
 }
+

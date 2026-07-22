@@ -2274,7 +2274,7 @@ function JournalsContent() {
         )}
       </AnimatePresence>
 
-      {/* â”€â”€ KEBAB FLOATING POPOVER MENU (Single cards actions) â”€â”€ */}
+      {/* KEBAB FLOATING POPOVER MENU (Single cards actions) */}
       <AnimatePresence>
         {activeKebabId && kebabPosition && (
           <motion.div 
@@ -2297,7 +2297,7 @@ function JournalsContent() {
               className="w-48 bg-white dark:bg-[#1A1A1A] rounded-xl shadow-xl border border-gray-100 dark:border-white/[0.08] overflow-hidden py-1 z-50"
               onClick={(e) => e.stopPropagation()}
             >
-              {/* Move to prayed â€” only for active prayers */}
+              {/* Move to prayed only for active prayers */}
               {activeKebabType === 'prayer' && !isActivePrayerPrayed && (
                 <button
                   onClick={() => handleTriggerMarkAsPrayed(activeKebabId)}
@@ -2307,7 +2307,7 @@ function JournalsContent() {
                   <Check className="w-3.5 h-3.5" strokeWidth={3} />
                 </button>
               )}
-              {/* Edit â€” for both prayer and journal */}
+              {/* Edit for both prayer and journal */}
               <button
                 onClick={() => handleEditKebabItem(activeKebabId, activeKebabType)}
                 className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-gray-800 dark:text-gray-200"
@@ -2315,7 +2315,7 @@ function JournalsContent() {
                 <span>{activeKebabType === 'prayer' ? 'Edit prayer' : 'Edit journal'}</span>
                 <Edit2 className="w-3.5 h-3.5 text-gray-500" />
               </button>
-              {/* Delete â€” for both */}
+              {/* Delete for both */}
               <button
                 onClick={() => handleTriggerDelete(activeKebabId, activeKebabType)}
                 className="w-full h-11 px-4 flex items-center justify-between text-xs font-semibold hover:bg-gray-50 dark:hover:bg-white/[0.04] text-[#FF4D4F] border-t border-gray-100 dark:border-white/[0.04]"
@@ -2358,7 +2358,7 @@ function JournalsContent() {
                   onClick={() => handleOpenEditor(null, 'prayer')}
                   className="group bg-slate-50 hover:bg-slate-100/90 dark:bg-white/[0.03] dark:hover:bg-white/[0.07] border border-gray-200/80 dark:border-white/[0.08] p-5 rounded-2xl flex flex-col items-center justify-center text-center transition-all cursor-pointer shadow-xs hover:shadow-md active:scale-95"
                 >
-                  <div className="p-3 rounded-xl bg-indigo-500/10 dark:bg-indigo-400/10 text-indigo-600 dark:text-indigo-400 mb-3 group-hover:scale-110 transition-transform duration-200">
+                  <div className="p-3 rounded-xl bg-rose-500/10 dark:bg-rose-400/10 text-rose-600 dark:text-rose-400 mb-3 group-hover:scale-110 transition-transform duration-200">
                     <LiaBookSolid className="w-7 h-7" />
                   </div>
                   <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Prayer</span>

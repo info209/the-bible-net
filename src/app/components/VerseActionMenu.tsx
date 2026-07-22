@@ -8,6 +8,7 @@ import {
   CheckCircle2, MinusCircle, ArrowRightLeft,
   Share2, Bookmark, Lock, Trash2, BookmarkCheck
 } from 'lucide-react';
+import { RiShareForwardLine } from 'react-icons/ri';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const MAX_LABEL_LENGTH = 40;
@@ -584,7 +585,7 @@ export default function VerseActionMenu({
                           className="flex flex-col items-center justify-center gap-1 h-[58px] rounded-[14px] transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <Share2 className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
+                          <RiShareForwardLine className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
                           <span className="text-[10px] font-bold" style={{ color: iconColor }}>Share</span>
                         </button>
                       </div>

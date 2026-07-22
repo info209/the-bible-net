@@ -559,7 +559,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     const queryVersion = searchParams ? searchParams.get('version') : null;
     const queryBook = searchParams ? searchParams.get('book') : null;
     const queryChapter = searchParams ? searchParams.get('chapter') : null;
-    const queryVerse = searchParams ? searchParams.get('verse') : null;
+    const queryVerse = searchParams ? (searchParams.get('verse') || searchParams.get('v')) : null;
 
     if (queryVersion || queryBook || queryChapter || queryVerse) {
       // Update version — URL params are always an explicit user navigation, so
@@ -599,7 +599,16 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       }
 
       if (queryVerse) {
-        setSelectedVerse(parseInt(queryVerse) || 1);
+        const rawNum = parseInt(queryVerse, 10);
+        if (!isNaN(rawNum) && rawNum > 0) {
+          setSelectedVerse(rawNum);
+        } else if (queryVerse.includes(':')) {
+          const splitV = parseInt(queryVerse.split(':')[1], 10);
+          setSelectedVerse(!isNaN(splitV) && splitV > 0 ? splitV : 1);
+        } else {
+          const match = queryVerse.match(/\d+/);
+          setSelectedVerse(match ? parseInt(match[0], 10) : 1);
+        }
       } else {
         setSelectedVerse(null);
       }
