@@ -3,7 +3,7 @@ import { connectDB } from '@/lib/db';
 import { adminAuth } from '@/lib/auth/admin';
 import { UserRole } from '@/types/user';
 import { DailyContentRepository } from '@/repositories/dailyContentRepository';
-import { parseVerseReferences } from '@/utils/verseReferenceParser';
+import { parseVerseReferences, formatRefs } from '@/utils/verseReferenceParser';
 
 export const dynamic = 'force-dynamic';
 
@@ -54,13 +54,32 @@ export async function POST(req: NextRequest) {
             data.contentYear = parseInt(data.date.substring(0, 4), 10);
         }
 
+        // Parse daily verse references if verseRefs not directly provided
+        if (!data.verseRefs?.length && data.verseReference) {
+            const parsed = parseVerseReferences(data.verseReference);
+            if (parsed.errors.length === 0 && parsed.refs.length > 0) {
+                data.verseRefs = parsed.refs;
+            }
+        }
+
+        // Set primary verse fields for backward compat & year uniqueness index
+        if (data.verseRefs && data.verseRefs.length > 0) {
+            const firstRef = data.verseRefs[0];
+            data.verseBook = firstRef.book;
+            data.verseChapter = firstRef.chapter;
+            data.verseNumber = firstRef.startVerse;
+            if (!data.verseReference) {
+                data.verseReference = formatRefs(data.verseRefs);
+            }
+        }
+
         // Parse devotional verse references into normalized array
         if (data.devotionalVerseRef && !data.devotionalVerseRefs?.length) {
             const parsed = parseVerseReferences(data.devotionalVerseRef);
             if (parsed.errors.length > 0) {
                 return NextResponse.json({
                     success: false,
-                    error: `Invalid verse reference: ${parsed.errors.join('; ')}`
+                    error: `Invalid devotional verse reference: ${parsed.errors.join('; ')}`
                 }, { status: 400 });
             }
             data.devotionalVerseRefs = parsed.refs;

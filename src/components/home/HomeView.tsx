@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useReadingProgress } from '@/lib/useReadingProgress';
 import { useSavedVerses, buildVerseRangeText } from '@/lib/useSavedVerses';
 import { getRelativeTime } from '@/utils/time';
+import { formatCopyVerseText } from '@/utils/verseFormatter';
 import HomeSkeleton from '@/app/components/HomeSkeleton';
 import { CarouselCardSkeleton, PrayerSkeleton } from '@/app/components/HomeSkeleton';
 import { DailyDetailModal } from './DailyDetailModal';
@@ -96,6 +97,30 @@ export default function HomeView() {
     const interval = setInterval(updateGreeting, 60000);
     return () => clearInterval(interval);
   }, []);
+
+  // Auto-close any open kebab menu when navigating carousel slides
+  useEffect(() => {
+    setOpenVerseKebabIndex(null);
+    setOpenDevotionKebabIndex(null);
+  }, [currentVerseSlide, currentDevotionSlide]);
+
+  // Auto-close open kebab menu when scrolling the page
+  useEffect(() => {
+    if (openVerseKebabIndex === null && openDevotionKebabIndex === null) return;
+
+    const handleClose = () => {
+      setOpenVerseKebabIndex(null);
+      setOpenDevotionKebabIndex(null);
+    };
+
+    window.addEventListener('scroll', handleClose, { passive: true, capture: true });
+    window.addEventListener('touchmove', handleClose, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', handleClose, { capture: true });
+      window.removeEventListener('touchmove', handleClose);
+    };
+  }, [openVerseKebabIndex, openDevotionKebabIndex]);
 
   const queryClient = useQueryClient();
   const preferredVersion = (session?.user as any)?.preferredBibleVersion || 'KJV';
@@ -272,7 +297,7 @@ export default function HomeView() {
 
     const url = `${window.location.origin}/bible?${params.toString()}`;
     const text = type === 'daily-verse'
-      ? `Check out this verse: ${content.verseReference} - "${content.verse}"`
+      ? `${content.verseReference} - "${content.verse}"`
       : `Check out this devotional: "${content.devotionalTitle}"`;
 
     let sharedSuccessfully = false;
@@ -416,9 +441,10 @@ export default function HomeView() {
     e.stopPropagation();
     setOpenVerseKebabIndex(null);
     const version = encodeURIComponent(content.version || preferredVersion);
-    const book    = encodeURIComponent(content.verseBook || '');
-    const chapter = encodeURIComponent(content.verseChapter || '');
-    const verse   = encodeURIComponent(content.verseNumber || '');
+    const firstRef = content.verseRefs?.[0];
+    const book    = encodeURIComponent(firstRef?.book || content.verseBook || '');
+    const chapter = encodeURIComponent(firstRef?.chapter || content.verseChapter || '');
+    const verse   = encodeURIComponent(firstRef?.startVerse || content.verseNumber || '');
     router.push(`/bible?version=${version}&book=${book}&chapter=${chapter}&verse=${verse}`);
   };
 
@@ -434,11 +460,22 @@ export default function HomeView() {
     }
 
     try {
-      const bookId   = content.verseBook || '';
-      const bookName = content.verseBook || '';
-      const chapter  = Number(content.verseChapter) || 1;
-      const verseNum = Number(content.verseNumber) || 1;
-      const verses   = [verseNum];
+      const firstRef = content.verseRefs?.[0];
+      const bookId   = firstRef?.book || content.verseBook || '';
+      const bookName = firstRef?.book || content.verseBook || '';
+      const chapter  = Number(firstRef?.chapter || content.verseChapter) || 1;
+      
+      let verses: number[] = [];
+      if (content.verseRefs && content.verseRefs.length > 0) {
+        for (const r of content.verseRefs) {
+          for (let v = r.startVerse; v <= r.endVerse; v++) {
+            verses.push(v);
+          }
+        }
+      } else {
+        verses = [Number(content.verseNumber) || 1];
+      }
+
       const verseRangeText = buildVerseRangeText(bookName, chapter, verses);
       const version  = content.version || preferredVersion;
 
@@ -568,14 +605,31 @@ export default function HomeView() {
                     <div className="flex-1 flex flex-col justify-start mt-4 overflow-hidden">
                       <p className="text-black text-[16px] md:text-[18px] leading-relaxed text-left pl-1 line-clamp-4 overflow-hidden text-ellipsis w-full">
                         {(() => {
-                          const verseNumber = content.verseNumber || content.verseReference?.split(':')?.[1]?.trim();
-                          return verseNumber ? (
-                            <span className="text-[var(--color-accent-rose)] font-sans font-bold not-italic mr-1.5 text-[16px] md:text-[18px] align-middle">
-                              {verseNumber}
-                            </span>
-                          ) : null;
+                          let verseItems: Array<{ number: number; text: string }> = content.verseItems || [];
+                          if (verseItems.length === 0 && content.verseBlocks && Array.isArray(content.verseBlocks)) {
+                            verseItems = content.verseBlocks.flatMap((b: any) => b.verses || []);
+                          }
+                          const fallbackText = content.verse || 'Verse text available soon...';
+
+                          if (verseItems.length <= 1) {
+                            const textToDisplay = verseItems.length === 1 ? verseItems[0].text : fallbackText;
+                            return <>&quot;{textToDisplay}&quot;</>;
+                          }
+
+                          return (
+                            <>
+                              &quot;
+                              {verseItems.map((v, idx) => (
+                                <span key={idx}>
+                                  <span className="font-bold text-black mr-1">{v.number}</span>
+                                  <span>{v.text}</span>
+                                  {idx < verseItems.length - 1 ? ' ' : ''}
+                                </span>
+                              ))}
+                              &quot;
+                            </>
+                          );
                         })()}
-                        &quot;{content.verse || 'Verse text available soon...'}&quot;
                       </p>
                     </div>
 
@@ -614,6 +668,7 @@ export default function HomeView() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            setOpenDevotionKebabIndex(null);
                             setOpenVerseKebabIndex(openVerseKebabIndex === index ? null : index);
                           }}
                           className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
@@ -641,9 +696,10 @@ export default function HomeView() {
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   setOpenVerseKebabIndex(null);
-                                  if (content.verse) {
-                                    navigator.clipboard.writeText(content.verse)
-                                      .then(() => toast.success('Verse text copied to clipboard!'))
+                                  const textToCopy = formatCopyVerseText(content);
+                                  if (textToCopy) {
+                                    navigator.clipboard.writeText(textToCopy)
+                                      .then(() => toast.success('Verse copied to the clipboard'))
                                       .catch((err) => {
                                         console.error('Failed to copy text:', err);
                                         toast.error('Failed to copy text.');
@@ -795,6 +851,7 @@ export default function HomeView() {
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
+                            setOpenVerseKebabIndex(null);
                             setOpenDevotionKebabIndex(openDevotionKebabIndex === index ? null : index);
                           }}
                           className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"

@@ -10,6 +10,7 @@ export interface IDailyContent extends Document {
     verseChapter?: number;     // e.g. 23
     verseNumber?: number;      // e.g. 1
     verseReference?: string;   // Human-readable label: "Psalms 23:1"
+    verseRefs?: ParsedVerseRef[]; // Normalized multi-ref array for daily verse entries
 
     // Daily devotional
     devotionalTitle?: string;
@@ -62,6 +63,17 @@ const DailyContentSchema = new Schema<IDailyContent>(
         verseReference: {
             type: String,
             trim: true,
+        },
+        verseRefs: {
+            type: [
+                {
+                    book: { type: String, required: true, trim: true },
+                    chapter: { type: Number, required: true, min: 1 },
+                    startVerse: { type: Number, required: true, min: 1 },
+                    endVerse: { type: Number, required: true, min: 1 },
+                }
+            ],
+            default: undefined,
         },
         devotionalTitle: {
             type: String,

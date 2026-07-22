@@ -40,19 +40,23 @@ export class DailyContentService {
             if (!dailySelection) return null;
 
             if (type === 'verse') {
-                const resolvedText = dailySelection.verseBook && dailySelection.verseBook !== 'Unknown'
-                    ? await this.resolveVerseText(
-                        dailySelection.verseBook,
-                        dailySelection.verseChapter!,
-                        dailySelection.verseNumber!,
-                        version
-                    )
-                    : '';
+                const blocks = await this.resolveDailyVerseBlocks(dailySelection, version);
+                const resolvedText = blocks.length > 0
+                    ? blocks.map(b => b.text).filter(Boolean).join(' ')
+                    : (dailySelection.verseBook && dailySelection.verseBook !== 'Unknown'
+                        ? await this.resolveVerseText(
+                            dailySelection.verseBook,
+                            dailySelection.verseChapter!,
+                            dailySelection.verseNumber!,
+                            version
+                        )
+                        : '');
                 return {
                     _id: dailySelection._id,
                     type: 'daily-verse',
                     reference: dailySelection.verseReference || '',
                     text: resolvedText,
+                    verseBlocks: blocks,
                     version,
                     likeCount: dailySelection.verseLikeCount || 0,
                     commentCount: dailySelection.verseCommentCount || 0,
@@ -79,18 +83,33 @@ export class DailyContentService {
 
     /**
      * Enriches a DailyContent record with version-resolved verse text.
-     * For devotionals, resolves ALL referenced verses using batched DB queries.
+     * For daily verses and devotionals, resolves ALL referenced verses in selection order.
      */
     static async enrichWithVerseText(content: IDailyContent, version: string): Promise<any> {
-        const hasVerse = content.verseBook && content.verseBook !== 'Unknown';
-        const resolvedText = hasVerse
-            ? await this.resolveVerseText(
-                content.verseBook!,
-                content.verseChapter!,
-                content.verseNumber!,
-                version
-            )
-            : '';
+        // Resolve daily verse blocks (multi-ref aware, backward-compatible)
+        const dailyVerseBlocks = await this.resolveDailyVerseBlocks(content, version);
+
+        const resolvedText = dailyVerseBlocks.length > 0
+            ? dailyVerseBlocks.map(b => b.text).filter(Boolean).join(' ')
+            : (content.verseBook && content.verseBook !== 'Unknown'
+                ? await this.resolveVerseText(
+                    content.verseBook!,
+                    content.verseChapter!,
+                    content.verseNumber!,
+                    version
+                )
+                : '');
+
+        // Flatten all verse items across blocks
+        const verseItems: Array<{ number: number; text: string }> = [];
+        for (const b of dailyVerseBlocks) {
+            if (b.verses && b.verses.length > 0) {
+                verseItems.push(...b.verses);
+            }
+        }
+        if (verseItems.length === 0 && content.verseBook && content.verseChapter && content.verseNumber && resolvedText) {
+            verseItems.push({ number: content.verseNumber, text: resolvedText });
+        }
 
         // Resolve devotional verse blocks (multi-ref aware, backward-compatible)
         const devotionalVerseBlocks = await this.resolveDevotionalVerseBlocks(content, version);
@@ -105,7 +124,10 @@ export class DailyContentService {
             verseBook: content.verseBook || '',
             verseChapter: content.verseChapter || null,
             verseNumber: content.verseNumber || null,
+            verseRefs: content.verseRefs || undefined,
             verse: resolvedText,
+            verseBlocks: dailyVerseBlocks,
+            verseItems,
             version,
             devotionalTitle: content.devotionalTitle || '',
             devotionalContent: content.devotionalContent || '',
@@ -126,6 +148,45 @@ export class DailyContentService {
         };
     }
 
+    // ─── Daily Verse Multi-Ref Resolution ─────────────────────────────────────
+
+    /**
+     * Resolves daily verse blocks for a single DailyContent record.
+     *
+     * Priority:
+     *   1. Use content.verseRefs (new normalized array) if present and non-empty.
+     *   2. Fall back to parsing content.verseReference if present.
+     *   3. Fall back to content.verseBook, verseChapter, verseNumber.
+     */
+    static async resolveDailyVerseBlocks(
+        content: IDailyContent,
+        version: string
+    ): Promise<Array<{ ref: string; text: string; verses?: Array<{ number: number; text: string }> }>> {
+        const { parseVerseReferences } = await import('@/utils/verseReferenceParser');
+
+        let refs = (content as any).verseRefs as Array<{
+            book: string; chapter: number; startVerse: number; endVerse: number;
+        }> | undefined;
+
+        if (!refs || refs.length === 0) {
+            if (content.verseReference) {
+                const parsed = parseVerseReferences(content.verseReference);
+                refs = parsed.refs;
+            } else if (content.verseBook && content.verseBook !== 'Unknown' && content.verseChapter && content.verseNumber) {
+                refs = [{
+                    book: content.verseBook,
+                    chapter: content.verseChapter,
+                    startVerse: content.verseNumber,
+                    endVerse: content.verseNumber,
+                }];
+            }
+        }
+
+        if (!refs || refs.length === 0) return [];
+
+        return this.resolveMultipleRefs(refs, version);
+    }
+
     // ─── Devotional Multi-Ref Resolution ─────────────────────────────────────
 
     /**
@@ -141,7 +202,7 @@ export class DailyContentService {
     static async resolveDevotionalVerseBlocks(
         content: IDailyContent,
         version: string
-    ): Promise<Array<{ ref: string; text: string }>> {
+    ): Promise<Array<{ ref: string; text: string; verses?: Array<{ number: number; text: string }> }>> {
         const { parseVerseReferences } = await import('@/utils/verseReferenceParser');
 
         let refs = (content as any).devotionalVerseRefs as Array<{
@@ -171,7 +232,7 @@ export class DailyContentService {
     static async resolveMultipleRefs(
         refs: Array<{ book: string; chapter: number; startVerse: number; endVerse: number }>,
         versionAbbr: string
-    ): Promise<Array<{ ref: string; text: string }>> {
+    ): Promise<Array<{ ref: string; text: string; verses?: Array<{ number: number; text: string }> }>> {
         if (!refs || refs.length === 0) return [];
 
         try {
@@ -265,7 +326,7 @@ export class DailyContentService {
             }
 
             // Assemble blocks in original insertion order
-            const blocks: Array<{ ref: string; text: string }> = [];
+            const blocks: Array<{ ref: string; text: string; verses?: Array<{ number: number; text: string }> }> = [];
             for (const ref of refs) {
                 const key: ChapterKey = `${ref.book.toLowerCase()}:${ref.chapter}`;
                 const verseMap = chapterVerseMap.get(key);
@@ -273,17 +334,21 @@ export class DailyContentService {
 
                 if (!verseMap) {
                     console.warn(`[resolveMultipleRefs] No verse data for ${refLabel} — skipping`);
-                    blocks.push({ ref: refLabel, text: '' });
+                    blocks.push({ ref: refLabel, text: '', verses: [] });
                     continue;
                 }
 
                 const texts: string[] = [];
+                const verses: Array<{ number: number; text: string }> = [];
                 for (let v = ref.startVerse; v <= ref.endVerse; v++) {
                     const t = verseMap.get(v);
-                    if (t) texts.push(t);
+                    if (t) {
+                        texts.push(t);
+                        verses.push({ number: v, text: t });
+                    }
                 }
 
-                blocks.push({ ref: refLabel, text: texts.join(' ') });
+                blocks.push({ ref: refLabel, text: texts.join(' '), verses });
             }
 
             return blocks;

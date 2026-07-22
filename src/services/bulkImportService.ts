@@ -257,6 +257,12 @@ export async function importVerses(validRows: VerseImportRow[]): Promise<{ upser
         verseBook: row.book,
         verseChapter: row.chapter,
         verseNumber: row.verse,
+        verseRefs: [{
+            book: row.book,
+            chapter: row.chapter,
+            startVerse: row.verse,
+            endVerse: row.verse,
+        }],
         verseReference: `${row.book} ${row.chapter}:${row.verse}`,
         backgroundImage: row.backgroundImage,
         isPublished: true,

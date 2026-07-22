@@ -12,13 +12,15 @@ import { parseSingleReference, formatSingleRef } from '@/utils/verseReferencePar
 interface FormData {
     _id?: string;
     date: string;
+    // Dynamic list of daily verse reference inputs
+    verseRefLines: string[];
     verseBook: string;
     verseChapter: string;
     verseNumber: string;
     verseReference?: string;
     devotionalTitle: string;
     devotionalContent: string;
-    // Dynamic list of verse reference inputs
+    // Dynamic list of devotional verse reference inputs
     devotionalVerseRefLines: string[];
     backgroundImage: string;
     devotionalBackgroundImage: string;
@@ -32,9 +34,10 @@ interface FormData {
 interface VerseRefInputListProps {
     lines: string[];
     onChange: (lines: string[]) => void;
+    idPrefix?: string;
 }
 
-function VerseRefInputList({ lines, onChange }: VerseRefInputListProps) {
+function VerseRefInputList({ lines, onChange, idPrefix = 'verse-ref' }: VerseRefInputListProps) {
     const inputClass =
         'flex-1 bg-white/5 border rounded-xl px-4 py-3 text-white focus:outline-none transition-colors placeholder:text-gray-700';
 
@@ -94,7 +97,7 @@ function VerseRefInputList({ lines, onChange }: VerseRefInputListProps) {
                                 }`}
                                 autoComplete="off"
                                 spellCheck={false}
-                                id={`devotional-verse-ref-${i}`}
+                                id={`${idPrefix}-${i}`}
                             />
                             <button
                                 type="button"
@@ -128,7 +131,7 @@ function VerseRefInputList({ lines, onChange }: VerseRefInputListProps) {
                 type="button"
                 onClick={handleAdd}
                 className="flex items-center gap-2 px-4 py-2.5 w-full mt-1 rounded-xl border border-dashed border-white/15 text-gray-500 hover:text-white hover:border-white/30 hover:bg-white/5 transition-all text-sm font-medium"
-                id="add-verse-reference-btn"
+                id={`add-${idPrefix}-btn`}
             >
                 <Plus className="size-4" />
                 Add another reference
@@ -152,6 +155,7 @@ function ManageForm() {
 
     const [formData, setFormData] = useState<FormData>({
         date: new Date().toISOString().split('T')[0],
+        verseRefLines: [''],
         verseBook: '',
         verseChapter: '',
         verseNumber: '',
@@ -176,31 +180,43 @@ function ManageForm() {
                     if (res.success) {
                         const d = res.data;
 
-                        // Reconstruct verse ref lines:
-                        //   New records: derive from devotionalVerseRefs array
-                        //   Legacy records: split devotionalVerseRef by newline
-                        let verseRefLines: string[] = [''];
+                        // Reconstruct Daily Verse ref lines:
+                        let dailyRefLines: string[] = [''];
+                        const { formatSingleRef: fmt } = require('@/utils/verseReferenceParser');
+                        if (d.verseRefs && d.verseRefs.length > 0) {
+                            dailyRefLines = d.verseRefs.map((r: any) => fmt(r));
+                        } else if (d.verseReference) {
+                            dailyRefLines = d.verseReference
+                                .split(',')
+                                .map((l: string) => l.trim())
+                                .filter(Boolean);
+                            if (dailyRefLines.length === 0) dailyRefLines = [''];
+                        } else if (d.verseBook) {
+                            dailyRefLines = [`${d.verseBook} ${d.verseChapter}:${d.verseNumber}`];
+                        }
+
+                        // Reconstruct Devotional verse ref lines:
+                        let devRefLines: string[] = [''];
                         if (d.devotionalVerseRefs && d.devotionalVerseRefs.length > 0) {
-                            // Build display strings from normalized refs
-                            const { formatSingleRef: fmt } = require('@/utils/verseReferenceParser');
-                            verseRefLines = d.devotionalVerseRefs.map((r: any) => fmt(r));
+                            devRefLines = d.devotionalVerseRefs.map((r: any) => fmt(r));
                         } else if (d.devotionalVerseRef) {
-                            verseRefLines = d.devotionalVerseRef
+                            devRefLines = d.devotionalVerseRef
                                 .split('\n')
                                 .map((l: string) => l.trim())
                                 .filter(Boolean);
-                            if (verseRefLines.length === 0) verseRefLines = [''];
+                            if (devRefLines.length === 0) devRefLines = [''];
                         }
 
                         setFormData({
                             _id: d._id,
                             date: d.date,
+                            verseRefLines: dailyRefLines,
                             verseBook: d.verseBook || '',
                             verseChapter: String(d.verseChapter || ''),
                             verseNumber: String(d.verseNumber || ''),
                             devotionalTitle: d.devotionalTitle || '',
                             devotionalContent: d.devotionalContent || '',
-                            devotionalVerseRefLines: verseRefLines,
+                            devotionalVerseRefLines: devRefLines,
                             backgroundImage: d.backgroundImage || '',
                             devotionalBackgroundImage: d.devotionalBackgroundImage || '',
                             prayerTitle: d.prayerTitle || '',
@@ -214,19 +230,53 @@ function ManageForm() {
     }, [id]);
 
     const handlePreview = async () => {
-        if (!formData.verseBook || !formData.verseChapter || !formData.verseNumber) return;
+        const activeLines = formData.verseRefLines.map(l => l.trim()).filter(Boolean);
+        if (activeLines.length === 0 && (!formData.verseBook || !formData.verseChapter || !formData.verseNumber)) return;
         setPreviewing(true);
         setPreviewText(null);
+
         try {
-            const bibleRes = await fetch(
-                `/api/v1/bible/${previewVersion}/${encodeURIComponent(formData.verseBook)}/${formData.verseChapter}`
-            );
-            const data = await bibleRes.json();
-            if (data.verses) {
-                const verse = data.verses.find((v: any) => v.number === parseInt(formData.verseNumber));
-                setPreviewText(verse?.text || 'Verse not found in this version.');
+            const { parseSingleReference: parseOne } = await import('@/utils/verseReferenceParser');
+            const previewRefs: any[] = [];
+            for (const line of activeLines) {
+                const res = parseOne(line);
+                if (res.refs.length > 0) previewRefs.push(...res.refs);
+            }
+
+            if (previewRefs.length === 0 && formData.verseBook) {
+                previewRefs.push({
+                    book: formData.verseBook,
+                    chapter: parseInt(formData.verseChapter || '1', 10),
+                    startVerse: parseInt(formData.verseNumber || '1', 10),
+                    endVerse: parseInt(formData.verseNumber || '1', 10),
+                });
+            }
+
+            if (previewRefs.length === 0) {
+                setPreviewText('Please enter at least one valid verse reference.');
+                return;
+            }
+
+            const texts: string[] = [];
+            for (const ref of previewRefs) {
+                const bibleRes = await fetch(
+                    `/api/v1/bible/${previewVersion}/${encodeURIComponent(ref.book)}/${ref.chapter}`
+                );
+                const data = await bibleRes.json();
+                if (data.verses) {
+                    const matching = data.verses.filter(
+                        (v: any) => v.number >= ref.startVerse && v.number <= ref.endVerse
+                    );
+                    if (matching.length > 0) {
+                        texts.push(matching.map((v: any) => v.text).join(' '));
+                    }
+                }
+            }
+
+            if (texts.length > 0) {
+                setPreviewText(texts.join(' '));
             } else {
-                setPreviewText('Could not resolve verse text.');
+                setPreviewText('Verse text not found for the given reference(s).');
             }
         } catch {
             setPreviewText('Preview failed. Check verse reference.');
@@ -239,49 +289,72 @@ function ManageForm() {
         e.preventDefault();
         setSubmitting(true);
         try {
-            // Build the raw combined ref string (joined with newlines)
-            const rawRefString = formData.devotionalVerseRefLines
+            const { parseSingleReference: parseOne, formatRefs: fmtRefs } = await import('@/utils/verseReferenceParser');
+
+            // 1. Parse Daily Verse references
+            const dailyVerseRefs: any[] = [];
+            const dailyVerseErrors: string[] = [];
+            for (const line of formData.verseRefLines) {
+                const trimmed = line.trim();
+                if (!trimmed) continue;
+                const result = parseOne(trimmed);
+                if (result.errors.length > 0) {
+                    dailyVerseErrors.push(...result.errors);
+                } else {
+                    dailyVerseRefs.push(...result.refs);
+                }
+            }
+
+            if (dailyVerseErrors.length > 0) {
+                toast.error(`Invalid Daily Verse reference: ${dailyVerseErrors[0]}`);
+                setSubmitting(false);
+                return;
+            }
+
+            // 2. Parse Devotional Verse references
+            const rawDevRefString = formData.devotionalVerseRefLines
                 .map(l => l.trim())
                 .filter(Boolean)
                 .join('\n');
 
-            // Build normalized refs from each line using the parser
-            const { parseSingleReference: parseOne } = await import('@/utils/verseReferenceParser');
-            const allRefs: any[] = [];
-            const refErrors: string[] = [];
+            const devVerseRefs: any[] = [];
+            const devRefErrors: string[] = [];
 
             for (const line of formData.devotionalVerseRefLines) {
                 const trimmed = line.trim();
                 if (!trimmed) continue;
                 const result = parseOne(trimmed);
                 if (result.errors.length > 0) {
-                    refErrors.push(...result.errors);
+                    devRefErrors.push(...result.errors);
                 } else {
-                    allRefs.push(...result.refs);
+                    devVerseRefs.push(...result.refs);
                 }
             }
 
-            if (rawRefString && refErrors.length > 0) {
-                toast.error(`Invalid reference: ${refErrors[0]}`);
+            if (rawDevRefString && devRefErrors.length > 0) {
+                toast.error(`Invalid devotional reference: ${devRefErrors[0]}`);
                 setSubmitting(false);
                 return;
             }
 
+            const firstDailyRef = dailyVerseRefs[0];
+
             const payload: any = {
                 ...formData,
-                verseChapter: formData.verseChapter ? parseInt(formData.verseChapter, 10) : undefined,
-                verseNumber: formData.verseNumber ? parseInt(formData.verseNumber, 10) : undefined,
                 contentYear: parseInt(formData.date.substring(0, 4), 10),
-                // Derived Daily Verse reference string
-                ...(formData.verseBook && formData.verseChapter && formData.verseNumber
-                    ? { verseReference: `${formData.verseBook} ${formData.verseChapter}:${formData.verseNumber}` }
-                    : {}),
+                // Daily Verse fields: multi-ref array + formatted reference string + primary ref
+                verseRefs: dailyVerseRefs,
+                verseReference: dailyVerseRefs.length > 0 ? fmtRefs(dailyVerseRefs) : undefined,
+                verseBook: firstDailyRef ? firstDailyRef.book : formData.verseBook || undefined,
+                verseChapter: firstDailyRef ? firstDailyRef.chapter : (formData.verseChapter ? parseInt(formData.verseChapter, 10) : undefined),
+                verseNumber: firstDailyRef ? firstDailyRef.startVerse : (formData.verseNumber ? parseInt(formData.verseNumber, 10) : undefined),
                 // Devotional verse refs — both formats for compat
-                devotionalVerseRef: rawRefString,
-                devotionalVerseRefs: allRefs,
+                devotionalVerseRef: rawDevRefString,
+                devotionalVerseRefs: devVerseRefs,
             };
 
-            // Remove the UI-only field before sending
+            // Remove UI-only fields before sending
+            delete payload.verseRefLines;
             delete payload.devotionalVerseRefLines;
 
             const url = id ? `/api/admin/daily-content/${id}` : '/api/admin/daily-content';
@@ -344,25 +417,16 @@ function ManageForm() {
             {/* ── Daily Verse ── */}
             <div className="bg-[#111] border border-white/5 rounded-2xl p-6 space-y-5 shadow-xl">
                 <h3 className="text-white font-bold text-base border-b border-white/5 pb-3">📖 Daily Verse Reference</h3>
-                <p className="text-gray-500 text-sm">Enter the structured reference. The verse text will be resolved dynamically per user's Bible version.</p>
+                <p className="text-gray-500 text-sm">Add one or more verse references in the order they should appear as a continuous passage. Verse text will be resolved dynamically per user's Bible version.</p>
 
-                <div className="grid grid-cols-3 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Book Name</label>
-                        <input type="text" value={formData.verseBook} onChange={e => set('verseBook', e.target.value)} className={inputClass} placeholder="e.g. Psalms" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Chapter</label>
-                        <input type="number" min="1" value={formData.verseChapter} onChange={e => set('verseChapter', e.target.value)} className={inputClass} placeholder="23" />
-                    </div>
-                    <div>
-                        <label className="block text-sm font-medium text-gray-400 mb-2">Verse</label>
-                        <input type="number" min="1" value={formData.verseNumber} onChange={e => set('verseNumber', e.target.value)} className={inputClass} placeholder="1" />
-                    </div>
-                </div>
+                <VerseRefInputList
+                    lines={formData.verseRefLines}
+                    onChange={lines => set('verseRefLines', lines)}
+                    idPrefix="daily-verse-ref"
+                />
 
                 {/* Preview */}
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 pt-2">
                     <select
                         value={previewVersion}
                         onChange={e => setPreviewVersion(e.target.value)}
@@ -373,7 +437,7 @@ function ManageForm() {
                     <button
                         type="button"
                         onClick={handlePreview}
-                        disabled={previewing || !formData.verseBook || !formData.verseChapter || !formData.verseNumber}
+                        disabled={previewing || formData.verseRefLines.every(l => !l.trim())}
                         className="flex items-center gap-2 px-4 py-2 bg-white/5 hover:bg-white/10 border border-white/10 text-gray-300 rounded-xl text-sm font-medium transition-colors disabled:opacity-40"
                     >
                         {previewing ? <Loader className="size-4 animate-spin" /> : <Eye className="size-4" />}

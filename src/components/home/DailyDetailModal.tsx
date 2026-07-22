@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Play, Pause, MessageCircle, MoreVertical, CheckCircle2, CheckCheck, ChevronLeft, ChevronRight, Bookmark, Copy, BookOpen } from 'lucide-react';
+import { X, Play, Pause, MessageCircle, MoreVertical, CheckCircle2, CheckCheck, ChevronLeft, ChevronRight, Bookmark, Copy, BookOpen } from 'lucide-react';
 import { RiShareForwardLine } from 'react-icons/ri';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LikeButton } from './LikeButton';
@@ -9,6 +9,7 @@ import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/context/ToastContext';
 import { useSavedVerses, buildVerseRangeText } from '@/lib/useSavedVerses';
+import { formatCopyVerseText } from '@/utils/verseFormatter';
 import verseTexture from '../../../assets/textures/verse-texture.svg';
 import devotionalTexture from '../../../assets/textures/devotional-texture.svg';
 
@@ -217,7 +218,33 @@ export function DailyDetailModal({
     // Reset timer when switching days in devotional view
     useEffect(() => {
         openedAtRef.current = Date.now();
+        setOpenKebab(null);
     }, [currentIndex]);
+
+    // Auto-close open kebab menu when scrolling or navigating
+    useEffect(() => {
+        if (!openKebab) return;
+
+        const handleClose = () => {
+            setOpenKebab(null);
+        };
+
+        window.addEventListener('scroll', handleClose, { passive: true, capture: true });
+        window.addEventListener('touchmove', handleClose, { passive: true });
+
+        const scrollViewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollViewport) {
+            scrollViewport.addEventListener('scroll', handleClose, { passive: true });
+        }
+
+        return () => {
+            window.removeEventListener('scroll', handleClose, { capture: true });
+            window.removeEventListener('touchmove', handleClose);
+            if (scrollViewport) {
+                scrollViewport.removeEventListener('scroll', handleClose);
+            }
+        };
+    }, [openKebab]);
 
     // Global Keyboard Navigation
     useEffect(() => {
@@ -480,9 +507,10 @@ export function DailyDetailModal({
 
         const handleCopyVerse = () => {
             setOpenKebab(null);
-            if (content.verse) {
-                navigator.clipboard.writeText(content.verse)
-                    .then(() => toast.success('Verse copied to clipboard!'))
+            const textToCopy = formatCopyVerseText(content);
+            if (textToCopy) {
+                navigator.clipboard.writeText(textToCopy)
+                    .then(() => toast.success('Verse copied to the clipboard'))
                     .catch(() => toast.error('Failed to copy verse.'));
             }
         };
@@ -612,14 +640,29 @@ export function DailyDetailModal({
                     <button
                         onClick={() => onClose(currentIndex)}
                         className="p-2 rounded-full shadow-sm bg-black/10 hover:bg-black/20 text-black transition-colors"
-                        aria-label="Back"
+                        aria-label="Close"
                     >
-                        <ArrowLeft className="size-6" />
+                        <X className="size-6" />
                     </button>
 
-                    <div className="text-center flex-1">
-                        {/* <h2 className="text-black font-bold text-lg">{getRelativeLabel(currentContent.date)}</h2>
-                        <p className="text-black/60 text-xs">{currentContent.date}</p> */}
+                    <div className="text-center flex-1 min-w-0 px-2">
+                        <p className="text-black/90 text-[15px] font-semibold mb-1 truncate">
+                            {initialSection === 'verse' ? formatVerseLabel(currentContent.date) : formatDevotionLabel(currentContent.date)}
+                        </p>
+                        {contents.length > 1 && (
+                            <div className="flex justify-center space-x-1.5">
+                                {contents.map((_: any, displayPos: number) => {
+                                    const dataIndex = contents.length - 1 - displayPos;
+                                    return (
+                                        <div
+                                            key={displayPos}
+                                            className={`h-1.5 rounded-full transition-all ${currentIndex === dataIndex ? 'w-6 bg-black' : 'w-1.5 bg-black/40'}`}
+                                            aria-label={`Slide ${dataIndex + 1} of ${contents.length}`}
+                                        />
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
 
                     <button
@@ -664,39 +707,40 @@ export function DailyDetailModal({
                                         <div id="section-verse" className="flex flex-col space-y-2">
                                             {item.verse ? (
                                                 <>
-                                                    <div className="w-full">
-                                                        <div className="text-center w-full">
-                                                            <p className="text-black/90 text-[15px] font-semibold mb-2.5">
-                                                                {formatVerseLabel(item.date)}
-                                                            </p>
-
-                                                            {/* Centered Pagination Dots — visual only; swipe to navigate */}
-                                                            {contents.length > 1 && (
-                                                                <div className="flex justify-center space-x-1.5 mb-2">
-                                                                    {contents.map((_: any, displayPos: number) => {
-                                                                        const dataIndex = contents.length - 1 - displayPos;
-                                                                        return (
-                                                                            <div
-                                                                                key={displayPos}
-                                                                                className={`h-1.5 rounded-full transition-all ${currentIndex === dataIndex ? 'w-6 bg-black' : 'w-1.5 bg-black/40'}`}
-                                                                                aria-label={`Slide ${dataIndex + 1} of ${contents.length}`}
-                                                                            />
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            )}
-                                                        </div>
-
                                                         <div className="mt-6 text-left w-full">
                                                             <h4 className="text-black/80 text-xs tracking-wider mb-0.5">Daily verse</h4>
                                                             <h3 className="text-black text-lg font-bold tracking-tight truncate">
                                                                 {item.verseReference || 'Reference'} {(item as any).version || 'KJV'}
                                                             </h3>
                                                         </div>
-                                                    </div>
 
-                                                    <p className="text-black text-[16px] md:text-[18px] leading-relaxed text-left pl-1 w-full mt-4">
-                                                        &ldquo;{item.verse}&rdquo;
+                                                        <p className="text-black text-[16px] md:text-[18px] leading-relaxed text-left pl-1 w-full mt-4">
+                                                        {(() => {
+                                                            let verseItems: Array<{ number: number; text: string }> = (item as any).verseItems || [];
+                                                            if (verseItems.length === 0 && (item as any).verseBlocks && Array.isArray((item as any).verseBlocks)) {
+                                                                verseItems = (item as any).verseBlocks.flatMap((b: any) => b.verses || []);
+                                                            }
+                                                            const fallbackText = item.verse || 'Verse text available soon...';
+
+                                                            if (verseItems.length <= 1) {
+                                                                const textToDisplay = verseItems.length === 1 ? verseItems[0].text : fallbackText;
+                                                                return <>&ldquo;{textToDisplay}&rdquo;</>;
+                                                            }
+
+                                                            return (
+                                                                <>
+                                                                    &ldquo;
+                                                                    {verseItems.map((v, idx) => (
+                                                                        <span key={idx}>
+                                                                            <span className="font-bold text-black mr-1">{v.number}</span>
+                                                                            <span>{v.text}</span>
+                                                                            {idx < verseItems.length - 1 ? ' ' : ''}
+                                                                        </span>
+                                                                    ))}
+                                                                    &rdquo;
+                                                                </>
+                                                            );
+                                                        })()}
                                                     </p>
 
                                                     {/* Premium Divider */}
@@ -720,37 +764,13 @@ export function DailyDetailModal({
                                         <div id="section-devotional" className="flex flex-col space-y-12">
                                             {item.devotionalContent ? (
                                                 <>
-                                                    {/* ── A. Header (Title at the top, like banner page) ─────────── */}
-                                                    <div className="flex flex-col items-center text-center w-full">
-                                                        {/* Date label */}
-                                                        <p className="text-black/90 text-[15px] font-semibold mb-2.5">
-                                                            {formatDevotionLabel(item.date)}
-                                                        </p>
-
-                                                        {/* Pagination dots — visual only; swipe to navigate */}
-                                                        {contents.length > 1 && (
-                                                            <div className="flex justify-center space-x-1.5 mb-2">
-                                                                {contents.map((_: any, displayPos: number) => {
-                                                                    const dataIndex = contents.length - 1 - displayPos;
-                                                                    return (
-                                                                        <div
-                                                                            key={displayPos}
-                                                                            className={`h-1.5 rounded-full transition-all ${currentIndex === dataIndex ? 'w-6 bg-black' : 'w-1.5 bg-black/40'}`}
-                                                                            aria-label={`Slide ${dataIndex + 1} of ${contents.length}`}
-                                                                        />
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                        )}
-
                                                         {/* Devotional Heading AT THE TOP */}
-                                                        <div className="mt-6 text-left w-full">
+                                                        <div className="mt-2 text-left w-full">
                                                             <h4 className="text-black/80 text-xs font-bold tracking-wider mb-0.5">Daily devotional</h4>
                                                             <h3 className="text-black text-xl md:text-2xl font-bold tracking-tight mt-0.5">
                                                                 {item.devotionalTitle}
                                                             </h3>
                                                         </div>
-                                                    </div>
 
                                                     {/* ── B. Linked Verses ── */}
                                                     {item.devotionalVerseBlocks && item.devotionalVerseBlocks.length > 0 ? (
@@ -902,10 +922,10 @@ export function DailyDetailModal({
                                         <button
                                             onClick={() => {
                                                 setOpenKebab(null);
-                                                const verse = contents[currentIndex]?.verse;
-                                                if (verse) {
-                                                    navigator.clipboard.writeText(verse)
-                                                        .then(() => toast.success('Verse copied to clipboard!'))
+                                                const textToCopy = formatCopyVerseText(contents[currentIndex]);
+                                                if (textToCopy) {
+                                                    navigator.clipboard.writeText(textToCopy)
+                                                        .then(() => toast.success('Verse copied to the clipboard'))
                                                         .catch(() => toast.error('Failed to copy verse.'));
                                                 }
                                             }}
@@ -918,11 +938,20 @@ export function DailyDetailModal({
                                             onClick={() => {
                                                 setOpenKebab(null);
                                                 const c = contents[currentIndex] as any;
-                                                const bId = c?.verseBook || '';
-                                                const bName = c?.verseBook || '';
-                                                const ch = Number(c?.verseChapter) || 1;
-                                                const vNum = Number(c?.verseNumber) || 1;
-                                                const vs = [vNum];
+                                                const firstRef = c?.verseRefs?.[0];
+                                                const bId = firstRef?.book || c?.verseBook || '';
+                                                const bName = firstRef?.book || c?.verseBook || '';
+                                                const ch = Number(firstRef?.chapter || c?.verseChapter) || 1;
+                                                let vs: number[] = [];
+                                                if (c?.verseRefs && c.verseRefs.length > 0) {
+                                                    for (const r of c.verseRefs) {
+                                                        for (let v = r.startVerse; v <= r.endVerse; v++) {
+                                                            vs.push(v);
+                                                        }
+                                                    }
+                                                } else {
+                                                    vs = [Number(c?.verseNumber) || 1];
+                                                }
                                                 const vrt = bId ? buildVerseRangeText(bName, ch, vs) : '';
                                                 const ver = c?.version || 'KJV';
                                                 if (!session?.user) {
@@ -937,7 +966,29 @@ export function DailyDetailModal({
                                             }}
                                             className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
                                         >
-                                            {(() => { const c = contents[currentIndex] as any; const bId = c?.verseBook || ''; const ch = Number(c?.verseChapter) || 1; const vNum = Number(c?.verseNumber) || 1; const saved = bId ? isSaved(bId, ch, [vNum]) : false; return (<><Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-black text-black' : 'text-gray-500'}`} /><span className="text-gray-800">{saved ? 'Saved' : 'Save verse'}</span></>); })()}
+                                            {(() => {
+                                                const c = contents[currentIndex] as any;
+                                                const firstRef = c?.verseRefs?.[0];
+                                                const bId = firstRef?.book || c?.verseBook || '';
+                                                const ch = Number(firstRef?.chapter || c?.verseChapter) || 1;
+                                                let vs: number[] = [];
+                                                if (c?.verseRefs && c.verseRefs.length > 0) {
+                                                    for (const r of c.verseRefs) {
+                                                        for (let v = r.startVerse; v <= r.endVerse; v++) {
+                                                            vs.push(v);
+                                                        }
+                                                    }
+                                                } else {
+                                                    vs = [Number(c?.verseNumber) || 1];
+                                                }
+                                                const saved = bId ? isSaved(bId, ch, vs) : false;
+                                                return (
+                                                    <>
+                                                        <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-black text-black' : 'text-gray-500'}`} />
+                                                        <span className="text-gray-800">{saved ? 'Saved' : 'Save verse'}</span>
+                                                    </>
+                                                );
+                                            })()}
                                         </button>
                                     </>
                                 )}
