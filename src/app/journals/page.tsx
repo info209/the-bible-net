@@ -11,7 +11,8 @@ import {
   BookOpen, Sliders, ListOrdered, Strikethrough,
   Underline as UnderlineIcon,
   Heading1, Heading2, Quote,
-  AlignLeft, AlignCenter, AlignRight, Loader2
+  AlignLeft, AlignCenter, AlignRight, Loader2,
+  Undo2, Redo2
 } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmContext';
@@ -1770,12 +1771,37 @@ function JournalsContent() {
               </div>
             </header>
 
-            {/* â”€â”€ Sticky Formatting Toolbar (edit mode only) â”€â”€ */}
+            {/* Sticky Formatting Toolbar (edit mode only) */}
             {editorMode !== 'view' && (
               <div className="sticky top-[64px] z-20 bg-white dark:bg-[#000000] border-b border-[#E6E6E6] dark:border-white/[0.08]">
                 <div className="px-3 py-1.5 flex items-center gap-0.5 overflow-x-auto scrollbar-none min-h-[44px]">
 
-                  {/* â”€â”€ Inline Marks Group â”€â”€ */}
+                  {/* Undo / Redo Group */}
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().undo().run(); }}
+                    disabled={!editor?.can().undo()}
+                    className="p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Undo (Ctrl+Z)"
+                    aria-label="Undo"
+                  >
+                    <Undo2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().redo().run(); }}
+                    disabled={!editor?.can().redo()}
+                    className="p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                    title="Redo (Ctrl+Y)"
+                    aria-label="Redo"
+                  >
+                    <Redo2 className="w-4 h-4" />
+                  </button>
+
+                  {/* Separator */}
+                  <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
+
+                  {/* Inline Marks Group */}
                   <button
                     type="button"
                     onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBold().run(); }}
