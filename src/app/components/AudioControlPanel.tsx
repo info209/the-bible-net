@@ -243,20 +243,14 @@ export default function AudioControlPanel({
             <div className="w-[var(--drag-handle-width)] h-[var(--drag-handle-height)] bg-[var(--drag-handle-color)] rounded-full mt-2" />
           </div>
 
-          {/* Header: reference (center) + Close (right) */}
-          <div className="relative z-10 grid grid-cols-[1fr_auto_1fr] items-center px-4 pt-3 pb-1">
-            <div />
-
-            {/* <h2 className="min-w-0 max-w-[160px] sm:max-w-[240px] truncate text-center text-xs font-semibold tracking-tight" style={{ color: textPrimary }}>
-              {panelTitle}
-            </h2> */}
-
+          {/* Header: Close button at top-right corner */}
+          <div className="relative z-10 flex items-center justify-end px-4 pt-3 pb-1">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onClose();
               }}
-              className="justify-self-end size-7 rounded-full flex items-center justify-center transition-colors hover:opacity-80 active:scale-95 cursor-pointer"
+              className="size-7 rounded-full flex items-center justify-center transition-colors hover:opacity-80 active:scale-95 cursor-pointer"
               style={{ backgroundColor: btnBg }}
               aria-label="Close player"
             >

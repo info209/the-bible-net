@@ -1712,7 +1712,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
 
         {showVersionSelector && (
           <div className="fixed inset-0 z-[200] bg-black/20 backdrop-blur-sm" onClick={() => setShowVersionSelector(false)}>
-            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-2xl rounded-lg w-[92vw] max-w-[360px] max-h-[calc(100dvh-160px)] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="absolute left-1/2 -translate-x-1/2 top-20 bg-white/85 backdrop-blur-3xl backdrop-saturate-[180%] border border-white/30 shadow-2xl rounded-lg w-[90%] max-w-md max-h-[calc(100dvh-160px)] overflow-hidden flex flex-col" onClick={(e) => e.stopPropagation()}>
               <ModalHeader
                 title="Bible Version Selection"
                 onClose={() => setShowVersionSelector(false)}

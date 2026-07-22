@@ -2234,7 +2234,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           onClick={() => setShowVersionSelector(false)}
         >
           <div
-            className="absolute left-1/2 -translate-x-1/2 top-20 rounded-lg w-full max-w-[360px] max-h-[80vh] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)] backdrop-blur-3xl backdrop-saturate-[180%]"
+            className="absolute left-1/2 -translate-x-1/2 top-20 rounded-lg w-[90%] max-w-md max-h-[80vh] overflow-hidden flex flex-col shadow-[0_4px_12px_0_rgba(0,0,0,0.2)] backdrop-blur-3xl backdrop-saturate-[180%]"
             style={{
               backgroundColor: popupThemeConfig[selectedTheme].bg,
               border: popupThemeConfig[selectedTheme].border,
