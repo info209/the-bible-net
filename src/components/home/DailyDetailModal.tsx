@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Play, Pause, Forward, MessageCircle, MoreVertical, CheckCircle2, CheckCheck, ChevronLeft, ChevronRight, Bookmark, Copy, BookOpen } from 'lucide-react';
+import { ArrowLeft, Play, Pause, MessageCircle, MoreVertical, CheckCircle2, CheckCheck, ChevronLeft, ChevronRight, Bookmark, Copy, BookOpen } from 'lucide-react';
+import { RiShareForwardLine } from 'react-icons/ri';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { LikeButton } from './LikeButton';
 import { PremiumCarousel } from './PremiumCarousel';
@@ -535,7 +536,7 @@ export function DailyDetailModal({
                         className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
                     >
                         <div className="bg-black/20 backdrop-blur-sm p-2 rounded-full">
-                            <Forward className="size-4" />
+                            <RiShareForwardLine className="size-4" />
                         </div>
                         <span className="text-xs">
                             {shareCount && shareCount > 0 ? shareCount : 'Share'}

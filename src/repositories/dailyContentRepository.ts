@@ -1,4 +1,5 @@
 import { DailyContent, IDailyContent } from '@/models/DailyContent';
+import { CacheService } from '@/services/cacheService';
 
 export class DailyContentRepository {
     static async findByDate(date: string): Promise<IDailyContent | null> {
@@ -45,15 +46,19 @@ export class DailyContentRepository {
 
     static async create(data: Partial<IDailyContent>): Promise<IDailyContent> {
         const daily = new DailyContent(data);
-        return await daily.save();
+        const saved = await daily.save();
+        await CacheService.invalidatePattern('tbnet:daily:*');
+        return saved;
     }
 
     static async upsertByDate(date: string, data: Partial<IDailyContent>): Promise<IDailyContent> {
-        return await DailyContent.findOneAndUpdate(
+        const result = await DailyContent.findOneAndUpdate(
             { date },
             { $set: data },
             { upsert: true, returnDocument: 'after', runValidators: true }
         ) as IDailyContent;
+        await CacheService.invalidatePattern('tbnet:daily:*');
+        return result;
     }
 
     static async bulkUpsert(records: Partial<IDailyContent>[]): Promise<{ upserted: number; modified: number }> {
@@ -68,6 +73,7 @@ export class DailyContentRepository {
         }));
 
         const result = await DailyContent.bulkWrite(ops, { ordered: false });
+        await CacheService.invalidatePattern('tbnet:daily:*');
         return {
             upserted: result.upsertedCount,
             modified: result.modifiedCount,
@@ -84,11 +90,13 @@ export class DailyContentRepository {
 
     static async deleteAll(): Promise<number> {
         const result = await DailyContent.deleteMany({});
+        await CacheService.invalidatePattern('tbnet:daily:*');
         return result.deletedCount;
     }
 
     static async clearBeforeDate(date: string): Promise<number> {
         const result = await DailyContent.deleteMany({ date: { $lt: date } });
+        await CacheService.invalidatePattern('tbnet:daily:*');
         return result.deletedCount;
     }
 
@@ -97,15 +105,18 @@ export class DailyContentRepository {
     }
 
     static async updateById(id: string, data: Partial<IDailyContent>): Promise<IDailyContent | null> {
-        return await DailyContent.findByIdAndUpdate(
+        const result = await DailyContent.findByIdAndUpdate(
             id,
             { $set: data },
             { returnDocument: 'after', runValidators: true }
         );
+        await CacheService.invalidatePattern('tbnet:daily:*');
+        return result;
     }
 
     static async deleteById(id: string): Promise<boolean> {
         const result = await DailyContent.findByIdAndDelete(id);
+        await CacheService.invalidatePattern('tbnet:daily:*');
         return !!result;
     }
 

@@ -1,9 +1,9 @@
 import mongoose from 'mongoose';
 import { BibleVersion, Book, Chapter, Verse, IBibleVersion, IBook, IChapter, IVerse } from '@/models/Bible';
-import redis from '@/lib/redis';
 import { getPaginationMeta, PaginationMeta } from '@/utils/pagination';
 import { getBookDetails, BIBLE_BOOKS, TELUGU_BOOK_NAMES } from '@/utils/bibleBooks';
 import connectDB from '@/lib/db';
+import { CacheService, CacheKeys, CACHE_TTL } from '@/services/cacheService';
 
 
 /**
@@ -12,34 +12,6 @@ import connectDB from '@/lib/db';
  */
 
 export class BibleService {
-    // Cache TTL in seconds (e.g., 24 hours)
-    private static CACHE_TTL = 60 * 60 * 24;
-
-    /**
-     * Helper to get cached data
-     */
-    private static async getFromCache<T>(key: string): Promise<T | null> {
-        if (!redis) return null;
-        try {
-            const data = await redis.get(key);
-            return data ? JSON.parse(data) : null;
-        } catch (error) {
-            console.error('Redis get error:', error);
-            return null;
-        }
-    }
-
-    /**
-     * Helper to set cached data
-     */
-    private static async setInCache(key: string, data: any): Promise<void> {
-        if (!redis) return;
-        try {
-            await redis.set(key, JSON.stringify(data), 'EX', this.CACHE_TTL);
-        } catch (error) {
-            console.error('Redis set error:', error);
-        }
-    }
 
     /**
      * Get all Bible versions with optional pagination
@@ -48,9 +20,9 @@ export class BibleService {
      * @param includeInactive - Include inactive versions (default: false)
      */
     static async getAllVersions(page?: number, limit?: number, includeInactive: boolean = false): Promise<any> {
-        try {
+        const cacheKey = CacheKeys.bibleVersions(page, limit, includeInactive);
+        return CacheService.getOrSet(cacheKey, async () => {
             await connectDB();
-            // Build filter query
             const filter = includeInactive ? {} : { isActive: true };
             
             let query = BibleVersion.find(filter).sort({ language: 1, abbreviation: 1 });
@@ -67,16 +39,11 @@ export class BibleService {
                 console.warn('getAllVersions: No active Bible versions found in MongoDB.');
             }
 
-            const result = page && limit ? {
+            return page && limit ? {
                 versions,
                 pagination: getPaginationMeta(total, page, limit)
             } : versions;
-
-            return result;
-        } catch (error) {
-            console.error('Error in getAllVersions service:', error);
-            throw new Error('Failed to retrieve Bible versions from the database.');
-        }
+        }, CACHE_TTL.BIBLE);
     }
 
     /**
@@ -90,35 +57,24 @@ export class BibleService {
      * Get a specific version by abbreviation
      */
     static async getVersionByAbbreviation(abbreviation: string): Promise<(IBibleVersion & { _id: any }) | null> {
-        try {
+        const cacheKey = `tbnet:bible:version:${abbreviation.toUpperCase()}`;
+        return CacheService.getOrSet(cacheKey, async () => {
             await connectDB();
-            const cacheKey = `bible:version:${abbreviation.toUpperCase()}`;
-            const cached = await this.getFromCache(cacheKey) as any;
-            if (cached) return cached;
-
             const version = await BibleVersion.findOne({ abbreviation: abbreviation.toUpperCase() }).lean() as any;
             if (!version) {
                 console.warn(`getVersionByAbbreviation: Bible version not found for abbreviation: ${abbreviation}`);
-            } else {
-                await this.setInCache(cacheKey, version);
             }
             return version;
-        } catch (error) {
-            console.error(`Error in getVersionByAbbreviation for ${abbreviation}:`, error);
-            throw new Error(`Failed to retrieve Bible version details.`);
-        }
+        }, CACHE_TTL.BIBLE);
     }
 
     /**
      * Get books for a specific version with optional pagination
      */
     static async getBooksByVersion(versionId: string, page?: number, limit?: number): Promise<any> {
-        try {
+        const cacheKey = CacheKeys.bibleBooks(versionId) + (page ? `:p=${page}:l=${limit}` : '');
+        return CacheService.getOrSet(cacheKey, async () => {
             await connectDB();
-            const cacheKey = `bible:books:${versionId}${page ? `:${page}:${limit}` : ''}`;
-            const cached = await this.getFromCache(cacheKey);
-            if (cached) return cached;
-
             let query = Book.find({ version: versionId }).sort({ order: 1 });
             let total = 0;
 
@@ -132,29 +88,20 @@ export class BibleService {
                 console.warn(`getBooksByVersion: No books found for version ${versionId}`);
             }
 
-            const result = page && limit ? {
+            return page && limit ? {
                 books,
                 pagination: getPaginationMeta(total, page, limit)
             } : books;
-
-            await this.setInCache(cacheKey, result);
-            return result;
-        } catch (error) {
-            console.error(`Error in getBooksByVersion for version ${versionId}:`, error);
-            throw new Error(`Failed to retrieve books for Bible version.`);
-        }
+        }, CACHE_TTL.BIBLE);
     }
 
     /**
      * Get chapters for a specific book with optional pagination
      */
     static async getChaptersByBook(bookId: string, page?: number, limit?: number): Promise<any> {
-        try {
+        const cacheKey = CacheKeys.bibleChapters(bookId, '') + (page ? `:p=${page}:l=${limit}` : '');
+        return CacheService.getOrSet(cacheKey, async () => {
             await connectDB();
-            const cacheKey = `bible:chapters:${bookId}${page ? `:${page}:${limit}` : ''}`;
-            const cached = await this.getFromCache(cacheKey);
-            if (cached) return cached;
-
             let query = Chapter.find({ book: bookId }).sort({ number: 1 });
             let total = 0;
 
@@ -168,29 +115,20 @@ export class BibleService {
                 console.warn(`getChaptersByBook: No chapters found for book ${bookId}`);
             }
 
-            const result = page && limit ? {
+            return page && limit ? {
                 chapters,
                 pagination: getPaginationMeta(total, page, limit)
             } : chapters;
-
-            await this.setInCache(cacheKey, result);
-            return result;
-        } catch (error) {
-            console.error(`Error in getChaptersByBook for book ${bookId}:`, error);
-            throw new Error(`Failed to retrieve chapters for Bible book.`);
-        }
+        }, CACHE_TTL.BIBLE);
     }
 
     /**
      * Get verses for a specific chapter with natively supported pagination
      */
     static async getVersesByChapter(chapterId: string, page?: number, limit?: number): Promise<any> {
-        try {
+        const cacheKey = `tbnet:bible:verses:${chapterId}${page ? `:p=${page}:l=${limit}` : ''}`;
+        return CacheService.getOrSet(cacheKey, async () => {
             await connectDB();
-            const cacheKey = `bible:verses:${chapterId}${page ? `:${page}:${limit}` : ''}`;
-            const cached = await this.getFromCache(cacheKey);
-            if (cached) return cached;
-
             let query = Verse.find({ chapter: chapterId }).sort({ number: 1 });
             let total = 0;
 
@@ -204,17 +142,11 @@ export class BibleService {
                 console.warn(`getVersesByChapter: No verses found for chapter ${chapterId}`);
             }
 
-            const result = page && limit ? {
+            return page && limit ? {
                 verses,
                 pagination: getPaginationMeta(total, page, limit)
             } : verses;
-
-            await this.setInCache(cacheKey, result);
-            return result;
-        } catch (error) {
-            console.error(`Error in getVersesByChapter for chapter ${chapterId}:`, error);
-            throw new Error(`Failed to retrieve verses for Bible chapter.`);
-        }
+        }, CACHE_TTL.BIBLE);
     }
 
     /**
@@ -340,56 +272,49 @@ export class BibleService {
             }
 
             // Calculate canonical cache key using resolved IDs
-            const cacheKey = `bible:content:${resolvedVersionId.toString()}:${targetBook._id.toString()}:${chapterNum}${search ? `:search:${search}` : ''}`;
-            const cached = await this.getFromCache(cacheKey);
-            if (cached) return cached;
+            const cacheKey = CacheKeys.bibleChapter(resolvedVersionId.toString(), targetBook._id.toString(), chapterNum) + (search ? `:s=${search}` : '');
+            return CacheService.getOrSet(cacheKey, async () => {
+                // Find chapter using the target book
+                const chapter = await Chapter.findOne({
+                    book: targetBook._id,
+                    number: chapterNum,
+                }).lean();
+                
+                if (!chapter) {
+                    console.error(`getChapterContent: Chapter ${chapterNum} not found for book ${targetBook.name} in version ${version.abbreviation}`);
+                    throw new Error(`Chapter ${chapterNum} not found for book ${targetBook.name} in version ${version.abbreviation}`);
+                }
 
-            // Find chapter using the target book
-            const chapter = await Chapter.findOne({
-                book: targetBook._id,
-                number: chapterNum,
-            }).lean();
-            
-            if (!chapter) {
-                console.error(`getChapterContent: Chapter ${chapterNum} not found for book ${targetBook.name} in version ${version.abbreviation}`);
-                throw new Error(`Chapter ${chapterNum} not found for book ${targetBook.name} in version ${version.abbreviation}`);
-            }
+                // Get verses for chapter
+                const verseQuery: any = { chapter: chapter._id };
+                if (search) {
+                    verseQuery.text = { $regex: search, $options: 'i' };
+                }
 
-            // Get verses for chapter
-            const verseQuery: any = { chapter: chapter._id };
-            if (search) {
-                verseQuery.text = { $regex: search, $options: 'i' };
-            }
+                const verses = await Verse.find(verseQuery).sort({ number: 1 }).lean();
+                if (!verses || verses.length === 0) {
+                    console.warn(`getChapterContent: No verses found for chapter ${chapter._id} (search: "${search || ''}")`);
+                }
 
-            const verses = await Verse.find(verseQuery).sort({ number: 1 }).lean();
-            if (!verses || verses.length === 0) {
-                console.warn(`getChapterContent: No verses found for chapter ${chapter._id} (search: "${search || ''}")`);
-            }
-            if (!verses || verses.length === 0) {
-                console.warn(`getChapterContent: No verses found for chapter ${chapter._id} (search: "${search || ''}")`);
-            }
-
-            const result = {
-                version: {
-                    name: version.name,
-                    abbreviation: version.abbreviation,
-                },
-                book: {
-                    name: book.name,
-                    abbreviation: book.abbreviation,
-                    testament: book.testament,
-                },
-                chapter: {
-                    number: chapter.number,
-                },
-                verses: verses.map((v) => ({
-                    number: v.number,
-                    text: v.text,
-                })),
-            };
-
-            await this.setInCache(cacheKey, result);
-            return result;
+                return {
+                    version: {
+                        name: version.name,
+                        abbreviation: version.abbreviation,
+                    },
+                    book: {
+                        name: book.name,
+                        abbreviation: book.abbreviation,
+                        testament: book.testament,
+                    },
+                    chapter: {
+                        number: chapter.number,
+                    },
+                    verses: verses.map((v) => ({
+                        number: v.number,
+                        text: v.text,
+                    })),
+                };
+            }, CACHE_TTL.BIBLE);
         } catch (error: any) {
             console.error(`Error in getChapterContent for version ${versionId}, book ${bookId}, chapter ${chapterNum}:`, error);
             throw error;
@@ -457,6 +382,7 @@ export class BibleService {
             await BibleVersion.findByIdAndDelete(versionId).session(session);
 
             await session.commitTransaction();
+            await CacheService.invalidatePattern('tbnet:bible:*');
             return true;
         } catch (error) {
             await session.abortTransaction();
@@ -593,6 +519,7 @@ export class BibleService {
             update.status = 'active';
         }
         await BibleVersion.findByIdAndUpdate(versionId, update);
+        await CacheService.invalidatePattern('tbnet:bible:*');
     }
 
     private static async runImportProcess(versionId: string, verses: any[]): Promise<void> {

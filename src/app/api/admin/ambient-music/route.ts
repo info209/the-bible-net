@@ -4,6 +4,7 @@ import { getAuthContext, sanitizeFilename } from '@/utils/uploadHelpers';
 import { AMBIENT_MUSIC_CONFIG } from '@/config/ambientMusic.config';
 import { createAdminClient } from '@/utils/supabase/admin';
 import path from 'path';
+import { CacheService } from '@/services/cacheService';
 
 export const dynamic = 'force-dynamic';
 
@@ -195,6 +196,8 @@ export async function POST(req: NextRequest) {
             publicThumbUrl = thumbUrl;
         }
 
+        await CacheService.invalidatePattern('tbnet:ambient-music:*');
+
         return NextResponse.json({
             success: true,
             data: {
@@ -300,6 +303,8 @@ export async function DELETE(req: NextRequest) {
         if (dbDeleteError) {
             throw dbDeleteError;
         }
+
+        await CacheService.invalidatePattern('tbnet:ambient-music:*');
 
         return NextResponse.json({ success: true, message: 'Track deleted successfully' });
     } catch (error: any) {
@@ -479,6 +484,8 @@ export async function PUT(req: NextRequest) {
                 .getPublicUrl(updatedRecord.thumbnail_path);
             publicThumbUrl = thumbUrl;
         }
+
+        await CacheService.invalidatePattern('tbnet:ambient-music:*');
 
         return NextResponse.json({
             success: true,

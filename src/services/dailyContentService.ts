@@ -2,6 +2,7 @@ import { DailyContentRepository } from '@/repositories/dailyContentRepository';
 import { IDailyContent } from '@/models/DailyContent';
 import { Book, Chapter, Verse, BibleVersion } from '@/models/Bible';
 import connectDB from '@/lib/db';
+import { CacheService, CacheKeys, CACHE_TTL } from '@/services/cacheService';
 
 // Static caches for dynamic scripture text resolutions
 const verseTextCache = new Map<string, string>();
@@ -13,61 +14,67 @@ export class DailyContentService {
      * dynamically based on the user's preferred Bible version.
      */
     static async getRecentDailyContent(days: number = 7, version: string = 'KJV'): Promise<any[]> {
-        const todayStr = new Date().toISOString().split('T')[0];
-        const contents = await DailyContentRepository.findLastNDays(todayStr, days);
+        const cacheKey = CacheKeys.dailyRecent(days, version);
+        return CacheService.getOrSet(cacheKey, async () => {
+            const todayStr = new Date().toISOString().split('T')[0];
+            const contents = await DailyContentRepository.findLastNDays(todayStr, days);
 
-        // Resolve verse text for each content item
-        const enriched = await Promise.all(
-            contents.map(c => this.enrichWithVerseText(c, version))
-        );
+            // Resolve verse text for each content item
+            const enriched = await Promise.all(
+                contents.map(c => this.enrichWithVerseText(c, version))
+            );
 
-        return enriched;
+            return enriched;
+        }, CACHE_TTL.DAILY);
     }
 
     /**
      * Legacy method for fetching a specific type (used by older APIs)
      */
     static async getDailyContent(type: 'verse' | 'devotion', version: string = 'KJV'): Promise<any | null> {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const cacheKey = CacheKeys.dailyContent(type, version);
+        return CacheService.getOrSet(cacheKey, async () => {
+            const todayStr = new Date().toISOString().split('T')[0];
 
-        let dailySelection = await DailyContentRepository.findByDate(todayStr);
-        if (!dailySelection) return null;
+            let dailySelection = await DailyContentRepository.findByDate(todayStr);
+            if (!dailySelection) return null;
 
-        if (type === 'verse') {
-            const resolvedText = dailySelection.verseBook && dailySelection.verseBook !== 'Unknown'
-                ? await this.resolveVerseText(
-                    dailySelection.verseBook,
-                    dailySelection.verseChapter!,
-                    dailySelection.verseNumber!,
-                    version
-                )
-                : '';
-            return {
-                _id: dailySelection._id,
-                type: 'daily-verse',
-                reference: dailySelection.verseReference || '',
-                text: resolvedText,
-                version,
-                likeCount: dailySelection.verseLikeCount || 0,
-                commentCount: dailySelection.verseCommentCount || 0,
-            };
-        } else {
-            const blocks = await this.resolveDevotionalVerseBlocks(dailySelection, version);
-            const concatenatedText = blocks.map(b => b.text).filter(Boolean).join(' ');
-            return {
-                _id: dailySelection._id,
-                type: 'daily-devotion',
-                title: dailySelection.devotionalTitle || '',
-                text: dailySelection.devotionalContent || '',
-                // Backward-compat single ref
-                verseRef: dailySelection.devotionalVerseRef || '',
-                verseText: concatenatedText,
-                // New: per-ref blocks
-                verseBlocks: blocks,
-                likeCount: dailySelection.devotionLikeCount || 0,
-                commentCount: dailySelection.devotionCommentCount || 0,
-            };
-        }
+            if (type === 'verse') {
+                const resolvedText = dailySelection.verseBook && dailySelection.verseBook !== 'Unknown'
+                    ? await this.resolveVerseText(
+                        dailySelection.verseBook,
+                        dailySelection.verseChapter!,
+                        dailySelection.verseNumber!,
+                        version
+                    )
+                    : '';
+                return {
+                    _id: dailySelection._id,
+                    type: 'daily-verse',
+                    reference: dailySelection.verseReference || '',
+                    text: resolvedText,
+                    version,
+                    likeCount: dailySelection.verseLikeCount || 0,
+                    commentCount: dailySelection.verseCommentCount || 0,
+                };
+            } else {
+                const blocks = await this.resolveDevotionalVerseBlocks(dailySelection, version);
+                const concatenatedText = blocks.map(b => b.text).filter(Boolean).join(' ');
+                return {
+                    _id: dailySelection._id,
+                    type: 'daily-devotion',
+                    title: dailySelection.devotionalTitle || '',
+                    text: dailySelection.devotionalContent || '',
+                    // Backward-compat single ref
+                    verseRef: dailySelection.devotionalVerseRef || '',
+                    verseText: concatenatedText,
+                    // New: per-ref blocks
+                    verseBlocks: blocks,
+                    likeCount: dailySelection.devotionLikeCount || 0,
+                    commentCount: dailySelection.devotionCommentCount || 0,
+                };
+            }
+        }, CACHE_TTL.DAILY);
     }
 
     /**

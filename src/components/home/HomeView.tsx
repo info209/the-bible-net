@@ -1,6 +1,8 @@
 "use client";
 
-import { Play, MessageCircle, Forward, Pause, X, Send, MoreVertical, Check, Bookmark, BookOpen, Copy } from 'lucide-react';
+import { Play, MessageCircle, Pause, X, Send, MoreVertical, Check, Bookmark, BookOpen, Copy } from 'lucide-react';
+import { RiShareForwardLine } from 'react-icons/ri';
+import { LuNotebookPen } from 'react-icons/lu';
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -597,7 +599,7 @@ export default function HomeView() {
                         disabled={sharingStates.has(`${content._id}-daily-verse`)}
                       >
                         <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                          <Forward className="size-4 text-black" />
+                          <RiShareForwardLine className="size-4 text-black" />
                         </div>
                         <span className="text-xs">{content.verseShareCount > 0 ? content.verseShareCount : 'Share'}</span>
                       </button>
@@ -778,7 +780,7 @@ export default function HomeView() {
                         disabled={sharingStates.has(`${content._id}-daily-devotion`)}
                       >
                         <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                          <Forward className="size-4 text-black" />
+                          <RiShareForwardLine className="size-4 text-black" />
                         </div>
                         <span className="text-xs">{content.devotionShareCount > 0 ? content.devotionShareCount : 'Share'}</span>
                       </button>
@@ -928,7 +930,7 @@ export default function HomeView() {
 
         <div className="relative z-10 flex items-center space-x-4">
           <div className="bg-white/20 backdrop-blur-md p-3.5 rounded-xl group-hover:scale-110 transition-transform">
-            <span className="text-3xl select-none">✍️</span>
+            <LuNotebookPen className="size-6 text-white" />
           </div>
           <div>
             <h3 className="text-lg font-bold text-white group-hover:text-teal-200 transition-colors">

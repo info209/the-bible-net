@@ -2280,12 +2280,14 @@ function JournalsContent() {
                   className="bg-slate-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04] p-5 rounded-xl flex flex-col items-center justify-center hover:bg-slate-100 transition-all cursor-pointer shadow-xs active:scale-95"
                 >
                   <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Journal</span>
+                  <span>Thoughts, insights and reflections</span>
                 </button>
                 <button
                   onClick={() => handleOpenEditor(null, 'prayer')}
                   className="bg-slate-50 dark:bg-white/[0.02] border border-gray-100 dark:border-white/[0.04] p-5 rounded-xl flex flex-col items-center justify-center hover:bg-slate-100 transition-all cursor-pointer shadow-xs active:scale-95"
                 >
                   <span className="text-xs font-bold text-gray-800 dark:text-gray-200">Prayer</span>
+                  <span>Personal prayer or prayer request</span>
                 </button>
               </div>
             </motion.div>

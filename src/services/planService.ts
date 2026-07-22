@@ -1,15 +1,19 @@
 import { PlanRepository } from '@/repositories/planRepository';
 import { IPlan } from '@/models/Plan';
 import { PlanWithProgress, PlanStatus } from '@/types/plan';
+import { CacheService, CacheKeys, CACHE_TTL } from '@/services/cacheService';
 
 export class PlanService {
   /**
    * Get all available plans for discovery
    */
   static async getAvailablePlans(category?: string, skip: number = 0, limit: number = 20) {
-    const filter = category ? { category } : {};
-    const result = await PlanRepository.getPublishedPlans(filter, skip, limit);
-    return result;
+    const cacheKey = CacheKeys.plansPublic(category, skip, limit);
+    return CacheService.getOrSet(cacheKey, async () => {
+      const filter = category ? { category } : {};
+      const result = await PlanRepository.getPublishedPlans(filter, skip, limit);
+      return result;
+    }, CACHE_TTL.PLANS);
   }
 
   /**
@@ -169,11 +173,14 @@ export class PlanService {
    * Get related/recommended plans
    */
   static async getRelatedPlans(planId: string, limit: number = 5) {
-    const currentPlan = await PlanRepository.getPlanById(planId) as IPlan;
-    if (!currentPlan) throw new Error('Plan not found');
+    const cacheKey = CacheKeys.planRelated(planId, limit);
+    return CacheService.getOrSet(cacheKey, async () => {
+      const currentPlan = await PlanRepository.getPlanById(planId) as IPlan;
+      if (!currentPlan) throw new Error('Plan not found');
 
-    const related = await PlanRepository.getPlansByCategory(currentPlan.category, 0, limit + 1);
-    return related.filter((p) => p._id.toString() !== planId);
+      const related = await PlanRepository.getPlansByCategory(currentPlan.category, 0, limit + 1);
+      return related.filter((p) => p._id.toString() !== planId);
+    }, CACHE_TTL.PLANS);
   }
 
   /**
