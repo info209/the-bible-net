@@ -263,7 +263,14 @@ export default function HomeView() {
     const shareKey = `${content._id}-${type}`;
     if (sharingStates.has(shareKey)) return;
 
-    const url = `${window.location.origin}/share/${type.replace('daily-', '')}/${content._id}`;
+    const params = new URLSearchParams();
+    const versionVal = content.version || preferredVersion;
+    if (versionVal) params.set('version', versionVal);
+    if (content.verseBook) params.set('book', content.verseBook);
+    if (content.verseChapter) params.set('chapter', String(content.verseChapter));
+    if (content.verseNumber) params.set('verse', String(content.verseNumber));
+
+    const url = `${window.location.origin}/bible?${params.toString()}`;
     const text = type === 'daily-verse'
       ? `Check out this verse: ${content.verseReference} - "${content.verse}"`
       : `Check out this devotional: "${content.devotionalTitle}"`;
@@ -652,7 +659,7 @@ export default function HomeView() {
                                 onClick={(e) => handleSaveVerse(content, e)}
                                 className="w-full text-left px-4 py-3 text-sm font-medium flex items-center gap-2 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100"
                               >
-                                <Bookmark className="w-3.5 h-3.5 text-gray-500" />
+                                <Bookmark className={`w-3.5 h-3.5 ${isSaved(content.verseBook || '', Number(content.verseChapter) || 1, [Number(content.verseNumber) || 1]) ? 'fill-black text-black' : 'text-gray-500'}`} />
                                 <span className="text-gray-800">
                                   {isSaved(content.verseBook || '', Number(content.verseChapter) || 1, [Number(content.verseNumber) || 1]) ? 'Saved' : 'Save verse'}
                                 </span>

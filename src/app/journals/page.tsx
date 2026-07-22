@@ -527,19 +527,53 @@ function JournalsContent() {
     return () => document.removeEventListener('click', handleOutside);
   }, []);
 
-  // Multi-select custom hold/long-press hook imitation
+  // Multi-select custom hold/long-press hook
   const holdTimerRef = useRef<any>(null);
-  const startPressTimer = (id: string) => {
+  const isLongPressRef = useRef<boolean>(false);
+  const touchStartPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  const startPressTimer = (id: string, e: React.TouchEvent | React.MouseEvent) => {
+    isLongPressRef.current = false;
+
+    if ('touches' in e && e.touches.length > 0) {
+      touchStartPosRef.current = {
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY,
+      };
+    } else {
+      touchStartPosRef.current = null;
+    }
+
+    if (holdTimerRef.current) {
+      clearTimeout(holdTimerRef.current);
+    }
+
     holdTimerRef.current = setTimeout(() => {
+      isLongPressRef.current = true;
       setSelectionMode(true);
-      setSelectedIds([id]);
+      setSelectedIds((prev) => (prev.includes(id) ? prev : [...prev, id]));
       showToast('Multi-select mode activated');
-    }, 600);
+    }, 500);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchStartPosRef.current || !holdTimerRef.current) return;
+    const touch = e.touches[0];
+    if (!touch) return;
+
+    const dx = Math.abs(touch.clientX - touchStartPosRef.current.x);
+    const dy = Math.abs(touch.clientY - touchStartPosRef.current.y);
+
+    // Cancel long-press timer if finger moves during touch scroll (> 6px)
+    if (dx > 6 || dy > 6) {
+      stopPressTimer();
+    }
   };
 
   const stopPressTimer = () => {
     if (holdTimerRef.current) {
       clearTimeout(holdTimerRef.current);
+      holdTimerRef.current = null;
     }
   };
 
@@ -563,6 +597,12 @@ function JournalsContent() {
 
   // Card Clicks
   const handleCardClick = (item: any, type: ItemType) => {
+    // If click was triggered upon releasing a long-press hold, ignore it
+    if (isLongPressRef.current) {
+      isLongPressRef.current = false;
+      return;
+    }
+
     if (selectionMode) {
       if (selectedIds.includes(item._id)) {
         const next = selectedIds.filter(id => id !== item._id);
@@ -1479,25 +1519,27 @@ function JournalsContent() {
                     key={item._id}
                     layoutId={item._id}
                     onClick={() => handleCardClick(item, isJ ? 'journal' : 'prayer')}
-                    onMouseDown={() => startPressTimer(item._id)}
+                    onMouseDown={(e) => startPressTimer(item._id, e)}
                     onMouseUp={stopPressTimer}
                     onMouseLeave={stopPressTimer}
-                    onTouchStart={() => startPressTimer(item._id)}
+                    onTouchStart={(e) => startPressTimer(item._id, e)}
+                    onTouchMove={handleTouchMove}
                     onTouchEnd={stopPressTimer}
+                    onTouchCancel={stopPressTimer}
                     className="group w-full relative transition-all duration-200 select-none active:scale-[0.99] cursor-pointer"
                   >
                     <div
-                      className={`w-full rounded-xl p-4 border flex flex-col relative transition-shadow shadow-sm hover:shadow ${
+                      className={`w-full rounded-xl p-4 border border-l-4 flex flex-col relative transition-shadow shadow-sm hover:shadow ${
                         isSelected 
-                          ? 'border-[#0B7A81] bg-[#F4FAFA] dark:bg-[#0B7A81]/10' 
+                          ? 'border-[#0B7A81] bg-[#F4FAFA] dark:bg-[#0B7A81]/10 ' + (isJ ? 'border-l-[#0B7A81]' : 'border-l-rose-500 dark:border-l-rose-400')
                           : isJ
-                            ? 'bg-white dark:bg-[#111111] border-[#E6E6E6] dark:border-white/[0.08]' 
+                            ? 'bg-white dark:bg-[#111111] border-[#E6E6E6] dark:border-white/[0.08] border-l-[#0B7A81]' 
                             : item.status === 'prayed'
-                              ? 'bg-gray-50 dark:bg-[#111111] border-gray-200 dark:border-white/[0.06] opacity-80'
-                              : 'bg-[#F4FAFA] dark:bg-[#111618] border-[#0B7A81]/20 dark:border-[#0B7A81]/25'
+                              ? 'bg-gray-50 dark:bg-[#111111] border-gray-200 dark:border-white/[0.06] border-l-rose-400/60 dark:border-l-rose-500/50 opacity-80'
+                              : 'bg-rose-50/20 dark:bg-[#181113] border-rose-200/60 dark:border-rose-900/30 border-l-rose-500 dark:border-l-rose-400'
                       }`}
                     >
-                      {/* â”€â”€ Google Photos-style selection checkbox â”€â”€
+                      {/* ── Google Photos-style selection checkbox ──
                           Desktop only (hidden on mobile/touch devices).
                           Visible when: card is hovered OR item is selected.
                           Clicking it enters/toggles selection without opening the item. */}
@@ -1555,8 +1597,8 @@ function JournalsContent() {
                           {/* Mixed Type Badge */}
                           <span className={`text-[10px] tracking-wider font-extrabold px-2 py-0.5 rounded-full ${
                             isJ 
-                              ? 'bg-gray-100 text-gray-600 dark:bg-white/[0.04] dark:text-gray-400' 
-                              : 'bg-[#0B7A81]/10 text-[#0B7A81] dark:bg-[#0B7A81]/20'
+                              ? 'bg-teal-500/10 text-teal-700 dark:bg-teal-400/15 dark:text-teal-300' 
+                              : 'bg-rose-500/10 text-rose-600 dark:bg-rose-400/15 dark:text-rose-400'
                           }`}>
                             {isJ ? (item.type === 'checklist' ? 'Checklist' : item.type === 'audio' ? 'Voice' : 'Journal') : 'Prayer'}
                           </span>
@@ -1566,7 +1608,7 @@ function JournalsContent() {
                             <span className={`text-[9px] font-extrabold tracking-wider px-2 py-0.5 rounded-full ${
                               item.status === 'prayed'
                                 ? 'bg-gray-100 text-gray-500 dark:bg-white/[0.04] dark:text-gray-500'
-                                : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400'
+                                : 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400'
                             }`}>
                               {item.status === 'prayed' ? 'Prayed' : 'Active'}
                             </span>

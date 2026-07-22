@@ -10,7 +10,6 @@ import {
   Layers,
   FlipHorizontal,
   MoveVertical,
-  Check,
   ChevronDown,
 } from "lucide-react";
 import FontSizeSelector from "./FontSizeSelector";
@@ -129,8 +128,8 @@ export default function FontsSettingsModal({
         </div>
 
         {/* FONT FAMILY */}
-        <div className="mb-6">
-          <p className="text-xs mb-2" style={{ color: theme.subText }}>
+        <div className="mb-5">
+          <p className="text-xs font-semibold mb-2" style={{ color: theme.subText }}>
             Font family
           </p>
 
@@ -163,8 +162,8 @@ export default function FontsSettingsModal({
         </div>
 
         {/* FONT SIZE */}
-        <div className="mb-6">
-          <p className="text-xs mb-4" style={{ color: theme.subText }}>
+        <div className="mb-5">
+          <p className="text-xs font-semibold mb-2" style={{ color: theme.subText }}>
             Font size
           </p>
 
@@ -182,12 +181,12 @@ export default function FontsSettingsModal({
         </div>
 
         {/* THEME */}
-        <div className="mb-6">
-          <p className="text-xs mb-3 font-medium tracking-wider opacity-60" style={{ color: theme.subText }}>
+        <div className="mb-5">
+          <p className="text-xs font-semibold mb-2.5" style={{ color: theme.subText }}>
             Theme selection
           </p>
 
-          <div className="grid grid-cols-4 justify-items-center gap-2.5 w-full px-1">
+          <div className="grid grid-cols-4 gap-3 w-full">
             {([
               { id: "light", icon: Sun,      bg: "#ffffff", iconColor: "#f59e0b", label: "Light" },
               { id: "sepia", icon: Coffee,   bg: "#F7EFED", iconColor: "#92400e", label: "Sepia" },
@@ -199,20 +198,18 @@ export default function FontsSettingsModal({
                 <div key={id} className="flex flex-col items-center gap-1.5">
                   <button
                     onClick={() => onThemeChange(id)}
-                    className="relative flex items-center justify-center rounded-full transition-all duration-300 shadow-sm active:scale-95 group border"
+                    className="relative w-full h-11 flex items-center justify-center rounded-xl transition-all duration-200 shadow-2xs active:scale-95 group border"
                     style={{
-                      width: 52,
-                      height: 34,
                       background: bg,
                       borderColor: active ? "var(--color-primary-teal)" : theme.border,
                       borderWidth: active ? "2px" : "1px",
                     }}
                     aria-label={`Select ${label} theme`}
                   >
-                    <Icon size={16} style={{ color: iconColor }} className={`transition-transform duration-300 ${active ? 'scale-110' : 'group-hover:scale-110'}`} />
+                    <Icon size={18} style={{ color: iconColor }} className={`transition-transform duration-200 ${active ? 'scale-110' : 'group-hover:scale-110'}`} />
                   </button>
                   <span
-                    className="text-[10px] font-bold tracking-wide transition-colors duration-300"
+                    className="text-[11px] font-medium transition-colors duration-200"
                     style={{ color: active ? "var(--color-primary-teal)" : theme.subText }}
                   >
                     {label}
@@ -225,47 +222,38 @@ export default function FontsSettingsModal({
 
         {/* TRANSITIONS */}
         <div>
-          <p className="text-xs mb-3 font-medium tracking-wider opacity-60" style={{ color: theme.subText }}>
+          <p className="text-xs font-semibold mb-2.5" style={{ color: theme.subText }}>
             Page transitions
           </p>
 
-          <div className="grid grid-cols-4 justify-items-center gap-2.5 w-full px-1">
+          <div className="grid grid-cols-4 gap-3 w-full">
             {TRANSITIONS.map((t) => {
               const active = pageTransition === t.id;
               const Icon = t.icon;
 
               return (
-                <button
-                  key={t.id}
-                  onClick={() => onPageTransitionChange(t.id)}
-                  className="relative rounded-xl flex flex-col items-center justify-center gap-1 transition-all duration-300 active:scale-95 group overflow-hidden border"
-                  style={{
-                    width: 52,
-                    height: 52,
-                    borderColor: active ? "var(--color-primary-teal)" : theme.border,
-                    borderWidth: active ? "2px" : "1px",
-                    background: active
-                      ? "rgba(65, 173, 176, 0.08)"
-                      : theme.card,
-                    boxShadow: active ? "0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05)" : "none",
-                    transform: active ? "translateY(-2px)" : "translateY(0)",
-                  }}
-                >
-                  <div className={`p-1.5 rounded-lg transition-all duration-300 ${active ? 'scale-110' : 'group-hover:scale-110 group-hover:-translate-y-0.5'}`}
-                       style={{ background: active ? 'rgba(65, 173, 176, 0.12)' : 'transparent' }}>
-                    <Icon size={16} style={{ color: active ? "var(--color-primary-teal)" : theme.text }} />
-                  </div>
-                  <span className="text-[9px] font-bold tracking-tight"
-                        style={{ color: active ? "var(--color-primary-teal)" : theme.text }}>
+                <div key={t.id} className="flex flex-col items-center gap-1.5">
+                  <button
+                    onClick={() => onPageTransitionChange(t.id)}
+                    className="relative w-full h-11 flex items-center justify-center rounded-xl transition-all duration-200 shadow-2xs active:scale-95 group border"
+                    style={{
+                      background: active
+                        ? "rgba(65, 173, 176, 0.1)"
+                        : theme.card,
+                      borderColor: active ? "var(--color-primary-teal)" : theme.border,
+                      borderWidth: active ? "2px" : "1px",
+                    }}
+                    aria-label={`Select ${t.label} page transition`}
+                  >
+                    <Icon size={18} style={{ color: active ? "var(--color-primary-teal)" : theme.text }} className={`transition-transform duration-200 ${active ? 'scale-110' : 'group-hover:scale-110'}`} />
+                  </button>
+                  <span
+                    className="text-[11px] font-medium transition-colors duration-200"
+                    style={{ color: active ? "var(--color-primary-teal)" : theme.subText }}
+                  >
                     {t.label}
                   </span>
-
-                  {active && (
-                    <div className="absolute top-1 right-1 bg-[var(--color-primary-teal)] text-white p-0.5 rounded-full shadow-sm">
-                      <Check size={6} strokeWidth={4} />
-                    </div>
-                  )}
-                </button>
+                </div>
               );
             })}
           </div>
