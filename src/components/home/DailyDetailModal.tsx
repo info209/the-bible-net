@@ -158,7 +158,7 @@ export function DailyDetailModal({
     const devKebabButtonRef = useRef<HTMLButtonElement | null>(null);
 
     // Saved verses hook
-    const { saveVerse, isSaved } = useSavedVerses();
+    const { saveVerse, isSaved, getSavedVerse, deleteSavedVerse } = useSavedVerses();
 
     // Progress state — keyed by date so switching days works correctly
     const [progressByDate, setProgressByDate] = React.useState<Record<string, ProgressStatus>>({});
@@ -499,10 +499,16 @@ export function DailyDetailModal({
                 return;
             }
             try {
-                await saveVerse({ bookId, bookName, chapter, verses, verseRangeText, version });
-                toast.success('Verse saved!');
+                const existingSave = getSavedVerse(bookId, chapter, verses);
+                if (existingSave) {
+                    await deleteSavedVerse(existingSave._id);
+                    toast.success('Verse unsaved');
+                } else {
+                    await saveVerse({ bookId, bookName, chapter, verses, verseRangeText, version });
+                    toast.success('Verse saved!');
+                }
             } catch {
-                toast.error('Failed to save verse.');
+                toast.error('Failed to update saved verse.');
             }
         };
 
@@ -936,7 +942,7 @@ export function DailyDetailModal({
                                             Copy verse
                                         </button>
                                         <button
-                                            onClick={() => {
+                                            onClick={async () => {
                                                 setOpenKebab(null);
                                                 const c = contents[currentIndex] as any;
                                                 const firstRef = c?.verseRefs?.[0];
@@ -961,9 +967,19 @@ export function DailyDetailModal({
                                                     return;
                                                 }
                                                 if (!bId) { toast.error('Verse reference not available.'); return; }
-                                                saveVerse({ bookId: bId, bookName: bName, chapter: ch, verses: vs, verseRangeText: vrt, version: ver })
-                                                    .then(() => toast.success('Verse saved! View in your Saved page.'))
-                                                    .catch(() => toast.error('Failed to save verse.'));
+
+                                                try {
+                                                    const existingSave = getSavedVerse(bId, ch, vs);
+                                                    if (existingSave) {
+                                                        await deleteSavedVerse(existingSave._id);
+                                                        toast.success('Verse unsaved');
+                                                    } else {
+                                                        await saveVerse({ bookId: bId, bookName: bName, chapter: ch, verses: vs, verseRangeText: vrt, version: ver });
+                                                        toast.success('Verse saved!');
+                                                    }
+                                                } catch {
+                                                    toast.error('Failed to update saved verse.');
+                                                }
                                             }}
                                             className="w-full text-left px-4 py-3 text-sm font-medium hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100 flex items-center gap-2"
                                         >

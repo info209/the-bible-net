@@ -45,7 +45,7 @@ export default function HomeView() {
   const [currentDevotionSlide, setCurrentDevotionSlide] = useState(0);
 
   // Saved verses hook
-  const { saveVerse, isSaved } = useSavedVerses();
+  const { saveVerse, isSaved, getSavedVerse, deleteSavedVerse } = useSavedVerses();
 
   const [showCommentModal, setShowCommentModal] = useState(false);
   const [activeContent, setActiveContent] = useState<{ id: string, type: 'daily-verse' | 'daily-devotion' } | null>(null);
@@ -450,7 +450,30 @@ export default function HomeView() {
     router.push(`/bible?version=${version}&book=${book}&chapter=${chapter}&verse=${verse}`);
   };
 
-  // Save daily verse to saved page
+  const getVerseMetadata = (content: any) => {
+    const firstRef = content.verseRefs?.[0];
+    const bookId   = firstRef?.book || content.verseBook || '';
+    const bookName = firstRef?.book || content.verseBook || '';
+    const chapter  = Number(firstRef?.chapter || content.verseChapter) || 1;
+    
+    let verses: number[] = [];
+    if (content.verseRefs && content.verseRefs.length > 0) {
+      for (const r of content.verseRefs) {
+        for (let v = r.startVerse; v <= r.endVerse; v++) {
+          verses.push(v);
+        }
+      }
+    } else {
+      verses = [Number(content.verseNumber) || 1];
+    }
+
+    const verseRangeText = bookId ? buildVerseRangeText(bookName, chapter, verses) : '';
+    const version  = content.version || preferredVersion;
+
+    return { bookId, bookName, chapter, verses, verseRangeText, version };
+  };
+
+  // Save/Unsave daily verse
   const handleSaveVerse = async (content: any, e: React.MouseEvent) => {
     e.stopPropagation();
     setOpenVerseKebabIndex(null);
@@ -462,29 +485,23 @@ export default function HomeView() {
     }
 
     try {
-      const firstRef = content.verseRefs?.[0];
-      const bookId   = firstRef?.book || content.verseBook || '';
-      const bookName = firstRef?.book || content.verseBook || '';
-      const chapter  = Number(firstRef?.chapter || content.verseChapter) || 1;
-      
-      let verses: number[] = [];
-      if (content.verseRefs && content.verseRefs.length > 0) {
-        for (const r of content.verseRefs) {
-          for (let v = r.startVerse; v <= r.endVerse; v++) {
-            verses.push(v);
-          }
-        }
-      } else {
-        verses = [Number(content.verseNumber) || 1];
+      const { bookId, bookName, chapter, verses, verseRangeText, version } = getVerseMetadata(content);
+
+      if (!bookId) {
+        toast.error('Verse reference not available.');
+        return;
       }
 
-      const verseRangeText = buildVerseRangeText(bookName, chapter, verses);
-      const version  = content.version || preferredVersion;
-
-      await saveVerse({ bookId, bookName, chapter, verses, verseRangeText, version });
-      toast.success('Verse saved!');
+      const existingSave = getSavedVerse(bookId, chapter, verses);
+      if (existingSave) {
+        await deleteSavedVerse(existingSave._id);
+        toast.success('Verse unsaved');
+      } else {
+        await saveVerse({ bookId, bookName, chapter, verses, verseRangeText, version });
+        toast.success('Verse saved!');
+      }
     } catch (err) {
-      toast.error('Failed to save verse.');
+      toast.error('Failed to update saved verse.');
     }
   };
 
@@ -717,10 +734,18 @@ export default function HomeView() {
                                 onClick={(e) => handleSaveVerse(content, e)}
                                 className="w-full text-left px-4 py-3 text-sm font-medium flex items-center gap-2 hover:bg-gray-50 active:bg-gray-100 transition-colors border-t border-gray-100"
                               >
-                                <Bookmark className={`w-3.5 h-3.5 ${isSaved(content.verseBook || '', Number(content.verseChapter) || 1, [Number(content.verseNumber) || 1]) ? 'fill-black text-black' : 'text-gray-500'}`} />
-                                <span className="text-gray-800">
-                                  {isSaved(content.verseBook || '', Number(content.verseChapter) || 1, [Number(content.verseNumber) || 1]) ? 'Saved' : 'Save verse'}
-                                </span>
+                                {(() => {
+                                  const { bookId, chapter, verses } = getVerseMetadata(content);
+                                  const saved = bookId ? isSaved(bookId, chapter, verses) : false;
+                                  return (
+                                    <>
+                                      <Bookmark className={`w-3.5 h-3.5 ${saved ? 'fill-black text-black' : 'text-gray-500'}`} />
+                                      <span className="text-gray-800">
+                                        {saved ? 'Saved' : 'Save verse'}
+                                      </span>
+                                    </>
+                                  );
+                                })()}
                               </button>
                             </div>
                           </>
