@@ -1458,31 +1458,72 @@ function JournalsContent() {
               )}
             </AnimatePresence>
 
-            {/* Category Chips */}
+            {/* Tab-based Category Filter Interface with Automatic Item Counts */}
             <div
               style={{ top: showSearchBar ? '120px' : '64px' }}
-              className="flex px-4 gap-2 overflow-x-auto scrollbar-none py-3 sticky bg-white dark:bg-[#000000] z-20 select-none transition-all duration-200"
+              className="sticky top-[64px] z-20 bg-white dark:bg-[#000000] border-b border-[#E6E6E6] dark:border-white/[0.08] px-4 py-2.5 select-none transition-all duration-200"
             >
-              {(['All', 'Journals', 'Prayers'] as Tab[]).map((tabName) => {
-                const isSelected = activeTab === tabName;
-                return (
-                  <button
-                    key={tabName}
-                    onClick={() => {
-                      setActiveTab(tabName);
-                      // Reset prayer sub-filter when leaving Prayers tab
-                      if (tabName !== 'Prayers') setPrayerStatusFilter('All');
-                    }}
-                    className="h-8 px-4 rounded-xl text-xs font-semibold whitespace-nowrap shrink-0 transition-all flex items-center justify-center active:scale-95"
-                    style={{
-                      backgroundColor: isSelected ? '#0B7A81' : '#F1F2F3',
-                      color: isSelected ? '#FFFFFF' : '#666666'
-                    }}
-                  >
-                    {tabName}
-                  </button>
-                );
-              })}
+              <div className="flex items-center p-1 bg-gray-100/90 dark:bg-white/[0.06] rounded-xl gap-1 max-w-5xl mx-auto">
+                {(['All', 'Journals', 'Prayers'] as Tab[]).map((tabName) => {
+                  const isSelected = activeTab === tabName;
+                  const count =
+                    tabName === 'All'
+                      ? journals.length + prayers.length
+                      : tabName === 'Journals'
+                      ? journals.length
+                      : prayers.length;
+
+                  return (
+                    <button
+                      key={tabName}
+                      type="button"
+                      onClick={() => {
+                        setActiveTab(tabName);
+                        if (tabName !== 'Prayers') setPrayerStatusFilter('All');
+                      }}
+                      className={`flex-1 min-w-0 py-2 px-3 rounded-lg text-xs md:text-sm font-semibold transition-all duration-150 flex items-center justify-center gap-1.5 active:scale-[0.98] ${
+                        isSelected
+                          ? 'bg-white dark:bg-[#1A1A1E] text-[#0B7A81] dark:text-[#14B8A6] shadow-sm font-bold'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-white/40 dark:hover:bg-white/[0.03]'
+                      }`}
+                      aria-selected={isSelected}
+                      role="tab"
+                    >
+                      <span className="truncate">{tabName}</span>
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] md:text-xs font-bold leading-none shrink-0 transition-colors ${
+                          isSelected
+                            ? 'bg-[#0B7A81]/12 text-[#0B7A81] dark:bg-[#0B7A81]/25 dark:text-[#14B8A6]'
+                            : 'bg-gray-200/80 dark:bg-white/[0.1] text-gray-500 dark:text-gray-400'
+                        }`}
+                      >
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Prayer status sub-filter pills when Prayers tab is active */}
+              {activeTab === 'Prayers' && (
+                <div className="flex items-center gap-2 mt-2 pt-2 border-t border-gray-100 dark:border-white/[0.04] max-w-5xl mx-auto">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Status:</span>
+                  {(['All', 'Active', 'Prayed'] as PrayerStatusFilter[]).map((st) => (
+                    <button
+                      key={st}
+                      type="button"
+                      onClick={() => setPrayerStatusFilter(st)}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold transition-all ${
+                        prayerStatusFilter === st
+                          ? 'bg-rose-500/15 text-rose-600 dark:bg-rose-400/20 dark:text-rose-400 font-bold'
+                          : 'bg-gray-100 dark:bg-white/[0.05] text-gray-500 hover:text-gray-800 dark:hover:text-gray-200'
+                      }`}
+                    >
+                      {st}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Empty State */}
@@ -1721,11 +1762,12 @@ function JournalsContent() {
           /* â”€â”€ RICH EDITOR VIEW â”€â”€ */
           <motion.div
             key="editor-view"
-            initial={{ opacity: 0, scale: 0.98 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.98 }}
-            transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             className="w-full flex flex-col min-h-screen pb-24"
+            style={{ transform: 'none' }}
           >
             {/* Editor Header */}
             <header className="h-[64px] px-4 flex items-center justify-between border-b border-[#E6E6E6] dark:border-white/[0.08] bg-white dark:bg-[#000000] sticky top-0 z-30">
@@ -1774,273 +1816,278 @@ function JournalsContent() {
             {/* Sticky Formatting Toolbar (edit mode only) */}
             {editorMode !== 'view' && (
               <div className="sticky top-[64px] z-20 bg-white dark:bg-[#000000] border-b border-[#E6E6E6] dark:border-white/[0.08]">
-                <div className="px-3 py-1.5 flex items-center gap-0.5 overflow-x-auto scrollbar-none min-h-[44px]">
+                <div className="px-3 py-1.5 flex items-center min-h-[44px]">
 
-                  {/* Undo / Redo Group */}
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().undo().run(); }}
-                    disabled={!editor?.can().undo()}
-                    className="p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="Undo (Ctrl+Z)"
-                    aria-label="Undo"
-                  >
-                    <Undo2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().redo().run(); }}
-                    disabled={!editor?.can().redo()}
-                    className="p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
-                    title="Redo (Ctrl+Y)"
-                    aria-label="Redo"
-                  >
-                    <Redo2 className="w-4 h-4" />
-                  </button>
-
-                  {/* Separator */}
-                  <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
-
-                  {/* Inline Marks Group */}
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBold().run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('bold') ? 'tiptap-btn-active' : '' }`}
-                    title="Bold (Ctrl+B)"
-                    aria-label="Bold"
-                  >
-                    <Bold className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleItalic().run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('italic') ? 'tiptap-btn-active' : '' }`}
-                    title="Italic (Ctrl+I)"
-                    aria-label="Italic"
-                  >
-                    <Italic className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleUnderline().run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('underline') ? 'tiptap-btn-active' : '' }`}
-                    title="Underline (Ctrl+U)"
-                    aria-label="Underline"
-                  >
-                    <UnderlineIcon className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleStrike().run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('strike') ? 'tiptap-btn-active' : '' }`}
-                    title="Strikethrough"
-                    aria-label="Strikethrough"
-                  >
-                    <Strikethrough className="w-4 h-4" />
-                  </button>
-
-                  {/* Separator */}
-                  <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
-
-                  {/* â”€â”€ Headings Group â”€â”€ */}
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 1 }).run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('heading', { level: 1 }) ? 'tiptap-btn-active' : '' }`}
-                    title="Heading 1"
-                    aria-label="Heading 1"
-                  >
-                    <Heading1 className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 2 }).run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('heading', { level: 2 }) ? 'tiptap-btn-active' : '' }`}
-                    title="Heading 2"
-                    aria-label="Heading 2"
-                  >
-                    <Heading2 className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBlockquote().run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('blockquote') ? 'tiptap-btn-active' : '' }`}
-                    title="Blockquote"
-                    aria-label="Blockquote"
-                  >
-                    <Quote className="w-4 h-4" />
-                  </button>
-
-                  {/* Separator */}
-                  <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
-
-                  {/* â”€â”€ Lists Group â”€â”€ */}
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBulletList().run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('bulletList') ? 'tiptap-btn-active' : '' }`}
-                    title="Bullet List"
-                    aria-label="Bullet List"
-                  >
-                    <List className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleOrderedList().run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('orderedList') ? 'tiptap-btn-active' : '' }`}
-                    title="Numbered List"
-                    aria-label="Numbered List"
-                  >
-                    <ListOrdered className="w-4 h-4" />
-                  </button>
-
-                  {/* Separator */}
-                  <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
-
-                  {/* â”€â”€ Text Alignment Group â”€â”€ */}
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('left').run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive({ textAlign: 'left' }) ? 'tiptap-btn-active' : '' }`}
-                    title="Align Left"
-                    aria-label="Align Left"
-                  >
-                    <AlignLeft className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('center').run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive({ textAlign: 'center' }) ? 'tiptap-btn-active' : '' }`}
-                    title="Align Center"
-                    aria-label="Align Center"
-                  >
-                    <AlignCenter className="w-4 h-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('right').run(); }}
-                    className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive({ textAlign: 'right' }) ? 'tiptap-btn-active' : '' }`}
-                    title="Align Right"
-                    aria-label="Align Right"
-                  >
-                    <AlignRight className="w-4 h-4" />
-                  </button>
-
-                  {/* Separator */}
-                  <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
-
-                  {/* â”€â”€ Text Color Picker â”€â”€ */}
-                  <div className="relative flex items-center shrink-0">
+                  {/* Fixed Left-most Action: Add Verse */}
+                  <div className="flex items-center shrink-0 pr-2.5 border-r border-gray-200 dark:border-white/[0.1] mr-1.5">
                     <button
                       type="button"
-                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center ${showColorMenu === 'text' ? 'bg-gray-200 dark:bg-white/[0.1]' : ''}`}
-                      title="Text Color"
-                      aria-label="Text Color"
-                      onClick={() => setShowColorMenu(showColorMenu === 'text' ? null : 'text')}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setAtTriggerPosition(null);
+                        setIsVerseSearchOpen(true);
+                      }}
+                      className="h-8 px-2.5 rounded-lg transition-all bg-[#0B7A81]/10 hover:bg-[#0B7A81]/20 text-[#0B7A81] dark:bg-[#0B7A81]/20 dark:hover:bg-[#0B7A81]/30 dark:text-[#14B8A6] flex items-center gap-1.5 shrink-0 font-medium active:scale-95 shadow-xs"
+                      title="Add verse"
+                      aria-label="Add verse"
                     >
-                      <span className="font-bold border-b-2 border-current px-0.5 leading-none text-xs">A</span>
+                      <BookOpen className="w-4 h-4 shrink-0" />
+                      <span className="text-xs font-bold whitespace-nowrap">Add verse</span>
                     </button>
-                    {showColorMenu === 'text' && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowColorMenu(null)} />
-                        <div className="absolute top-full mt-1.5 left-0 z-50 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/[0.12] p-2 rounded-xl shadow-xl flex items-center gap-1.5 min-w-max">
-                          {['#000000', '#E23744', '#1890FF', '#52C41A', '#FADB14', '#722ED1', '#FF7A00'].map(color => (
-                            <button
-                              key={color}
-                              type="button"
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                editor?.chain().focus().setColor(color).run();
-                                setShowColorMenu(null);
-                              }}
-                              className="w-6 h-6 rounded-full border border-black/10 dark:border-white/20 transition-transform hover:scale-110 active:scale-95 shadow-sm"
-                              style={{ backgroundColor: color }}
-                              title={color}
-                              aria-label={`Text color ${color}`}
-                            />
-                          ))}
-                          <button
-                            type="button"
-                            onMouseDown={(e) => {
-                              e.preventDefault();
-                              editor?.chain().focus().unsetColor().run();
-                              setShowColorMenu(null);
-                            }}
-                            className="text-xs px-2 py-1 hover:bg-gray-100 dark:hover:bg-white/[0.08] rounded-md font-medium text-gray-600 dark:text-gray-300"
-                          >
-                            Default
-                          </button>
-                        </div>
-                      </>
-                    )}
                   </div>
 
-                  {/* â”€â”€ Text Highlight Color Picker â”€â”€ */}
-                  <div className="relative flex items-center shrink-0">
+                  {/* Scrollable Container for Remaining Formatting Actions */}
+                  <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none flex-1 min-w-0">
+
+                    {/* Undo / Redo Group */}
                     <button
                       type="button"
-                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center ${showColorMenu === 'bg' ? 'bg-gray-200 dark:bg-white/[0.1]' : ''}`}
-                      title="Highlight Color"
-                      aria-label="Highlight Color"
-                      onClick={() => setShowColorMenu(showColorMenu === 'bg' ? null : 'bg')}
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().undo().run(); }}
+                      disabled={!editor?.can().undo()}
+                      className="p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Undo (Ctrl+Z)"
+                      aria-label="Undo"
                     >
-                      <span className="font-bold bg-yellow-200 text-black px-1 py-0.5 rounded leading-none text-xs">H</span>
+                      <Undo2 className="w-4 h-4" />
                     </button>
-                    {showColorMenu === 'bg' && (
-                      <>
-                        <div className="fixed inset-0 z-40" onClick={() => setShowColorMenu(null)} />
-                        <div className="absolute top-full mt-1.5 left-0 z-50 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/[0.12] p-2 rounded-xl shadow-xl flex items-center gap-1.5 min-w-max">
-                          {[
-                            { label: 'Clear', color: 'none' },
-                            { label: 'Yellow', color: '#FFE58F' },
-                            { label: 'Red', color: '#FFCCC7' },
-                            { label: 'Green', color: '#D9F7BE' },
-                            { label: 'Blue', color: '#BAE7FF' },
-                            { label: 'Purple', color: '#EFDBFF' },
-                            { label: 'Orange', color: '#FFE7BA' },
-                          ].map(({ label, color }) => (
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().redo().run(); }}
+                      disabled={!editor?.can().redo()}
+                      className="p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 disabled:opacity-30 disabled:cursor-not-allowed"
+                      title="Redo (Ctrl+Y)"
+                      aria-label="Redo"
+                    >
+                      <Redo2 className="w-4 h-4" />
+                    </button>
+
+                    {/* Separator */}
+                    <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
+
+                    {/* Inline Marks Group */}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBold().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('bold') ? 'tiptap-btn-active' : '' }`}
+                      title="Bold (Ctrl+B)"
+                      aria-label="Bold"
+                    >
+                      <Bold className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleItalic().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('italic') ? 'tiptap-btn-active' : '' }`}
+                      title="Italic (Ctrl+I)"
+                      aria-label="Italic"
+                    >
+                      <Italic className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleUnderline().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('underline') ? 'tiptap-btn-active' : '' }`}
+                      title="Underline (Ctrl+U)"
+                      aria-label="Underline"
+                    >
+                      <UnderlineIcon className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleStrike().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('strike') ? 'tiptap-btn-active' : '' }`}
+                      title="Strikethrough"
+                      aria-label="Strikethrough"
+                    >
+                      <Strikethrough className="w-4 h-4" />
+                    </button>
+
+                    {/* Separator */}
+                    <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
+
+                    {/* ── Headings Group ── */}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 1 }).run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('heading', { level: 1 }) ? 'tiptap-btn-active' : '' }`}
+                      title="Heading 1"
+                      aria-label="Heading 1"
+                    >
+                      <Heading1 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 2 }).run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('heading', { level: 2 }) ? 'tiptap-btn-active' : '' }`}
+                      title="Heading 2"
+                      aria-label="Heading 2"
+                    >
+                      <Heading2 className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBlockquote().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('blockquote') ? 'tiptap-btn-active' : '' }`}
+                      title="Blockquote"
+                      aria-label="Blockquote"
+                    >
+                      <Quote className="w-4 h-4" />
+                    </button>
+
+                    {/* Separator */}
+                    <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
+
+                    {/* ── Lists Group ── */}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBulletList().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('bulletList') ? 'tiptap-btn-active' : '' }`}
+                      title="Bullet List"
+                      aria-label="Bullet List"
+                    >
+                      <List className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleOrderedList().run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('orderedList') ? 'tiptap-btn-active' : '' }`}
+                      title="Numbered List"
+                      aria-label="Numbered List"
+                    >
+                      <ListOrdered className="w-4 h-4" />
+                    </button>
+
+                    {/* Separator */}
+                    <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
+
+                    {/* ── Text Alignment Group ── */}
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('left').run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive({ textAlign: 'left' }) ? 'tiptap-btn-active' : '' }`}
+                      title="Align Left"
+                      aria-label="Align Left"
+                    >
+                      <AlignLeft className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('center').run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive({ textAlign: 'center' }) ? 'tiptap-btn-active' : '' }`}
+                      title="Align Center"
+                      aria-label="Align Center"
+                    >
+                      <AlignCenter className="w-4 h-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().setTextAlign('right').run(); }}
+                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive({ textAlign: 'right' }) ? 'tiptap-btn-active' : '' }`}
+                      title="Align Right"
+                      aria-label="Align Right"
+                    >
+                      <AlignRight className="w-4 h-4" />
+                    </button>
+
+                    {/* Separator */}
+                    <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
+
+                    {/* ── Text Color Picker ── */}
+                    <div className="relative flex items-center shrink-0">
+                      <button
+                        type="button"
+                        className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center ${showColorMenu === 'text' ? 'bg-gray-200 dark:bg-white/[0.1]' : ''}`}
+                        title="Text Color"
+                        aria-label="Text Color"
+                        onClick={() => setShowColorMenu(showColorMenu === 'text' ? null : 'text')}
+                      >
+                        <span className="font-bold border-b-2 border-current px-0.5 leading-none text-xs">A</span>
+                      </button>
+                      {showColorMenu === 'text' && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowColorMenu(null)} />
+                          <div className="absolute top-full mt-1.5 left-0 z-50 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/[0.12] p-2 rounded-xl shadow-xl flex items-center gap-1.5 min-w-max">
+                            {['#000000', '#E23744', '#1890FF', '#52C41A', '#FADB14', '#722ED1', '#FF7A00'].map(color => (
+                              <button
+                                key={color}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  editor?.chain().focus().setColor(color).run();
+                                  setShowColorMenu(null);
+                                }}
+                                className="w-6 h-6 rounded-full border border-black/10 dark:border-white/20 transition-transform hover:scale-110 active:scale-95 shadow-sm"
+                                style={{ backgroundColor: color }}
+                                title={color}
+                                aria-label={`Text color ${color}`}
+                              />
+                            ))}
                             <button
-                              key={color}
                               type="button"
                               onMouseDown={(e) => {
                                 e.preventDefault();
-                                if (color === 'none') {
-                                  editor?.chain().focus().unsetHighlight().run();
-                                } else {
-                                  editor?.chain().focus().toggleHighlight({ color }).run();
-                                }
+                                editor?.chain().focus().unsetColor().run();
                                 setShowColorMenu(null);
                               }}
-                              className="w-6 h-6 rounded-full border border-black/10 dark:border-white/20 transition-transform hover:scale-110 active:scale-95 shadow-sm flex items-center justify-center text-[10px]"
-                              style={{ backgroundColor: color === 'none' ? '#FFFFFF' : color }}
-                              title={label}
-                              aria-label={`Highlight ${label}`}
+                              className="text-xs px-2 py-1 hover:bg-gray-100 dark:hover:bg-white/[0.08] rounded-md font-medium text-gray-600 dark:text-gray-300"
                             >
-                              {color === 'none' && <X className="w-3 h-3 text-gray-500" />}
+                              Default
                             </button>
-                          ))}
-                        </div>
-                      </>
-                    )}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* ── Text Highlight Color Picker ── */}
+                    <div className="relative flex items-center shrink-0">
+                      <button
+                        type="button"
+                        className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center ${showColorMenu === 'bg' ? 'bg-gray-200 dark:bg-white/[0.1]' : ''}`}
+                        title="Highlight Color"
+                        aria-label="Highlight Color"
+                        onClick={() => setShowColorMenu(showColorMenu === 'bg' ? null : 'bg')}
+                      >
+                        <span className="font-bold bg-yellow-200 text-black px-1 py-0.5 rounded leading-none text-xs">H</span>
+                      </button>
+                      {showColorMenu === 'bg' && (
+                        <>
+                          <div className="fixed inset-0 z-40" onClick={() => setShowColorMenu(null)} />
+                          <div className="absolute top-full mt-1.5 left-0 z-50 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/[0.12] p-2 rounded-xl shadow-xl flex items-center gap-1.5 min-w-max">
+                            {[
+                              { label: 'Clear', color: 'none' },
+                              { label: 'Yellow', color: '#FFE58F' },
+                              { label: 'Red', color: '#FFCCC7' },
+                              { label: 'Green', color: '#D9F7BE' },
+                              { label: 'Blue', color: '#BAE7FF' },
+                              { label: 'Purple', color: '#EFDBFF' },
+                              { label: 'Orange', color: '#FFE7BA' },
+                            ].map(({ label, color }) => (
+                              <button
+                                key={color}
+                                type="button"
+                                onMouseDown={(e) => {
+                                  e.preventDefault();
+                                  if (color === 'none') {
+                                    editor?.chain().focus().unsetHighlight().run();
+                                  } else {
+                                    editor?.chain().focus().toggleHighlight({ color }).run();
+                                  }
+                                  setShowColorMenu(null);
+                                }}
+                                className="w-6 h-6 rounded-full border border-black/10 dark:border-white/20 transition-transform hover:scale-110 active:scale-95 shadow-sm flex items-center justify-center text-[10px]"
+                                style={{ backgroundColor: color === 'none' ? '#FFFFFF' : color }}
+                                title={label}
+                                aria-label={`Highlight ${label}`}
+                              >
+                                {color === 'none' && <X className="w-3 h-3 text-gray-500" />}
+                              </button>
+                            ))}
+                          </div>
+                        </>
+                      )}
+                    </div>
+
                   </div>
-
-                  {/* Separator */}
-                  <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
-
-                  {/* Insert Verse Button */}
-                  <button
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      setAtTriggerPosition(null);
-                      setIsVerseSearchOpen(true);
-                    }}
-                    className="p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center shrink-0"
-                    title="Insert Verse"
-                    aria-label="Insert Verse"
-                  >
-                    <BookOpen className="w-4 h-4" />
-                  </button>
                 </div>
               </div>
             )}
@@ -2134,17 +2181,17 @@ function JournalsContent() {
               {editorMode === 'view' ? (
                 <div className="flex-1 flex flex-col min-h-[300px]">
                   <div
-                    className="w-full flex-1 text-base outline-none min-h-[260px] overflow-y-auto leading-relaxed select-text text-gray-800 dark:text-[#F0F0F0]"
+                    className="w-full flex-1 text-base outline-none min-h-[260px] leading-relaxed select-text text-gray-800 dark:text-[#F0F0F0]"
                     dangerouslySetInnerHTML={{ __html: editContent || '<span class="text-gray-400 italic">No content</span>' }}
                   />
                 </div>
               ) : (
                 /* Primary Content Rich Text Editor (contentEditable / textarea) */
                 <div className="flex-1 flex flex-col min-h-[300px]">
-                  {/* â”€â”€ Tiptap Editor Canvas â€” borderless document surface â”€â”€ */}
+                  {/* ── Tiptap Editor Canvas — borderless document surface ── */}
                   <EditorContent
                     editor={editor}
-                    className="w-full flex-1 text-base min-h-[320px] overflow-y-auto cursor-text"
+                    className="w-full flex-1 text-base min-h-[320px] cursor-text"
                   />
                 </div>
               )}
