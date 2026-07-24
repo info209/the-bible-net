@@ -77,10 +77,33 @@ function JournalsContent() {
   const [filterDate, setFilterDate] = useState<'all' | 'today' | 'week' | 'month'>('all');
 
   // Bottom Sheets & Dialogs
-  const [showFabSheet, setShowFabSheet] = useState(false);
+  const [isFabExpanded, setIsFabExpanded] = useState(false);
   const [showDeleteSheet, setShowDeleteSheet] = useState(false);
   const [showPrayedConfirm, setShowPrayedConfirm] = useState(false);
   const [prayedTargetId, setPrayedTargetId] = useState<string | null>(null);
+
+  // Auto-close expanded FAB menu on scroll or Escape key press
+  useEffect(() => {
+    if (!isFabExpanded) return;
+
+    const handleScroll = () => {
+      setIsFabExpanded(false);
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsFabExpanded(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFabExpanded]);
   
   // Multi-select Mode
   const [selectionMode, setSelectionMode] = useState(false);
@@ -640,7 +663,7 @@ function JournalsContent() {
   // Editor Actions
   const handleOpenEditor = (item: any | null = null, type: ItemType = 'journal') => {
     setEditorType(type);
-    setShowFabSheet(false);
+    setIsFabExpanded(false);
     
     if (item) {
       // Edit mode
@@ -1747,15 +1770,93 @@ function JournalsContent() {
               })}
             </main>
 
-            {/* Custom Interactive Floating Action Button (FAB) */}
+            {/* Custom Interactive Floating Action Button (FAB) & Expandable Menu */}
             {!selectionMode && (
-              <button
-                onClick={() => setShowFabSheet(true)}
-                style={{ boxShadow: '0 8px 24px rgba(11,122,129,0.25)' }}
-                className="fixed bottom-[88px] right-[20px] w-14 h-14 bg-[#0B7A81] text-white rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-all z-40"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </button>
+              <>
+                {/* Backdrop Overlay to close on outside click */}
+                <AnimatePresence>
+                  {isFabExpanded && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40 backdrop-blur-[1px]"
+                      onClick={() => setIsFabExpanded(false)}
+                    />
+                  )}
+                </AnimatePresence>
+
+                {/* Floating Action Cards */}
+                <AnimatePresence>
+                  {isFabExpanded && (
+                    <div className="fixed bottom-[156px] right-[20px] z-50 flex flex-col items-end gap-3 pointer-events-auto select-none">
+                      {/* Top Action Card: New Journal */}
+                      <motion.button
+                        key="new-journal-card"
+                        initial={{ opacity: 0, scale: 0.85, y: 15 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.85, y: 12 }}
+                        transition={{ type: 'spring', stiffness: 420, damping: 28, delay: 0.04 }}
+                        onClick={() => {
+                          setIsFabExpanded(false);
+                          handleOpenEditor(null, 'journal');
+                        }}
+                        className="bg-white dark:bg-[#1A1A1E] border border-gray-100 dark:border-white/[0.08] rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center gap-3.5 hover:scale-[1.02] active:scale-95 transition-all group cursor-pointer"
+                        aria-label="New Journal"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-[#0B7A81]/10 dark:bg-[#0B7A81]/20 text-[#0B7A81] dark:text-[#14B8A6] flex items-center justify-center shrink-0">
+                          <LiaBookMedicalSolid className="w-5 h-5" />
+                        </div>
+                        <span className="text-sm font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap pr-1">
+                          New Journal
+                        </span>
+                      </motion.button>
+
+                      {/* Bottom Action Card: New Prayer */}
+                      <motion.button
+                        key="new-prayer-card"
+                        initial={{ opacity: 0, scale: 0.85, y: 15 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.85, y: 12 }}
+                        transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                        onClick={() => {
+                          setIsFabExpanded(false);
+                          handleOpenEditor(null, 'prayer');
+                        }}
+                        className="bg-white dark:bg-[#1A1A1E] border border-gray-100 dark:border-white/[0.08] rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center gap-3.5 hover:scale-[1.02] active:scale-95 transition-all group cursor-pointer"
+                        aria-label="New Prayer"
+                      >
+                        <div className="w-10 h-10 rounded-full bg-rose-500/10 dark:bg-rose-400/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
+                          <LiaBookSolid className="w-5 h-5" />
+                        </div>
+                        <span className="text-sm font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap pr-1">
+                          New Prayer
+                        </span>
+                      </motion.button>
+                    </div>
+                  )}
+                </AnimatePresence>
+
+                {/* FAB Main Button */}
+                <button
+                  onClick={() => setIsFabExpanded(!isFabExpanded)}
+                  style={{ boxShadow: isFabExpanded ? '0 8px 24px rgba(0,0,0,0.25)' : '0 8px 24px rgba(11,122,129,0.25)' }}
+                  className={`fixed bottom-[88px] right-[20px] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-colors duration-200 z-50 ${
+                    isFabExpanded ? 'bg-[#2B363B] text-white' : 'bg-[#0B7A81] text-white'
+                  }`}
+                  aria-label={isFabExpanded ? 'Close menu' : 'Add journal or prayer'}
+                  aria-expanded={isFabExpanded}
+                >
+                  <motion.div
+                    animate={{ rotate: isFabExpanded ? 45 : 0 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                    className="flex items-center justify-center"
+                  >
+                    <Plus className="w-6 h-6 stroke-[2.5]" />
+                  </motion.div>
+                </button>
+              </>
             )}
           </motion.div>
         ) : (
@@ -2375,47 +2476,7 @@ function JournalsContent() {
         )}
       </AnimatePresence>
 
-      {/* â”€â”€ CREATE FAB BOTTOM SHEET â”€â”€ */}
-      <AnimatePresence>
-        {showFabSheet && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-xs z-50 flex items-end justify-center" onClick={() => setShowFabSheet(false)}>
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="bg-white dark:bg-[#111111] rounded-t-xl w-full max-w-lg p-6 shadow-2xl flex flex-col"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="w-[100px] h-[5px] bg-gray-300 dark:bg-white/[0.12] rounded-full mx-auto mb-5 select-none shrink-0" />
-              <h3 className="font-extrabold text-base text-gray-800 dark:text-[#F5F5F5] mb-4 text-center">Create New Document</h3>
-              
-              <div className="grid grid-cols-2 gap-4 pb-4 select-none">
-                <button
-                  onClick={() => handleOpenEditor(null, 'journal')}
-                  className="group bg-slate-50 hover:bg-slate-100/90 dark:bg-white/[0.03] dark:hover:bg-white/[0.07] border border-gray-200/80 dark:border-white/[0.08] p-5 rounded-2xl flex flex-col items-center justify-center text-center transition-all cursor-pointer shadow-xs hover:shadow-md active:scale-95"
-                >
-                  <div className="p-3 rounded-xl bg-teal-500/10 dark:bg-teal-400/10 text-teal-600 dark:text-teal-400 mb-3 group-hover:scale-110 transition-transform duration-200">
-                    <LiaBookMedicalSolid className="w-7 h-7" />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Journal</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-normal leading-relaxed">Thoughts, insights and reflections</span>
-                </button>
-                <button
-                  onClick={() => handleOpenEditor(null, 'prayer')}
-                  className="group bg-slate-50 hover:bg-slate-100/90 dark:bg-white/[0.03] dark:hover:bg-white/[0.07] border border-gray-200/80 dark:border-white/[0.08] p-5 rounded-2xl flex flex-col items-center justify-center text-center transition-all cursor-pointer shadow-xs hover:shadow-md active:scale-95"
-                >
-                  <div className="p-3 rounded-xl bg-rose-500/10 dark:bg-rose-400/10 text-rose-600 dark:text-rose-400 mb-3 group-hover:scale-110 transition-transform duration-200">
-                    <LiaBookSolid className="w-7 h-7" />
-                  </div>
-                  <span className="text-sm font-semibold text-gray-900 dark:text-gray-100 mb-1">Prayer</span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400 font-normal leading-relaxed">Personal prayer or prayer request</span>
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
 
       {/* â”€â”€ DELETE FLOW CONFIRMATION SHEET â”€â”€ */}
       <AnimatePresence>

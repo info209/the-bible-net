@@ -72,7 +72,7 @@ export default function HomeView() {
   const initials = useMemo(() => {
     if (!session?.user) return 'G';
     const u = session.user as any;
-    
+
     // First, try firstName/lastName
     const first = u.firstName || '';
     const last = u.lastName || '';
@@ -81,7 +81,7 @@ export default function HomeView() {
       const lChar = last.trim()?.[0] || '';
       return `${fChar}${lChar}`.toUpperCase();
     }
-    
+
     // Fallback to name
     const name = u.name || '';
     if (name) {
@@ -89,11 +89,11 @@ export default function HomeView() {
       if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
       return parts[0][0].toUpperCase();
     }
-    
+
     // Fallback to email
     const email = u.email || '';
     if (email) return email[0].toUpperCase();
-    
+
     return 'G';
   }, [session]);
 
@@ -261,7 +261,7 @@ export default function HomeView() {
       if (res.ok) {
         setNewComment('');
         fetchComments(activeContent.id, activeContent.type);
-        
+
         queryClient.setQueryData(['daily-content-list', preferredVersion, todayStr], (prev: any[] | undefined) => {
           if (!prev) return prev;
           return prev.map(content => {
@@ -274,7 +274,7 @@ export default function HomeView() {
               queryClient.setQueryData(['daily-verse', content.date, preferredVersion], updatedItem);
               queryClient.setQueryData(['daily-devotion', content.date, preferredVersion], updatedItem);
               return updatedItem;
-             }
+            }
             return content;
           });
         });
@@ -444,18 +444,18 @@ export default function HomeView() {
     setOpenVerseKebabIndex(null);
     const version = encodeURIComponent(content.version || preferredVersion);
     const firstRef = content.verseRefs?.[0];
-    const book    = encodeURIComponent(firstRef?.book || content.verseBook || '');
+    const book = encodeURIComponent(firstRef?.book || content.verseBook || '');
     const chapter = encodeURIComponent(firstRef?.chapter || content.verseChapter || '');
-    const verse   = encodeURIComponent(firstRef?.startVerse || content.verseNumber || '');
+    const verse = encodeURIComponent(firstRef?.startVerse || content.verseNumber || '');
     router.push(`/bible?version=${version}&book=${book}&chapter=${chapter}&verse=${verse}`);
   };
 
   const getVerseMetadata = (content: any) => {
     const firstRef = content.verseRefs?.[0];
-    const bookId   = firstRef?.book || content.verseBook || '';
+    const bookId = firstRef?.book || content.verseBook || '';
     const bookName = firstRef?.book || content.verseBook || '';
-    const chapter  = Number(firstRef?.chapter || content.verseChapter) || 1;
-    
+    const chapter = Number(firstRef?.chapter || content.verseChapter) || 1;
+
     let verses: number[] = [];
     if (content.verseRefs && content.verseRefs.length > 0) {
       for (const r of content.verseRefs) {
@@ -468,7 +468,7 @@ export default function HomeView() {
     }
 
     const verseRangeText = bookId ? buildVerseRangeText(bookName, chapter, verses) : '';
-    const version  = content.version || preferredVersion;
+    const version = content.version || preferredVersion;
 
     return { bookId, bookName, chapter, verses, verseRangeText, version };
   };
@@ -590,22 +590,22 @@ export default function HomeView() {
                         <p className="text-black/90 text-[15px] font-semibold mb-2.5">
                           {formatVerseLabel(content.date)}
                         </p>
-                        
+
                         {/* Slide indicators inside the card */}
                         {dailyVerses.length > 1 && (
                           <div className="flex justify-center space-x-1.5 mb-2" onClick={(e) => e.stopPropagation()}>
                             {dailyVerses.map((_: any, displayPos: number) => {
                               const dataIndex = dailyVerses.length - 1 - displayPos;
                               return (
-                                  <button
-                                    key={displayPos}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setCurrentVerseSlide(dataIndex);
-                                    }}
-                                    className={`h-1.5 rounded-full transition-all ${index === dataIndex ? 'w-6 bg-black' : 'w-1.5 bg-black/40 hover:bg-black/60'}`}
-                                    aria-label={`Go to slide ${dataIndex + 1}`}
-                                  />
+                                <button
+                                  key={displayPos}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentVerseSlide(dataIndex);
+                                  }}
+                                  className={`h-1.5 rounded-full transition-all ${index === dataIndex ? 'w-6 bg-black' : 'w-1.5 bg-black/40 hover:bg-black/60'}`}
+                                  aria-label={`Go to slide ${dataIndex + 1}`}
+                                />
                               );
                             })}
                           </div>
@@ -808,15 +808,15 @@ export default function HomeView() {
                             {dailyDevotions.map((_: any, displayPos: number) => {
                               const dataIndex = dailyDevotions.length - 1 - displayPos;
                               return (
-                                  <button
-                                    key={displayPos}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setCurrentDevotionSlide(dataIndex);
-                                    }}
-                                    className={`h-1.5 rounded-full transition-all ${index === dataIndex ? 'w-6 bg-black' : 'w-1.5 bg-black/40 hover:bg-black/60'}`}
-                                    aria-label={`Go to slide ${dataIndex + 1}`}
-                                  />
+                                <button
+                                  key={displayPos}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setCurrentDevotionSlide(dataIndex);
+                                  }}
+                                  className={`h-1.5 rounded-full transition-all ${index === dataIndex ? 'w-6 bg-black' : 'w-1.5 bg-black/40 hover:bg-black/60'}`}
+                                  aria-label={`Go to slide ${dataIndex + 1}`}
+                                />
                               );
                             })}
                           </div>
@@ -1028,12 +1028,12 @@ export default function HomeView() {
               Journals & Prayers
             </h3>
             <p className="text-xs text-white/95 mt-1 max-w-[240px] sm:max-w-md">
-              Write journals, keep track of personal prayers, checklist notes, and voice recordings.
+              Write journals, insights, and keep track of prayers.
             </p>
           </div>
         </div>
         <div className="relative z-10 text-white text-xl font-bold transition-transform group-hover:translate-x-1 p-2 bg-white/20 rounded-full backdrop-blur-sm size-10 flex items-center justify-center">
-          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12" /><polyline points="12 5 19 12 12 19" /></svg>
         </div>
       </div>
 
@@ -1061,9 +1061,9 @@ export default function HomeView() {
                         />
                       ) : (
                         <div className="size-10 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-white font-bold uppercase text-xs">
-                          {request.anonymous 
-                            ? 'A' 
-                            : request.userId 
+                          {request.anonymous
+                            ? 'A'
+                            : request.userId
                               ? `${request.userId.firstName?.[0] || ''}${request.userId.lastName?.[0] || ''}`.toUpperCase() || 'U'
                               : 'U'
                           }
@@ -1072,8 +1072,8 @@ export default function HomeView() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between mb-1">
                           <p className="font-semibold text-gray-800">
-                            {request.anonymous 
-                              ? 'Anonymous' 
+                            {request.anonymous
+                              ? 'Anonymous'
                               : `${request.userId?.firstName || 'User'}${request.userId?.lastName?.[0] ? ' ' + request.userId.lastName[0] + '.' : ''}`
                             }
                           </p>
@@ -1083,8 +1083,8 @@ export default function HomeView() {
                         <button
                           onClick={() => handleIntercede(request._id)}
                           className={`text-xs font-medium mt-2 hover:underline flex items-center gap-1.5 ${request.intercessors?.includes((session?.user as any)?.id)
-                              ? 'text-orange-600'
-                              : 'text-[var(--color-primary-teal)]'
+                            ? 'text-orange-600'
+                            : 'text-[var(--color-primary-teal)]'
                             }`}
                         >
                           <span>🙏</span> {request.intercessionCount > 0 ? `${request.intercessionCount} praying` : 'Pray for this'}
@@ -1178,7 +1178,7 @@ export default function HomeView() {
         initialSection={initialModalSection}
         onCommentClick={handleCommentClick}
         onShareClick={handleShare}
-        onReadFullChapter={(content) => handleReadFullChapter(content, { stopPropagation: () => {} } as any)}
+        onReadFullChapter={(content) => handleReadFullChapter(content, { stopPropagation: () => { } } as any)}
         onProgressChange={handleProgressChange}
       />
 
