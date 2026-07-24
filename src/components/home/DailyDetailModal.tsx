@@ -202,6 +202,7 @@ export function DailyDetailModal({
     useEffect(() => {
         if (isOpen) {
             setCurrentIndex(initialIndex);
+            setOpenKebab(null);
             openedAtRef.current = Date.now();
 
             setTimeout(() => {
@@ -499,7 +500,7 @@ export function DailyDetailModal({
             }
             try {
                 await saveVerse({ bookId, bookName, chapter, verses, verseRangeText, version });
-                toast.success('Verse saved! View in your Saved page.');
+                toast.success('Verse saved!');
             } catch {
                 toast.error('Failed to save verse.');
             }

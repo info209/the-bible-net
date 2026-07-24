@@ -98,11 +98,11 @@ export default function HomeView() {
     return () => clearInterval(interval);
   }, []);
 
-  // Auto-close any open kebab menu when navigating carousel slides
+  // Auto-close any open kebab menu when navigating carousel slides or opening detail modal
   useEffect(() => {
     setOpenVerseKebabIndex(null);
     setOpenDevotionKebabIndex(null);
-  }, [currentVerseSlide, currentDevotionSlide]);
+  }, [currentVerseSlide, currentDevotionSlide, isDetailModalOpen]);
 
   // Auto-close open kebab menu when scrolling the page
   useEffect(() => {
@@ -211,6 +211,8 @@ export default function HomeView() {
   };
 
   const openDetailModal = (index: number, section: 'verse' | 'devotional' | 'prayer') => {
+    setOpenVerseKebabIndex(null);
+    setOpenDevotionKebabIndex(null);
     if (section === 'verse') {
       setModalContents(dailyVerses);
     } else {
@@ -272,7 +274,7 @@ export default function HomeView() {
               queryClient.setQueryData(['daily-verse', content.date, preferredVersion], updatedItem);
               queryClient.setQueryData(['daily-devotion', content.date, preferredVersion], updatedItem);
               return updatedItem;
-            }
+             }
             return content;
           });
         });
@@ -297,8 +299,8 @@ export default function HomeView() {
 
     const url = `${window.location.origin}/bible?${params.toString()}`;
     const text = type === 'daily-verse'
-      ? `${content.verseReference} - "${content.verse}"`
-      : `Check out this devotional: "${content.devotionalTitle}"`;
+      ? `"${content.verse}"\n - ${content.verseReference}`
+      : `"${content.devotionalTitle}"`;
 
     let sharedSuccessfully = false;
 
@@ -480,7 +482,7 @@ export default function HomeView() {
       const version  = content.version || preferredVersion;
 
       await saveVerse({ bookId, bookName, chapter, verses, verseRangeText, version });
-      toast.success('Verse saved! View in your Saved page.');
+      toast.success('Verse saved!');
     } catch (err) {
       toast.error('Failed to save verse.');
     }
