@@ -56,6 +56,15 @@ export default function HomeView() {
 
   const [greeting, setGreeting] = useState('Shalom');
 
+  // Modal states
+  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [initialModalIndex, setInitialModalIndex] = useState(0);
+  const [initialModalSection, setInitialModalSection] = useState<'verse' | 'devotional' | 'prayer' | undefined>();
+  const [modalContents, setModalContents] = useState<any[]>([]);
+
+  // Local cache of devotional progress by date — updated optimistically when modal fires onProgressChange
+  const [devotionalProgressCache, setDevotionalProgressCache] = useState<Record<string, 'INCOMPLETE' | 'IN_PROGRESS' | 'COMPLETED'>>({});
+
   const userName = useMemo(() => {
     return (session?.user as any)?.firstName || session?.user?.name || 'Believer';
   }, [session]);
@@ -183,15 +192,6 @@ export default function HomeView() {
     },
     staleTime: 60 * 1000,
   });
-
-  // Modal states
-  const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-  const [initialModalIndex, setInitialModalIndex] = useState(0);
-  const [initialModalSection, setInitialModalSection] = useState<'verse' | 'devotional' | 'prayer' | undefined>();
-  const [modalContents, setModalContents] = useState<any[]>([]);
-
-  // Local cache of devotional progress by date — updated optimistically when modal fires onProgressChange
-  const [devotionalProgressCache, setDevotionalProgressCache] = useState<Record<string, 'INCOMPLETE' | 'IN_PROGRESS' | 'COMPLETED'>>({});
 
   // Seed cache from API data whenever content refreshes
   useEffect(() => {
