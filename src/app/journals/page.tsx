@@ -9,7 +9,7 @@ import {
   Pin, Bookmark, Check, X, Edit2, Trash2, Mic, Play, Pause,
   Bold, Italic, List, ChevronUp, ChevronDown,
   BookOpen, Sliders, ListOrdered, Strikethrough,
-  Underline as UnderlineIcon,
+  Underline as UnderlineIcon, Tag,
   Heading1, Heading2, Quote,
   AlignLeft, AlignCenter, AlignRight, Loader2,
   Undo2, Redo2
@@ -27,11 +27,14 @@ import { Color } from '@tiptap/extension-color';
 import { TextStyle } from '@tiptap/extension-text-style';
 import Highlight from '@tiptap/extension-highlight';
 import { VerseLink } from '@/app/components/VerseLink';
+import { VerseBlock } from '@/app/components/VerseBlock';
 import BibleVerseSearchSelector from '@/app/components/BibleVerseSearchSelector';
 
 type Tab = 'All' | 'Journals' | 'Prayers';
 type ItemType = 'journal' | 'prayer';
 type PrayerStatusFilter = 'All' | 'Active' | 'Prayed';
+
+const DEFAULT_PRESET_LABELS = ['Faith', 'Gratitude', 'Hope', 'Worship', 'Personal', 'Family', 'Work', 'Study'];
 
 const BIBLE_BOOKS = [
   'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
@@ -132,6 +135,22 @@ function JournalsContent() {
   const [editContent, setEditContent] = useState('');
   const [editType, setEditType] = useState<'text' | 'checklist' | 'audio'>('text');
   const [editLabels, setEditLabels] = useState<string[]>([]);
+  const [isLabelSelectorOpen, setIsLabelSelectorOpen] = useState(false);
+
+  const allAvailableLabels = useMemo(() => {
+    const set = new Set([...DEFAULT_PRESET_LABELS, ...editLabels]);
+    journals.forEach(j => {
+      if (j.labels && Array.isArray(j.labels)) {
+        j.labels.forEach((l: string) => { if (l && typeof l === 'string') set.add(l); });
+      }
+    });
+    prayers.forEach(p => {
+      if (p.labels && Array.isArray(p.labels)) {
+        p.labels.forEach((l: string) => { if (l && typeof l === 'string') set.add(l); });
+      }
+    });
+    return Array.from(set);
+  }, [editLabels, journals, prayers]);
   const [editVerses, setEditVerses] = useState<any[]>([]);
   const [editFolderId, setEditFolderId] = useState('');
   const [editAudioUrl, setEditAudioUrl] = useState('');
@@ -157,80 +176,69 @@ function JournalsContent() {
   const [atTriggerPosition, setAtTriggerPosition] = useState<number | null>(null);
   const [isVerseSearchOpen, setIsVerseSearchOpen] = useState(false);
 
-  const handleSelectVerse = (verseRef: {
+  const fetchVerseQuoteText = async (book: string, chapter: number, start: number, end: number, version: string) => {
+    try {
+      const res = await fetch(`/api/v1/bible/${version || 'KJV'}/${encodeURIComponent(book)}/${chapter}`);
+      const data = await res.json();
+      if (data.success && data.data?.verses) {
+        const selected = data.data.verses.filter((v: any) => v.number >= start && v.number <= end);
+        if (selected.length > 0) {
+          return selected.map((v: any) => v.text.trim()).join(' ');
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching verse text for verse block:', err);
+    }
+    return '';
+  };
+
+  const handleSelectVerse = async (verseRef: {
     bookName: string;
     chapter: number;
     verses: number[];
     label: string;
     version: string;
   }) => {
-    if (editor) {
-      if (atTriggerPosition !== null) {
-        // Double check character at trigger position is @
-        const charAtPos = editor.state.doc.textBetween(atTriggerPosition - 1, atTriggerPosition);
-        if (charAtPos === '@') {
-          editor.chain()
-            .focus()
-            .deleteRange({ from: atTriggerPosition - 1, to: atTriggerPosition })
-            .insertContent({
-              type: 'text',
-              text: verseRef.label,
-              marks: [
-                {
-                  type: 'verseLink',
-                  attrs: {
-                    book: verseRef.bookName,
-                    chapter: verseRef.chapter,
-                    startVerse: verseRef.verses[0],
-                    endVerse: verseRef.verses[verseRef.verses.length - 1],
-                    version: verseRef.version,
-                  }
-                }
-              ]
-            })
-            .run();
-        } else {
-          editor.chain()
-            .focus()
-            .insertContent({
-              type: 'text',
-              text: verseRef.label,
-              marks: [
-                {
-                  type: 'verseLink',
-                  attrs: {
-                    book: verseRef.bookName,
-                    chapter: verseRef.chapter,
-                    startVerse: verseRef.verses[0],
-                    endVerse: verseRef.verses[verseRef.verses.length - 1],
-                    version: verseRef.version,
-                  }
-                }
-              ]
-            })
-            .run();
-        }
+    if (!editor) return;
+
+    const startVerse = verseRef.verses[0];
+    const endVerse = verseRef.verses[verseRef.verses.length - 1];
+
+    const text = await fetchVerseQuoteText(verseRef.bookName, verseRef.chapter, startVerse, endVerse, verseRef.version);
+    const quote = text ? `"${text.replace(/^["'\s]+|["'\s]+$/g, '')}"` : `"${verseRef.label}"`;
+
+    const verseNode = {
+      type: 'verseBlock',
+      attrs: {
+        book: verseRef.bookName,
+        chapter: verseRef.chapter,
+        startVerse,
+        endVerse,
+        version: verseRef.version,
+        quote,
+        label: verseRef.label,
+      }
+    };
+
+    if (atTriggerPosition !== null) {
+      const charAtPos = editor.state.doc.textBetween(atTriggerPosition - 1, atTriggerPosition);
+      if (charAtPos === '@') {
+        editor.chain()
+          .focus()
+          .deleteRange({ from: atTriggerPosition - 1, to: atTriggerPosition })
+          .insertContent(verseNode)
+          .run();
       } else {
         editor.chain()
           .focus()
-          .insertContent({
-            type: 'text',
-            text: verseRef.label,
-            marks: [
-              {
-                type: 'verseLink',
-                attrs: {
-                  book: verseRef.bookName,
-                  chapter: verseRef.chapter,
-                  startVerse: verseRef.verses[0],
-                  endVerse: verseRef.verses[verseRef.verses.length - 1],
-                  version: verseRef.version,
-                }
-              }
-            ]
-          })
+          .insertContent(verseNode)
           .run();
       }
+    } else {
+      editor.chain()
+        .focus()
+        .insertContent(verseNode)
+        .run();
     }
   };
 
@@ -756,12 +764,22 @@ function JournalsContent() {
       TextStyle,
       Highlight.configure({ multicolor: true }),
       VerseLink,
+      VerseBlock,
     ],
     content: editContent,
     editorProps: {
       attributes: {
         class: 'tiptap-editor',
         'data-placeholder': 'Start drafting content here...',
+      },
+      handleClickOn: (view, pos, node, nodePos, event) => {
+        const target = event.target as HTMLElement;
+        if (node.type.name === 'verseBlock' || target.closest('[data-verse-block]')) {
+          setAtTriggerPosition(null);
+          setIsVerseSearchOpen(true);
+          return true;
+        }
+        return false;
       },
       handleTextInput: (view, from, to, text) => {
         if (text === '@') {
@@ -1914,6 +1932,147 @@ function JournalsContent() {
               </div>
             </header>
 
+            {/* Labels Header chips system & Selector Popover */}
+            {(editLabels.length > 0 || editorMode !== 'view') && (
+              <div className="px-5 py-2.5 bg-white dark:bg-[#000000] border-b border-gray-100 dark:border-white/[0.04] relative">
+                <div className="max-w-5xl mx-auto flex flex-col gap-2">
+                  
+                  {/* Top Bar: Summary Pill & Removable Selected Chips */}
+                  <div className="flex flex-wrap items-center gap-2 select-none">
+                    {editorMode !== 'view' ? (
+                      <button
+                        type="button"
+                        onClick={() => setIsLabelSelectorOpen(!isLabelSelectorOpen)}
+                        className={`h-8 px-3.5 rounded-full text-xs flex items-center gap-1.5 transition-all active:scale-95 shrink-0 shadow-2xs ${
+                          editLabels.length > 0
+                            ? 'border border-[#0B7A81] text-[#0B7A81] dark:text-[#14B8A6] bg-white dark:bg-[#111111] font-semibold'
+                            : 'border border-gray-200 dark:border-white/[0.12] text-gray-600 dark:text-gray-300 bg-white dark:bg-[#111111] hover:bg-gray-50 font-medium'
+                        }`}
+                        aria-expanded={isLabelSelectorOpen}
+                        aria-label="Select labels"
+                      >
+                        <Tag className="w-3.5 h-3.5 stroke-[2]" />
+                        <span>
+                          {editLabels.length === 0
+                            ? 'Label +'
+                            : editLabels.length === 1
+                            ? '1 label +'
+                            : `${editLabels.length} labels +`}
+                        </span>
+                      </button>
+                    ) : (
+                      editLabels.length > 0 && (
+                        <div className="flex items-center gap-1.5 text-xs text-gray-500 font-semibold">
+                          <Tag className="w-3.5 h-3.5" />
+                          <span>Labels:</span>
+                        </div>
+                      )
+                    )}
+
+                    {/* Removable Selected Chips beside summary button */}
+                    {editLabels.map(l => (
+                      <span
+                        key={l}
+                        onClick={() => editorMode !== 'view' && handleRemoveLabel(l)}
+                        className={`h-8 px-3 py-1 bg-[#E6F4F5] dark:bg-[#0B7A81]/20 text-[#0B7A81] dark:text-[#14B8A6] rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-colors ${
+                          editorMode !== 'view' ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 cursor-pointer' : ''
+                        }`}
+                      >
+                        {l}
+                        {editorMode !== 'view' && <X className="w-3 h-3 opacity-70 hover:opacity-100" />}
+                      </span>
+                    ))}
+                  </div>
+
+                  {/* Label Selector Popover Card */}
+                  <AnimatePresence>
+                    {isLabelSelectorOpen && editorMode !== 'view' && (
+                      <>
+                        {/* Outside Click Backdrop */}
+                        <div
+                          className="fixed inset-0 z-30"
+                          onClick={() => setIsLabelSelectorOpen(false)}
+                        />
+
+                        {/* Popover Dropdown Card */}
+                        <motion.div
+                          initial={{ opacity: 0, y: -6, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -6, scale: 0.98 }}
+                          transition={{ duration: 0.15 }}
+                          className="absolute top-full left-5 mt-1 z-40 bg-white dark:bg-[#1C1C1E] border border-gray-100 dark:border-white/[0.1] rounded-2xl shadow-xl p-4 sm:p-5 w-[calc(100%-40px)] sm:w-[360px] select-none"
+                        >
+                          {/* Heading */}
+                          <div className="flex items-center mb-3">
+                            <span className="text-[11px] font-extrabold tracking-wider text-gray-500 dark:text-gray-400 uppercase">
+                              LABELS
+                            </span>
+                            <span className="text-[11px] text-gray-400 dark:text-gray-500 font-normal ml-1.5">
+                              (select multiple)
+                            </span>
+                          </div>
+
+                          {/* Chips List */}
+                          <div className="flex flex-wrap gap-2 mb-3 max-h-[220px] overflow-y-auto pr-1 scrollbar-thin">
+                            {allAvailableLabels.map(label => {
+                              const isSelected = editLabels.includes(label);
+                              return (
+                                <button
+                                  key={label}
+                                  type="button"
+                                  onClick={() => {
+                                    if (isSelected) {
+                                      handleRemoveLabel(label);
+                                    } else {
+                                      setEditLabels([...editLabels, label]);
+                                    }
+                                  }}
+                                  className={`px-4 py-2 rounded-full text-xs font-semibold transition-all active:scale-95 ${
+                                    isSelected
+                                      ? 'bg-[#0B7A81] text-white shadow-xs'
+                                      : 'bg-[#F2F4F5] dark:bg-white/[0.06] text-[#334155] dark:text-gray-200 hover:bg-gray-200 dark:hover:bg-white/[0.1]'
+                                  }`}
+                                >
+                                  {label}
+                                </button>
+                              );
+                            })}
+
+                            {/* More button */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setIsLabelSelectorOpen(false);
+                                setLabelInputOpen(true);
+                              }}
+                              className="px-3.5 py-2 rounded-full text-xs font-semibold bg-white dark:bg-[#111111] border border-gray-200 dark:border-white/[0.12] text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/[0.06] flex items-center gap-1 active:scale-95 transition-all shadow-2xs"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              More
+                            </button>
+                          </div>
+
+                          {/* Clear all action */}
+                          {editLabels.length > 0 && (
+                            <div className="pt-2 border-t border-gray-100 dark:border-white/[0.06] flex items-center justify-start">
+                              <button
+                                type="button"
+                                onClick={() => setEditLabels([])}
+                                className="text-xs text-gray-400 dark:text-gray-500 hover:text-[#0B7A81] dark:hover:text-[#14B8A6] font-medium transition-colors cursor-pointer"
+                              >
+                                Clear all
+                              </button>
+                            </div>
+                          )}
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+
+                </div>
+              </div>
+            )}
+
             {/* Sticky Formatting Toolbar (edit mode only) */}
             {editorMode !== 'view' && (
               <div className="sticky top-[64px] z-20 bg-white dark:bg-[#000000] border-b border-[#E6E6E6] dark:border-white/[0.08]">
@@ -2194,27 +2353,6 @@ function JournalsContent() {
             )}
 
             <div className="px-5 py-5 max-w-5xl mx-auto w-full space-y-4 flex-1 flex flex-col">
-              
-              {/* Labels Header chips system "Label +" */}
-              <div className="flex flex-wrap gap-2 py-1 select-none">
-                {editorMode !== 'view' && (
-                  <button
-                    onClick={() => setLabelInputOpen(true)}
-                    className="h-8 px-3.5 bg-white dark:bg-[#111111] text-[#0B7A81] border border-[#0B7A81] rounded-xl text-xs font-semibold flex items-center hover:opacity-90 shrink-0"
-                  >
-                    Label +
-                  </button>
-                )}
-                {editLabels.map(l => (
-                  <span
-                    key={l}
-                    onClick={() => editorMode !== 'view' && handleRemoveLabel(l)}
-                    className={`h-8 px-3.5 bg-[#E8EFF0] text-[#222222] rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0 ${editorMode !== 'view' ? 'hover:bg-red-100 hover:text-red-700 cursor-pointer' : ''}`}
-                  >
-                    #{l} {editorMode !== 'view' && <span className="text-[10px] text-gray-400">âœ•</span>}
-                  </span>
-                ))}
-              </div>
 
               {/* Add Label Dialog */}
               <AnimatePresence>
