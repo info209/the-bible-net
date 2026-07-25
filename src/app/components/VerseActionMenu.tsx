@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
 import Link from 'next/link';
 import {
-  BookmarkPlus, FileText, Plus, X, ChevronLeft,
+  BookmarkPlus, FileText, Plus, X, ChevronLeft, ChevronDown, ChevronUp,
   CheckCircle2, MinusCircle, ArrowRightLeft,
   Share2, Bookmark, Lock, Trash2, BookmarkCheck
 } from 'lucide-react';
@@ -29,6 +29,19 @@ const ALL_COLORS = [
   { id: 'lime', color: '#A4D65E', label: 'Lime' },
   { id: 'rose', color: '#FF2D55', label: 'Rose' },
 ];
+
+const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
+  yellow: '#FFD234',
+  green:  '#4CD964',
+  blue:   '#34AADC',
+  pink:   '#FF6B9D',
+  purple: '#A66CFF',
+  orange: '#FF9500',
+  red:    '#FF3B30',
+  teal:   '#5AC8FA',
+  lime:   '#A4D65E',
+  rose:   '#FF2D55',
+};
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface VerseActionMenuProps {
@@ -137,7 +150,7 @@ export default function VerseActionMenu({
   isDark = false,
   selectedTheme,
 }: VerseActionMenuProps) {
-  const [view, setView] = useState<'main' | 'save' | 'note' | 'highlight'>('main');
+  const [view, setView] = useState<'main' | 'save' | 'note'>('main');
   const dragControls = useDragControls();
   const [paletteExpanded, setPaletteExpanded] = useState(false);
   const [selectedColor, setSelectedColor] = useState<string>(existingHighlightColor || 'yellow');
@@ -271,13 +284,6 @@ export default function VerseActionMenu({
     dark: '#636366'
   }[theme];
 
-  const backdropBg = {
-    light: 'rgba(0,0,0,0.42)',
-    sepia: 'rgba(0,0,0,0.45)',
-    cream: 'rgba(0,0,0,0.45)',
-    dark: 'rgba(0,0,0,0.82)'
-  }[theme];
-
   // ── Label helpers ─────────────────────────────────────────────────────────
   const allUserLabels = userLabels.filter(
     (l) => !SUGGESTED_LABELS.some((s) => s.toLowerCase() === l.toLowerCase())
@@ -323,15 +329,41 @@ export default function VerseActionMenu({
     onClose();
   };
 
-  const handleColorTap = (colorId: string, index: number, total: number) => {
-    const isLast = index === total - 1;
-    if (isLast && !paletteExpanded) { setPaletteExpanded(true); return; }
-    setSelectedColor(colorId);
-    onHighlight(colorId);
-    onClose();
-  };
+  // ── Applied Highlight State Resolution ─────────────────────────────────────
+  const isHighlighted = !!existingHighlightColor && existingHighlightColor !== 'none';
 
-  const displayColors = paletteExpanded ? ALL_COLORS : PRIMARY_COLORS;
+  const appliedColorObj = isHighlighted
+    ? ALL_COLORS.find(
+        (c) =>
+          c.id === existingHighlightColor ||
+          c.color.toLowerCase() === existingHighlightColor.toLowerCase()
+      ) || {
+        id: existingHighlightColor!,
+        color: HIGHLIGHT_COLOR_MAP[existingHighlightColor!] || existingHighlightColor!,
+        label: 'Current Highlight',
+      }
+    : null;
+
+  let paletteList: typeof ALL_COLORS = [];
+  if (paletteExpanded) {
+    if (isHighlighted && appliedColorObj) {
+      const remaining = ALL_COLORS.filter(
+        (c) => c.id !== appliedColorObj.id && c.color.toLowerCase() !== appliedColorObj.color.toLowerCase()
+      );
+      paletteList = [appliedColorObj, ...remaining];
+    } else {
+      paletteList = ALL_COLORS;
+    }
+  } else {
+    if (isHighlighted && appliedColorObj) {
+      const remaining = PRIMARY_COLORS.filter(
+        (c) => c.id !== appliedColorObj.id && c.color.toLowerCase() !== appliedColorObj.color.toLowerCase()
+      );
+      paletteList = [appliedColorObj, ...remaining];
+    } else {
+      paletteList = PRIMARY_COLORS;
+    }
+  }
 
   // ── Swipe-down dismiss ────────────────────────────────────────────────────
   const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
@@ -365,9 +397,10 @@ export default function VerseActionMenu({
               boxShadow: '0 -10px 40px rgba(0,0,0,0.18)',
               paddingBottom: 'env(safe-area-inset-bottom)',
               height: 'auto',
-              maxHeight: '38vh',
+              maxHeight: paletteExpanded ? '85vh' : '50vh',
               display: 'flex',
               flexDirection: 'column',
+              transition: 'max-height 0.25s ease-out',
             }}
             data-bottom-sheet="true"
           >
@@ -375,7 +408,7 @@ export default function VerseActionMenu({
             <div
               onPointerDown={(e) => dragControls.start(e)}
               style={{ touchAction: 'none' }}
-              className="flex items-center justify-center pt-2.5 pb-1.5 cursor-grab active:cursor-grabbing"
+              className="flex items-center justify-center pt-2.5 pb-1.5 cursor-grab active:cursor-grabbing shrink-0"
             >
               <div className="w-9 h-1 rounded-full" style={{ backgroundColor: dragBg }} />
             </div>
@@ -389,11 +422,11 @@ export default function VerseActionMenu({
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -20 }}
                   transition={{ duration: 0.15 }}
-                  className="px-4 pt-2.5 pb-4 flex flex-col flex-1 min-h-0 overflow-y-auto"
+                  className="px-4 pt-2 pb-4 flex flex-col flex-1 min-h-0 overflow-y-auto"
                 >
                   {/* Selected verse label */}
                   <p
-                    className="text-center text-[11px] mb-2"
+                    className="text-center text-[11px] mb-2 shrink-0"
                     style={{ color: subText }}
                   >
                     Selected:{' '}
@@ -433,110 +466,92 @@ export default function VerseActionMenu({
                     </div>
                   ) : (
                     <>
-                      {/* ── Action Button Grid ──────────────────────────── */}
-                      <div className="grid grid-cols-4 gap-2.5">
-                        {/* Highlight Colors (replacing the PenTool button) */}
-                        <div
-                          id="verse-action-highlight"
-                          className="flex items-center justify-center h-[58px] rounded-[14px]"
-                          style={{
-                            backgroundColor: existingHighlightColor && existingHighlightColor !== 'none' ? 'rgba(49,196,190,0.16)' : actionBg,
-                            border: existingHighlightColor && existingHighlightColor !== 'none' ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
-                          }}
+                      {/* ── Highlight Palette Container ──────────────────── */}
+                      <motion.div
+                        layout
+                        transition={{ duration: 0.2, ease: 'easeOut' }}
+                        className="w-full mb-3 p-2.5 rounded-[20px] shrink-0"
+                        style={{
+                          backgroundColor: actionBg,
+                          border: actionBorder,
+                        }}
+                      >
+                        <motion.div
+                          layout
+                          className="flex flex-wrap items-center justify-between gap-2 md:gap-3"
                         >
-                          <div className="grid grid-cols-2 gap-x-2.5 gap-y-1.5 justify-items-center items-center">
-                            {/* Color 1: Yellow */}
-                            <button
-                              onClick={() => {
-                                setSelectedColor('yellow');
-                                onHighlight('yellow');
-                                onClose();
-                              }}
-                              className="relative w-[15px] h-[15px] rounded-full transition-transform active:scale-75 cursor-pointer"
-                              style={{ backgroundColor: '#FFD234' }}
-                              title="Highlight Yellow"
-                            >
-                              {existingHighlightColor === 'yellow' && (
-                                <span
-                                  className="absolute rounded-full"
-                                  style={{ inset: -2.5, border: '1.5px solid #31C4BE' }}
-                                />
-                              )}
-                            </button>
+                          {paletteList.map((c, index) => {
+                            const isApplied = isHighlighted && appliedColorObj && (c.id === appliedColorObj.id || c.color.toLowerCase() === appliedColorObj.color.toLowerCase());
+                            const isFirstItemWithRemove = isApplied && index === 0;
 
-                            {/* Color 2: Green */}
-                            <button
-                              onClick={() => {
-                                setSelectedColor('green');
-                                onHighlight('green');
-                                onClose();
-                              }}
-                              className="relative w-[15px] h-[15px] rounded-full transition-transform active:scale-75 cursor-pointer"
-                              style={{ backgroundColor: '#4CD964' }}
-                              title="Highlight Green"
-                            >
-                              {existingHighlightColor === 'green' && (
-                                <span
-                                  className="absolute rounded-full"
-                                  style={{ inset: -2.5, border: '1.5px solid #31C4BE' }}
-                                />
-                              )}
-                            </button>
+                            return (
+                              <button
+                                key={c.id}
+                                onClick={() => {
+                                  if (isFirstItemWithRemove) {
+                                    onHighlight('none');
+                                    onClose();
+                                  } else {
+                                    setSelectedColor(c.id);
+                                    onHighlight(c.id);
+                                    onClose();
+                                  }
+                                }}
+                                title={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
+                                aria-label={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
+                                className="relative w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
+                                style={{ backgroundColor: c.color }}
+                              >
+                                {/* Active selection ring */}
+                                {isApplied && (
+                                  <span
+                                    className="absolute rounded-full pointer-events-none"
+                                    style={{
+                                      inset: -3,
+                                      border: '2px solid #31C4BE',
+                                      boxShadow: '0 0 6px rgba(49,196,190,0.35)',
+                                    }}
+                                  />
+                                )}
 
-                            {/* Color 3: Blue */}
-                            <button
-                              onClick={() => {
-                                setSelectedColor('blue');
-                                onHighlight('blue');
-                                onClose();
-                              }}
-                              className="relative w-[15px] h-[15px] rounded-full transition-transform active:scale-75 cursor-pointer"
-                              style={{ backgroundColor: '#34AADC' }}
-                              title="Highlight Blue"
-                            >
-                              {existingHighlightColor === 'blue' && (
-                                <span
-                                  className="absolute rounded-full"
-                                  style={{ inset: -2.5, border: '1.5px solid #31C4BE' }}
-                                />
-                              )}
-                            </button>
+                                {/* Remove "×" icon overlay on the first item if highlighted */}
+                                {isFirstItemWithRemove && (
+                                  <span className="w-5 h-5 rounded-full bg-black/65 backdrop-blur-sm flex items-center justify-center text-white shadow-sm border border-white/30">
+                                    <X className="w-3.5 h-3.5 stroke-[2.5]" />
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
 
-                            {/* Overlapping Colors (Pink & Purple) to Expand */}
-                            <button
-                              onClick={() => setView('highlight')}
-                              className="relative w-[21px] h-[15px] transition-transform active:scale-75 cursor-pointer"
-                              title="More Colors"
-                            >
-                              {/* Purple (underneath/right) */}
-                              <span
-                                className="absolute right-0 top-0 w-[15px] h-[15px] rounded-full border border-white dark:border-[#1c1c1e]"
-                                style={{ backgroundColor: '#A66CFF' }}
-                              />
-                              {/* Pink (on top/left) */}
-                              <span
-                                className="absolute left-0 top-0 w-[15px] h-[15px] rounded-full border border-white dark:border-[#1c1c1e]"
-                                style={{ backgroundColor: '#FF6B9D' }}
-                              />
-                              {/* Show active indicator on the overlapping circles if active color is one of the other colors */}
-                              {existingHighlightColor && !['yellow', 'green', 'blue', 'none'].includes(existingHighlightColor) && (
-                                <span
-                                  className="absolute rounded-full"
-                                  style={{
-                                    left: -2,
-                                    top: -2,
-                                    width: 25,
-                                    height: 19,
-                                    border: '1.5px solid #31C4BE',
-                                    borderRadius: '5px'
-                                  }}
-                                />
-                              )}
-                            </button>
-                          </div>
-                        </div>
+                          {/* Expand / Collapse Control Button */}
+                          <button
+                            onClick={() => setPaletteExpanded((prev) => !prev)}
+                            title={paletteExpanded ? "Collapse colors" : "More colors"}
+                            aria-label={paletteExpanded ? "Collapse colors" : "More colors"}
+                            className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
+                            style={{
+                              backgroundColor: dm ? '#2C2C2E' : '#E5E7EB',
+                              color: labelText,
+                              border: actionBorder,
+                            }}
+                          >
+                            {paletteExpanded ? (
+                              <ChevronUp className="w-5 h-5" />
+                            ) : (
+                              <div className="flex items-center gap-0.5">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B9D]" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#A66CFF]" />
+                                <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
+                              </div>
+                            )}
+                          </button>
+                        </motion.div>
+                      </motion.div>
 
-                        {/* Save */}
+                      {/* ── Action Buttons Row ──────────────────────────── */}
+                      <div className="grid grid-cols-4 gap-2.5 shrink-0">
+                        {/* Save Button */}
                         <button
                           onClick={() => {
                             setSelectedLabels(existingSaveLabels ?? []);
@@ -561,7 +576,7 @@ export default function VerseActionMenu({
                           </span>
                         </button>
 
-                        {/* Note */}
+                        {/* Note Button */}
                         <button
                           onClick={() => {
                             setSelectedLabels(existingNoteLabels ?? []);
@@ -577,7 +592,22 @@ export default function VerseActionMenu({
                           <span className="text-[10px] font-bold" style={{ color: iconColor }}>Note</span>
                         </button>
 
-                        {/* Share */}
+                        {/* Compare Button */}
+                        <button
+                          onClick={() => {
+                            onCompare?.();
+                            onClose();
+                          }}
+                          id="verse-action-compare"
+                          aria-label="Compare versions"
+                          className="flex flex-col items-center justify-center gap-1 h-[58px] rounded-[14px] transition-all active:scale-95"
+                          style={{ backgroundColor: actionBg, border: actionBorder }}
+                        >
+                          <ArrowRightLeft className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
+                          <span className="text-[10px] font-bold" style={{ color: iconColor }}>Compare</span>
+                        </button>
+
+                        {/* Share Button */}
                         <button
                           onClick={() => onShare?.()}
                           id="verse-action-share"
@@ -591,75 +621,6 @@ export default function VerseActionMenu({
                       </div>
                     </>
                   )}
-                </motion.div>
-              )}
-
-              {/* ═══ HIGHLIGHT VIEW (separate full palette) ═══════════════ */}
-              {view === 'highlight' && (
-                <motion.div
-                  key="highlight-view"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.15 }}
-                  className="px-4 pt-3 pb-6 flex flex-col flex-1 min-h-0 overflow-y-auto"
-                >
-                  {/* Header */}
-                  <div
-                    className="flex items-center mb-4"
-                    style={{ borderBottom: headerBorder, paddingBottom: 12 }}
-                  >
-                    <button
-                      onClick={() => setView('main')}
-                      className="relative z-20 p-1.5 -ml-1.5 transition-colors rounded-xl active:scale-95"
-                      style={{ color: subText }}
-                      aria-label="Back"
-                    >
-                      <ChevronLeft className="size-5" />
-                    </button>
-                    <div className="flex-1 text-center -ml-6">
-                      <h4 className="text-[17px] font-semibold tracking-tight" style={{ color: labelText, letterSpacing: '-0.02em' }}>
-                        Highlight
-                      </h4>
-                      <p className="text-[12px] mt-0.5" style={{ color: subText, lineHeight: 1 }}>
-                        {formattedVerses}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap gap-3 py-2">
-                    {ALL_COLORS.map((c) => (
-                      <button
-                        key={c.id}
-                        onClick={() => {
-                          setSelectedColor(c.id);
-                          onHighlight(c.id);
-                          onClose();
-                        }}
-                        title={c.label}
-                        className="relative active:scale-90 transition-transform"
-                        style={{ width: 36, height: 36 }}
-                      >
-                        {selectedColor === c.id && existingHighlightColor && (
-                          <span
-                            className="absolute rounded-full"
-                            style={{ inset: -3, border: `2px solid ${c.color}`, borderRadius: '50%' }}
-                          />
-                        )}
-                        <span className="absolute inset-0 rounded-full" style={{ backgroundColor: c.color }} />
-                      </button>
-                    ))}
-                    {existingHighlightColor && (
-                      <button
-                        onClick={() => { onHighlight('none'); onClose(); }}
-                        className="w-9 h-9 rounded-full flex items-center justify-center border active:scale-90 transition-transform"
-                        style={{ borderColor: inputBorder, backgroundColor: chipBg, color: subText }}
-                        title="Remove highlight"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
-                  </div>
                 </motion.div>
               )}
 

@@ -231,7 +231,7 @@ function ChapterContent({
            <h2 className="text-2xl font-bold tracking-tight" style={{ color: theme.text, fontFamily: font }}>{apiContent.title}</h2>
            <div className="h-1 w-12 bg-accent-rose mt-4 rounded-full opacity-80" />
         </div>
-        <div className="space-y-3 leading-loose text-justify" style={{ fontFamily: font, fontSize: `${fontSize}px` }}>
+        <div className="space-y-1 leading-relaxed text-justify" style={{ fontFamily: font, fontSize: `${fontSize}px` }}>
           {apiContent.verses?.map((verse: { number: number; text: string }) => {
             const isSelected = selectedVerses.includes(verse.number);
             const isReading = readingVerse === verse.number;
@@ -259,7 +259,7 @@ function ChapterContent({
               <div
                 key={verse.number}
                 id={`verse-${book}-${chapter}-${verse.number}`}
-                className="relative transition-all duration-200 rounded px-2 py-1 cursor-pointer hover:bg-black/[0.02] scroll-mt-[120px]"
+                className="relative transition-all duration-200 rounded px-2 py-0.5 cursor-pointer hover:bg-black/[0.02] scroll-mt-[120px]"
                 onClick={(e) => handleVerseClick(verse.number, e)}
                 onDoubleClick={(e) => handleVerseDoubleClick(verse.number, e)}
                 style={{
