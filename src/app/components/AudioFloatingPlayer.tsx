@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { Play, Pause, ChevronUp, ChevronLeft, ChevronRight, Sliders, X } from "lucide-react";
+import { Play, Pause, ChevronUp, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { PiSlidersHorizontal } from "react-icons/pi";
 import { motion, AnimatePresence } from "framer-motion";
 import ProgressRing from "./ui/ProgressRing";
 
@@ -197,7 +198,7 @@ export default function AudioFloatingPlayer({
                       aria-label="Audio controls settings"
                       title="Audio settings"
                     >
-                      <Sliders className="size-[18px]" strokeWidth={2} />
+                      <PiSlidersHorizontal className="size-[18px]" strokeWidth={2} />
                     </motion.button>
 
                     {/* Center: Dominant Overlapping Teal Play/Pause Button */}
