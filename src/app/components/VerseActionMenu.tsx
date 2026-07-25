@@ -344,6 +344,12 @@ export default function VerseActionMenu({
       }
     : null;
 
+  const FRONT_COLORS = [
+    { id: 'yellow', color: '#FFD234', label: 'Yellow' },
+    { id: 'green', color: '#4CD964', label: 'Green' },
+    { id: 'blue', color: '#34AADC', label: 'Blue' },
+  ];
+
   let paletteList: typeof ALL_COLORS = [];
   if (paletteExpanded) {
     if (isHighlighted && appliedColorObj) {
@@ -356,12 +362,12 @@ export default function VerseActionMenu({
     }
   } else {
     if (isHighlighted && appliedColorObj) {
-      const remaining = PRIMARY_COLORS.filter(
+      const remaining = ALL_COLORS.filter(
         (c) => c.id !== appliedColorObj.id && c.color.toLowerCase() !== appliedColorObj.color.toLowerCase()
-      );
+      ).slice(0, 2);
       paletteList = [appliedColorObj, ...remaining];
     } else {
-      paletteList = PRIMARY_COLORS;
+      paletteList = FRONT_COLORS;
     }
   }
 
@@ -501,7 +507,7 @@ export default function VerseActionMenu({
                                   }}
                                   title={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
                                   aria-label={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
-                                  className="relative w-[26px] h-[26px] sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
+                                  className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
                                   style={{ backgroundColor: c.color }}
                                 >
                                   {/* Active selection ring */}
@@ -526,25 +532,31 @@ export default function VerseActionMenu({
                               );
                             })}
 
-                            {/* Expand / Collapse Control Button */}
+                            {/* Overlapping Double-Circle Expand / Collapse Button */}
                             <button
                               onClick={() => setPaletteExpanded((prev) => !prev)}
                               title={paletteExpanded ? "Collapse colors" : "More colors"}
                               aria-label={paletteExpanded ? "Collapse colors" : "More colors"}
-                              className="w-[26px] h-[26px] sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
+                              className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm overflow-hidden"
                               style={{
                                 backgroundColor: dm ? '#2C2C2E' : '#E5E7EB',
-                                color: labelText,
                                 border: actionBorder,
                               }}
                             >
                               {paletteExpanded ? (
-                                <ChevronUp className="w-3.5 h-3.5" />
+                                <ChevronUp className="w-4 h-4" style={{ color: labelText }} />
                               ) : (
-                                <div className="flex items-center gap-0.5">
-                                  <span className="w-1 h-1 rounded-full bg-[#FF6B9D]" />
-                                  <span className="w-1 h-1 rounded-full bg-[#A66CFF]" />
-                                  <ChevronDown className="w-3 h-3 ml-0.5" />
+                                <div className="relative w-full h-full flex items-center justify-center">
+                                  {/* Purple circle (underneath / right) */}
+                                  <span
+                                    className="absolute right-[2px] top-[4px] w-4 h-4 rounded-full border border-white dark:border-[#1c1c1e] shadow-sm"
+                                    style={{ backgroundColor: '#A66CFF' }}
+                                  />
+                                  {/* Pink circle (on top / left) */}
+                                  <span
+                                    className="absolute left-[2px] top-[4px] w-4 h-4 rounded-full border border-white dark:border-[#1c1c1e] shadow-sm"
+                                    style={{ backgroundColor: '#FF6B9D' }}
+                                  />
                                 </div>
                               )}
                             </button>
