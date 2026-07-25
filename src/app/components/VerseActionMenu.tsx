@@ -466,92 +466,92 @@ export default function VerseActionMenu({
                     </div>
                   ) : (
                     <>
-                      {/* ── Highlight Palette Container ──────────────────── */}
-                      <motion.div
-                        layout
-                        transition={{ duration: 0.2, ease: 'easeOut' }}
-                        className="w-full mb-3 p-2.5 rounded-[20px] shrink-0"
-                        style={{
-                          backgroundColor: actionBg,
-                          border: actionBorder,
-                        }}
-                      >
+                      {/* ── Single Action Row (Highlight Palette + Action Icons) ── */}
+                      <div className="flex items-center gap-2 w-full shrink-0">
+                        {/* ── Highlight Palette Container (Wider Width) ──────────── */}
                         <motion.div
                           layout
-                          className="flex flex-wrap items-center justify-between gap-2 md:gap-3"
+                          transition={{ duration: 0.2, ease: 'easeOut' }}
+                          className="flex-1 flex flex-wrap items-center justify-between gap-1 sm:gap-1.5 p-2 rounded-[16px] min-h-[58px]"
+                          style={{
+                            backgroundColor: actionBg,
+                            border: actionBorder,
+                          }}
                         >
-                          {paletteList.map((c, index) => {
-                            const isApplied = isHighlighted && appliedColorObj && (c.id === appliedColorObj.id || c.color.toLowerCase() === appliedColorObj.color.toLowerCase());
-                            const isFirstItemWithRemove = isApplied && index === 0;
-
-                            return (
-                              <button
-                                key={c.id}
-                                onClick={() => {
-                                  if (isFirstItemWithRemove) {
-                                    onHighlight('none');
-                                    onClose();
-                                  } else {
-                                    setSelectedColor(c.id);
-                                    onHighlight(c.id);
-                                    onClose();
-                                  }
-                                }}
-                                title={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
-                                aria-label={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
-                                className="relative w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
-                                style={{ backgroundColor: c.color }}
-                              >
-                                {/* Active selection ring */}
-                                {isApplied && (
-                                  <span
-                                    className="absolute rounded-full pointer-events-none"
-                                    style={{
-                                      inset: -3,
-                                      border: '2px solid #31C4BE',
-                                      boxShadow: '0 0 6px rgba(49,196,190,0.35)',
-                                    }}
-                                  />
-                                )}
-
-                                {/* Remove "×" icon overlay on the first item if highlighted */}
-                                {isFirstItemWithRemove && (
-                                  <span className="w-5 h-5 rounded-full bg-black/65 backdrop-blur-sm flex items-center justify-center text-white shadow-sm border border-white/30">
-                                    <X className="w-3.5 h-3.5 stroke-[2.5]" />
-                                  </span>
-                                )}
-                              </button>
-                            );
-                          })}
-
-                          {/* Expand / Collapse Control Button */}
-                          <button
-                            onClick={() => setPaletteExpanded((prev) => !prev)}
-                            title={paletteExpanded ? "Collapse colors" : "More colors"}
-                            aria-label={paletteExpanded ? "Collapse colors" : "More colors"}
-                            className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
-                            style={{
-                              backgroundColor: dm ? '#2C2C2E' : '#E5E7EB',
-                              color: labelText,
-                              border: actionBorder,
-                            }}
+                          <motion.div
+                            layout
+                            className="flex flex-wrap items-center justify-between gap-1.5 w-full"
                           >
-                            {paletteExpanded ? (
-                              <ChevronUp className="w-5 h-5" />
-                            ) : (
-                              <div className="flex items-center gap-0.5">
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#FF6B9D]" />
-                                <span className="w-1.5 h-1.5 rounded-full bg-[#A66CFF]" />
-                                <ChevronDown className="w-3.5 h-3.5 ml-0.5" />
-                              </div>
-                            )}
-                          </button>
-                        </motion.div>
-                      </motion.div>
+                            {paletteList.map((c, index) => {
+                              const isApplied = isHighlighted && appliedColorObj && (c.id === appliedColorObj.id || c.color.toLowerCase() === appliedColorObj.color.toLowerCase());
+                              const isFirstItemWithRemove = isApplied && index === 0;
 
-                      {/* ── Action Buttons Row ──────────────────────────── */}
-                      <div className="grid grid-cols-4 gap-2.5 shrink-0">
-                        {/* Save Button */}
+                              return (
+                                <button
+                                  key={c.id}
+                                  onClick={() => {
+                                    if (isFirstItemWithRemove) {
+                                      onHighlight('none');
+                                      onClose();
+                                    } else {
+                                      setSelectedColor(c.id);
+                                      onHighlight(c.id);
+                                      onClose();
+                                    }
+                                  }}
+                                  title={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
+                                  aria-label={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
+                                  className="relative w-[26px] h-[26px] sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
+                                  style={{ backgroundColor: c.color }}
+                                >
+                                  {/* Active selection ring */}
+                                  {isApplied && (
+                                    <span
+                                      className="absolute rounded-full pointer-events-none"
+                                      style={{
+                                        inset: -2.5,
+                                        border: '1.5px solid #31C4BE',
+                                        boxShadow: '0 0 5px rgba(49,196,190,0.35)',
+                                      }}
+                                    />
+                                  )}
+
+                                  {/* Remove "×" icon overlay on the first item if highlighted */}
+                                  {isFirstItemWithRemove && (
+                                    <span className="w-4 h-4 rounded-full bg-black/65 backdrop-blur-sm flex items-center justify-center text-white shadow-sm border border-white/30">
+                                      <X className="w-2.5 h-2.5 stroke-[2.5]" />
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+
+                            {/* Expand / Collapse Control Button */}
+                            <button
+                              onClick={() => setPaletteExpanded((prev) => !prev)}
+                              title={paletteExpanded ? "Collapse colors" : "More colors"}
+                              aria-label={paletteExpanded ? "Collapse colors" : "More colors"}
+                              className="w-[26px] h-[26px] sm:w-7 sm:h-7 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
+                              style={{
+                                backgroundColor: dm ? '#2C2C2E' : '#E5E7EB',
+                                color: labelText,
+                                border: actionBorder,
+                              }}
+                            >
+                              {paletteExpanded ? (
+                                <ChevronUp className="w-3.5 h-3.5" />
+                              ) : (
+                                <div className="flex items-center gap-0.5">
+                                  <span className="w-1 h-1 rounded-full bg-[#FF6B9D]" />
+                                  <span className="w-1 h-1 rounded-full bg-[#A66CFF]" />
+                                  <ChevronDown className="w-3 h-3 ml-0.5" />
+                                </div>
+                              )}
+                            </button>
+                          </motion.div>
+                        </motion.div>
+
+                        {/* ── Save Button ──────────────────────────── */}
                         <button
                           onClick={() => {
                             setSelectedLabels(existingSaveLabels ?? []);
@@ -560,7 +560,7 @@ export default function VerseActionMenu({
                           }}
                           id="verse-action-save"
                           aria-label="Save verse"
-                          className="flex flex-col items-center justify-center gap-1 h-[58px] rounded-[14px] transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[50px] sm:w-[54px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{
                             backgroundColor: isSavedVerse ? 'rgba(49,196,190,0.16)' : actionBg,
                             border: isSavedVerse ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
@@ -576,7 +576,7 @@ export default function VerseActionMenu({
                           </span>
                         </button>
 
-                        {/* Note Button */}
+                        {/* ── Note Button ──────────────────────────── */}
                         <button
                           onClick={() => {
                             setSelectedLabels(existingNoteLabels ?? []);
@@ -585,34 +585,19 @@ export default function VerseActionMenu({
                           }}
                           id="verse-action-note"
                           aria-label="Add note"
-                          className="flex flex-col items-center justify-center gap-1 h-[58px] rounded-[14px] transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[50px] sm:w-[54px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
                           <FileText className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
                           <span className="text-[10px] font-bold" style={{ color: iconColor }}>Note</span>
                         </button>
 
-                        {/* Compare Button */}
-                        <button
-                          onClick={() => {
-                            onCompare?.();
-                            onClose();
-                          }}
-                          id="verse-action-compare"
-                          aria-label="Compare versions"
-                          className="flex flex-col items-center justify-center gap-1 h-[58px] rounded-[14px] transition-all active:scale-95"
-                          style={{ backgroundColor: actionBg, border: actionBorder }}
-                        >
-                          <ArrowRightLeft className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
-                          <span className="text-[10px] font-bold" style={{ color: iconColor }}>Compare</span>
-                        </button>
-
-                        {/* Share Button */}
+                        {/* ── Share Button ──────────────────────────── */}
                         <button
                           onClick={() => onShare?.()}
                           id="verse-action-share"
                           aria-label="Share verse"
-                          className="flex flex-col items-center justify-center gap-1 h-[58px] rounded-[14px] transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[50px] sm:w-[54px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
                           <RiShareForwardLine className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
