@@ -444,7 +444,7 @@ export function DailyDetailModal({
         if (progress === 'COMPLETED') return; // already done — idempotent guard
 
         updateProgress(date, 'COMPLETED');
-        toast.success('Devotional completed! Keep it up 🙏');
+        toast.success('Devotional completed! Keep it up ⚡');
     }, [isAuthenticated, updateProgress, router]);
 
     // Stop speaking when day, content, or section changes
@@ -875,9 +875,9 @@ export function DailyDetailModal({
 
                                                         {/* Completed Badge — shown only when COMPLETED */}
                                                         {progress === 'COMPLETED' && (
-                                                            <div className="flex items-center gap-2.5 px-5 py-3 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 backdrop-blur-sm w-full justify-center">
-                                                                <CheckCircle2 className="size-5 text-emerald-400 flex-shrink-0" />
-                                                                <span className="text-emerald-300 text-sm font-semibold tracking-wide">Devotional Completed</span>
+                                                            <div className="flex items-center gap-2.5 px-5 py-3.5 rounded-2xl bg-emerald-600 border border-emerald-500 text-white shadow-md w-full justify-center">
+                                                                <CheckCircle2 className="size-5 text-white flex-shrink-0" />
+                                                                <span className="text-white text-sm font-bold tracking-wide">Devotional Completed</span>
                                                             </div>
                                                         )}
                                                     </div>
