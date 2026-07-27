@@ -60,6 +60,16 @@ export const VerseLink = Mark.create({
           const docChanged = transactions.some(tr => tr.docChanged);
           if (!docChanged) return null;
 
+          // Quick optimization check: verify if document contains any verseLink mark before full validation
+          let hasVerseLink = false;
+          newState.doc.descendants((node) => {
+            if (node.isText && node.marks.some(m => m.type.name === 'verseLink')) {
+              hasVerseLink = true;
+              return false;
+            }
+          });
+          if (!hasVerseLink) return null;
+
           let tr = newState.tr;
           let modified = false;
 

@@ -399,9 +399,9 @@ function JournalsContent() {
       }
     };
 
-    document.addEventListener('mouseover', handleMouseOver);
-    document.addEventListener('mouseout', handleMouseOut);
-    document.addEventListener('touchstart', handleTouchStart);
+    document.addEventListener('mouseover', handleMouseOver, { passive: true });
+    document.addEventListener('mouseout', handleMouseOut, { passive: true });
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
 
     return () => {
       document.removeEventListener('mouseover', handleMouseOver);
@@ -1276,13 +1276,13 @@ function JournalsContent() {
     }
 
     // Text search query matching: title, content, labels, or linked bible verses
-    if (debouncedQuery.trim()) {
-      const regex = new RegExp(debouncedQuery, 'i');
+    const q = debouncedQuery.toLowerCase().trim();
+    if (q) {
       list = list.filter(item => {
-        const titleMatch = item.title && regex.test(item.title);
-        const descMatch = item.content && regex.test(item.content);
-        const labelMatch = item.labels && item.labels.some((l: string) => regex.test(l));
-        const verseMatch = item.verses && item.verses.some((v: any) => regex.test(v.bookName));
+        const titleMatch = item.title && item.title.toLowerCase().includes(q);
+        const descMatch = item.content && item.content.toLowerCase().includes(q);
+        const labelMatch = item.labels && item.labels.some((l: string) => l && l.toLowerCase().includes(q));
+        const verseMatch = item.verses && item.verses.some((v: any) => v && v.bookName && v.bookName.toLowerCase().includes(q));
         return titleMatch || descMatch || labelMatch || verseMatch;
       });
     }
@@ -1378,7 +1378,7 @@ function JournalsContent() {
   }
 
   return (
-    <div className="min-h-screen bg-white dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5] pb-24 relative select-none">
+    <div className="min-h-screen bg-white dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5] pb-24 relative">
 
       <AnimatePresence mode="wait">
         {!isEditing ? (
@@ -1600,7 +1600,6 @@ function JournalsContent() {
                 return (
                   <motion.div
                     key={item._id}
-                    layoutId={item._id}
                     onClick={() => handleCardClick(item, isJ ? 'journal' : 'prayer')}
                     onMouseDown={(e) => startPressTimer(item._id, e)}
                     onMouseUp={stopPressTimer}
@@ -1649,7 +1648,7 @@ function JournalsContent() {
                             : // Unselected state: subtle gray circle, appears on desktop hover or when in selection mode
                               [
                                 'bg-white/90 dark:bg-[#1a1a1a]/90 border-2 border-gray-300 dark:border-gray-600',
-                                'backdrop-blur-sm shadow-sm',
+                                'shadow-sm',
                                 // Always visible in selection mode; otherwise show only on group hover (desktop)
                                 selectionMode
                                   ? 'opacity-80'
@@ -1709,7 +1708,7 @@ function JournalsContent() {
                         <div className="mt-1 space-y-0.5">
                           {item.checklistItems?.slice(0, 3).map((ci: any, idx: number) => (
                             <div key={idx} className="flex items-center space-x-1.5 text-xs text-gray-500">
-                              <span className="text-[10px]">{ci.checked ? 'â˜‘' : 'â˜'}</span>
+                              <span className="text-[10px]">{ci.checked ? '☑' : '☐'}</span>
                               <span className={`line-clamp-1 ${ci.checked ? 'line-through text-gray-300' : ''}`}>{ci.text || 'Item'}</span>
                             </div>
                           ))}
@@ -1718,8 +1717,9 @@ function JournalsContent() {
                           )}
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-1 line-clamp-2"
-                           dangerouslySetInnerHTML={{ __html: item.content || '(Empty)' }} />
+                        <p className="text-xs text-gray-500 dark:text-gray-400 leading-relaxed mt-1 line-clamp-2">
+                          {item.content ? item.content.replace(/<[^>]*>/g, '').trim() || '(Empty)' : '(Empty)'}
+                        </p>
                       )}
 
                       {/* Linked Bible Verse Badge */}

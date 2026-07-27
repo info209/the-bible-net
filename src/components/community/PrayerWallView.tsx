@@ -155,7 +155,7 @@ export default function PrayerWallView() {
   return (
     <div className="min-h-screen bg-[#f8fafb]">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl border-b border-gray-100 px-4 py-4">
+      <header className="sticky top-0 z-30 bg-white/95 border-b border-gray-100 px-4 py-4">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
@@ -263,7 +263,6 @@ export default function PrayerWallView() {
               {filteredPrayers.map((prayer) => (
                 <motion.div
                   key={prayer._id}
-                  layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, scale: 0.9 }}
