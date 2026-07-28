@@ -88,18 +88,48 @@ const getOrdinalSuffix = (day: number): string => {
 };
 
 const formatVerseLabel = (dateStr: string): string => {
-    if (!dateStr) return '';
-    return getRelativeTime(dateStr);
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    if (dateStr === todayStr) return 'Today';
+
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(today.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    if (dateStr === yesterdayStr) return 'Yesterday';
+
+    const d = new Date(dateStr);
+    const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    const day = d.getUTCDate();
+    const month = d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+    return `${dayOfWeek}, ${day}${getOrdinalSuffix(day)} ${month}`;
 };
 
 const formatDevotionLabel = (dateStr: string): string => {
-    if (!dateStr) return '';
-    return getRelativeTime(dateStr);
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    if (dateStr === todayStr) return 'Today';
+
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(today.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    if (dateStr === yesterdayStr) return 'Yesterday';
+
+    const d = new Date(dateStr);
+    const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    const day = d.getUTCDate();
+    const month = d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+    return `${dayOfWeek}, ${day}${getOrdinalSuffix(day)} ${month}`;
 };
 
 const getRelativeLabel = (dateStr: string) => {
-    if (!dateStr) return '';
-    return getRelativeTime(dateStr);
+    const todayStr = new Date().toISOString().split('T')[0];
+    if (dateStr === todayStr) return 'Today';
+    const contentDate = new Date(dateStr);
+    const today = new Date(todayStr);
+    const diffTime = Math.abs(today.getTime() - contentDate.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    if (diffDays === 1) return 'Yesterday';
+    return `${diffDays} Days Ago`;
 };
 
 // ─── Component ────────────────────────────────────────────────────────────────

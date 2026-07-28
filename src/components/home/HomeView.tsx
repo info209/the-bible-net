@@ -449,8 +449,20 @@ export default function HomeView() {
   };
 
   const formatVerseLabel = (dateStr: string): string => {
-    if (!dateStr) return '';
-    return getRelativeTime(dateStr);
+    const today = new Date();
+    const todayStr = today.toISOString().split('T')[0];
+    if (dateStr === todayStr) return 'Today';
+
+    const yesterday = new Date(today);
+    yesterday.setUTCDate(today.getUTCDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+    if (dateStr === yesterdayStr) return 'Yesterday';
+
+    const d = new Date(dateStr);
+    const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
+    const day = d.getUTCDate();
+    const month = d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
+    return `${dayOfWeek}, ${day}${getOrdinalSuffix(day)} ${month}`;
   };
 
   // Navigate to Bible reader at the exact verse context (feature #7)
