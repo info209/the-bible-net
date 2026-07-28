@@ -139,8 +139,11 @@ export default function SongBookDetail({ bookId, onBack, onSelectSong }: SongBoo
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-4">
           <div className="flex items-center gap-3 mb-4">
             <button
+              type="button"
+              onPointerDown={(e) => e.preventDefault()}
               onClick={onBack}
-              className="p-2 rounded-full hover:bg-gray-100/50 transition-colors"
+              className="p-2 rounded-full hover:bg-gray-100/50 transition-colors cursor-pointer"
+              aria-label="Go back"
             >
               <ChevronLeft className="size-5 text-[var(--color-gray-900)]" />
             </button>

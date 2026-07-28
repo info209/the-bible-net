@@ -17,6 +17,7 @@ import {
 import { toast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmContext';
 import { LiaBookMedicalSolid, LiaBookSolid } from 'react-icons/lia';
+import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 
 // â”€â”€ Tiptap Rich Text Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -1593,10 +1594,6 @@ function JournalsContent() {
                   ? `${firstVerseRef.bookName} ${firstVerseRef.chapter}:${firstVerseRef.verses.join(', ')}`
                   : null;
 
-                const formattedTime = item.updatedAt 
-                  ? new Date(item.updatedAt).toLocaleDateString() + ' ' + new Date(item.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-                  : new Date(item.createdAt).toLocaleDateString();
-
                 const isSelected = selectedIds.includes(item._id);
 
                 return (
@@ -1755,9 +1752,10 @@ function JournalsContent() {
 
                       {/* Bottom row actions */}
                       <div className="flex items-center justify-between mt-3.5 pt-2.5 border-t border-gray-100 dark:border-white/[0.04]">
-                        <span className="text-[10px] text-gray-400 dark:text-gray-500">
-                          {formattedTime}
-                        </span>
+                        <RelativeTimestamp
+                          date={item.updatedAt || item.createdAt}
+                          className="text-[10px] text-gray-400 dark:text-gray-500"
+                        />
 
                         {/* Interactive Icons Aligned Right */}
                         {!selectionMode && (

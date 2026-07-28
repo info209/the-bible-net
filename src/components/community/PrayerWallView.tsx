@@ -21,6 +21,8 @@ import {
   UserCheck,
   UserX
 } from 'lucide-react';
+import { toast } from '@/context/ToastContext';
+import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -301,9 +303,10 @@ export default function PrayerWallView() {
                           : `${prayer.userId?.firstName || 'User'}${prayer.userId?.lastName?.[0] ? ' ' + prayer.userId.lastName[0] : ''}`
                         }
                       </h4>
-                      <p className="text-[10px] font-bold tracking-wider text-gray-400">
-                        {new Date(prayer.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
+                      <RelativeTimestamp
+                        date={prayer.createdAt}
+                        className="text-[10px] font-bold tracking-wider text-gray-400"
+                      />
                     </div>
                   </div>
 

@@ -9,6 +9,7 @@ import {
 import { toast } from '@/context/ToastContext';
 import { useLikeContext } from '@/context/LikeContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 
 type FilterTab = 'All' | 'Verses' | 'Devotionals';
 const TABS: FilterTab[] = ['All', 'Verses', 'Devotionals'];
@@ -182,8 +183,10 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
       {/* ── Header ─────────────────────────────────────────── */}
       <header className="px-4 pt-4 pb-5 flex items-center bg-[#F4F8F8] dark:bg-[#0D0D0D] sticky top-0 z-30">
         <button
+          type="button"
+          onPointerDown={(e) => e.preventDefault()}
           onClick={() => onBack ? onBack() : router.back()}
-          className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center active:bg-gray-200/50 dark:active:bg-white/[0.06] transition-colors"
+          className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center active:bg-gray-200/50 dark:active:bg-white/[0.06] transition-colors cursor-pointer"
           aria-label="Go back"
         >
           <ArrowLeft className="w-5 h-5 text-[#111111] dark:text-white" strokeWidth={2} />
@@ -264,10 +267,10 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
                         {item.contentType === 'verse' && 'Verse'}
                         {item.contentType === 'devotion' && 'Devotional'}
                       </span>
-                      {item.date && (
+                      {(item.date || item.createdAt) && (
                         <span className="flex items-center gap-1">
                           <Calendar className="w-3 h-3" />
-                          {formatDate(item.date)}
+                          <RelativeTimestamp date={item.date || item.createdAt} />
                         </span>
                       )}
                     </div>

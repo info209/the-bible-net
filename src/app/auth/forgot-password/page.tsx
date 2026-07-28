@@ -51,8 +51,10 @@ export default function ForgotPassword() {
         >
             <div>
                 <button
+                    type="button"
+                    onPointerDown={(e) => e.preventDefault()}
                     onClick={() => router.back()}
-                    className="text-slate-400 font-bold text-sm hover:text-[var(--color-primary-teal)] transition-colors flex items-center gap-1 mb-6 group"
+                    className="text-slate-400 font-bold text-sm hover:text-[var(--color-primary-teal)] transition-colors flex items-center gap-1 mb-6 group cursor-pointer"
                 >
                     <ChevronLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
                     Back to log in

@@ -14,6 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useReadingProgress } from '@/lib/useReadingProgress';
 import { useSavedVerses, buildVerseRangeText } from '@/lib/useSavedVerses';
 import { getRelativeTime } from '@/utils/time';
+import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 import { formatCopyVerseText } from '@/utils/verseFormatter';
 import HomeSkeleton from '@/app/components/HomeSkeleton';
 import { CarouselCardSkeleton, PrayerSkeleton } from '@/app/components/HomeSkeleton';
@@ -448,20 +449,8 @@ export default function HomeView() {
   };
 
   const formatVerseLabel = (dateStr: string): string => {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
-    if (dateStr === todayStr) return 'Today';
-
-    const yesterday = new Date(today);
-    yesterday.setUTCDate(today.getUTCDate() - 1);
-    const yesterdayStr = yesterday.toISOString().split('T')[0];
-    if (dateStr === yesterdayStr) return 'Yesterday';
-
-    const d = new Date(dateStr);
-    const dayOfWeek = d.toLocaleString('en-US', { weekday: 'long', timeZone: 'UTC' });
-    const day = d.getUTCDate();
-    const month = d.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' });
-    return `${dayOfWeek}, ${day}${getOrdinalSuffix(day)} ${month}`;
+    if (!dateStr) return '';
+    return getRelativeTime(dateStr);
   };
 
   // Navigate to Bible reader at the exact verse context (feature #7)
@@ -1105,7 +1094,7 @@ export default function HomeView() {
                               : `${request.userId?.firstName || 'User'}${request.userId?.lastName?.[0] ? ' ' + request.userId.lastName[0] + '.' : ''}`
                             }
                           </p>
-                          <span className="text-xs text-gray-500">{getRelativeTime(request.createdAt)}</span>
+                          <RelativeTimestamp date={request.createdAt} className="text-xs text-gray-500" />
                         </div>
                         <p className="text-sm text-gray-600 line-clamp-2">{request.text}</p>
                         <button
@@ -1263,9 +1252,10 @@ export default function HomeView() {
                         <p className="font-extrabold text-xs text-slate-900 dark:text-slate-200">
                           {comment.userId?.firstName} {comment.userId?.lastName}
                         </p>
-                        <span className="text-[10px] font-bold text-slate-500">
-                          {new Date(comment.createdAt).toLocaleDateString()}
-                        </span>
+                        <RelativeTimestamp
+                          date={comment.createdAt}
+                          className="text-[10px] font-bold text-slate-500"
+                        />
                       </div>
                       <p className="text-sm font-medium text-slate-800 dark:text-slate-350 leading-relaxed">{comment.commentText}</p>
                     </div>

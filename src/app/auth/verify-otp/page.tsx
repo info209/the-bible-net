@@ -205,8 +205,10 @@ function VerifyOTPContent() {
                 </button>
 
                 <button
+                    type="button"
+                    onPointerDown={(e) => e.preventDefault()}
                     onClick={() => router.back()}
-                    className="text-[var(--color-primary-teal)] text-sm font-extrabold block mx-auto hover:underline underline-offset-4"
+                    className="text-[var(--color-primary-teal)] text-sm font-extrabold block mx-auto hover:underline underline-offset-4 cursor-pointer"
                 >
                     Change email address
                 </button>

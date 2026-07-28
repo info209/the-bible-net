@@ -1,5 +1,7 @@
 'use client';
 
+import { RelativeTimestamp } from '@/components/RelativeTimestamp';
+
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -301,9 +303,10 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
                     {/* Timestamp & More Menu Trigger */}
                     <div className="flex items-center gap-2 select-none">
                       <div className="w-[8px] h-[8px] bg-[#0B7A81] rounded-full" />
-                      <span className="text-[10px] text-[#111111] dark:text-gray-400 font-[400]">
-                        {getRelativeTime(item.createdAt)}
-                      </span>
+                      <RelativeTimestamp
+                        date={item.createdAt}
+                        className="text-[10px] text-[#111111] dark:text-gray-400 font-[400]"
+                      />
                       <button
                         onClick={(e) => handleOpenMenu(e, item)}
                         className="w-8 h-8 rounded-full flex items-center justify-center active:bg-gray-100 dark:active:bg-white/[0.04] transition-colors"

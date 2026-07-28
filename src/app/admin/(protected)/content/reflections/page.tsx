@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { toast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmContext';
+import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 
 interface Content {
     _id: string;
@@ -180,7 +181,7 @@ export default function ReflectionsManagement() {
                                         )}
                                         <p className="text-gray-400 text-sm line-clamp-3 leading-relaxed">{item.text}</p>
                                         <div className="mt-4 flex items-center space-x-4 text-[10px] font-bold uppercase tracking-wider text-gray-600">
-                                            <span>Added {new Date(item.createdAt).toLocaleDateString()}</span>
+                                            <RelativeTimestamp date={item.createdAt} prefix="Added" />
                                         </div>
                                     </div>
                                     <div className="flex space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">

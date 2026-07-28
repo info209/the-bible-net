@@ -95,8 +95,11 @@ export default function SongDetail({ songId, bookId, onBack }: SongDetailProps) 
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-3 flex-1 min-w-0">
               <button
+                type="button"
+                onPointerDown={(e) => e.preventDefault()}
                 onClick={onBack}
-                className="p-2 rounded-full hover:bg-gray-100/50 transition-colors flex-shrink-0"
+                className="p-2 rounded-full hover:bg-gray-100/50 transition-colors flex-shrink-0 cursor-pointer"
+                aria-label="Go back"
               >
                 <ChevronLeft className="size-5 text-[var(--color-gray-900)]" />
               </button>

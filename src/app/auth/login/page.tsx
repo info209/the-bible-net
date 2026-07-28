@@ -83,11 +83,14 @@ export default function LoginPage() {
             className="w-full max-w-md glass-ios border-none p-8 space-y-8 relative overflow-hidden shadow-2xl"
         >
             <motion.button
+                type="button"
+                onPointerDown={(e) => e.preventDefault()}
                 whileHover={{ x: -2, scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
                 onClick={() => router.back()}
-                className="absolute left-6 top-6 p-2 rounded-full bg-white/10 text-slate-500 hover:text-[var(--color-primary-teal)] hover:bg-white/20 transition-all outline-none backdrop-blur-sm"
+                className="absolute left-6 top-6 p-2 rounded-full bg-white/10 text-slate-500 hover:text-[var(--color-primary-teal)] hover:bg-white/20 transition-all outline-none cursor-pointer"
                 title="Go back"
+                aria-label="Go back"
             >
                 <ChevronLeft className="w-5 h-5" />
             </motion.button>

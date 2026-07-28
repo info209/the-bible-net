@@ -30,8 +30,11 @@ export default function PlanDetailsScreen({
       {/* Header */}
       <div className="sticky top-0 bg-white border-b border-gray-200 p-4 flex items-center justify-between z-10">
         <button
+          type="button"
+          onPointerDown={(e) => e.preventDefault()}
           onClick={onBack}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 hover:bg-gray-100 rounded-lg transition-colors cursor-pointer"
+          aria-label="Go back"
         >
           <ChevronLeft className="w-6 h-6 text-gray-700" />
         </button>
