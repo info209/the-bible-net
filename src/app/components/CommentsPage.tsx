@@ -1,3 +1,5 @@
+'use client';
+
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 import { getRelativeTime } from '@/utils/time';
 
