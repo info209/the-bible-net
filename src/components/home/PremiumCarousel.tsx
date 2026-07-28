@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface PremiumCarouselProps {
@@ -32,6 +32,70 @@ export function PremiumCarousel({
   const isDraggingRef = useRef(false);
   const isSwipeActionRef = useRef<boolean | null>(null);
 
+  // Auto-fade navigation controls state & refs
+  const [isControlsVisible, setIsControlsVisible] = useState(false);
+  const [isFocusedWithin, setIsFocusedWithin] = useState(false);
+  const isHoveredRef = useRef(false);
+  const inactivityTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  const clearInactivityTimer = useCallback(() => {
+    if (inactivityTimerRef.current) {
+      clearTimeout(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+  }, []);
+
+  const startInactivityTimer = useCallback(() => {
+    clearInactivityTimer();
+    inactivityTimerRef.current = setTimeout(() => {
+      setIsControlsVisible(false);
+    }, 2000);
+  }, [clearInactivityTimer]);
+
+  useEffect(() => {
+    return () => {
+      clearInactivityTimer();
+    };
+  }, [clearInactivityTimer]);
+
+  const handlePointerEnter = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'touch') return;
+    isHoveredRef.current = true;
+    setIsControlsVisible(true);
+    startInactivityTimer();
+  };
+
+  const handlePointerLeave = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType === 'touch') return;
+    isHoveredRef.current = false;
+    clearInactivityTimer();
+    setIsControlsVisible(false);
+  };
+
+  const handleActivity = (e?: React.SyntheticEvent) => {
+    if (e && 'pointerType' in e && (e as React.PointerEvent).pointerType === 'touch') return;
+    if (isHoveredRef.current || isFocusedWithin) {
+      setIsControlsVisible(true);
+      startInactivityTimer();
+    }
+  };
+
+  const handleFocus = () => {
+    setIsFocusedWithin(true);
+    setIsControlsVisible(true);
+    startInactivityTimer();
+  };
+
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    if (!containerRef.current?.contains(e.relatedTarget as Node)) {
+      setIsFocusedWithin(false);
+      if (!isHoveredRef.current) {
+        clearInactivityTimer();
+        setIsControlsVisible(false);
+      }
+    }
+  };
+
   const count = children.length;
 
   useEffect(() => {
@@ -44,6 +108,7 @@ export function PremiumCarousel({
   }, [activeIndex, count]);
 
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    handleActivity(e);
     // Only support left click on mouse
     if (e.button !== 0 && e.pointerType === 'mouse') return;
 
@@ -62,6 +127,7 @@ export function PremiumCarousel({
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    handleActivity(e);
     if (!isDraggingRef.current) return;
 
     const deltaX = e.clientX - startXRef.current;
@@ -122,6 +188,7 @@ export function PremiumCarousel({
   };
 
   const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    handleActivity(e);
     if (!isDraggingRef.current) return;
     isDraggingRef.current = false;
 
@@ -198,6 +265,7 @@ export function PremiumCarousel({
   };
 
   const handleClickCapture = (e: React.MouseEvent) => {
+    handleActivity(e);
     // Intercept clicks during dragging/swiping to prevent accidental triggers (e.g. open modal, like, comment)
     if (isSwipeActionRef.current === true) {
       e.stopPropagation();
@@ -206,6 +274,7 @@ export function PremiumCarousel({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    handleActivity(e);
     if (e.key === 'ArrowLeft') {
       e.preventDefault();
       if (activeIndex < count - 1) {
@@ -220,18 +289,24 @@ export function PremiumCarousel({
   };
 
   const reversedChildren = React.Children.toArray(children).reverse();
+  const showNavigationControls = isControlsVisible || isFocusedWithin;
 
   return (
     <div
       ref={containerRef}
       className={`relative overflow-hidden w-full touch-pan-y select-none outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-primary-teal)]/50 focus-visible:ring-offset-2 group ${fullHeight ? 'h-full' : ''} ${className}`}
       style={{ borderRadius: 'var(--radius-md)', ...style }}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerCancel}
       onClickCapture={handleClickCapture}
       onKeyDown={handleKeyDown}
+      onWheel={handleActivity}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
       tabIndex={0}
       role="region"
       aria-roledescription="carousel"
@@ -268,10 +343,11 @@ export function PremiumCarousel({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              handleActivity(e);
               if (activeIndex < count - 1) onChange(activeIndex + 1);
             }}
             disabled={activeIndex === count - 1}
-            className="absolute left-4 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center size-10 rounded-full bg-black/30 hover:bg-black/50 text-white border border-white/10 transition-all hover:scale-110 active:scale-95 disabled:!opacity-0 disabled:pointer-events-none opacity-0 group-hover:opacity-100"
+            className={`absolute left-4 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center size-10 rounded-full bg-black/30 hover:bg-black/50 text-white border border-white/10 transition-all duration-300 ease-in-out hover:scale-110 active:scale-95 disabled:!opacity-0 disabled:pointer-events-none ${showNavigationControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
             aria-label="Previous slide (older)"
           >
             <ChevronLeft className="size-5" />
@@ -279,10 +355,11 @@ export function PremiumCarousel({
           <button
             onClick={(e) => {
               e.stopPropagation();
+              handleActivity(e);
               if (activeIndex > 0) onChange(activeIndex - 1);
             }}
             disabled={activeIndex === 0}
-            className="absolute right-4 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center size-10 rounded-full bg-black/30 hover:bg-black/50 text-white border border-white/10 transition-all hover:scale-110 active:scale-95 disabled:!opacity-0 disabled:pointer-events-none opacity-0 group-hover:opacity-100"
+            className={`absolute right-4 top-1/2 -translate-y-1/2 z-20 hidden md:flex items-center justify-center size-10 rounded-full bg-black/30 hover:bg-black/50 text-white border border-white/10 transition-all duration-300 ease-in-out hover:scale-110 active:scale-95 disabled:!opacity-0 disabled:pointer-events-none ${showNavigationControls ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
             aria-label="Next slide (newer)"
           >
             <ChevronRight className="size-5" />
@@ -292,3 +369,4 @@ export function PremiumCarousel({
     </div>
   );
 }
+

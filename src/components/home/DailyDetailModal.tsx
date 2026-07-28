@@ -222,7 +222,7 @@ export function DailyDetailModal({
         setOpenKebab(null);
     }, [currentIndex]);
 
-    // Auto-close open kebab menu when scrolling or navigating
+    // Auto-close open kebab menu when scrolling, touching, or clicking anywhere else on the screen
     useEffect(() => {
         if (!openKebab) return;
 
@@ -230,8 +230,19 @@ export function DailyDetailModal({
             setOpenKebab(null);
         };
 
+        const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+            const target = e.target as Node;
+            const kebabMenuElement = document.querySelector('[data-kebab-menu]');
+            const kebabButtonElement = document.querySelector('[data-kebab-button]');
+            if ((kebabMenuElement && kebabMenuElement.contains(target)) || (kebabButtonElement && kebabButtonElement.contains(target))) {
+                return;
+            }
+            handleClose();
+        };
+
         window.addEventListener('scroll', handleClose, { passive: true, capture: true });
         window.addEventListener('touchmove', handleClose, { passive: true });
+        window.addEventListener('pointerdown', handlePointerDown, true);
 
         const scrollViewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]');
         if (scrollViewport) {
@@ -241,6 +252,7 @@ export function DailyDetailModal({
         return () => {
             window.removeEventListener('scroll', handleClose, { capture: true });
             window.removeEventListener('touchmove', handleClose);
+            window.removeEventListener('pointerdown', handlePointerDown, true);
             if (scrollViewport) {
                 scrollViewport.removeEventListener('scroll', handleClose);
             }
@@ -581,6 +593,7 @@ export function DailyDetailModal({
                     {isVerse && (
                         <div className="relative">
                             <button
+                                data-kebab-button="true"
                                 onClick={(e) => openKebabMenu(e, 'verse')}
                                 className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
                             >
@@ -612,13 +625,18 @@ export function DailyDetailModal({
 
     return (
         <AnimatePresence>
-            <motion.div
-                initial={{ opacity: 0, y: 50 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 50 }}
-                transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                className="fixed inset-0 z-[100] flex flex-col bg-slate-50 overflow-hidden"
+            <div
+                className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex justify-center items-center overflow-hidden"
+                onClick={() => onClose(currentIndex)}
             >
+                <motion.div
+                    initial={{ opacity: 0, y: 50 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 50 }}
+                    transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                    className="w-full h-full md:max-w-3xl mx-auto flex flex-col bg-slate-50 overflow-hidden relative shadow-2xl"
+                    onClick={(e) => e.stopPropagation()}
+                >
                 {/* Dynamic Background Image */}
                 {initialSection === 'devotional' && (currentContent.devotionalBackgroundImage || currentContent.backgroundImage) ? (
                     <>
@@ -908,6 +926,7 @@ export function DailyDetailModal({
                         <>
                             <div className="fixed inset-0 z-[200]" onClick={() => setOpenKebab(null)} />
                             <motion.div
+                                data-kebab-menu="true"
                                 key="kebab-dropdown"
                                 initial={{ opacity: 0, scale: 0.95, y: -4 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -1014,6 +1033,7 @@ export function DailyDetailModal({
                     )}
                 </AnimatePresence>
             </motion.div>
-        </AnimatePresence>
-    );
+        </div>
+    </AnimatePresence>
+);
 }

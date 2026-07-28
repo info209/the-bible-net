@@ -113,7 +113,7 @@ export default function HomeView() {
     setOpenDevotionKebabIndex(null);
   }, [currentVerseSlide, currentDevotionSlide, isDetailModalOpen]);
 
-  // Auto-close open kebab menu when scrolling the page
+  // Auto-close open kebab menu when scrolling, touching, or clicking anywhere else on the screen
   useEffect(() => {
     if (openVerseKebabIndex === null && openDevotionKebabIndex === null) return;
 
@@ -122,12 +122,24 @@ export default function HomeView() {
       setOpenDevotionKebabIndex(null);
     };
 
+    const handlePointerDown = (e: MouseEvent | TouchEvent) => {
+      const target = e.target as Node;
+      const kebabMenuElement = document.querySelector('[data-kebab-menu]');
+      const kebabButtonElement = document.querySelector('[data-kebab-button]');
+      if ((kebabMenuElement && kebabMenuElement.contains(target)) || (kebabButtonElement && kebabButtonElement.contains(target))) {
+        return;
+      }
+      handleClose();
+    };
+
     window.addEventListener('scroll', handleClose, { passive: true, capture: true });
     window.addEventListener('touchmove', handleClose, { passive: true });
+    window.addEventListener('pointerdown', handlePointerDown, true);
 
     return () => {
       window.removeEventListener('scroll', handleClose, { capture: true });
       window.removeEventListener('touchmove', handleClose);
+      window.removeEventListener('pointerdown', handlePointerDown, true);
     };
   }, [openVerseKebabIndex, openDevotionKebabIndex]);
 
@@ -685,6 +697,7 @@ export default function HomeView() {
                       </button>
                       <div className="relative">
                         <button
+                          data-kebab-button="true"
                           onClick={(e) => {
                             e.stopPropagation();
                             setOpenDevotionKebabIndex(null);
@@ -703,7 +716,7 @@ export default function HomeView() {
                               className="fixed inset-0 z-10"
                               onClick={(e) => { e.stopPropagation(); setOpenVerseKebabIndex(null); }}
                             />
-                            <div className="absolute right-0 bottom-full mb-2 z-20 w-48 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
+                            <div data-kebab-menu="true" className="absolute right-0 bottom-full mb-2 z-20 w-48 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
                               <button
                                 onClick={(e) => handleReadFullChapter(content, e)}
                                 className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-2"
@@ -876,6 +889,7 @@ export default function HomeView() {
                       </button>
                       <div className="relative">
                         <button
+                          data-kebab-button="true"
                           onClick={(e) => {
                             e.stopPropagation();
                             setOpenVerseKebabIndex(null);
@@ -894,7 +908,7 @@ export default function HomeView() {
                               className="fixed inset-0 z-10"
                               onClick={(e) => { e.stopPropagation(); setOpenDevotionKebabIndex(null); }}
                             />
-                            <div className="absolute right-0 bottom-full mb-2 z-20 w-48 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
+                            <div data-kebab-menu="true" className="absolute right-0 bottom-full mb-2 z-20 w-48 bg-white rounded-xl shadow-xl overflow-hidden border border-gray-100">
                               <button
                                 onClick={() => openDetailModal(index, 'devotional')}
                                 className="w-full text-left px-4 py-3 text-sm font-medium text-gray-800 hover:bg-gray-50 active:bg-gray-100 transition-colors flex items-center gap-2"
