@@ -99,36 +99,101 @@ const defaultContent = {
   ]
 };
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BibleOfflineService } from '@/lib/offline/BibleOfflineService';
+import { ChapterCacheService } from '@/lib/offline/ChapterCacheService';
 
-export async function fetchChapterContent(version: string, book: string, chapter: number): Promise<{ title: string; verses: { number: number; text: string }[] }> {
-  const response = await fetch(`/api/v1/bible/${encodeURIComponent(version)}/${encodeURIComponent(book)}/${chapter}`);
-  const result = await response.json();
-  if (!result.success) {
-    throw new Error(result.error || 'Failed to fetch content');
+export async function fetchChapterContent(
+  version: string,
+  book: string,
+  chapter: number,
+  versionId?: string,
+): Promise<{ title: string; verses: { number: number; text: string }[]; _isOfflineData?: boolean }> {
+  try {
+    const response = await fetch(
+      `/api/v1/bible/${encodeURIComponent(version)}/${encodeURIComponent(book)}/${chapter}`,
+    );
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'Failed to fetch content');
+    }
+    const data = {
+      title: `${result.data.book.name} ${result.data.chapter.number}`,
+      verses: result.data.verses as { number: number; text: string }[],
+    };
+    // Silently cache this chapter for offline access (fire-and-forget)
+    if (versionId) {
+      ChapterCacheService.cacheChapter(
+        versionId,
+        book,
+        result.data.book.name,
+        result.data.book.abbreviation || result.data.book.name,
+        chapter,
+        result.data.book.testament === 'NT' ? 'NT' : 'OT',
+        data.verses,
+      ).catch(() => {});
+    }
+    return data;
+  } catch (networkError) {
+    // Offline fallback: serve from IndexedDB
+    if (typeof navigator !== 'undefined' && !navigator.onLine && versionId) {
+      const offlineChapter = await BibleOfflineService.getChapter(versionId, book, chapter);
+      if (offlineChapter && offlineChapter.verses.length > 0) {
+        return {
+          title: `${offlineChapter.bookName} ${chapter}`,
+          verses: offlineChapter.verses,
+          _isOfflineData: true,
+        };
+      }
+    }
+    throw networkError;
   }
-  return {
-    title: `${result.data.book.name} ${result.data.chapter.number}`,
-    verses: result.data.verses
-  };
+}
+
+/** Extra prop for the offline-aware version ID (MongoDB _id, distinct from abbreviation) */
+interface ChapterContentWithVersionIdProps extends ChapterContentProps {
+  versionId?: string;
 }
 
 function ChapterContent({ 
-  book, chapter, font, fontSize, version = 'NKJV', 
+  book, chapter, font, fontSize, version = 'NKJV',
+  versionId,
   scrollToVerse, readingVerse, theme, selectedVerses = [], savedVerseIds = [], 
   onVerseDoubleTap, onVerseTap,
   highlights = [], notes = [],
   isSliderDragging = false,
   swipeActiveRef,
-}: ChapterContentProps) {
+}: ChapterContentWithVersionIdProps) {
+  const queryClient = useQueryClient();
+
   const { data: apiContent, isLoading, error: queryError } = useQuery({
     queryKey: ['chapter-content', version, book, chapter],
-    queryFn: () => fetchChapterContent(version, book, chapter),
+    queryFn: () => fetchChapterContent(version, book, chapter, versionId),
     enabled: !!book && !!chapter && book !== 'undefined' && !!version,
     staleTime: Infinity, // Bible text never changes
+    // Use cached data immediately even if stale — offline experience
+    gcTime: 24 * 60 * 60 * 1000, // Keep in memory for 24h
   });
 
   const error = queryError ? (queryError as Error).message : null;
+  const isOfflineData = (apiContent as any)?._isOfflineData === true;
+
+  // Pre-fetch adjacent chapters in background while online
+  useEffect(() => {
+    if (!apiContent || !book || !version || typeof navigator === 'undefined' || !navigator.onLine) return;
+    const prefetch = (chapterNum: number) => {
+      if (chapterNum < 1) return;
+      queryClient.prefetchQuery({
+        queryKey: ['chapter-content', version, book, chapterNum],
+        queryFn: () => fetchChapterContent(version, book, chapterNum, versionId),
+        staleTime: Infinity,
+      });
+    };
+    // Pre-fetch prev and next chapters silently
+    prefetch(chapter - 1);
+    prefetch(chapter + 1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [book, chapter, version]);
 
   const lastTapRef = useRef<{ verseNum: number; time: number } | null>(null);
 

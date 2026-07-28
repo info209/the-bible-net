@@ -24,6 +24,7 @@ import { LikeButton } from './LikeButton';
 import { Avatar, AvatarImage, AvatarFallback } from '@/app/components/ui/avatar';
 import verseTexture from '../../../assets/textures/verse-texture.svg';
 import devotionalTexture from '../../../assets/textures/devotional-texture.svg';
+import { HomeOfflineService } from '@/lib/offline/HomeOfflineService';
 
 const getGreetingByHour = (hour: number): string => {
   if (hour >= 5 && hour < 12) return 'Good morning';
@@ -156,17 +157,30 @@ export default function HomeView() {
   const { data: todayData, isLoading: todayLoading } = useQuery({
     queryKey: ['daily-content-today', preferredVersion, todayStr],
     queryFn: async () => {
-      const res = await fetch(`/api/daily?days=1&version=${encodeURIComponent(preferredVersion)}`);
-      if (!res.ok) throw new Error('Failed to fetch today content');
-      const data = await res.json();
-      const items = data.data || [];
-      items.forEach((item: any) => {
-        queryClient.setQueryData(['daily-verse', item.date, preferredVersion], item);
-        queryClient.setQueryData(['daily-devotion', item.date, preferredVersion], item);
-      });
-      return items;
+      try {
+        const res = await fetch(`/api/daily?days=1&version=${encodeURIComponent(preferredVersion)}`);
+        if (!res.ok) throw new Error('Failed to fetch today content');
+        const data = await res.json();
+        const items = data.data || [];
+        items.forEach((item: any) => {
+          queryClient.setQueryData(['daily-verse', item.date, preferredVersion], item);
+          queryClient.setQueryData(['daily-devotion', item.date, preferredVersion], item);
+        });
+        // Save to offline cache (fire-and-forget)
+        HomeOfflineService.saveHomeCache('daily_verse', items).catch(() => {});
+        return items;
+      } catch (err) {
+        // Offline fallback: serve from IndexedDB
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          const cached = await HomeOfflineService.getHomeCache('daily_verse');
+          if (cached?.data) return cached.data as any[];
+        }
+        throw err;
+      }
     },
     staleTime: 5 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    networkMode: 'offlineFirst',
   });
 
   // ── Query 2: Full 7-day history (background — fires after today resolves) ───

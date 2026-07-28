@@ -917,14 +917,14 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     if (next && (next.book !== displayBookName || next.chapter !== selectedChapter)) {
       queryClient.prefetchQuery({
         queryKey: ['chapter-content', ver, next.book, next.chapter],
-        queryFn: () => fetchChapterContent(ver, next.book, next.chapter),
+        queryFn: () => fetchChapterContent(ver, next.book, next.chapter, selectedVersionId ?? undefined),
         staleTime: Infinity,
       });
       const nextNext = getNextNextChapter(next);
       if (nextNext && (nextNext.book !== displayBookName || nextNext.chapter !== selectedChapter)) {
         queryClient.prefetchQuery({
           queryKey: ['chapter-content', ver, nextNext.book, nextNext.chapter],
-          queryFn: () => fetchChapterContent(ver, nextNext.book, nextNext.chapter),
+          queryFn: () => fetchChapterContent(ver, nextNext.book, nextNext.chapter, selectedVersionId ?? undefined),
           staleTime: Infinity,
         });
       }
@@ -933,11 +933,11 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     if (prev && (prev.book !== displayBookName || prev.chapter !== selectedChapter)) {
       queryClient.prefetchQuery({
         queryKey: ['chapter-content', ver, prev.book, prev.chapter],
-        queryFn: () => fetchChapterContent(ver, prev.book, prev.chapter),
+        queryFn: () => fetchChapterContent(ver, prev.book, prev.chapter, selectedVersionId ?? undefined),
         staleTime: Infinity,
       });
     }
-  }, [displayBookName, selectedChapter, displayVersionName, isBiblePage, allBooks]);
+  }, [displayBookName, selectedChapter, displayVersionName, isBiblePage, allBooks, selectedVersionId]);
 
   // Navigate to specific verse from search
   const handleSearchNavigation: (bookName: string, chapter: number, verse: number) => void = (bookName, chapter, verse) => {

@@ -1,0 +1,112 @@
+/**
+ * HomeOfflineService
+ *
+ * Persists and retrieves home-screen content (daily verse, devotional,
+ * reading plans, versions list) and user preferences from IndexedDB.
+ */
+
+import { getOfflineDB } from './db';
+import type { HomeCacheKey, HomeCacheEntry, OfflineUserPreferences } from './types';
+
+export class HomeOfflineService {
+  // -------------------------------------------------------------------------
+  // Home Content Cache
+  // -------------------------------------------------------------------------
+
+  /**
+   * Save any home-screen data to the cache.
+   * @param key   - One of the HomeCacheKey values
+   * @param data  - The raw API response data to persist
+   */
+  static async saveHomeCache(key: HomeCacheKey, data: unknown): Promise<void> {
+    try {
+      const db = await getOfflineDB();
+      const entry: HomeCacheEntry = {
+        key,
+        data,
+        syncedAt: new Date().toISOString(),
+      };
+      await db.put('home_cache', entry);
+    } catch (err) {
+      // Non-critical — online reading still works
+      console.warn('[HomeOfflineService] saveHomeCache failed (non-critical):', err);
+    }
+  }
+
+  /**
+   * Retrieve cached home-screen content.
+   * Returns undefined if nothing is cached for this key.
+   */
+  static async getHomeCache(key: HomeCacheKey): Promise<HomeCacheEntry | undefined> {
+    try {
+      const db = await getOfflineDB();
+      return await db.get('home_cache', key);
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Clear all home cache entries.
+   */
+  static async clearHomeCache(): Promise<void> {
+    try {
+      const db = await getOfflineDB();
+      await db.clear('home_cache');
+    } catch (err) {
+      console.warn('[HomeOfflineService] clearHomeCache failed:', err);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // User Preferences
+  // -------------------------------------------------------------------------
+
+  /**
+   * Save user preferences (theme, font, preferred version, etc.)
+   * Merges with any existing saved preferences.
+   */
+  static async savePreferences(prefs: Partial<OfflineUserPreferences>): Promise<void> {
+    try {
+      const db = await getOfflineDB();
+      const existing = await db.get('user_preferences', 'prefs');
+      const merged: OfflineUserPreferences & { key: 'prefs' } = {
+        ...(existing ?? {}),
+        ...prefs,
+        key: 'prefs',
+      };
+      await db.put('user_preferences', merged);
+    } catch (err) {
+      console.warn('[HomeOfflineService] savePreferences failed (non-critical):', err);
+    }
+  }
+
+  /**
+   * Retrieve stored user preferences.
+   * Returns empty object if nothing is stored.
+   */
+  static async getPreferences(): Promise<OfflineUserPreferences> {
+    try {
+      const db = await getOfflineDB();
+      const stored = await db.get('user_preferences', 'prefs');
+      if (!stored) return {};
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { key, ...prefs } = stored;
+      return prefs;
+    } catch {
+      return {};
+    }
+  }
+
+  /**
+   * Clear stored user preferences.
+   */
+  static async clearPreferences(): Promise<void> {
+    try {
+      const db = await getOfflineDB();
+      await db.delete('user_preferences', 'prefs');
+    } catch {
+      // Ignore
+    }
+  }
+}

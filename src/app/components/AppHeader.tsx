@@ -1,6 +1,6 @@
 "use client";
 
-import { Globe, Menu, User, LogIn, UserPlus } from 'lucide-react';
+import { Globe, Menu, User, LogIn, UserPlus, Download } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -55,6 +55,17 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
 
         {/* Action Buttons (Right Aligned with Content) */}
         <div className="flex justify-end items-center gap-3 text-white">
+          {/* Downloads / Offline Management */}
+          <button
+            id="header-downloads-btn"
+            onClick={() => navigateTo('/offline')}
+            title="Downloads & Offline"
+            className="p-2 rounded-full border border-white/30 hover:bg-white/10 active:scale-95 transition-all"
+            aria-label="Downloads and offline management"
+          >
+            <Download className="size-4 opacity-90" />
+          </button>
+
           {/* Language Selector (disabled – English only) */}
           <div className="flex items-center gap-2 px-4 py-1.5 rounded-full border border-white/30 opacity-70 cursor-default pointer-events-none select-none">
             <Globe className="size-4 opacity-90" />

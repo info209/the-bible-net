@@ -6,6 +6,7 @@ import AppHeader from "./components/AppHeader";
 import BibleReaderPageContainer from "./components/BibleReaderPageContainer";
 import BottomNav from "./components/BottomNav";
 import NetworkStatusModal from "@/components/NetworkStatusModal";
+import OfflineBanner from "@/components/offline/OfflineBanner";
 
 const isBibleReadingRoute = (path: string) => path === '/bible' || path.startsWith('/bible/');
 
@@ -66,6 +67,8 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   return (
     <>
       <NetworkStatusModal />
+      {/* Non-blocking offline banner — shown when device loses connectivity */}
+      {isPublicAppPage && <OfflineBanner />}
       {/* 
         Optimization: 
         1. On /bible, BibleReaderPage renders its own AppHeader (internal to its design).
