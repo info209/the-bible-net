@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from '@/context/ToastContext';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, QueryClient } from '@tanstack/react-query';
 
 export type LikeStatus = 'liked' | 'unliked';
 
@@ -21,6 +21,50 @@ interface LikeContextType {
 }
 
 const LikeContext = createContext<LikeContextType | undefined>(undefined);
+
+// ── Helper: write server-confirmed like data directly into relevant caches ────
+// Called after a successful like/unlike API response to avoid a full refetch
+// (which causes a stale-prop re-registration race in the carousel ↔ modal).
+function updateLikeInCache(
+  queryClient: QueryClient,
+  contentId: string,
+  contentType: string,
+  likeCount: number,
+  liked: boolean,
+) {
+  const isVerse = contentType === 'daily-verse';
+  const likeCountField = isVerse ? 'verseLikeCount' : 'devotionLikeCount';
+  const isLikedField   = isVerse ? 'isVerseLiked'  : 'isDevotionLiked';
+
+  const patcher = (prev: any[] | undefined) => {
+    if (!Array.isArray(prev)) return prev;
+    return prev.map((item: any) => {
+      if (String(item._id) !== String(contentId)) return item;
+      const updated = { ...item, [likeCountField]: likeCount, [isLikedField]: liked };
+      // Also keep per-date slices in sync (populated by the daily queries)
+      // These are keyed as ['daily-verse', date, version] and ['daily-devotion', date, version]
+      if (item.date) {
+        const allKeys = queryClient.getQueriesData({ queryKey: ['daily-verse', item.date] });
+        allKeys.forEach(([key]) => {
+          queryClient.setQueryData(key, (prev2: any) =>
+            prev2 && String(prev2._id) === String(contentId) ? { ...prev2, [likeCountField]: likeCount, [isLikedField]: liked } : prev2
+          );
+        });
+        const allKeys2 = queryClient.getQueriesData({ queryKey: ['daily-devotion', item.date] });
+        allKeys2.forEach(([key]) => {
+          queryClient.setQueryData(key, (prev2: any) =>
+            prev2 && String(prev2._id) === String(contentId) ? { ...prev2, [likeCountField]: likeCount, [isLikedField]: liked } : prev2
+          );
+        });
+      }
+      return updated;
+    });
+  };
+
+  // Update both list caches so the carousel and modal are always in sync
+  queryClient.setQueriesData({ queryKey: ['daily-content-list'] }, patcher);
+  queryClient.setQueriesData({ queryKey: ['daily-content-today'] }, patcher);
+}
 
 export function LikeProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
@@ -124,8 +168,12 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
         throw new Error(data.error || 'API returned failure');
       }
 
-      // Invalidate queries to sync state across views
-      queryClient.invalidateQueries({ queryKey: ['daily-content-list'] });
+      // Write server-confirmed counts directly into the cache.
+      // This avoids a full refetch which would create a stale-prop race where the
+      // carousel re-renders with old initialCount and overwrites the confirmed state.
+      updateLikeInCache(queryClient, contentId, contentType, data.likeCount, data.liked);
+
+      // Still invalidate the /likes profile page — it needs a fresh list fetch
       queryClient.invalidateQueries({ queryKey: ['likes'] });
 
       const newServerState: LikeStatus = data.liked ? 'liked' : 'unliked';

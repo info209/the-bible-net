@@ -879,7 +879,7 @@ export function DailyDetailModal({
                                                                             key={c.date}
                                                                             className={`h-2 w-2 rounded-full transition-all ${
                                                                                 s === 'COMPLETED'
-                                                                                    ? 'bg-emerald-400'
+                                                                                    ? 'bg-teal-400'
                                                                                     : s === 'IN_PROGRESS'
                                                                                     ? 'bg-amber-400'
                                                                                     : 'bg-black/20'
@@ -893,7 +893,7 @@ export function DailyDetailModal({
 
                                                         {/* Completed Badge — shown only when COMPLETED */}
                                                         {progress === 'COMPLETED' && (
-                                                            <div className="flex items-center gap-2.5 px-5 py-3.5 rounded-2xl bg-emerald-600 border border-emerald-500 text-white shadow-md w-full justify-center">
+                                                            <div className="flex items-center gap-2.5 px-5 py-3.5 rounded-2xl bg-teal-600 border border-teal-500 text-white shadow-md w-full justify-center">
                                                                 <CheckCircle2 className="size-5 text-white flex-shrink-0" />
                                                                 <span className="text-white text-sm font-bold tracking-wide">Devotional Completed</span>
                                                             </div>

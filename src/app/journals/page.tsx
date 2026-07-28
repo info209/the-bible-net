@@ -1394,6 +1394,8 @@ function JournalsContent() {
             <header className="h-[64px] px-4 flex items-center justify-between border-b border-[#E6E6E6] dark:border-white/[0.08] bg-white dark:bg-[#000000] sticky top-0 z-30">
               <div className="flex items-center space-x-1">
                 <button
+                  type="button"
+                  onPointerDown={(e) => e.preventDefault()}
                   onClick={() => {
                     if (navigationSource === 'profile') {
                       // Return to the home page with ?profile=true so AppHeader
@@ -1403,7 +1405,7 @@ function JournalsContent() {
                       router.back();
                     }
                   }}
-                  className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06] transition-colors"
+                  className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06] transition-colors cursor-pointer"
                   aria-label="Go back"
                 >
                   <ArrowLeft className="w-5 h-5" strokeWidth={2.5} />
@@ -1798,8 +1800,8 @@ function JournalsContent() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                      className="fixed inset-0 z-40 bg-black/20 dark:bg-black/40 backdrop-blur-[1px]"
+                      transition={{ duration: 0.15 }}
+                      className="fixed inset-0 z-40 bg-black/25 dark:bg-black/50"
                       onClick={() => setIsFabExpanded(false)}
                     />
                   )}
@@ -1812,15 +1814,19 @@ function JournalsContent() {
                       {/* Top Action Card: New Journal */}
                       <motion.button
                         key="new-journal-card"
+                        type="button"
                         initial={{ opacity: 0, scale: 0.85, y: 15 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.85, y: 12 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.95 }}
                         transition={{ type: 'spring', stiffness: 420, damping: 28, delay: 0.04 }}
+                        style={{ transformOrigin: 'bottom right' }}
                         onClick={() => {
                           setIsFabExpanded(false);
                           handleOpenEditor(null, 'journal');
                         }}
-                        className="bg-white dark:bg-[#1A1A1E] border border-gray-100 dark:border-white/[0.08] rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center gap-3.5 hover:scale-[1.02] active:scale-95 transition-all group cursor-pointer"
+                        className="bg-white dark:bg-[#1A1A1E] border border-gray-100 dark:border-white/[0.08] rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center gap-3.5 group cursor-pointer"
                         aria-label="New Journal"
                       >
                         <div className="w-10 h-10 rounded-full bg-[#0B7A81]/10 dark:bg-[#0B7A81]/20 text-[#0B7A81] dark:text-[#14B8A6] flex items-center justify-center shrink-0">
@@ -1834,15 +1840,19 @@ function JournalsContent() {
                       {/* Bottom Action Card: New Prayer */}
                       <motion.button
                         key="new-prayer-card"
+                        type="button"
                         initial={{ opacity: 0, scale: 0.85, y: 15 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.85, y: 12 }}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.95 }}
                         transition={{ type: 'spring', stiffness: 420, damping: 28 }}
+                        style={{ transformOrigin: 'bottom right' }}
                         onClick={() => {
                           setIsFabExpanded(false);
                           handleOpenEditor(null, 'prayer');
                         }}
-                        className="bg-white dark:bg-[#1A1A1E] border border-gray-100 dark:border-white/[0.08] rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center gap-3.5 hover:scale-[1.02] active:scale-95 transition-all group cursor-pointer"
+                        className="bg-white dark:bg-[#1A1A1E] border border-gray-100 dark:border-white/[0.08] rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center gap-3.5 group cursor-pointer"
                         aria-label="New Prayer"
                       >
                         <div className="w-10 h-10 rounded-full bg-rose-500/10 dark:bg-rose-400/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
@@ -1858,9 +1868,10 @@ function JournalsContent() {
 
                 {/* FAB Main Button */}
                 <button
+                  type="button"
                   onClick={() => setIsFabExpanded(!isFabExpanded)}
                   style={{ boxShadow: isFabExpanded ? '0 8px 24px rgba(0,0,0,0.25)' : '0 8px 24px rgba(11,122,129,0.25)' }}
-                  className={`fixed bottom-[88px] right-[20px] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-colors duration-200 z-50 ${
+                  className={`fixed bottom-[88px] right-[20px] w-14 h-14 rounded-full flex items-center justify-center shadow-lg active:scale-95 transition-colors duration-200 z-50 cursor-pointer ${
                     isFabExpanded ? 'bg-[#2B363B] text-white' : 'bg-[#0B7A81] text-white'
                   }`}
                   aria-label={isFabExpanded ? 'Close menu' : 'Add journal or prayer'}
@@ -1892,8 +1903,11 @@ function JournalsContent() {
             <header className="h-[64px] px-4 flex items-center justify-between border-b border-[#E6E6E6] dark:border-white/[0.08] bg-white dark:bg-[#000000] sticky top-0 z-30">
               <div className="flex items-center space-x-1">
                 <button
+                  type="button"
+                  onPointerDown={(e) => e.preventDefault()}
                   onClick={() => setIsEditing(false)}
-                  className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06]"
+                  className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06] cursor-pointer"
+                  aria-label="Go back to list"
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>

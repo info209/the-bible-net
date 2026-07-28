@@ -54,6 +54,10 @@ export default function HomeView() {
   const [submittingComment, setSubmittingComment] = useState(false);
   const [sharingStates, setSharingStates] = useState<Set<string>>(new Set());
 
+  // Saves scroll position before opening the comment modal so we can restore
+  // it after the Radix Dialog closes (body-lock can otherwise jump the page)
+  const savedScrollY = useRef<number>(0);
+
   const [greeting, setGreeting] = useState('Shalom');
 
   // Modal states
@@ -240,6 +244,9 @@ export default function HomeView() {
       router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`);
       return;
     }
+    // Capture scroll position BEFORE the Dialog mounts its body-lock so we
+    // can restore it when the modal closes (prevents the page from jumping).
+    savedScrollY.current = window.scrollY;
     setActiveContent({ id: contentId, type });
     setShowCommentModal(true);
     fetchComments(contentId, type);
@@ -274,7 +281,8 @@ export default function HomeView() {
         setNewComment('');
         fetchComments(activeContent.id, activeContent.type);
 
-        queryClient.setQueryData(['daily-content-list', preferredVersion, todayStr], (prev: any[] | undefined) => {
+        // Patch helper — increments the comment count for matching content
+        const patchCommentCount = (prev: any[] | undefined) => {
           if (!prev) return prev;
           return prev.map(content => {
             if (content._id === activeContent.id) {
@@ -283,13 +291,19 @@ export default function HomeView() {
                 ...content,
                 [countField]: (content[countField] || 0) + 1
               };
+              // Keep per-date slices in sync as well
               queryClient.setQueryData(['daily-verse', content.date, preferredVersion], updatedItem);
               queryClient.setQueryData(['daily-devotion', content.date, preferredVersion], updatedItem);
               return updatedItem;
             }
             return content;
           });
-        });
+        };
+
+        // Update BOTH list caches so the count is consistent regardless of
+        // which query is currently active (today-only vs full 7-day history)
+        queryClient.setQueryData(['daily-content-list', preferredVersion, todayStr], patchCommentCount);
+        queryClient.setQueryData(['daily-content-today', preferredVersion, todayStr], patchCommentCount);
       }
     } catch (error) {
       console.error('Add comment error:', error);
@@ -1197,7 +1211,20 @@ export default function HomeView() {
       />
 
       {/* Comment Modal - Restored */}
-      <Dialog open={showCommentModal} onOpenChange={setShowCommentModal}>
+      <Dialog
+        open={showCommentModal}
+        onOpenChange={(open) => {
+          setShowCommentModal(open);
+          if (!open) {
+            // Restore the scroll position that was saved before the Dialog opened.
+            // Radix's body scroll-lock can shift the viewport offset when it
+            // removes the overflow:hidden rule; restoring here prevents the jump.
+            requestAnimationFrame(() => {
+              window.scrollTo({ top: savedScrollY.current, behavior: 'instant' });
+            });
+          }
+        }}
+      >
         <DialogContent className="sm:max-w-lg p-0 gap-0 overflow-hidden rounded-[12px] bg-white dark:bg-zinc-950 border border-slate-200 dark:border-zinc-800 shadow-2xl [&>[data-slot=dialog-close]]:hidden flex flex-col max-h-[90vh]">
           <DialogHeader className="p-4 border-b flex flex-row items-center justify-between bg-white dark:bg-zinc-950 border-slate-100 dark:border-zinc-800 space-y-0">
             <div className="flex flex-col">

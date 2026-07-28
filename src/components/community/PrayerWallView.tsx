@@ -159,8 +159,11 @@ export default function PrayerWallView() {
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <div className="flex items-center space-x-4">
             <button
+              type="button"
+              onPointerDown={(e) => e.preventDefault()}
               onClick={() => router.back()}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 hover:bg-gray-100 rounded-full transition-colors cursor-pointer"
+              aria-label="Go back"
             >
               <ArrowLeft className="size-6 text-gray-700" />
             </button>
