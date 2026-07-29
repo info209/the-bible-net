@@ -153,13 +153,13 @@ export default function HomeView() {
   const preferredVersion = (session?.user as any)?.preferredBibleVersion || 'KJV';
   const todayStr = new Date().toISOString().split('T')[0];
 
-  // ── Query 1: Today only (fast — renders the carousel immediately) ──────────
-  const { data: todayData, isLoading: todayLoading } = useQuery({
-    queryKey: ['daily-content-today', preferredVersion, todayStr],
+  // ── Single Daily Content Query (7 days fetched together in one request) ────
+  const { data: dailyContentData, isLoading: dailyLoading } = useQuery({
+    queryKey: ['daily-content-list', preferredVersion, todayStr],
     queryFn: async () => {
       try {
-        const res = await fetch(`/api/daily?days=1&version=${encodeURIComponent(preferredVersion)}`);
-        if (!res.ok) throw new Error('Failed to fetch today content');
+        const res = await fetch(`/api/daily?days=7&version=${encodeURIComponent(preferredVersion)}`);
+        if (!res.ok) throw new Error('Failed to fetch daily content');
         const data = await res.json();
         const items = data.data || [];
         items.forEach((item: any) => {
@@ -171,10 +171,8 @@ export default function HomeView() {
         return items;
       } catch (err) {
         // Offline fallback: serve from IndexedDB
-        if (typeof navigator !== 'undefined' && !navigator.onLine) {
-          const cached = await HomeOfflineService.getHomeCache('daily_verse');
-          if (cached?.data) return cached.data as any[];
-        }
+        const cached = await HomeOfflineService.getHomeCache('daily_verse');
+        if (cached?.data) return cached.data as any[];
         throw err;
       }
     },
@@ -182,29 +180,6 @@ export default function HomeView() {
     gcTime: 24 * 60 * 60 * 1000,
     networkMode: 'offlineFirst',
   });
-
-  // ── Query 2: Full 7-day history (background — fires after today resolves) ───
-  const { data: historyData } = useQuery({
-    queryKey: ['daily-content-list', preferredVersion, todayStr],
-    queryFn: async () => {
-      const res = await fetch(`/api/daily?days=7&version=${encodeURIComponent(preferredVersion)}`);
-      if (!res.ok) throw new Error('Failed to fetch daily content');
-      const data = await res.json();
-      const items = data.data || [];
-      items.forEach((item: any) => {
-        queryClient.setQueryData(['daily-verse', item.date, preferredVersion], item);
-        queryClient.setQueryData(['daily-devotion', item.date, preferredVersion], item);
-      });
-      return items;
-    },
-    // Don't start until today's fast query has resolved
-    enabled: !todayLoading && !!todayData,
-    staleTime: 5 * 60 * 1000,
-  });
-
-  // Merge: show today immediately, replace with full history once available
-  const dailyContentData = historyData ?? todayData;
-  const dailyLoading = todayLoading;
 
   const dailyVerses = useMemo(() => {
     return (dailyContentData || []).filter((item: any) => item.verseBook && item.verseBook !== 'Unknown');
