@@ -1,277 +1,293 @@
 /**
  * DownloadManager
  *
- * Handles full Bible version downloads:
- * - Fetches all books then all chapter content from the server APIs
- * - Stores everything in IndexedDB via BibleOfflineService
- * - Tracks progress, supports pause/resume/retry/cancel
- * - Uses AbortController for cancellation
- * - Processes chapters in batches of 5 to avoid overwhelming the server
+ * Handles Book-level and Chapter-level downloads:
+ * - Downloads one book at a time (all chapters of that book) or individual chapters
+ * - Strictly enforces the 100 MB storage cap via StorageManager
+ * - Tracks download progress with percentage and callbacks
+ * - Supports cancellation via AbortController
  */
 
 import { BibleOfflineService } from './BibleOfflineService';
 import { ChapterCacheService } from './ChapterCacheService';
-import type {
-  OfflineBookData,
-  OfflineChapterData,
-  VersionDownloadRecord,
-} from './types';
+import { StorageManager } from './StorageManager';
+import { buildBookDownloadKey, buildChapterDownloadKey } from './db';
+import type { OfflineChapterData, DownloadRecord } from './types';
 
 const CHAPTER_BATCH_SIZE = 5;
 const FETCH_TIMEOUT_MS = 15_000;
 
-/** Map of active AbortControllers, keyed by versionId */
+/** Active download controllers keyed by record ID */
 const activeAbortControllers = new Map<string, AbortController>();
 
 export type DownloadProgressCallback = (
   progress: number,
   downloadedChapters: number,
   totalChapters: number,
-  currentBook?: string,
+  statusMessage?: string,
 ) => void;
 
 export class DownloadManager {
   /**
-   * Start downloading a Bible version.
-   * Fetches all books → all chapters → stores in IndexedDB.
+   * Download all chapters of a single book.
    */
-  static async startDownload(
-    versionId: string,
-    versionAbbreviation: string,
-    versionName: string,
-    language: string,
-    onProgress?: DownloadProgressCallback,
-  ): Promise<void> {
-    // Cancel any existing download for this version
-    this.cancelAbort(versionId);
-    const controller = new AbortController();
-    activeAbortControllers.set(versionId, controller);
+  static async downloadBook({
+    versionId,
+    versionAbbreviation,
+    bookId,
+    bookName,
+    chapterCount,
+    testament = 'OT',
+    onProgress,
+  }: {
+    versionId: string;
+    versionAbbreviation: string;
+    bookId: string;
+    bookName: string;
+    chapterCount: number;
+    testament?: 'OT' | 'NT';
+    onProgress?: DownloadProgressCallback;
+  }): Promise<void> {
+    const recordId = buildBookDownloadKey(versionId, bookId);
 
-    try {
-      // Initialize download status
+    // 100 MB Storage Cap Check (~5KB per chapter average)
+    const estimatedBytes = chapterCount * 5000;
+    const canFit = await StorageManager.canFit(estimatedBytes);
+    if (!canFit) {
+      const errMessage = '100 MB storage limit reached. Please delete some downloaded books to free up space.';
       await BibleOfflineService.setDownloadStatus({
+        id: recordId,
+        targetType: 'book',
         versionId,
         versionAbbreviation,
-        versionName,
-        language,
+        bookId,
+        bookName,
+        totalChapters: chapterCount,
+        status: 'failed',
+        progressPercent: 0,
+        errorMessage: errMessage,
+      });
+      throw new Error(errMessage);
+    }
+
+    this.cancelAbort(recordId);
+    const controller = new AbortController();
+    activeAbortControllers.set(recordId, controller);
+
+    try {
+      await BibleOfflineService.setDownloadStatus({
+        id: recordId,
+        targetType: 'book',
+        versionId,
+        versionAbbreviation,
+        bookId,
+        bookName,
+        totalChapters: chapterCount,
+        downloadedChapters: 0,
         status: 'downloading',
         progressPercent: 0,
-        downloadedChapters: 0,
-        totalChapters: 0,
       });
 
-      // Step 1: Fetch all books for the version
-      const books = await this.fetchBooks(versionId, versionAbbreviation, controller.signal);
-      if (books.length === 0) throw new Error('No books found for this version');
-
-      // Save books to IndexedDB
-      await BibleOfflineService.saveBooks(books);
-
-      // Step 2: Calculate total chapters
-      const totalChapters = books.reduce((sum, b) => sum + b.chapterCount, 0);
-      await BibleOfflineService.updateDownloadProgress(versionId, { totalChapters });
-
+      const chapterNumbers = Array.from({ length: chapterCount }, (_, i) => i + 1);
       let downloadedChapters = 0;
 
-      // Step 3: Fetch chapters per book
-      for (const book of books) {
+      for (let i = 0; i < chapterNumbers.length; i += CHAPTER_BATCH_SIZE) {
         if (controller.signal.aborted) break;
 
-        // Build chapter numbers array
-        const chapterNumbers = Array.from({ length: book.chapterCount }, (_, i) => i + 1);
+        const batch = chapterNumbers.slice(i, i + CHAPTER_BATCH_SIZE);
+        const chapterDataList = await this.fetchChapterBatch(
+          versionId,
+          versionAbbreviation,
+          bookId,
+          bookName,
+          testament,
+          batch,
+          controller.signal,
+        );
 
-        // Process in batches
-        for (let i = 0; i < chapterNumbers.length; i += CHAPTER_BATCH_SIZE) {
-          if (controller.signal.aborted) break;
+        await BibleOfflineService.saveChapters(chapterDataList);
 
-          const batch = chapterNumbers.slice(i, i + CHAPTER_BATCH_SIZE);
-          const chapterDataList = await this.fetchChapterBatch(
-            versionId,
-            versionAbbreviation,
-            book,
-            batch,
-            controller.signal,
-          );
-
-          await BibleOfflineService.saveChapters(chapterDataList);
-
-          // Update access log for each chapter (mark as protected)
-          for (const chapter of chapterDataList) {
-            await ChapterCacheService.updateAccessLog(chapter.id, versionId, true);
-          }
-
-          downloadedChapters += chapterDataList.length;
-          const percent = Math.round((downloadedChapters / totalChapters) * 100);
-
-          await BibleOfflineService.updateDownloadProgress(versionId, {
-            progressPercent: percent,
-            downloadedChapters,
-            pausedAtBookId: book.id,
-            pausedAtChapter: batch[batch.length - 1],
-          });
-
-          onProgress?.(percent, downloadedChapters, totalChapters, book.name);
+        for (const ch of chapterDataList) {
+          await ChapterCacheService.updateAccessLog(ch.id, versionId, true);
         }
+
+        downloadedChapters += chapterDataList.length;
+        const percent = Math.round((downloadedChapters / chapterCount) * 100);
+
+        await BibleOfflineService.updateDownloadProgress(recordId, {
+          progressPercent: percent,
+          downloadedChapters,
+        });
+
+        onProgress?.(percent, downloadedChapters, chapterCount, `Downloading ${bookName}...`);
       }
 
-      if (controller.signal.aborted) {
-        // Status was already set to 'paused' by pauseDownload()
-        return;
-      }
+      if (controller.signal.aborted) return;
 
-      // Step 4: Mark as completed
-      const estimatedBytes = await BibleOfflineService.estimateVersionSize(versionId);
-      await BibleOfflineService.updateDownloadProgress(versionId, {
+      const actualBytes = await BibleOfflineService.estimateBookSize(versionId, bookId);
+      await BibleOfflineService.updateDownloadProgress(recordId, {
         status: 'downloaded',
         progressPercent: 100,
+        downloadedChapters: chapterCount,
         downloadedAt: new Date().toISOString(),
-        estimatedBytes,
+        estimatedBytes: actualBytes,
         errorMessage: undefined,
       });
 
-      onProgress?.(100, totalChapters, totalChapters);
+      onProgress?.(100, chapterCount, chapterCount, `${bookName} downloaded`);
     } catch (err: any) {
-      if (err.name === 'AbortError') return; // Handled by pause/cancel
-      console.error('[DownloadManager] Download failed:', err);
-      await BibleOfflineService.updateDownloadProgress(versionId, {
+      if (err.name === 'AbortError') return;
+      console.error('[DownloadManager] Book download failed:', err);
+      await BibleOfflineService.updateDownloadProgress(recordId, {
         status: 'failed',
         errorMessage: err.message || 'Download failed',
       });
+      throw err;
     } finally {
-      activeAbortControllers.delete(versionId);
+      activeAbortControllers.delete(recordId);
     }
   }
 
   /**
-   * Pause an active download.
-   * The current chapter batch will complete, then the download stops.
+   * Download a single chapter of a book.
    */
-  static async pauseDownload(versionId: string): Promise<void> {
-    const controller = activeAbortControllers.get(versionId);
-    if (controller) {
-      controller.abort();
-      activeAbortControllers.delete(versionId);
+  static async downloadChapter({
+    versionId,
+    versionAbbreviation,
+    bookId,
+    bookName,
+    chapterNumber,
+    testament = 'OT',
+    onProgress,
+  }: {
+    versionId: string;
+    versionAbbreviation: string;
+    bookId: string;
+    bookName: string;
+    chapterNumber: number;
+    testament?: 'OT' | 'NT';
+    onProgress?: DownloadProgressCallback;
+  }): Promise<void> {
+    const recordId = buildChapterDownloadKey(versionId, bookId, chapterNumber);
+
+    // 100 MB Storage Cap Check (~6KB for one chapter)
+    const canFit = await StorageManager.canFit(6000);
+    if (!canFit) {
+      const errMessage = '100 MB storage limit reached. Please delete some downloaded content.';
+      await BibleOfflineService.setDownloadStatus({
+        id: recordId,
+        targetType: 'chapter',
+        versionId,
+        versionAbbreviation,
+        bookId,
+        bookName,
+        chapterNumber,
+        status: 'failed',
+        progressPercent: 0,
+        errorMessage: errMessage,
+      });
+      throw new Error(errMessage);
     }
-    await BibleOfflineService.updateDownloadProgress(versionId, {
-      status: 'paused',
-    });
+
+    this.cancelAbort(recordId);
+    const controller = new AbortController();
+    activeAbortControllers.set(recordId, controller);
+
+    try {
+      await BibleOfflineService.setDownloadStatus({
+        id: recordId,
+        targetType: 'chapter',
+        versionId,
+        versionAbbreviation,
+        bookId,
+        bookName,
+        chapterNumber,
+        status: 'downloading',
+        progressPercent: 30,
+      });
+
+      onProgress?.(30, 0, 1, `Downloading ${bookName} ${chapterNumber}...`);
+
+      const batch = await this.fetchChapterBatch(
+        versionId,
+        versionAbbreviation,
+        bookId,
+        bookName,
+        testament,
+        [chapterNumber],
+        controller.signal,
+      );
+
+      if (batch.length === 0) throw new Error('Failed to fetch chapter content');
+
+      await BibleOfflineService.saveChapters(batch);
+      await ChapterCacheService.updateAccessLog(batch[0].id, versionId, true);
+
+      await BibleOfflineService.updateDownloadProgress(recordId, {
+        status: 'downloaded',
+        progressPercent: 100,
+        downloadedAt: new Date().toISOString(),
+        estimatedBytes: batch[0].verses.reduce((acc, v) => acc + v.text.length, 0) * 2,
+        errorMessage: undefined,
+      });
+
+      onProgress?.(100, 1, 1, `${bookName} ${chapterNumber} downloaded`);
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      console.error('[DownloadManager] Chapter download failed:', err);
+      await BibleOfflineService.updateDownloadProgress(recordId, {
+        status: 'failed',
+        errorMessage: err.message || 'Download failed',
+      });
+      throw err;
+    } finally {
+      activeAbortControllers.delete(recordId);
+    }
   }
 
   /**
-   * Resume a paused download from where it left off.
+   * Delete a downloaded book (and all its stored chapters).
    */
-  static async resumeDownload(
+  static async deleteBook(versionId: string, bookId: string): Promise<void> {
+    const recordId = buildBookDownloadKey(versionId, bookId);
+    this.cancelAbort(recordId);
+    await BibleOfflineService.deleteBookData(versionId, bookId);
+  }
+
+  /**
+   * Delete a downloaded chapter.
+   */
+  static async deleteChapter(
     versionId: string,
-    onProgress?: DownloadProgressCallback,
+    bookId: string,
+    chapterNumber: number,
   ): Promise<void> {
-    const status = await BibleOfflineService.getDownloadStatus(versionId);
-    if (!status) return;
-
-    if (status.status !== 'paused' && status.status !== 'failed') return;
-
-    // Re-start with full download (will skip already-stored chapters implicitly
-    // because we save by composite key — same chapter will just be overwritten)
-    await this.startDownload(
-      versionId,
-      status.versionAbbreviation,
-      status.versionName,
-      status.language,
-      onProgress,
-    );
+    const recordId = buildChapterDownloadKey(versionId, bookId, chapterNumber);
+    this.cancelAbort(recordId);
+    await BibleOfflineService.deleteSingleChapter(versionId, bookId, chapterNumber);
   }
 
   /**
-   * Retry a failed download (resets error state and restarts).
+   * Check if an active download is running.
    */
-  static async retryDownload(
-    versionId: string,
-    onProgress?: DownloadProgressCallback,
-  ): Promise<void> {
-    await BibleOfflineService.updateDownloadProgress(versionId, {
-      status: 'downloading',
-      errorMessage: undefined,
-      progressPercent: 0,
-      downloadedChapters: 0,
-    });
-    await this.resumeDownload(versionId, onProgress);
+  static isDownloading(recordId: string): boolean {
+    return activeAbortControllers.has(recordId);
   }
 
-  /**
-   * Cancel and delete all data for a version download in progress.
-   */
-  static async cancelDownload(versionId: string): Promise<void> {
-    const controller = activeAbortControllers.get(versionId);
-    if (controller) {
-      controller.abort();
-      activeAbortControllers.delete(versionId);
-    }
-    // Remove partial data
-    await BibleOfflineService.deleteAllChaptersForVersion(versionId);
-    await BibleOfflineService.deleteBooks(versionId);
-    await BibleOfflineService.updateDownloadProgress(versionId, {
-      status: 'not_downloaded',
-      progressPercent: 0,
-      downloadedChapters: 0,
-      errorMessage: undefined,
-    });
-  }
-
-  /**
-   * Delete a fully downloaded version (removes all stored data).
-   */
-  static async deleteDownload(versionId: string): Promise<void> {
-    this.cancelAbort(versionId);
-    await BibleOfflineService.deleteVersionData(versionId);
-  }
-
-  /**
-   * Check whether a download is actively in progress.
-   */
-  static isDownloading(versionId: string): boolean {
-    return activeAbortControllers.has(versionId);
-  }
-
-  // ---------------------------------------------------------------------------
-  // Private helpers
-  // ---------------------------------------------------------------------------
-
-  private static cancelAbort(versionId: string): void {
-    const existing = activeAbortControllers.get(versionId);
+  private static cancelAbort(recordId: string): void {
+    const existing = activeAbortControllers.get(recordId);
     if (existing) {
       existing.abort();
-      activeAbortControllers.delete(versionId);
+      activeAbortControllers.delete(recordId);
     }
-  }
-
-  private static async fetchBooks(
-    versionId: string,
-    versionAbbreviation: string,
-    signal: AbortSignal,
-  ): Promise<OfflineBookData[]> {
-    const res = await fetchWithTimeout(
-      `/api/v1/bible/${encodeURIComponent(versionAbbreviation)}/books`,
-      { signal },
-    );
-    if (!res.ok) throw new Error(`Failed to fetch books: HTTP ${res.status}`);
-    const json = await res.json();
-    if (!json.success) throw new Error(json.error || 'Failed to fetch books');
-
-    return (json.data as any[]).map((b: any) => ({
-      id: b._id,
-      versionId,
-      name: b.name,
-      abbreviation: b.abbreviation || b.name,
-      englishName: b.name,
-      order: b.order,
-      testament: b.testament === 'NT' ? 'NT' : 'OT',
-      chapterCount: b.chapterCount || 0,
-    }));
   }
 
   private static async fetchChapterBatch(
     versionId: string,
     versionAbbreviation: string,
-    book: OfflineBookData,
+    bookId: string,
+    bookName: string,
+    testament: 'OT' | 'NT',
     chapterNumbers: number[],
     signal: AbortSignal,
   ): Promise<OfflineChapterData[]> {
@@ -282,22 +298,22 @@ export class DownloadManager {
         if (signal.aborted) return;
         try {
           const res = await fetchWithTimeout(
-            `/api/v1/bible/${encodeURIComponent(versionAbbreviation)}/${encodeURIComponent(book.id)}/${chapterNum}`,
+            `/api/v1/bible/${encodeURIComponent(versionAbbreviation)}/${encodeURIComponent(bookId)}/${chapterNum}`,
             { signal },
           );
-          if (!res.ok) return; // Skip failed chapters, continue download
+          if (!res.ok) return;
 
           const json = await res.json();
           if (!json.success || !json.data?.verses) return;
 
           const chapter: OfflineChapterData = {
-            id: `${versionId}::${book.id}::${chapterNum}`,
+            id: `${versionId}::${bookId}::${chapterNum}`,
             versionId,
-            bookId: book.id,
-            bookName: book.name,
-            bookAbbreviation: book.abbreviation,
+            bookId,
+            bookName,
+            bookAbbreviation: versionAbbreviation,
             chapterNumber: chapterNum,
-            testament: book.testament,
+            testament,
             verses: json.data.verses as Array<{ number: number; text: string }>,
             cachedAt: new Date().toISOString(),
             isDownloaded: true,
@@ -306,7 +322,7 @@ export class DownloadManager {
         } catch (err: any) {
           if (err.name !== 'AbortError') {
             console.warn(
-              `[DownloadManager] Failed to fetch ${book.name} ${chapterNum}:`,
+              `[DownloadManager] Failed to fetch ${bookName} ${chapterNum}:`,
               err.message,
             );
           }
@@ -318,7 +334,6 @@ export class DownloadManager {
   }
 }
 
-/** fetch with a configurable timeout */
 async function fetchWithTimeout(
   url: string,
   options: RequestInit = {},
@@ -326,7 +341,6 @@ async function fetchWithTimeout(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
-  // Merge signals if the caller also has one
   const callerSignal = options.signal as AbortSignal | undefined;
   if (callerSignal) {
     callerSignal.addEventListener('abort', () => controller.abort());

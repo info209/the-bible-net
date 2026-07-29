@@ -6,7 +6,7 @@
  */
 
 // ---------------------------------------------------------------------------
-// Download Status
+// Download Status & Record
 // ---------------------------------------------------------------------------
 
 export type DownloadStatus =
@@ -17,31 +17,43 @@ export type DownloadStatus =
   | 'failed'
   | 'paused';
 
-export interface VersionDownloadRecord {
-  /** Matches the Bible version's _id (MongoDB ObjectId string) */
+export type DownloadTargetType = 'book' | 'chapter' | 'version';
+
+export interface DownloadRecord {
+  /**
+   * Primary key:
+   * - Book: `${versionId}::${bookId}`
+   * - Chapter: `${versionId}::${bookId}::${chapterNumber}`
+   * - Version: `${versionId}`
+   */
+  id: string;
+  targetType: DownloadTargetType;
   versionId: string;
   versionAbbreviation: string;
-  versionName: string;
-  language: string;
+  versionName?: string;
+  language?: string;
+  bookId?: string;
+  bookName?: string;
+  chapterNumber?: number;
   status: DownloadStatus;
   /** 0–100 */
   progressPercent: number;
   /** ISO timestamp of when the download completed */
   downloadedAt?: string;
-  /** ISO timestamp of last server-side version check */
+  /** ISO timestamp of last server-side check */
   lastCheckedAt?: string;
-  /** Estimated bytes stored for this version */
+  /** Estimated bytes stored for this item */
   estimatedBytes?: number;
-  /** Total chapters in this version (for progress calculation) */
+  /** Total chapters for book/version download */
   totalChapters?: number;
   /** Chapters downloaded so far */
   downloadedChapters?: number;
-  /** The chapter number (within the book) where we paused */
-  pausedAtBookId?: string;
-  pausedAtChapter?: number;
   /** Error message when status === 'failed' */
   errorMessage?: string;
 }
+
+/** Backward compatibility alias */
+export type VersionDownloadRecord = DownloadRecord;
 
 // ---------------------------------------------------------------------------
 // Bible Content
@@ -64,7 +76,7 @@ export interface OfflineChapterData {
   verses: OfflineVerseData[];
   /** ISO timestamp when cached */
   cachedAt: string;
-  /** Whether this chapter was saved as part of a full version download (not just LRU cache) */
+  /** Whether this chapter was saved as part of an explicit download */
   isDownloaded: boolean;
 }
 
@@ -87,7 +99,6 @@ export interface OfflineVersionData {
   name: string;
   language: string;
   isActive: boolean;
-  /** ISO timestamp from server — used to detect `update_available` */
   updatedAt?: string;
 }
 
@@ -101,7 +112,7 @@ export interface ChapterAccessLog {
   versionId: string;
   /** Unix timestamp (ms) of last access */
   lastAccessedAt: number;
-  /** Whether this entry is protected (part of a full download) */
+  /** Whether this entry is protected (part of an explicit book/chapter download) */
   isProtected: boolean;
 }
 
@@ -118,9 +129,7 @@ export type HomeCacheKey =
 
 export interface HomeCacheEntry {
   key: HomeCacheKey;
-  /** The cached payload — matches the API response shape */
   data: unknown;
-  /** ISO timestamp when this was last synced from the server */
   syncedAt: string;
 }
 
@@ -150,59 +159,45 @@ export type PendingActionType =
   | 'delete_item';
 
 export interface PendingAction {
-  /** UUID v4 */
   id: string;
   type: PendingActionType;
-  /** The request payload to send when back online */
   payload: Record<string, unknown>;
-  /** HTTP method to use: POST | DELETE | PATCH */
   method: 'POST' | 'DELETE' | 'PATCH' | 'PUT';
-  /** The API endpoint (relative, e.g. '/api/user/reading-progress') */
   endpoint: string;
-  /** ISO timestamp when queued */
   createdAt: string;
-  /** Number of failed sync attempts */
   retryCount: number;
-  /** ISO timestamp of last retry */
   lastAttemptAt?: string;
-  /** Error from last attempt */
   lastError?: string;
 }
 
 // ---------------------------------------------------------------------------
-// Storage Estimation
+// Storage Estimation (100 MB Max Cap)
 // ---------------------------------------------------------------------------
 
 export interface StorageUsageBreakdown {
-  /** Total bytes used across all offline data */
+  /** Total bytes used by offline Bible data & cache */
   totalBytes: number;
-  /** Bytes used by downloaded Bible versions (map: versionId → bytes) */
-  byVersion: Record<string, number>;
-  /** Bytes used by LRU chapter cache (non-downloaded) */
+  /** Hard cap limit in bytes (100 MB) */
+  maxCapBytes: number;
+  /** Usage by downloaded books (map: `${versionId}::${bookId}` -> bytes) */
+  byBook: Record<string, number>;
+  /** Usage by LRU chapter cache */
   chapterCacheBytes: number;
-  /** Bytes used by home cache */
+  /** Usage by home cache */
   homeCacheBytes: number;
-  /** Available quota reported by browser */
-  availableBytes: number;
-  /** Total quota reported by browser */
-  quotaBytes: number;
+  /** Available bytes remaining under the 100 MB cap */
+  availableCapBytes: number;
 }
 
 // ---------------------------------------------------------------------------
-// Network Status
+// Network & Sync Status
 // ---------------------------------------------------------------------------
 
 export interface NetworkStatus {
   isOnline: boolean;
-  /** True if connection type is 2g or slow-2g */
   isSlowConnection: boolean;
-  /** True if user was offline and just came back online */
   wasOffline: boolean;
 }
-
-// ---------------------------------------------------------------------------
-// Sync Status
-// ---------------------------------------------------------------------------
 
 export type SyncState = 'idle' | 'syncing' | 'success' | 'failed';
 

@@ -1,6 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw, RotateCw, Repeat, Gauge, Timer, Volume2, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw, RotateCw, Repeat, Gauge, Timer, Volume2, X, Download, BookOpen, HardDrive, Trash2, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import ProgressRing from './ui/ProgressRing';
+import { useDownloadManager } from '@/hooks/useDownloadManager';
+import { useNetworkStatusContext } from '@/lib/offline/NetworkStatusContext';
+import { StorageManager, MAX_STORAGE_MB } from '@/lib/offline/StorageManager';
+import { toast } from '@/context/ToastContext';
 
 interface AudioControlPanelProps {
   isOpen: boolean;
@@ -27,6 +31,8 @@ interface AudioControlPanelProps {
   selectedChapter?: number;
   totalChapters?: number;
   selectedBook?: string;
+  selectedVersion?: string;
+  selectedVersionId?: string;
   onChapterChange?: (chapter: number) => void;
   onBookChange?: (direction: 'prev' | 'next') => void;
   isDark?: boolean;
@@ -58,6 +64,8 @@ export default function AudioControlPanel({
   selectedChapter = 1,
   totalChapters = 50,
   selectedBook = '',
+  selectedVersion = 'NKJV',
+  selectedVersionId = 'NKJV',
   onChapterChange,
   onBookChange,
   isDark = false,
@@ -70,8 +78,20 @@ export default function AudioControlPanel({
   // Tracks whether the verse slider is actively being dragged
   // Used to freeze the progress ring and suppress auto-scroll
   const isDraggingSliderRef = useRef(false);
-  // Preview verse shown on thumb/tooltip during drag — committed on release
   const [dragVersePreview, setDragVersePreview] = useState<number | null>(null);
+  const [showDownloadModal, setShowDownloadModal] = useState(false);
+
+  const { isOnline } = useNetworkStatusContext();
+  const {
+    storageInfo,
+    getBookStatus,
+    getChapterStatus,
+    downloadBook,
+    downloadChapter,
+    deleteBook,
+    deleteChapter,
+    downloadStates,
+  } = useDownloadManager();
 
   useEffect(() => {
     if (!isOpen) {
@@ -485,6 +505,24 @@ export default function AudioControlPanel({
                 Timer
               </span>
             </button>
+
+            {/* Download */}
+            <button
+              id="audio-panel-download-btn"
+              onClick={() => setShowDownloadModal(true)}
+              className="relative flex flex-col items-center justify-center gap-0.5
+                hover:scale-105 active:scale-95 transition-transform"
+              style={{ color: textTertiary }}
+              aria-label="Download book or chapter"
+              title="Download options (100 MB Limit)"
+            >
+              <div className="size-5 flex items-center justify-center">
+                <Download className="size-4 text-[var(--color-primary-teal)]" strokeWidth={2.2} />
+              </div>
+              <span className="text-[8px] font-bold whitespace-nowrap leading-none">
+                Download
+              </span>
+            </button>
           </div>
 
           {/* ── Volume row ───────────────────────────────────────────────────── */}
@@ -509,6 +547,277 @@ export default function AudioControlPanel({
           </div>
         </div>
       </div>
+
+      {/* ── Offline Downloads Modal (Book & Chapter Download + 100 MB Storage Cap) ── */}
+      {showDownloadModal && (
+        <div
+          className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 pointer-events-auto"
+          onClick={() => setShowDownloadModal(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl p-5 shadow-2xl border flex flex-col max-h-[85vh] overflow-hidden"
+            style={{
+              backgroundColor: panelBg,
+              borderColor: panelBorder,
+              color: textPrimary,
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
+              <div>
+                <h3 className="text-base font-bold flex items-center gap-2">
+                  <Download className="size-4 text-[var(--color-primary-teal)]" />
+                  Offline Downloads
+                </h3>
+                <p className="text-xs opacity-70 mt-0.5">
+                  {selectedBook || 'Genesis'} {selectedChapter} &middot; {selectedVersion}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDownloadModal(false)}
+                className="size-7 rounded-full flex items-center justify-center hover:opacity-80 transition-colors"
+                style={{ backgroundColor: btnBg }}
+              >
+                <X className="size-4" style={{ color: textSecondary }} />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 py-4 space-y-4">
+              {/* 100 MB Storage Meter */}
+              <div className="rounded-xl p-3.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+                <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
+                  <span className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
+                    <HardDrive className="size-3.5 text-[var(--color-primary-teal)]" />
+                    Offline Storage Limit
+                  </span>
+                  <span className="text-zinc-500">
+                    {StorageManager.formatBytes(storageInfo?.totalBytes ?? 0)} / 100 MB
+                  </span>
+                </div>
+                <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all duration-500 ${
+                      (storageInfo?.totalBytes ?? 0) > 90 * 1024 * 1024
+                        ? 'bg-rose-500'
+                        : 'bg-[var(--color-primary-teal)]'
+                    }`}
+                    style={{
+                      width: `${Math.min(100, ((storageInfo?.totalBytes ?? 0) / (100 * 1024 * 1024)) * 100)}%`,
+                    }}
+                  />
+                </div>
+                <p className="text-[10px] opacity-60 mt-1">
+                  Strict 100 MB limit. Only one book of a version is downloaded at a time.
+                </p>
+              </div>
+
+              {/* Action 1: Download Current Chapter */}
+              <div className="rounded-xl p-3.5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-bold truncate">
+                    Download Chapter {selectedChapter}
+                  </p>
+                  <p className="text-[11px] opacity-60 truncate">
+                    {selectedBook || 'Genesis'} {selectedChapter} ({selectedVersion})
+                  </p>
+                </div>
+                {(() => {
+                  const chStatus = getChapterStatus(selectedVersionId, selectedBook, selectedChapter);
+                  const isDone = chStatus?.status === 'downloaded';
+                  const isDownloading = chStatus?.status === 'downloading';
+
+                  if (isDone) {
+                    return (
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded flex items-center gap-1">
+                          <CheckCircle2 className="size-3" /> Saved
+                        </span>
+                        <button
+                          onClick={() => deleteChapter(selectedVersionId, selectedBook, selectedChapter)}
+                          className="p-1 rounded text-zinc-400 hover:text-rose-500 transition-colors"
+                          title="Delete chapter"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    );
+                  }
+
+                  if (isDownloading) {
+                    return (
+                      <span className="text-xs text-[var(--color-primary-teal)] font-semibold flex items-center gap-1">
+                        <RefreshCw className="size-3.5 animate-spin" /> Saving...
+                      </span>
+                    );
+                  }
+
+                  return (
+                    <button
+                      onClick={async () => {
+                        if (!isOnline) {
+                          toast.error('Connect to internet to download content.');
+                          return;
+                        }
+                        try {
+                          await downloadChapter({
+                            versionId: selectedVersionId,
+                            versionAbbreviation: selectedVersion,
+                            bookId: selectedBook,
+                            bookName: selectedBook,
+                            chapterNumber: selectedChapter,
+                          });
+                          toast.success(`Downloaded ${selectedBook} ${selectedChapter}`);
+                        } catch (err: any) {
+                          toast.error(err.message || 'Download failed');
+                        }
+                      }}
+                      disabled={!isOnline}
+                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--color-primary-teal)] text-white hover:opacity-90 active:scale-95 disabled:opacity-40 transition-all shrink-0"
+                    >
+                      Download
+                    </button>
+                  );
+                })()}
+              </div>
+
+              {/* Action 2: Download Full Book */}
+              <div className="rounded-xl p-3.5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-bold truncate">
+                      Download Book ({selectedBook})
+                    </p>
+                    <p className="text-[11px] opacity-60">
+                      All {totalChapters} chapters &middot; {selectedVersion}
+                    </p>
+                  </div>
+                  {(() => {
+                    const bStatus = getBookStatus(selectedVersionId, selectedBook);
+                    const isDone = bStatus?.status === 'downloaded';
+                    const isDownloading = bStatus?.status === 'downloading';
+
+                    if (isDone) {
+                      return (
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded flex items-center gap-1">
+                            <CheckCircle2 className="size-3" /> Book Saved
+                          </span>
+                          <button
+                            onClick={() => deleteBook(selectedVersionId, selectedBook)}
+                            className="p-1.5 rounded text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
+                            title="Delete book download"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </button>
+                        </div>
+                      );
+                    }
+
+                    if (isDownloading) {
+                      return (
+                        <div className="flex items-center gap-1.5 text-xs text-[var(--color-primary-teal)] font-semibold">
+                          <RefreshCw className="size-3.5 animate-spin" />
+                          <span>{bStatus?.progressPercent ?? 0}%</span>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <button
+                        onClick={async () => {
+                          if (!isOnline) {
+                            toast.error('Connect to internet to download content.');
+                            return;
+                          }
+                          try {
+                            await downloadBook({
+                              versionId: selectedVersionId,
+                              versionAbbreviation: selectedVersion,
+                              bookId: selectedBook,
+                              bookName: selectedBook,
+                              chapterCount: totalChapters,
+                            });
+                            toast.success(`Downloaded all ${totalChapters} chapters of ${selectedBook}`);
+                          } catch (err: any) {
+                            toast.error(err.message || 'Download failed');
+                          }
+                        }}
+                        disabled={!isOnline}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--color-primary-teal)] text-white hover:opacity-90 active:scale-95 disabled:opacity-40 transition-all shrink-0"
+                      >
+                        Download Book
+                      </button>
+                    );
+                  })()}
+                </div>
+
+                {(() => {
+                  const bStatus = getBookStatus(selectedVersionId, selectedBook);
+                  if (bStatus?.status === 'downloading') {
+                    return (
+                      <div className="space-y-1 pt-1">
+                        <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-[var(--color-primary-teal)] rounded-full transition-all duration-300"
+                            style={{ width: `${bStatus.progressPercent}%` }}
+                          />
+                        </div>
+                        <p className="text-[10px] text-right text-zinc-500 font-medium">
+                          {bStatus.downloadedChapters ?? 0} of {totalChapters} chapters
+                        </p>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
+
+              {/* Section 3: List of Downloaded Books */}
+              <div className="space-y-2 pt-2">
+                <h4 className="text-xs font-bold uppercase tracking-wider opacity-60">
+                  Downloaded Books
+                </h4>
+                {(() => {
+                  const downloadedBooks = Object.values(downloadStates).filter(
+                    (s) => s.status === 'downloaded' && s.targetType === 'book',
+                  );
+
+                  if (downloadedBooks.length === 0) {
+                    return (
+                      <p className="text-xs opacity-50 italic text-center py-2">
+                        No books downloaded yet
+                      </p>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
+                      {downloadedBooks.map((rec) => (
+                        <div
+                          key={rec.id}
+                          className="flex items-center justify-between px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 text-xs"
+                        >
+                          <div>
+                            <span className="font-semibold">{rec.bookName}</span>
+                            <span className="opacity-60 ml-1.5">({rec.versionAbbreviation})</span>
+                          </div>
+                          <button
+                            onClick={() => deleteBook(rec.versionId, rec.bookId!)}
+                            className="text-xs text-rose-500 hover:text-rose-600 font-medium flex items-center gap-1 hover:underline"
+                          >
+                            <Trash2 className="size-3" /> Delete
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

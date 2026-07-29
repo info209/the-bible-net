@@ -3,198 +3,220 @@
 /**
  * useDownloadManager
  *
- * React hook that provides a reactive interface to the DownloadManager.
- * Manages per-version download state (progress, status) and exposes
- * actions: startDownload, pauseDownload, resumeDownload, retryDownload,
- * cancelDownload, deleteDownload.
- *
- * Also loads all download statuses from IndexedDB on mount and keeps
- * them synchronized.
+ * React hook that provides a reactive interface for downloading
+ * individual Books or Chapters, tracking progress, and monitoring storage.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { BibleOfflineService } from '@/lib/offline/BibleOfflineService';
-import { DownloadManager } from '@/lib/offline/DownloadManager';
-import type { VersionDownloadRecord } from '@/lib/offline/types';
+import { DownloadManager, DownloadProgressCallback } from '@/lib/offline/DownloadManager';
+import { StorageManager, MAX_STORAGE_BYTES } from '@/lib/offline/StorageManager';
+import { buildBookDownloadKey, buildChapterDownloadKey } from '@/lib/offline/db';
+import type { DownloadRecord, StorageUsageBreakdown } from '@/lib/offline/types';
 
-export interface DownloadState {
-  [versionId: string]: VersionDownloadRecord;
+export interface DownloadStateMap {
+  [id: string]: DownloadRecord;
 }
 
 export function useDownloadManager() {
-  const [downloadStates, setDownloadStates] = useState<DownloadState>({});
+  const [downloadStates, setDownloadStates] = useState<DownloadStateMap>({});
+  const [storageInfo, setStorageInfo] = useState<StorageUsageBreakdown | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const mountedRef = useRef(true);
 
-  // Load all download statuses from IndexedDB on mount
-  useEffect(() => {
-    mountedRef.current = true;
-    loadAllStatuses();
-    return () => {
-      mountedRef.current = false;
-    };
-  }, []);
-
-  const loadAllStatuses = useCallback(async () => {
+  const loadAllData = useCallback(async () => {
     try {
-      const statuses = await BibleOfflineService.getAllDownloadStatuses();
+      const [statuses, breakdown] = await Promise.all([
+        BibleOfflineService.getAllDownloadStatuses(),
+        StorageManager.getUsageBreakdown(),
+      ]);
       if (!mountedRef.current) return;
-      const stateMap: DownloadState = {};
+
+      const map: DownloadStateMap = {};
       for (const s of statuses) {
-        stateMap[s.versionId] = s;
+        map[s.id] = s;
       }
-      setDownloadStates(stateMap);
+      setDownloadStates(map);
+      setStorageInfo(breakdown);
     } catch (err) {
-      console.warn('[useDownloadManager] Failed to load statuses:', err);
+      console.warn('[useDownloadManager] Failed to load data:', err);
     } finally {
       if (mountedRef.current) setIsLoading(false);
     }
   }, []);
 
-  const updateState = useCallback((versionId: string, patch: Partial<VersionDownloadRecord>) => {
+  useEffect(() => {
+    mountedRef.current = true;
+    loadAllData();
+    return () => {
+      mountedRef.current = false;
+    };
+  }, [loadAllData]);
+
+  const updateState = useCallback((id: string, patch: Partial<DownloadRecord>) => {
     setDownloadStates((prev) => ({
       ...prev,
-      [versionId]: { ...(prev[versionId] ?? {}), ...patch, versionId } as VersionDownloadRecord,
+      [id]: { ...(prev[id] ?? {}), ...patch, id } as DownloadRecord,
     }));
   }, []);
 
-  const startDownload = useCallback(
-    async (
-      versionId: string,
-      versionAbbreviation: string,
-      versionName: string,
-      language: string,
-    ) => {
-      updateState(versionId, {
+  const downloadBook = useCallback(
+    async ({
+      versionId,
+      versionAbbreviation,
+      bookId,
+      bookName,
+      chapterCount,
+      testament,
+      onProgress,
+    }: {
+      versionId: string;
+      versionAbbreviation: string;
+      bookId: string;
+      bookName: string;
+      chapterCount: number;
+      testament?: 'OT' | 'NT';
+      onProgress?: DownloadProgressCallback;
+    }) => {
+      const recordId = buildBookDownloadKey(versionId, bookId);
+      updateState(recordId, {
+        id: recordId,
+        targetType: 'book',
         versionId,
         versionAbbreviation,
-        versionName,
-        language,
+        bookId,
+        bookName,
         status: 'downloading',
         progressPercent: 0,
         downloadedChapters: 0,
-        totalChapters: 0,
+        totalChapters: chapterCount,
       });
 
-      await DownloadManager.startDownload(
-        versionId,
-        versionAbbreviation,
-        versionName,
-        language,
-        (progress, downloaded, total) => {
-          if (mountedRef.current) {
-            updateState(versionId, {
-              status: 'downloading',
-              progressPercent: progress,
-              downloadedChapters: downloaded,
-              totalChapters: total,
-            });
-          }
-        },
-      );
-
-      // Refresh from IndexedDB to get final state
-      if (mountedRef.current) {
-        const finalStatus = await BibleOfflineService.getDownloadStatus(versionId);
-        if (finalStatus && mountedRef.current) {
-          updateState(versionId, finalStatus);
-        }
+      try {
+        await DownloadManager.downloadBook({
+          versionId,
+          versionAbbreviation,
+          bookId,
+          bookName,
+          chapterCount,
+          testament,
+          onProgress: (progress, downloaded, total, msg) => {
+            if (mountedRef.current) {
+              updateState(recordId, {
+                status: 'downloading',
+                progressPercent: progress,
+                downloadedChapters: downloaded,
+                totalChapters: total,
+              });
+              onProgress?.(progress, downloaded, total, msg);
+            }
+          },
+        });
+      } finally {
+        await loadAllData();
       }
     },
-    [updateState],
+    [updateState, loadAllData],
   );
 
-  const pauseDownload = useCallback(
-    async (versionId: string) => {
-      updateState(versionId, { status: 'paused' });
-      await DownloadManager.pauseDownload(versionId);
-    },
-    [updateState],
-  );
-
-  const resumeDownload = useCallback(
-    async (versionId: string) => {
-      updateState(versionId, { status: 'downloading' });
-      await DownloadManager.resumeDownload(versionId, (progress, downloaded, total) => {
-        if (mountedRef.current) {
-          updateState(versionId, {
-            status: 'downloading',
-            progressPercent: progress,
-            downloadedChapters: downloaded,
-            totalChapters: total,
-          });
-        }
+  const downloadChapter = useCallback(
+    async ({
+      versionId,
+      versionAbbreviation,
+      bookId,
+      bookName,
+      chapterNumber,
+      testament,
+      onProgress,
+    }: {
+      versionId: string;
+      versionAbbreviation: string;
+      bookId: string;
+      bookName: string;
+      chapterNumber: number;
+      testament?: 'OT' | 'NT';
+      onProgress?: DownloadProgressCallback;
+    }) => {
+      const recordId = buildChapterDownloadKey(versionId, bookId, chapterNumber);
+      updateState(recordId, {
+        id: recordId,
+        targetType: 'chapter',
+        versionId,
+        versionAbbreviation,
+        bookId,
+        bookName,
+        chapterNumber,
+        status: 'downloading',
+        progressPercent: 10,
       });
-      const finalStatus = await BibleOfflineService.getDownloadStatus(versionId);
-      if (finalStatus && mountedRef.current) updateState(versionId, finalStatus);
+
+      try {
+        await DownloadManager.downloadChapter({
+          versionId,
+          versionAbbreviation,
+          bookId,
+          bookName,
+          chapterNumber,
+          testament,
+          onProgress: (progress, downloaded, total, msg) => {
+            if (mountedRef.current) {
+              updateState(recordId, {
+                status: 'downloading',
+                progressPercent: progress,
+              });
+              onProgress?.(progress, downloaded, total, msg);
+            }
+          },
+        });
+      } finally {
+        await loadAllData();
+      }
     },
-    [updateState],
+    [updateState, loadAllData],
   );
 
-  const retryDownload = useCallback(
-    async (versionId: string) => {
-      updateState(versionId, { status: 'downloading', progressPercent: 0, downloadedChapters: 0 });
-      await DownloadManager.retryDownload(versionId, (progress, downloaded, total) => {
-        if (mountedRef.current) {
-          updateState(versionId, {
-            status: 'downloading',
-            progressPercent: progress,
-            downloadedChapters: downloaded,
-            totalChapters: total,
-          });
-        }
-      });
-      const finalStatus = await BibleOfflineService.getDownloadStatus(versionId);
-      if (finalStatus && mountedRef.current) updateState(versionId, finalStatus);
+  const deleteBook = useCallback(
+    async (versionId: string, bookId: string) => {
+      await DownloadManager.deleteBook(versionId, bookId);
+      await loadAllData();
     },
-    [updateState],
+    [loadAllData],
   );
 
-  const cancelDownload = useCallback(
-    async (versionId: string) => {
-      await DownloadManager.cancelDownload(versionId);
-      setDownloadStates((prev) => {
-        const next = { ...prev };
-        delete next[versionId];
-        return next;
-      });
+  const deleteChapter = useCallback(
+    async (versionId: string, bookId: string, chapterNumber: number) => {
+      await DownloadManager.deleteChapter(versionId, bookId, chapterNumber);
+      await loadAllData();
     },
-    [],
+    [loadAllData],
   );
 
-  const deleteDownload = useCallback(
-    async (versionId: string) => {
-      await DownloadManager.deleteDownload(versionId);
-      setDownloadStates((prev) => {
-        const next = { ...prev };
-        delete next[versionId];
-        return next;
-      });
+  const getBookStatus = useCallback(
+    (versionId: string, bookId: string): DownloadRecord | undefined => {
+      const key = buildBookDownloadKey(versionId, bookId);
+      return downloadStates[key];
     },
-    [],
-  );
-
-  const getStatus = useCallback(
-    (versionId: string): VersionDownloadRecord | undefined => downloadStates[versionId],
     [downloadStates],
   );
 
-  const isDownloaded = useCallback(
-    (versionId: string): boolean => downloadStates[versionId]?.status === 'downloaded',
+  const getChapterStatus = useCallback(
+    (versionId: string, bookId: string, chapterNumber: number): DownloadRecord | undefined => {
+      const key = buildChapterDownloadKey(versionId, bookId, chapterNumber);
+      return downloadStates[key];
+    },
     [downloadStates],
   );
 
   return {
     downloadStates,
+    storageInfo,
     isLoading,
-    getStatus,
-    isDownloaded,
-    startDownload,
-    pauseDownload,
-    resumeDownload,
-    retryDownload,
-    cancelDownload,
-    deleteDownload,
-    refresh: loadAllStatuses,
+    getBookStatus,
+    getChapterStatus,
+    downloadBook,
+    downloadChapter,
+    deleteBook,
+    deleteChapter,
+    refresh: loadAllData,
   };
 }

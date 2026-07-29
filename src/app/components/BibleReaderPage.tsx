@@ -2513,6 +2513,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         selectedChapter={selectedChapter}
         totalChapters={totalChapters}
         selectedBook={selectedBook}
+        selectedVersion={selectedVersion}
+        selectedVersionId={selectedVersion}
         onChapterChange={(chapter: number) => {
           const dir = chapter > selectedChapter ? 'next' : 'prev';
           if (dir === 'next') navigateNext(); else navigatePrev();

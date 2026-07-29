@@ -4,19 +4,15 @@
  * Offline Management Screen — /offline
  *
  * Allows users to:
- * 1. See storage usage (donut-style breakdown)
- * 2. Download Bible versions for offline use
- * 3. Manage downloaded versions (pause, resume, retry, delete)
- * 4. Clear chapter cache
- * 5. Clear all offline data
- *
- * Design: Clean, spacious cards with teal accents. Matches the app's existing design language.
+ * 1. See storage usage (100 MB max cap meter)
+ * 2. View downloaded Bible books and chapters
+ * 3. Clear LRU chapter cache
+ * 4. Clear all offline data
  */
 
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Download,
   HardDrive,
   BookOpen,
   Trash2,
@@ -24,6 +20,8 @@ import {
   WifiOff,
   AlertTriangle,
   ChevronLeft,
+  Download,
+  CheckCircle2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
@@ -31,7 +29,6 @@ import { useDownloadManager } from '@/hooks/useDownloadManager';
 import { useNetworkStatusContext } from '@/lib/offline/NetworkStatusContext';
 import { StorageManager } from '@/lib/offline/StorageManager';
 import { ChapterCacheService } from '@/lib/offline/ChapterCacheService';
-import VersionDownloadCard from '@/components/offline/VersionDownloadCard';
 import { toast } from '@/context/ToastContext';
 
 export default function OfflineManagementPage() {
@@ -40,20 +37,17 @@ export default function OfflineManagementPage() {
   const { isOnline } = useNetworkStatusContext();
   const {
     downloadStates,
+    storageInfo,
     isLoading: isLoadingStates,
-    startDownload,
-    pauseDownload,
-    resumeDownload,
-    retryDownload,
-    cancelDownload,
-    deleteDownload,
+    deleteBook,
+    deleteChapter,
     refresh: refreshStates,
   } = useDownloadManager();
 
   const [storageBreakdown, setStorageBreakdown] = useState<{
-    quotaBytes: number;
+    maxCapBytes: number;
     totalBytes: number;
-    availableBytes: number;
+    availableCapBytes: number;
     chapterCacheBytes: number;
   } | null>(null);
 
@@ -86,9 +80,9 @@ export default function OfflineManagementPage() {
       ChapterCacheService.getCacheStats(),
     ]);
     setStorageBreakdown({
-      quotaBytes: breakdown.quotaBytes,
+      maxCapBytes: breakdown.maxCapBytes,
       totalBytes: breakdown.totalBytes,
-      availableBytes: breakdown.availableBytes,
+      availableCapBytes: breakdown.availableCapBytes,
       chapterCacheBytes: breakdown.chapterCacheBytes,
     });
     setCacheStats({ totalCached: stats.totalCached, unprotectedCount: stats.unprotectedCount });
@@ -98,34 +92,13 @@ export default function OfflineManagementPage() {
     loadStorageInfo();
   }, [loadStorageInfo, downloadStates]);
 
-  const handleStartDownload = useCallback(
-    async (version: { id: string; abbreviation: string; name: string; language: string }) => {
-      if (!isOnline) {
-        toast.error('You need an internet connection to download Bible versions.');
-        return;
-      }
-      // Save version metadata first
-      const { BibleOfflineService } = await import('@/lib/offline/BibleOfflineService');
-      await BibleOfflineService.saveVersion({
-        id: version.id,
-        abbreviation: version.abbreviation,
-        name: version.name,
-        language: version.language,
-        isActive: true,
-      });
-      await startDownload(version.id, version.abbreviation, version.name, version.language);
-    },
-    [isOnline, startDownload],
-  );
-
-  const handleDeleteDownload = useCallback(
-    async (versionId: string) => {
-      await deleteDownload(versionId);
-      queryClient.invalidateQueries({ queryKey: ['bible-versions'] });
-      toast.success('Version deleted from offline storage.');
+  const handleDeleteBook = useCallback(
+    async (versionId: string, bookId: string) => {
+      await deleteBook(versionId, bookId);
+      toast.success('Book deleted from offline storage.');
       loadStorageInfo();
     },
-    [deleteDownload, queryClient, loadStorageInfo],
+    [deleteBook, loadStorageInfo],
   );
 
   const handleClearCache = useCallback(async () => {
@@ -154,17 +127,13 @@ export default function OfflineManagementPage() {
     }
   }, [refreshStates, loadStorageInfo]);
 
-  // Format versions list
-  const versions = (versionsData ?? []).map((v: any) => ({
-    id: v._id,
-    abbreviation: v.abbreviation,
-    name: v.name,
-    language: v.language,
-  }));
+  const downloadedBooks = Object.values(downloadStates).filter(
+    (s) => s.status === 'downloaded' && s.targetType === 'book',
+  );
 
   const usagePercent =
-    storageBreakdown && storageBreakdown.quotaBytes > 0
-      ? Math.min(100, Math.round((storageBreakdown.totalBytes / storageBreakdown.quotaBytes) * 100))
+    storageBreakdown && storageBreakdown.maxCapBytes > 0
+      ? Math.min(100, Math.round((storageBreakdown.totalBytes / storageBreakdown.maxCapBytes) * 100))
       : 0;
 
   return (
@@ -184,7 +153,7 @@ export default function OfflineManagementPage() {
               Downloads &amp; Offline
             </h1>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Manage offline Bible versions and storage
+              Manage offline Bible storage (100 MB Limit)
             </p>
           </div>
         </div>
@@ -196,7 +165,7 @@ export default function OfflineManagementPage() {
           <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
             <WifiOff className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <p className="text-sm text-amber-700 dark:text-amber-300">
-              You&apos;re offline. Connect to download or update Bible versions.
+              You&apos;re offline. Connect to download books in the Audio Control Panel.
             </p>
           </div>
         )}
@@ -205,7 +174,7 @@ export default function OfflineManagementPage() {
         {storageBreakdown && (
           <section>
             <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-3">
-              Storage
+              Storage (100 MB Max Cap)
             </h2>
             <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 p-4 shadow-sm">
               <div className="flex items-center gap-4">
@@ -235,18 +204,15 @@ export default function OfflineManagementPage() {
                 <div className="flex-1 min-w-0">
                   <div className="text-base font-bold text-zinc-900 dark:text-zinc-100">
                     {StorageManager.formatBytes(storageBreakdown.totalBytes)}{' '}
-                    <span className="text-sm font-normal text-zinc-400">used</span>
+                    <span className="text-sm font-normal text-zinc-400">used of 100 MB limit</span>
                   </div>
                   <div className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    {StorageManager.formatBytes(storageBreakdown.availableBytes)} available
-                    {storageBreakdown.quotaBytes > 0 && (
-                      <> &middot; {StorageManager.formatBytes(storageBreakdown.quotaBytes)} total quota</>
-                    )}
+                    {StorageManager.formatBytes(storageBreakdown.availableCapBytes)} available under 100 MB cap
                   </div>
                   {cacheStats && cacheStats.unprotectedCount > 0 && (
                     <div className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
                       {cacheStats.unprotectedCount} cached chapters &middot;{' '}
-                      {StorageManager.formatBytes(storageBreakdown.chapterCacheBytes)} cache
+                      {StorageManager.formatBytes(storageBreakdown.chapterCacheBytes)} LRU cache
                     </div>
                   )}
                 </div>
@@ -255,15 +221,15 @@ export default function OfflineManagementPage() {
           </section>
         )}
 
-        {/* Downloaded Versions */}
+        {/* Downloaded Books */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-              Bible Versions
+              Downloaded Books
             </h2>
             {isOnline && (
               <button
-                onClick={() => queryClient.invalidateQueries({ queryKey: ['bible-versions'] })}
+                onClick={() => loadStorageInfo()}
                 className="text-xs text-[var(--color-primary-teal)] font-medium flex items-center gap-1 hover:opacity-80 transition-opacity"
               >
                 <RefreshCw className="h-3 w-3" />
@@ -272,45 +238,57 @@ export default function OfflineManagementPage() {
             )}
           </div>
 
-          {isLoadingVersions || isLoadingStates ? (
+          {isLoadingStates ? (
             <div className="space-y-3">
               {[1, 2, 3].map((i) => (
                 <div
                   key={i}
-                  className="h-20 rounded-xl bg-zinc-100 dark:bg-zinc-900 animate-pulse"
+                  className="h-16 rounded-xl bg-zinc-100 dark:bg-zinc-900 animate-pulse"
                 />
               ))}
             </div>
-          ) : versions.length === 0 ? (
-            <div className="text-center py-12 text-zinc-400 dark:text-zinc-600">
+          ) : downloadedBooks.length === 0 ? (
+            <div className="text-center py-12 text-zinc-400 dark:text-zinc-600 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
               <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="text-sm">No Bible versions available</p>
-              {!isOnline && (
-                <p className="text-xs mt-1">Connect to internet to see available versions</p>
-              )}
+              <p className="text-sm font-semibold">No downloaded books</p>
+              <p className="text-xs text-zinc-400 mt-1 max-w-xs mx-auto">
+                Open the Audio Control Panel in the Bible Reader to download individual books or chapters for offline use.
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
               <AnimatePresence>
-                {versions.map((version) => (
+                {downloadedBooks.map((rec) => (
                   <motion.div
-                    key={version.id}
+                    key={rec.id}
+                    layout
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.2 }}
+                    className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 shadow-sm flex items-center justify-between gap-3"
                   >
-                    <VersionDownloadCard
-                      version={version}
-                      downloadRecord={downloadStates[version.id]}
-                      isOnline={isOnline}
-                      onStartDownload={handleStartDownload}
-                      onPauseDownload={pauseDownload}
-                      onResumeDownload={resumeDownload}
-                      onRetryDownload={retryDownload}
-                      onCancelDownload={cancelDownload}
-                      onDeleteDownload={handleDeleteDownload}
-                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
+                          {rec.bookName}
+                        </span>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                          <CheckCircle2 className="size-3" /> Downloaded
+                        </span>
+                      </div>
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                        {rec.totalChapters} chapters &middot; {rec.versionAbbreviation} &middot;{' '}
+                        {rec.estimatedBytes ? StorageManager.formatBytes(rec.estimatedBytes) : 'Stored'}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteBook(rec.versionId, rec.bookId!)}
+                      className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                    >
+                      <Trash2 className="size-3.5" />
+                      Delete
+                    </button>
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -353,7 +331,7 @@ export default function OfflineManagementPage() {
                   Clear All Offline Data
                 </p>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  Removes downloads, cache, and offline content
+                  Removes downloaded books, chapters, and offline content
                 </p>
               </div>
               <button
@@ -392,8 +370,8 @@ export default function OfflineManagementPage() {
                 Clear All Offline Data?
               </h3>
               <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center mb-6">
-                This will delete all downloaded Bible versions, cached chapters, and offline home content.
-                Your account data (highlights, bookmarks, notes) is safe on the server.
+                This will delete all downloaded Bible books, cached chapters, and offline home content.
+                Your bookmarks and notes are safely synced on the server.
               </p>
               <div className="flex gap-3">
                 <button
