@@ -25,6 +25,7 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/app/components/ui/avatar'
 import verseTexture from '../../../assets/textures/verse-texture.svg';
 import devotionalTexture from '../../../assets/textures/devotional-texture.svg';
 import { HomeOfflineService } from '@/lib/offline/HomeOfflineService';
+import { fetchWithOfflineCache } from '@/lib/offline';
 
 const getGreetingByHour = (hour: number): string => {
   if (hour >= 5 && hour < 12) return 'Good morning';
@@ -191,12 +192,15 @@ export default function HomeView() {
 
   const { data: prayers = [], isLoading: prayersLoading } = useQuery({
     queryKey: ['prayers', 'home'],
-    queryFn: async () => {
-      const res = await fetch('/api/prayers?limit=3');
-      if (!res.ok) throw new Error('Failed to fetch prayers');
-      return res.json();
-    },
+    queryFn: () =>
+      fetchWithOfflineCache('prayers_home', async () => {
+        const res = await fetch('/api/prayers?limit=3');
+        if (!res.ok) throw new Error('Failed to fetch prayers');
+        return res.json();
+      }),
     staleTime: 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    networkMode: 'offlineFirst',
   });
 
   // Seed cache from API data whenever content refreshes

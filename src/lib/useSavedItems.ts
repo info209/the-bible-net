@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchWithOfflineCache } from '@/lib/offline';
 import type { SavedItemType, ISavedItemMetadata } from '@/models/SavedItem';
 
 export interface SavedItemClient {
@@ -43,14 +44,18 @@ export function useSavedItems(): UseSavedItemsReturn {
 
   const { data: savedItems = [], isLoading } = useQuery<SavedItemClient[]>({
     queryKey: queryKeySavedItems,
-    queryFn: async () => {
-      const res = await fetch('/api/user/saved-items?limit=100');
-      if (!res.ok) throw new Error('Failed to fetch saved items');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || 'Failed to fetch saved items');
-      return json.data as SavedItemClient[];
-    },
+    queryFn: () =>
+      fetchWithOfflineCache(`saved_items_${userId}`, async () => {
+        const res = await fetch('/api/user/saved-items?limit=100');
+        if (!res.ok) throw new Error('Failed to fetch saved items');
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Failed to fetch saved items');
+        return json.data as SavedItemClient[];
+      }),
     enabled: status === 'authenticated' && !!userId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    networkMode: 'offlineFirst',
   });
 
   const isSaved = useCallback(

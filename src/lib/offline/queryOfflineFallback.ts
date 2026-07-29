@@ -1,18 +1,46 @@
 /**
  * queryOfflineFallback
  *
- * A wrapper around `fetch` used as the `queryFn` for TanStack Query.
- * When a network request fails and the user is offline, it transparently
- * falls back to IndexedDB-cached data from BibleOfflineService / ChapterCacheService.
- *
- * Returns data augmented with `_isOfflineData: true` when served from cache.
+ * A centralized wrapper around network fetches used by TanStack Query.
+ * When a network request fails (or device is offline), transparently
+ * falls back to IndexedDB-cached data from ModuleOfflineService or BibleOfflineService.
  */
 
 import { BibleOfflineService } from './BibleOfflineService';
+import { ModuleOfflineService } from './ModuleOfflineService';
+
+/**
+ * Universal query wrapper for offline-first data fetching across all modules.
+ *
+ * - Online: Executes `fetcherFn()`, persists result to IndexedDB, and returns data.
+ * - Offline / Error: Reads cached data from IndexedDB and returns it.
+ * - Only fails if neither network nor IndexedDB has data.
+ */
+export async function fetchWithOfflineCache<T>(
+  cacheKey: string,
+  fetcherFn: () => Promise<T>,
+): Promise<T> {
+  try {
+    const data = await fetcherFn();
+    if (data !== undefined && data !== null) {
+      ModuleOfflineService.saveCache(cacheKey, data).catch(() => {});
+    }
+    return data;
+  } catch (networkError) {
+    try {
+      const cached = await ModuleOfflineService.getCache<T>(cacheKey);
+      if (cached !== undefined && cached !== null) {
+        return cached;
+      }
+    } catch {
+      // Ignore cache lookup error, throw original network error
+    }
+    throw networkError;
+  }
+}
 
 /**
  * Fetch chapter content with automatic offline fallback.
- * Matches the shape returned by `/api/v1/bible/{version}/{book}/{chapter}`.
  */
 export async function fetchChapterWithOfflineFallback(
   versionId: string,
@@ -39,24 +67,24 @@ export async function fetchChapterWithOfflineFallback(
       verses: result.data.verses,
     };
   } catch (networkError) {
-    // Check if we have offline data
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+    try {
       const offlineChapter = await BibleOfflineService.getChapter(
-        versionId,
+        versionId || versionAbbreviation,
         bookId,
         chapterNumber,
       );
 
-      if (offlineChapter && offlineChapter.verses.length > 0) {
+      if (offlineChapter && offlineChapter.verses && offlineChapter.verses.length > 0) {
         return {
           title: `${offlineChapter.bookName} ${chapterNumber}`,
           verses: offlineChapter.verses,
           _isOfflineData: true,
         };
       }
+    } catch {
+      // Ignore offline error
     }
 
-    // Re-throw so TanStack Query shows error state
     throw networkError;
   }
 }
@@ -65,17 +93,11 @@ export async function fetchChapterWithOfflineFallback(
  * Fetch Bible versions with offline fallback.
  */
 export async function fetchVersionsWithOfflineFallback(): Promise<any[]> {
-  try {
+  return fetchWithOfflineCache('bible_versions', async () => {
     const response = await fetch('/api/v1/bible/versions');
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     const result = await response.json();
     if (!result.success) throw new Error('Failed to fetch versions');
     return result.data;
-  } catch {
-    if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      const offlineVersions = await BibleOfflineService.getAllVersions();
-      if (offlineVersions.length > 0) return offlineVersions;
-    }
-    throw new Error('Failed to fetch versions');
-  }
+  });
 }

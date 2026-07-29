@@ -27,6 +27,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchWithOfflineCache } from '@/lib/offline';
 
 interface Prayer {
   _id: string;
@@ -59,12 +60,15 @@ export default function PrayerWallView() {
 
   const { data: prayers = [], isLoading: loading } = useQuery<Prayer[]>({
     queryKey: ['prayers', filter],
-    queryFn: async () => {
-      const res = await fetch(`/api/prayers?limit=50&sort=${filter === 'trending' ? 'trending' : 'newest'}`);
-      if (!res.ok) throw new Error('Failed to fetch prayers');
-      return res.json();
-    },
+    queryFn: () =>
+      fetchWithOfflineCache(`prayers_community_${filter}`, async () => {
+        const res = await fetch(`/api/prayers?limit=50&sort=${filter === 'trending' ? 'trending' : 'newest'}`);
+        if (!res.ok) throw new Error('Failed to fetch prayers');
+        return res.json();
+      }),
     staleTime: 30 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    networkMode: 'offlineFirst',
   });
 
   const handleIntercede = async (id: string) => {

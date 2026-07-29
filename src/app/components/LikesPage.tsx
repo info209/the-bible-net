@@ -9,6 +9,7 @@ import {
 import { toast } from '@/context/ToastContext';
 import { useLikeContext } from '@/context/LikeContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { fetchWithOfflineCache } from '@/lib/offline';
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 
 type FilterTab = 'All' | 'Verses' | 'Devotionals';
@@ -42,13 +43,17 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
 
   const { data: likes = [], isLoading } = useQuery<LikedItem[]>({
     queryKey: ['likes'],
-    queryFn: async () => {
-      const res = await fetch('/api/interactions/like');
-      if (!res.ok) throw new Error('API error');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || 'Failed to fetch likes');
-      return json.data;
-    }
+    queryFn: () =>
+      fetchWithOfflineCache('user_likes', async () => {
+        const res = await fetch('/api/interactions/like');
+        if (!res.ok) throw new Error('API error');
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Failed to fetch likes');
+        return json.data;
+      }),
+    staleTime: 5 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    networkMode: 'offlineFirst',
   });
 
   const showToast = (msg: string) => {

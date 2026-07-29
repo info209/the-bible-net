@@ -18,6 +18,7 @@ import { toast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmContext';
 import { LiaBookMedicalSolid, LiaBookSolid } from 'react-icons/lia';
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
+import { fetchWithOfflineCache } from '@/lib/offline';
 
 // â”€â”€ Tiptap Rich Text Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -453,23 +454,30 @@ function JournalsContent() {
     }
   };
 
-  // Main Fetcher
+  // Main Fetcher with Offline Fallback
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [journalsRes, prayersRes] = await Promise.all([
-        fetch('/api/journals'),
-        fetch('/api/prayers?personal=true'),
+      const [jData, pData] = await Promise.all([
+        fetchWithOfflineCache('journals_user', async () => {
+          const res = await fetch('/api/journals');
+          if (!res.ok) throw new Error('Failed to fetch journals');
+          return res.json();
+        }),
+        fetchWithOfflineCache('prayers_personal', async () => {
+          const res = await fetch('/api/prayers?personal=true');
+          if (!res.ok) throw new Error('Failed to fetch prayers');
+          return res.json();
+        }),
       ]);
 
-      const jData = await journalsRes.json();
-      const pData = await prayersRes.json();
-
-      if (jData.success) setJournals(jData.data);
-      if (pData.success) setPrayers(pData.data);
+      if (jData?.success) setJournals(jData.data);
+      if (pData?.success) setPrayers(pData.data);
     } catch (err) {
       console.error('Error fetching data:', err);
-      showToast('Error loading records');
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        showToast('Error loading records');
+      }
     } finally {
       setLoading(false);
     }

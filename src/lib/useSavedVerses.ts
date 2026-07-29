@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { fetchWithOfflineCache } from '@/lib/offline';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface SavedVerseClient {
@@ -106,26 +107,34 @@ export function useSavedVerses(): UseSavedVersesReturn {
 
   const { data: savedVerses = [], isLoading } = useQuery<SavedVerseClient[]>({
     queryKey: queryKeySavedVerses,
-    queryFn: async () => {
-      const res = await fetch('/api/saved-verses?limit=200');
-      if (!res.ok) throw new Error('Failed to fetch saved verses');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || 'Failed to fetch saved verses');
-      return json.data as SavedVerseClient[];
-    },
+    queryFn: () =>
+      fetchWithOfflineCache(`saved_verses_${userId}`, async () => {
+        const res = await fetch('/api/saved-verses?limit=200');
+        if (!res.ok) throw new Error('Failed to fetch saved verses');
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Failed to fetch saved verses');
+        return json.data as SavedVerseClient[];
+      }),
     enabled: status === 'authenticated' && !!userId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    networkMode: 'offlineFirst',
   });
 
   const { data: userLabels = [], isLoading: isLabelsLoading } = useQuery<string[]>({
     queryKey: queryKeyUserLabels,
-    queryFn: async () => {
-      const res = await fetch('/api/user-labels');
-      if (!res.ok) throw new Error('Failed to fetch user labels');
-      const json = await res.json();
-      if (!json.success) throw new Error(json.error || 'Failed to fetch user labels');
-      return json.data as string[];
-    },
+    queryFn: () =>
+      fetchWithOfflineCache(`user_labels_${userId}`, async () => {
+        const res = await fetch('/api/user-labels');
+        if (!res.ok) throw new Error('Failed to fetch user labels');
+        const json = await res.json();
+        if (!json.success) throw new Error(json.error || 'Failed to fetch user labels');
+        return json.data as string[];
+      }),
     enabled: status === 'authenticated' && !!userId,
+    staleTime: 5 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    networkMode: 'offlineFirst',
   });
 
   const isSaved = useCallback(

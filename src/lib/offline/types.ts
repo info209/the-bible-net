@@ -120,15 +120,10 @@ export interface ChapterAccessLog {
 // Home Content Cache
 // ---------------------------------------------------------------------------
 
-export type HomeCacheKey =
-  | 'daily_verse'
-  | 'daily_devotional'
-  | 'reading_plans'
-  | 'bible_versions'
-  | 'user_preferences';
+export type HomeCacheKey = string;
 
 export interface HomeCacheEntry {
-  key: HomeCacheKey;
+  key: string;
   data: unknown;
   syncedAt: string;
 }

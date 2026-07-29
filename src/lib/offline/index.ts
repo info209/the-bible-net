@@ -17,10 +17,11 @@ export type { DownloadProgressCallback } from './DownloadManager';
 export { SyncService } from './SyncService';
 export { StorageManager } from './StorageManager';
 
+export { ModuleOfflineService } from './ModuleOfflineService';
 export { useNetworkStatus } from './useNetworkStatus';
 export { NetworkStatusProvider, useNetworkStatusContext } from './NetworkStatusContext';
 
-export { fetchChapterWithOfflineFallback, fetchVersionsWithOfflineFallback } from './queryOfflineFallback';
+export { fetchChapterWithOfflineFallback, fetchVersionsWithOfflineFallback, fetchWithOfflineCache } from './queryOfflineFallback';
 
 export type {
   DownloadStatus,

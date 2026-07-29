@@ -29,6 +29,7 @@ import CompareView from './CompareView';
 import { useMediaStore } from '@/lib/mediaStore';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import ChapterContent, { mockBibleContent, fetchChapterContent } from './ChapterContent';
+import { fetchWithOfflineCache } from '@/lib/offline';
 import ComparisonContent from './ComparisonContent';
 import VerseActionMenu from './VerseActionMenu';
 import AudioControlPanel from './AudioControlPanel';
@@ -431,19 +432,22 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   // Version state
   const { data: bibleVersions = initialVersions, isLoading: isLoadingVersions } = useQuery({
     queryKey: ['bible-versions'],
-    queryFn: async () => {
-      const response = await fetch('/api/v1/bible/versions');
-      const result = await response.json();
-      if (!result.success) throw new Error('Failed to fetch versions');
-      return result.data.map((v: any) => ({
-        id: v._id,
-        name: v.abbreviation,
-        fullName: v.name,
-        language: v.language === 'en' ? 'English' : v.language === 'te' ? 'Telugu' : v.language === 'hi' ? 'Hindi' : v.language
-      }));
-    },
+    queryFn: () =>
+      fetchWithOfflineCache('bible_versions', async () => {
+        const response = await fetch('/api/v1/bible/versions');
+        const result = await response.json();
+        if (!result.success) throw new Error('Failed to fetch versions');
+        return result.data.map((v: any) => ({
+          id: v._id,
+          name: v.abbreviation,
+          fullName: v.name,
+          language: v.language === 'en' ? 'English' : v.language === 'te' ? 'Telugu' : v.language === 'hi' ? 'Hindi' : v.language
+        }));
+      }),
     enabled: isBiblePage,
     staleTime: Infinity,
+    gcTime: 24 * 60 * 60 * 1000,
+    networkMode: 'offlineFirst',
   });
 
   // Book/Chapter state from API
@@ -453,42 +457,45 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   };
   const { data: bibleBooksState = defaultBibleBooksState, isLoading: isLoadingBooks } = useQuery({
     queryKey: ['bible-books', selectedVersionId],
-    queryFn: async () => {
-      const response = await fetch(`/api/v1/bible/${selectedVersionId}/books`);
-      const result = await response.json();
-      if (!result.success) throw new Error('Failed to fetch books');
-      
-      const books = result.data;
-      const selectedVerObj = bibleVersions.find((v: any) => v.id === selectedVersionId);
-      const isTeluguVersion = selectedVerObj?.language === 'Telugu';
+    queryFn: () =>
+      fetchWithOfflineCache(`bible_books_${selectedVersionId}`, async () => {
+        const response = await fetch(`/api/v1/bible/${selectedVersionId}/books`);
+        const result = await response.json();
+        if (!result.success) throw new Error('Failed to fetch books');
+        
+        const books = result.data;
+        const selectedVerObj = bibleVersions.find((v: any) => v.id === selectedVersionId);
+        const isTeluguVersion = selectedVerObj?.language === 'Telugu';
 
-      const resolveDisplayName = (b: any): string => {
-        if (!isTeluguVersion) return b.name;
-        const canonical = BIBLE_BOOKS.find(bb => bb.order === b.order);
-        if (canonical && TELUGU_BOOK_NAMES[canonical.name]) {
-          return TELUGU_BOOK_NAMES[canonical.name];
-        }
-        if (TELUGU_BOOK_NAMES[b.name]) return TELUGU_BOOK_NAMES[b.name];
-        return b.name;
-      };
+        const resolveDisplayName = (b: any): string => {
+          if (!isTeluguVersion) return b.name;
+          const canonical = BIBLE_BOOKS.find(bb => bb.order === b.order);
+          if (canonical && TELUGU_BOOK_NAMES[canonical.name]) {
+            return TELUGU_BOOK_NAMES[canonical.name];
+          }
+          if (TELUGU_BOOK_NAMES[b.name]) return TELUGU_BOOK_NAMES[b.name];
+          return b.name;
+        };
 
-      const ot = books.filter((b: any) => {
-        if (b.testament) return b.testament === 'OT';
-        return b.order <= 39;
-      }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name, abbreviation: b.abbreviation }));
+        const ot = books.filter((b: any) => {
+          if (b.testament) return b.testament === 'OT';
+          return b.order <= 39;
+        }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name, abbreviation: b.abbreviation }));
 
-      const nt = books.filter((b: any) => {
-        if (b.testament) return b.testament === 'NT';
-        return b.order > 39;
-      }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name, abbreviation: b.abbreviation }));
+        const nt = books.filter((b: any) => {
+          if (b.testament) return b.testament === 'NT';
+          return b.order > 39;
+        }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name, abbreviation: b.abbreviation }));
 
-      return {
-        'Old Testament': ot,
-        'New Testament': nt
-      };
-    },
+        return {
+          'Old Testament': ot,
+          'New Testament': nt
+        };
+      }),
     enabled: isBiblePage && !!selectedVersionId && bibleVersions.length > 0,
     staleTime: Infinity,
+    gcTime: 24 * 60 * 60 * 1000,
+    networkMode: 'offlineFirst',
   });
 
   // Keep selectedBookId synchronized with the current bibleBooksState when version changes
