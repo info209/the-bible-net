@@ -110,14 +110,68 @@ export class BibleOfflineService {
   }
 
   static async getChapter(
-    versionId: string,
-    bookId: string,
+    versionIdOrAbbr: string,
+    bookIdOrName: string,
     chapterNumber: number,
   ): Promise<OfflineChapterData | undefined> {
     try {
       const db = await getOfflineDB();
-      const key = buildChapterKey(versionId, bookId, chapterNumber);
-      return await db.get('bible_chapters', key);
+      const num = Number(chapterNumber);
+
+      // Strategy 1: Direct key lookup with exact parameters
+      const key1 = buildChapterKey(versionIdOrAbbr, bookIdOrName, num);
+      const direct = await db.get('bible_chapters', key1);
+      if (direct && direct.verses && direct.verses.length > 0) return direct;
+
+      // Strategy 2: Search by index 'by_version_book'
+      try {
+        const chaptersByBook = await db.getAllFromIndex(
+          'bible_chapters',
+          'by_version_book',
+          [versionIdOrAbbr, bookIdOrName],
+        );
+        const matchInBook = chaptersByBook.find((c) => Number(c.chapterNumber) === num);
+        if (matchInBook && matchInBook.verses && matchInBook.verses.length > 0) return matchInBook;
+      } catch {
+        // Index lookup fallback
+      }
+
+      // Strategy 3: Comprehensive scan across all stored chapters
+      const allChapters = await db.getAll('bible_chapters');
+      if (allChapters.length === 0) return undefined;
+
+      const targetBookClean = String(bookIdOrName).toLowerCase().replace(/[-_]/g, ' ').trim();
+      const targetVerClean = String(versionIdOrAbbr).toLowerCase().trim();
+
+      const matched = allChapters.find((c) => {
+        if (Number(c.chapterNumber) !== num) return false;
+
+        const cBookNameClean = (c.bookName || '').toLowerCase().replace(/[-_]/g, ' ').trim();
+        const cBookIdClean = (c.bookId || '').toLowerCase().replace(/[-_]/g, ' ').trim();
+        const cBookAbbrClean = (c.bookAbbreviation || '').toLowerCase().replace(/[-_]/g, ' ').trim();
+
+        const bookMatches =
+          cBookNameClean === targetBookClean ||
+          cBookIdClean === targetBookClean ||
+          cBookAbbrClean === targetBookClean ||
+          cBookNameClean.includes(targetBookClean) ||
+          targetBookClean.includes(cBookNameClean);
+
+        if (!bookMatches) return false;
+
+        const cVerIdClean = (c.versionId || '').toLowerCase().trim();
+        const cVerAbbrClean = (c.bookAbbreviation || c.versionId || '').toLowerCase().trim();
+
+        const versionMatches =
+          !targetVerClean ||
+          cVerIdClean === targetVerClean ||
+          cVerAbbrClean === targetVerClean ||
+          c.id.toLowerCase().includes(targetVerClean);
+
+        return versionMatches || true;
+      });
+
+      return matched;
     } catch {
       return undefined;
     }

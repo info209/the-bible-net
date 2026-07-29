@@ -122,29 +122,29 @@ export async function fetchChapterContent(
       verses: result.data.verses as { number: number; text: string }[],
     };
     // Silently cache this chapter for offline access (fire-and-forget)
-    if (versionId) {
-      ChapterCacheService.cacheChapter(
-        versionId,
-        book,
-        result.data.book.name,
-        result.data.book.abbreviation || result.data.book.name,
-        chapter,
-        result.data.book.testament === 'NT' ? 'NT' : 'OT',
-        data.verses,
-      ).catch(() => {});
-    }
+    ChapterCacheService.cacheChapter(
+      versionId || version,
+      book,
+      result.data.book.name,
+      result.data.book.abbreviation || result.data.book.name,
+      chapter,
+      result.data.book.testament === 'NT' ? 'NT' : 'OT',
+      data.verses,
+    ).catch(() => {});
     return data;
   } catch (networkError) {
-    // Offline fallback: serve from IndexedDB
-    if (typeof navigator !== 'undefined' && !navigator.onLine && versionId) {
-      const offlineChapter = await BibleOfflineService.getChapter(versionId, book, chapter);
-      if (offlineChapter && offlineChapter.verses.length > 0) {
+    // Offline fallback: ALWAYS try serving from IndexedDB whenever network fetch fails!
+    try {
+      const offlineChapter = await BibleOfflineService.getChapter(versionId || version, book, chapter);
+      if (offlineChapter && offlineChapter.verses && offlineChapter.verses.length > 0) {
         return {
           title: `${offlineChapter.bookName} ${chapter}`,
           verses: offlineChapter.verses,
           _isOfflineData: true,
         };
       }
+    } catch {
+      // Ignore offline lookup error, throw original network error
     }
     throw networkError;
   }
