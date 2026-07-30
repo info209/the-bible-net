@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Globe, Languages, Book, ArrowRight, UserCircle2 } from 'lucide-react';
+import { Globe, Languages, Book, ArrowRight, UserCircle2, ChevronLeft } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
@@ -128,8 +128,20 @@ function ProfileSetupContent() {
             initial={{ opacity: 0, scale: 0.95 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-md glass-ios border-none p-8 space-y-8 relative overflow-hidden shadow-2xl"
+            className="w-full max-w-none sm:max-w-md min-h-screen sm:min-h-0 bg-white/95 sm:glass-ios border-none p-6 sm:p-8 space-y-6 sm:space-y-8 relative overflow-y-auto rounded-none sm:rounded-3xl shadow-none sm:shadow-2xl flex flex-col justify-center"
         >
+            <motion.button
+                type="button"
+                onPointerDown={(e) => e.preventDefault()}
+                whileHover={{ x: -2, scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                onClick={() => router.back()}
+                className="absolute left-4 top-4 sm:left-6 sm:top-6 p-2 rounded-full bg-slate-100/80 sm:bg-white/10 text-slate-500 hover:text-[var(--color-primary-teal)] hover:bg-white/20 transition-all outline-none cursor-pointer z-10"
+                title="Go back"
+                aria-label="Go back"
+            >
+                <ChevronLeft className="w-5 h-5" />
+            </motion.button>
             <div className="text-center space-y-3">
                 <div className="mx-auto w-16 h-16 bg-[var(--color-primary-teal)]/10 rounded-full flex items-center justify-center shadow-inner">
                     <UserCircle2 className="w-10 h-10 text-[var(--color-primary-teal)]" />

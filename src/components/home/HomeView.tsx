@@ -1039,14 +1039,14 @@ export default function HomeView() {
         style={{ borderRadius: 'var(--radius-md)', backgroundImage: 'url(/banner_journal_and_prayers.svg)', backgroundSize: 'cover', backgroundPosition: 'center' }}
       >
         {/* Consistent dark overlay to ensure readability */}
-        <div className="absolute inset-0 bg-black/40 transition-colors group-hover:bg-black/30" />
+        <div className="absolute inset-0 bg-black/40" />
 
         <div className="relative z-10 flex items-center space-x-4">
           <div className="bg-white/20 backdrop-blur-md p-3.5 rounded-xl group-hover:scale-110 transition-transform">
             <LuNotebookPen className="size-6 text-white" />
           </div>
           <div>
-            <h3 className="text-lg font-bold text-white group-hover:text-teal-200 transition-colors">
+            <h3 className="text-lg font-bold text-white">
               Journals & Prayers
             </h3>
             <p className="text-xs text-white/95 mt-1 max-w-[240px] sm:max-w-md">

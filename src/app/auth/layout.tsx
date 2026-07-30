@@ -9,7 +9,7 @@ export default function AuthLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="min-h-screen w-full relative flex items-center justify-center p-4 overflow-hidden bg-[var(--color-bg-primary)]">
+        <div className="min-h-screen w-full relative flex items-center justify-center p-0 sm:p-4 overflow-x-hidden overflow-y-auto bg-[var(--color-bg-primary)]">
             {/* Mesh Gradient Background */}
             <div className="absolute inset-0 z-0 overflow-hidden">
                 <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full bg-[var(--color-primary-teal)]/20 blur-[120px] animate-pulse" />
@@ -18,7 +18,7 @@ export default function AuthLayout({
             </div>
 
             {/* Content Container */}
-            <div className="relative z-10 w-full max-w-md">
+            <div className="relative z-10 w-full max-w-none sm:max-w-md min-h-screen sm:min-h-0 flex flex-col justify-center">
                 {children}
             </div>
 
