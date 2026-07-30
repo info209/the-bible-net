@@ -59,7 +59,8 @@ type ProfileView =
   | 'journals'
   | 'streaks'
   | 'share'
-  | 'support';
+  | 'support'
+  | 'settings';
 
 const gridItems: Array<{
   icon: React.ElementType;
@@ -108,6 +109,7 @@ const VIEW_LABELS: Record<Exclude<ProfileView, null>, string> = {
   streaks:    'Streaks',
   share:      'Share',
   support:    'Support',
+  settings:   'Settings',
 };
 
 // Which views show ComingSoon (undeveloped features)
@@ -256,6 +258,76 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
             <CommentsPage onBack={handleBackToMenu} />
           </div>
         );
+      case 'settings':
+        return (
+          <div className={commonScrollClass}>
+            <div className="p-4 space-y-5">
+              <div className="flex items-center justify-between pb-3 border-b border-gray-100">
+                <button
+                  type="button"
+                  onClick={handleBackToMenu}
+                  className="flex items-center gap-1.5 text-gray-600 hover:text-gray-900 font-medium text-sm transition-colors"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  <span>Back</span>
+                </button>
+                <h2 className="text-base font-bold text-gray-900">Settings</h2>
+                <div className="w-12" />
+              </div>
+
+              {/* Account Section */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">Account</p>
+                <div className="bg-gray-50 rounded-2xl p-2 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleClose();
+                      router.push('/auth/profile-setup');
+                    }}
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-teal-50 text-[var(--color-primary-teal)] flex items-center justify-center">
+                        <Pencil className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 group-hover:text-[var(--color-primary-teal)] transition-colors">
+                          Edit Profile
+                        </p>
+                        <p className="text-xs text-gray-500">Name, avatar, country & reading preferences</p>
+                      </div>
+                    </div>
+                    <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Preferences Section */}
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">Preferences</p>
+                <div className="bg-gray-50 rounded-2xl p-2 space-y-1">
+                  <button
+                    type="button"
+                    onClick={() => {}}
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white transition-all text-left group"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <Globe className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900">Language</p>
+                        <p className="text-xs text-gray-500">English (default)</p>
+                      </div>
+                    </div>
+                    <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
       default:
         return null;
     }
@@ -346,18 +418,6 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
 
               {/* Name */}
               <h2 className="mt-3 text-lg font-bold text-gray-900 text-center">{fullName}</h2>
-
-              {/* Edit Profile */}
-              <button
-                onClick={() => {
-                  handleClose();
-                  router.push('/auth/profile-setup');
-                }}
-                className="mt-0.5 flex items-center gap-1 text-sm text-gray-400 hover:text-[var(--color-primary-teal)] transition-colors"
-              >
-                <Pencil className="w-3 h-3" />
-                <span>Edit profile</span>
-              </button>
             </div>
 
             <Separator className="bg-gray-100" />
@@ -389,10 +449,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => {
-                      onClose();
-                      onMenuOpen?.();
-                    }}
+                    onClick={() => setActiveView('settings')}
                     className="flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 hover:bg-gray-200 active:scale-95 transition-all duration-150"
                   >
                     <Settings className="w-4 h-4 text-gray-500" strokeWidth={1.8} />

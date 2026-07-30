@@ -2331,6 +2331,8 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
         onRepeatModeToggle={() => setRepeatMode(prev => prev === 'none' ? 'chapter' : prev === 'chapter' ? 'verse' : 'none')}
         selectedChapter={selectedChapter}
         selectedBook={displayBookName}
+        selectedTheme={selectedTheme}
+        isDark={selectedTheme === 'dark'}
       />
     </div>
   );

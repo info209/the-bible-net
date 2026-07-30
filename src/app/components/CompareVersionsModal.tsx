@@ -226,20 +226,7 @@ export default function CompareVersionsModal({
                           >
                             <div className="flex items-center gap-2 min-w-0">
                               <span className="text-sm font-semibold truncate">{version.fullName} ({version.name})</span>
-                              {isActiveVersion && (
-                                <span
-                                  className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded-full shrink-0 uppercase"
-                                  style={{
-                                    backgroundColor: theme === 'dark' ? 'rgba(255, 71, 87, 0.25)' : 'rgba(226, 55, 68, 0.15)',
-                                    color: theme === 'dark' ? '#ff6b7b' : '#E23744',
-                                    border: `1px solid ${theme === 'dark' ? 'rgba(255, 71, 87, 0.4)' : 'rgba(226, 55, 68, 0.25)'}`
-                                  }}
-                                >
-                                  Active
-                                </span>
-                              )}
                             </div>
-                            {isSelected && <Check className="size-4 shrink-0" />}
                           </button>
                         );
                       })}

@@ -7,7 +7,7 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/context/ToastContext';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -36,6 +36,7 @@ const getGreetingByHour = (hour: number): string => {
 export default function HomeView() {
   const { data: session } = useSession();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { isLoading: progressLoading } = useReadingProgress();
   const [audioPlaying, setAudioPlaying] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -233,6 +234,32 @@ export default function HomeView() {
     setIsDetailModalOpen(true);
   };
 
+  // Auto-open Devotion Detail Modal if user clicked a devotional share link
+  const hasAutoOpenedDevotionRef = useRef(false);
+  useEffect(() => {
+    if (hasAutoOpenedDevotionRef.current) return;
+    if (!dailyDevotions || dailyDevotions.length === 0) return;
+
+    const devotionDate = searchParams.get('devotionDate') || searchParams.get('devotionalDate') || searchParams.get('devotion') || (searchParams.get('type') === 'devotion' ? searchParams.get('date') : null);
+    const devotionId = searchParams.get('devotionId') || (searchParams.get('type') === 'devotion' ? searchParams.get('id') : null);
+
+    if (devotionDate || devotionId) {
+      let targetIndex = -1;
+      if (devotionId) {
+        targetIndex = dailyDevotions.findIndex((item: any) => item._id === devotionId || item.id === devotionId);
+      }
+      if (targetIndex === -1 && devotionDate) {
+        targetIndex = dailyDevotions.findIndex((item: any) => item.date === devotionDate);
+      }
+      if (targetIndex === -1) {
+        targetIndex = 0;
+      }
+
+      hasAutoOpenedDevotionRef.current = true;
+      openDetailModal(targetIndex, 'devotional');
+    }
+  }, [dailyDevotions, searchParams]);
+
   const handleCommentClick = (contentId: string, type: 'daily-verse' | 'daily-devotion') => {
     if (!session) {
       router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`);
@@ -310,17 +337,25 @@ export default function HomeView() {
     const shareKey = `${content._id}-${type}`;
     if (sharingStates.has(shareKey)) return;
 
-    const params = new URLSearchParams();
-    const versionVal = content.version || preferredVersion;
-    if (versionVal) params.set('version', versionVal);
-    if (content.verseBook) params.set('book', content.verseBook);
-    if (content.verseChapter) params.set('chapter', String(content.verseChapter));
-    if (content.verseNumber) params.set('verse', String(content.verseNumber));
+    let url: string;
+    let text: string;
 
-    const url = `${window.location.origin}/bible?${params.toString()}`;
-    const text = type === 'daily-verse'
-      ? `"${content.verse}"\n - ${content.verseReference}`
-      : `"${content.devotionalTitle}"`;
+    if (type === 'daily-verse') {
+      const params = new URLSearchParams();
+      const versionVal = content.version || preferredVersion;
+      if (versionVal) params.set('version', versionVal);
+      if (content.verseBook) params.set('book', content.verseBook);
+      if (content.verseChapter) params.set('chapter', String(content.verseChapter));
+      if (content.verseNumber) params.set('verse', String(content.verseNumber));
+      url = `${window.location.origin}/bible?${params.toString()}`;
+      text = `"${content.verse}"\n - ${content.verseReference}`;
+    } else {
+      const params = new URLSearchParams();
+      if (content.date) params.set('devotionDate', content.date);
+      if (content._id) params.set('devotionId', content._id);
+      url = `${window.location.origin}/home?${params.toString()}`;
+      text = `"${content.devotionalTitle || 'Daily Devotional'}"`;
+    }
 
     let sharedSuccessfully = false;
 

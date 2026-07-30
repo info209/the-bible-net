@@ -1,4 +1,5 @@
 import { Metadata } from 'next';
+import { Suspense } from 'react';
 import HomeView from "@/components/home/HomeView";
 
 export const metadata: Metadata = {
@@ -7,8 +8,10 @@ export const metadata: Metadata = {
 
 export default function Page() {
   return (
-    <div className="max-w-3xl mx-auto">
-      <HomeView />
-    </div>
+    <Suspense fallback={null}>
+      <div className="max-w-3xl mx-auto">
+        <HomeView />
+      </div>
+    </Suspense>
   );
 }

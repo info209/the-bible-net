@@ -173,10 +173,10 @@ export default function AudioControlPanel({
   const dm = theme === 'dark';
   
   const panelBg = {
-    light: 'rgba(255, 255, 255, 0.95)',
-    sepia: 'rgba(250, 240, 227, 0.97)',
-    cream: 'rgba(253, 246, 235, 0.97)',
-    dark: '#000000'
+    light: '#ffffff',
+    sepia: '#F7EFED',
+    cream: '#FEF6EB',
+    dark: '#1c1c1e'
   }[theme];
 
   const panelBorder = {
@@ -209,16 +209,16 @@ export default function AudioControlPanel({
 
   const btnBg = {
     light: '#f1f3f3',
-    sepia: '#f2dec6',
-    cream: '#fcf0db',
-    dark: '#1c1c1e'
+    sepia: '#EDE3E1',
+    cream: '#F5E8D5',
+    dark: '#2c2c2e'
   }[theme];
 
   const pillBg = {
-    light: 'rgba(255, 255, 255, 0.88)',
-    sepia: 'rgba(250, 240, 227, 0.88)',
-    cream: 'rgba(253, 246, 235, 0.88)',
-    dark: 'rgba(255, 255, 255, 0.03)'
+    light: '#f1f3f3',
+    sepia: '#EDE3E1',
+    cream: '#F5E8D5',
+    dark: '#2c2c2e'
   }[theme];
 
   const pillBorder = {
@@ -230,8 +230,8 @@ export default function AudioControlPanel({
 
   const sliderTrackBg = {
     light: '#d9d9d9',
-    sepia: '#e0c9a6',
-    cream: '#e5e5e5',
+    sepia: '#d6c4b0',
+    cream: '#dfd4c0',
     dark: '#2c2c2e'
   }[theme];
 
@@ -239,9 +239,7 @@ export default function AudioControlPanel({
     <div className="fixed inset-x-0 bottom-0 z-[100] pointer-events-none">
       <div
         ref={panelRef}
-        className={`pointer-events-auto absolute bottom-0 left-0 right-0 rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto border-t max-h-[85dvh] flex flex-col overflow-hidden backdrop-blur-xl ${
-          dm ? '' : 'glass-heavy bg-white/95'
-        }`}
+        className="pointer-events-auto absolute bottom-0 left-0 right-0 rounded-t-[var(--radius-2xl)] shadow-[var(--shadow-xl)] max-w-[600px] mx-auto border-t max-h-[85dvh] flex flex-col overflow-hidden backdrop-blur-xl"
         style={{
           transform: `translateY(${currentY}px)`,
           transition: isDragging ? 'none' : 'transform 0.3s ease-out',
@@ -444,12 +442,10 @@ export default function AudioControlPanel({
           </div>
 
           {/* ── Secondary controls row ────────────────────────────────────────── */}
-          <div className={`flex items-center justify-center gap-4 rounded-[var(--radius-lg)] py-1.5 px-4 mx-auto w-fit shadow-glass mb-2 ${
-            dm ? '' : 'glass-light'
-          }`}
+          <div className="flex items-center justify-center gap-4 rounded-[var(--radius-lg)] py-1.5 px-4 mx-auto w-fit shadow-sm mb-2"
             style={{
               backgroundColor: pillBg,
-              border: dm ? `1px solid ${pillBorder}` : undefined,
+              border: `1px solid ${pillBorder}`,
             }}
           >
 
@@ -564,13 +560,13 @@ export default function AudioControlPanel({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-200 dark:border-zinc-800">
+            <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: panelBorder }}>
               <div>
                 <h3 className="text-base font-bold flex items-center gap-2">
                   <Download className="size-4 text-[var(--color-primary-teal)]" />
                   Offline Downloads
                 </h3>
-                <p className="text-xs opacity-70 mt-0.5">
+                <p className="text-xs opacity-70 mt-0.5" style={{ color: textSecondary }}>
                   {selectedBook || 'Genesis'} {selectedChapter} &middot; {selectedVersion}
                 </p>
               </div>
@@ -585,17 +581,17 @@ export default function AudioControlPanel({
 
             <div className="overflow-y-auto flex-1 py-4 space-y-4">
               {/* 100 MB Storage Meter */}
-              <div className="rounded-xl p-3.5 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+              <div className="rounded-xl p-3.5 border" style={{ backgroundColor: btnBg, borderColor: panelBorder }}>
                 <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-                  <span className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-300">
+                  <span className="flex items-center gap-1.5" style={{ color: textPrimary }}>
                     <HardDrive className="size-3.5 text-[var(--color-primary-teal)]" />
                     Offline Storage Limit
                   </span>
-                  <span className="text-zinc-500">
+                  <span style={{ color: textSecondary }}>
                     {StorageManager.formatBytes(storageInfo?.totalBytes ?? 0)} / 100 MB
                   </span>
                 </div>
-                <div className="h-2 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                <div className="h-2 w-full rounded-full overflow-hidden" style={{ backgroundColor: sliderTrackBg }}>
                   <div
                     className={`h-full rounded-full transition-all duration-500 ${
                       (storageInfo?.totalBytes ?? 0) > 90 * 1024 * 1024
@@ -607,13 +603,13 @@ export default function AudioControlPanel({
                     }}
                   />
                 </div>
-                <p className="text-[10px] opacity-60 mt-1">
+                <p className="text-[10px] opacity-60 mt-1" style={{ color: textSecondary }}>
                   Strict 100 MB limit. Only one book of a version is downloaded at a time.
                 </p>
               </div>
 
               {/* Action 1: Download Current Chapter */}
-              <div className="rounded-xl p-3.5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex items-center justify-between gap-3">
+              <div className="rounded-xl p-3.5 border flex items-center justify-between gap-3" style={{ backgroundColor: pillBg, borderColor: panelBorder }}>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold truncate">
                     Download Chapter {selectedChapter}
@@ -682,7 +678,7 @@ export default function AudioControlPanel({
               </div>
 
               {/* Action 2: Download Full Book */}
-              <div className="rounded-xl p-3.5 border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 space-y-2">
+              <div className="rounded-xl p-3.5 border space-y-2" style={{ backgroundColor: pillBg, borderColor: panelBorder }}>
                 <div className="flex items-center justify-between gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-bold truncate">
@@ -757,13 +753,13 @@ export default function AudioControlPanel({
                   if (bStatus?.status === 'downloading') {
                     return (
                       <div className="space-y-1 pt-1">
-                        <div className="h-1.5 w-full bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
+                        <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: sliderTrackBg }}>
                           <div
                             className="h-full bg-[var(--color-primary-teal)] rounded-full transition-all duration-300"
                             style={{ width: `${bStatus.progressPercent}%` }}
                           />
                         </div>
-                        <p className="text-[10px] text-right text-zinc-500 font-medium">
+                        <p className="text-[10px] text-right font-medium" style={{ color: textSecondary }}>
                           {bStatus.downloadedChapters ?? 0} of {totalChapters} chapters
                         </p>
                       </div>
@@ -796,7 +792,8 @@ export default function AudioControlPanel({
                       {downloadedBooks.map((rec) => (
                         <div
                           key={rec.id}
-                          className="flex items-center justify-between px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-800 text-xs"
+                          className="flex items-center justify-between px-3 py-2 rounded-lg border text-xs"
+                          style={{ backgroundColor: pillBg, borderColor: panelBorder }}
                         >
                           <div>
                             <span className="font-semibold">{rec.bookName}</span>

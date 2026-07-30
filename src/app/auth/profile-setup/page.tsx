@@ -1,9 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Globe, Languages, Book, ArrowRight, UserCircle2, ChevronLeft } from 'lucide-react';
+import { Globe, Languages, Book, Camera, ChevronLeft, Check, Lock, User } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
@@ -21,8 +21,9 @@ function ProfileSetupContent() {
         preferredBibleVersion: 'NKJV',
     });
     const [loading, setLoading] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [error, setError] = useState('');
-    const [bibleVersions, setBibleVersions] = useState<string[]>(['NKJV', 'KJV', 'NIV', 'ESV']); // Default fallback
+    const [bibleVersions, setBibleVersions] = useState<string[]>(['NKJV', 'KJV', 'NIV', 'ESV']);
 
     useEffect(() => {
         if (session?.user) {
@@ -39,7 +40,6 @@ function ProfileSetupContent() {
     }, [session]);
 
     useEffect(() => {
-        // Fetch dynamic bible versions
         const fetchVersions = async () => {
             try {
                 const res = await fetch('/api/v1/bible/versions');
@@ -57,13 +57,68 @@ function ProfileSetupContent() {
         fetchVersions();
     }, []);
 
+    const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            toast.error('Avatar image size must be less than 5MB');
+            return;
+        }
+
+        setIsUploading(true);
+        try {
+            const formDataUpload = new FormData();
+            formDataUpload.append('file', file);
+            formDataUpload.append('isPrivate', 'false');
+
+            const uploadRes = await fetch('/api/v1/upload', {
+                method: 'POST',
+                body: formDataUpload,
+            });
+            const uploadData = await uploadRes.json();
+
+            if (!uploadRes.ok || !uploadData.success) {
+                throw new Error(uploadData.error || 'Failed to upload image');
+            }
+
+            const imageUrl = uploadData.url;
+
+            const profileRes = await fetch('/api/user/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ image: imageUrl }),
+            });
+            const profileData = await profileRes.json();
+
+            if (!profileRes.ok || !profileData.success) {
+                throw new Error(profileData.error || 'Failed to update avatar');
+            }
+
+            if (updateSession) {
+                await updateSession({
+                    user: {
+                        ...session?.user,
+                        image: imageUrl,
+                    },
+                });
+            }
+            toast.success('Profile photo updated');
+        } catch (err: any) {
+            console.error('Avatar upload error:', err);
+            const friendlyMsg = getFriendlyErrorMessage(err, 'profile');
+            toast.error(friendlyMsg);
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
     const handleSubmit = async (e?: React.FormEvent) => {
         if (e) e.preventDefault();
         setLoading(true);
         setError('');
 
         try {
-            // Validate basic fields
             if (formData.firstName.length < 2) {
                 const friendlyMsg = getFriendlyErrorMessage('First name must be at least 2 characters', 'profile');
                 toast.error(friendlyMsg);
@@ -95,7 +150,6 @@ function ProfileSetupContent() {
             const data = await res.json();
 
             if (res.ok) {
-                // Refresh session to reflect changes
                 await updateSession({ 
                     user: { 
                         ...session?.user,
@@ -107,8 +161,8 @@ function ProfileSetupContent() {
                         onboardingCompleted: true 
                     } 
                 });
-                toast.success('Profile saved successfully!');
-                router.push('/auth/success?type=profile');
+                toast.success('Profile updated successfully!');
+                router.back();
             } else {
                 const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Failed to save profile', 'profile');
                 toast.error(friendlyMsg);
@@ -123,164 +177,233 @@ function ProfileSetupContent() {
         }
     };
 
+    const user = session?.user;
+    const fullName = `${formData.firstName} ${formData.lastName}`.trim() || user?.name || user?.email || 'User Profile';
+    const userInitials = (formData.firstName?.[0] || user?.name?.[0] || 'U').toUpperCase();
+
     return (
-        <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
-            className="w-full max-w-none sm:max-w-md min-h-screen sm:min-h-0 bg-white/95 sm:glass-ios border-none p-6 sm:p-8 space-y-6 sm:space-y-8 relative overflow-y-auto rounded-none sm:rounded-3xl shadow-none sm:shadow-2xl flex flex-col justify-center"
-        >
-            <motion.button
-                type="button"
-                onPointerDown={(e) => e.preventDefault()}
-                whileHover={{ x: -2, scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => router.back()}
-                className="absolute left-4 top-4 sm:left-6 sm:top-6 p-2 rounded-full bg-slate-100/80 sm:bg-white/10 text-slate-500 hover:text-[var(--color-primary-teal)] hover:bg-white/20 transition-all outline-none cursor-pointer z-10"
-                title="Go back"
-                aria-label="Go back"
+        <div className="min-h-screen bg-slate-50/60 py-6 sm:py-10 px-4 sm:px-6">
+            <motion.div 
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+                className="max-w-xl mx-auto space-y-6"
             >
-                <ChevronLeft className="w-5 h-5" />
-            </motion.button>
-            <div className="text-center space-y-3">
-                <div className="mx-auto w-16 h-16 bg-[var(--color-primary-teal)]/10 rounded-full flex items-center justify-center shadow-inner">
-                    <UserCircle2 className="w-10 h-10 text-[var(--color-primary-teal)]" />
+                {/* Top Header */}
+                <div className="flex items-center justify-between">
+                    <button
+                        type="button"
+                        onClick={() => router.back()}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-white border border-slate-200 text-slate-700 hover:text-[var(--color-primary-teal)] hover:border-[var(--color-primary-teal)]/30 text-sm font-semibold shadow-sm transition-all outline-none cursor-pointer"
+                    >
+                        <ChevronLeft className="w-4 h-4" />
+                        <span>Back</span>
+                    </button>
+                    <h1 className="text-xl font-bold text-slate-900">Edit Profile</h1>
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[var(--color-primary-teal)] text-white text-sm font-bold shadow-md shadow-[var(--color-primary-teal)]/20 hover:bg-[var(--color-primary-teal-dark)] transition-all disabled:opacity-50 cursor-pointer"
+                    >
+                        {loading ? (
+                            <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <>
+                                <Check className="w-4 h-4" />
+                                <span>Save</span>
+                            </>
+                        )}
+                    </button>
                 </div>
-                <h1 className="text-3xl font-black text-slate-900 tracking-tighter font-sans leading-tight">Personalize</h1>
-                <p className="text-slate-500/80 font-medium px-4 leading-relaxed">
-                    Set up your preferences for a tailored Bible reading experience
-                </p>
-            </div>
 
-            {error && (
-                <motion.div 
-                    initial={{ opacity: 0, y: -10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-red-50 border border-red-100 text-red-600 p-4 rounded-2xl text-sm font-bold shadow-sm"
-                >
-                    {error}
-                </motion.div>
-            )}
+                {/* Profile Header Avatar Card */}
+                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col items-center text-center relative overflow-hidden">
+                    <div className="absolute top-0 inset-x-0 h-16 bg-gradient-to-r from-teal-500/10 via-emerald-500/10 to-teal-500/10" />
 
-            <div className="space-y-6">
-                {/* Basic Info */}
-                <div className="space-y-4">
-                    <div className="space-y-1.5">
-                        <label className="text-sm font-bold text-slate-700 ml-1">First name</label>
+                    <div className="relative mt-2">
+                        {user?.image ? (
+                            <img
+                                src={user.image}
+                                alt={fullName}
+                                className="w-24 h-24 rounded-full border-4 border-white shadow-md object-cover"
+                            />
+                        ) : (
+                            <div className="w-24 h-24 rounded-full border-4 border-white shadow-md bg-[#f0d6e8] flex items-center justify-center">
+                                <span className="text-[#6d2c5e] text-3xl font-bold tracking-wide">{userInitials}</span>
+                            </div>
+                        )}
+
                         <input
-                            type="text"
-                            value={formData.firstName}
-                            onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                            className="w-full bg-gray-100/50 border-none rounded-2xl py-3.5 px-4 outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 transition-all font-medium placeholder:text-gray-400"
-                            placeholder="John"
+                            type="file"
+                            id="profile-avatar-upload"
+                            className="hidden"
+                            accept="image/*"
+                            onChange={handleAvatarChange}
+                            disabled={isUploading}
+                        />
+                        <button
+                            type="button"
+                            onClick={() => document.getElementById('profile-avatar-upload')?.click()}
+                            disabled={isUploading}
+                            className="absolute bottom-0 right-0 w-8 h-8 rounded-full bg-[var(--color-primary-teal)] text-white border-2 border-white shadow flex items-center justify-center hover:scale-105 active:scale-95 transition-all cursor-pointer disabled:opacity-50"
+                            title="Change photo"
+                        >
+                            {isUploading ? (
+                                <div className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                            ) : (
+                                <Camera className="w-4 h-4" />
+                            )}
+                        </button>
+                    </div>
+
+                    <h2 className="mt-3 text-lg font-bold text-slate-900">{fullName}</h2>
+                    <p className="text-xs font-medium text-slate-400 mt-0.5">{formData.email}</p>
+                </div>
+
+                {error && (
+                    <motion.div 
+                        initial={{ opacity: 0, y: -8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-rose-50 border border-rose-100 text-rose-600 p-4 rounded-2xl text-sm font-semibold"
+                    >
+                        {error}
+                    </motion.div>
+                )}
+
+                {/* Card 1: Personal Information */}
+                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                        <User className="w-4 h-4 text-[var(--color-primary-teal)]" />
+                        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Personal Information</h3>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-600 ml-1">First name</label>
+                            <input
+                                type="text"
+                                value={formData.firstName}
+                                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 focus:border-[var(--color-primary-teal)] rounded-xl py-3 px-3.5 outline-none font-medium text-slate-800 transition-all text-sm"
+                                placeholder="First name"
+                            />
+                        </div>
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-bold text-slate-600 ml-1">Last name</label>
+                            <input
+                                type="text"
+                                value={formData.lastName}
+                                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 focus:border-[var(--color-primary-teal)] rounded-xl py-3 px-3.5 outline-none font-medium text-slate-800 transition-all text-sm"
+                                placeholder="Last name"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <div className="flex items-center justify-between ml-1">
+                            <label className="text-xs font-bold text-slate-600">Email address</label>
+                            <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                                <Lock className="w-3 h-3" /> Read-only
+                            </span>
+                        </div>
+                        <input
+                            type="email"
+                            value={formData.email}
+                            readOnly
+                            className="w-full bg-slate-100/70 border border-slate-200 rounded-xl py-3 px-3.5 text-slate-500 cursor-not-allowed font-medium text-sm"
+                            title="Email address cannot be changed"
                         />
                     </div>
+
                     <div className="space-y-1.5">
-                        <label className="text-sm font-bold text-slate-700 ml-1">Last name</label>
-                        <input
-                            type="text"
-                            value={formData.lastName}
-                            onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                            className="w-full bg-gray-100/50 border-none rounded-2xl py-3.5 px-4 outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 transition-all font-medium placeholder:text-gray-400"
-                            placeholder="Doe"
-                        />
+                        <label className="text-xs font-bold text-slate-600 ml-1">Country</label>
+                        <div className="relative">
+                            <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                            <select
+                                value={formData.country}
+                                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 focus:border-[var(--color-primary-teal)] rounded-xl py-3 pl-10 pr-4 outline-none font-semibold text-slate-800 transition-all text-sm appearance-none cursor-pointer"
+                            >
+                                <option>New Zealand</option>
+                                <option>United States</option>
+                                <option>United Kingdom</option>
+                                <option>India</option>
+                                <option>Australia</option>
+                                <option>Canada</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Email address</label>
-                    <input
-                        type="email"
-                        value={formData.email}
-                        readOnly
-                        className="w-full bg-slate-200/50 border-none rounded-2xl py-3.5 px-4 outline-none text-slate-500 cursor-not-allowed font-medium opacity-60"
-                        title="Email cannot be changed"
-                    />
-                </div>
+                {/* Card 2: Reading Preferences */}
+                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 space-y-4">
+                    <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                        <Book className="w-4 h-4 text-[var(--color-primary-teal)]" />
+                        <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Reading Preferences</h3>
+                    </div>
 
-                <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Country</label>
-                    <div className="relative group">
-                        <Globe className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-primary-teal)] transition-colors" />
-                        <select
-                            value={formData.country}
-                            onChange={(e) => setFormData({ ...formData, country: e.target.value })}
-                            className="w-full bg-gray-100/50 border-none rounded-2xl py-3.5 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 transition-all appearance-none font-bold text-slate-700"
-                        >
-                            <option>New Zealand</option>
-                            <option>United States</option>
-                            <option>United Kingdom</option>
-                            <option>India</option>
-                            <option>Australia</option>
-                            <option>Canada</option>
-                        </select>
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-600 ml-1">Preferred language</label>
+                        <div className="relative">
+                            <Languages className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                            <select
+                                value={formData.preferredLanguage}
+                                onChange={(e) => setFormData({ ...formData, preferredLanguage: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 focus:border-[var(--color-primary-teal)] rounded-xl py-3 pl-10 pr-4 outline-none font-semibold text-slate-800 transition-all text-sm appearance-none cursor-pointer"
+                            >
+                                <option>English</option>
+                                <option>Spanish</option>
+                                <option>French</option>
+                                <option>Hindi</option>
+                                <option>Telugu</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                        <label className="text-xs font-bold text-slate-600 ml-1">Preferred Bible version</label>
+                        <div className="relative">
+                            <Book className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+                            <select
+                                value={formData.preferredBibleVersion}
+                                onChange={(e) => setFormData({ ...formData, preferredBibleVersion: e.target.value })}
+                                className="w-full bg-slate-50 border border-slate-200 focus:border-[var(--color-primary-teal)] rounded-xl py-3 pl-10 pr-4 outline-none font-semibold text-slate-800 transition-all text-sm appearance-none cursor-pointer"
+                            >
+                                {bibleVersions.map((v) => (
+                                    <option key={v} value={v}>{v}</option>
+                                ))}
+                            </select>
+                        </div>
                     </div>
                 </div>
 
-                <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Preferred language</label>
-                    <div className="relative group">
-                        <Languages className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-primary-teal)] transition-colors" />
-                        <select
-                            value={formData.preferredLanguage}
-                            onChange={(e) => setFormData({ ...formData, preferredLanguage: e.target.value })}
-                            className="w-full bg-gray-100/50 border-none rounded-2xl py-3.5 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 transition-all appearance-none font-bold text-slate-700"
-                        >
-                            <option>English</option>
-                            <option>Spanish</option>
-                            <option>French</option>
-                            <option>Hindi</option>
-                            <option>Telugu</option>
-                        </select>
-                    </div>
+                {/* Primary Action Button */}
+                <div className="pt-2">
+                    <button
+                        type="button"
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="w-full bg-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-dark)] text-white font-bold py-3.5 rounded-2xl shadow-lg shadow-[var(--color-primary-teal)]/25 transition-all active:scale-[0.98] flex items-center justify-center gap-2 text-base cursor-pointer disabled:opacity-50"
+                    >
+                        {loading ? (
+                            <div className="h-5 w-5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <>
+                                <span>Save Changes</span>
+                            </>
+                        )}
+                    </button>
                 </div>
-
-                <div className="space-y-1.5">
-                    <label className="text-sm font-bold text-slate-700 ml-1">Preferred Bible version</label>
-                    <div className="relative group">
-                        <Book className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-primary-teal)] transition-colors" />
-                        <select
-                            value={formData.preferredBibleVersion}
-                            onChange={(e) => setFormData({ ...formData, preferredBibleVersion: e.target.value })}
-                            className="w-full bg-gray-100/50 border-none rounded-2xl py-3.5 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-primary-teal)]/20 transition-all appearance-none font-bold text-slate-700"
-                        >
-                            {bibleVersions.map((v) => (
-                                <option key={v} value={v}>{v}</option>
-                            ))}
-                        </select>
-                    </div>
-                </div>
-            </div>
-
-            <div className="space-y-5 pt-4">
-                <button
-                    onClick={handleSubmit}
-                    disabled={loading}
-                    className="w-full bg-[var(--color-primary-teal)] hover:bg-[var(--color-primary-teal-dark)] text-white font-black py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 transition-all active:scale-[0.98] flex items-center justify-center gap-3 text-lg tracking-tight"
-                >
-                    {loading ? (
-                        <div className="h-6 w-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                    ) : (
-                        <>
-                            {(session?.user as any)?.onboardingCompleted ? 'Update changes' : 'Get started'} <ArrowRight className="w-5 h-5 group-hover:translate-x-1.5 transition-transform" />
-                        </>
-                    )}
-                </button>
-                
-                <button 
-                    onClick={() => router.push('/home?profile=true')}
-                    className="w-full text-slate-400 font-extrabold py-2 hover:text-slate-600 transition-colors text-s"
-                >
-                    Skip for now
-                </button>
-            </div>
-        </motion.div>
+            </motion.div>
+        </div>
     );
 }
 
 export default function ProfileSetup() {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="min-h-screen flex items-center justify-center text-slate-400 font-medium">Loading profile...</div>}>
             <ProfileSetupContent />
         </Suspense>
     );
