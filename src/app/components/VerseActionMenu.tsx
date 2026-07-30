@@ -612,7 +612,7 @@ export default function VerseActionMenu({
                           className="flex flex-col items-center justify-center gap-0.5 w-[50px] sm:w-[54px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
-                          <RiShareForwardLine className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
+                          <RiShareForwardLine className="w-[18px] h-[18px]" style={{ color: iconColor }} />
                           <span className="text-[10px] font-bold" style={{ color: iconColor }}>Share</span>
                         </button>
                       </div>
