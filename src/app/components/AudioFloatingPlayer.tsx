@@ -22,6 +22,8 @@ interface Props {
   isReadingMode?: boolean;
   isNarrationActive?: boolean;
   onStop?: () => void;
+  selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
+  isDark?: boolean;
 }
 
 export default function AudioFloatingPlayer({
@@ -37,6 +39,8 @@ export default function AudioFloatingPlayer({
   isReadingMode = false,
   isNarrationActive = false,
   onStop,
+  selectedTheme,
+  isDark = false,
 }: Props) {
   const [sheetOffset, setSheetOffset] = useState(0);
 
@@ -110,6 +114,44 @@ export default function AudioFloatingPlayer({
   const finalOffset = sheetOffset > 0 ? sheetOffset + 20 : baselineBottom;
   const bottomValue = `calc(${finalOffset}px + env(safe-area-inset-bottom))`;
 
+  // Theme color tokens
+  const theme = selectedTheme || (isDark ? 'dark' : 'light');
+
+  const btnBg = {
+    light: '#ffffff',
+    sepia: '#F7EFED',
+    cream: '#FEF6EB',
+    dark: '#1c1c1e'
+  }[theme];
+
+  const btnBorder = {
+    light: 'rgba(49, 57, 58, 0.15)',
+    sepia: 'rgba(92, 74, 58, 0.2)',
+    cream: 'rgba(74, 63, 42, 0.2)',
+    dark: 'rgba(255, 255, 255, 0.12)'
+  }[theme];
+
+  const iconColor = {
+    light: '#31393a',
+    sepia: '#5c4a3a',
+    cream: '#4a3f2a',
+    dark: '#e5e7e7'
+  }[theme];
+
+  const subTextColor = {
+    light: '#6b7280',
+    sepia: '#7d6855',
+    cream: '#6e5f46',
+    dark: '#8e8e93'
+  }[theme];
+
+  const ringTrackColor = {
+    light: 'rgba(49, 57, 58, 0.15)',
+    sepia: 'rgba(92, 74, 58, 0.2)',
+    cream: 'rgba(74, 63, 42, 0.2)',
+    dark: 'rgba(255, 255, 255, 0.15)'
+  }[theme];
+
   return (
     <AnimatePresence mode="wait">
 
@@ -131,15 +173,16 @@ export default function AudioFloatingPlayer({
             <motion.button
               onClick={onPrev}
               whileTap={{ scale: 0.86 }}
-              className="pointer-events-auto
-                size-10 rounded-full flex items-center justify-center
-                bg-[var(--color-bg-primary)]/90 backdrop-blur-xl
-                border border-[var(--color-border)]
-                shadow-[0_2px_12px_rgba(0,0,0,0.1),0_1px_3px_rgba(0,0,0,0.06)]
-                hover:bg-[var(--color-bg-secondary)] transition-colors"
+              className="pointer-events-auto size-10 rounded-full flex items-center justify-center backdrop-blur-xl shadow-[0_2px_12px_rgba(0,0,0,0.1),0_1px_3px_rgba(0,0,0,0.06)] transition-colors"
+              style={{
+                backgroundColor: btnBg,
+                borderColor: btnBorder,
+                borderWidth: '1px',
+                borderStyle: 'solid',
+              }}
               aria-label="Previous chapter"
             >
-              <ChevronLeft className="size-[18px] text-[var(--color-text-secondary)]" strokeWidth={2.5} />
+              <ChevronLeft className="size-[18px]" style={{ color: iconColor }} strokeWidth={2.5} />
             </motion.button>
 
             {/* Center Controls (Single Play button or Expanded 3-Control Pill) */}
@@ -159,7 +202,7 @@ export default function AudioFloatingPlayer({
                       progress={progress}
                       size={58}
                       strokeWidth={2.5}
-                      trackColor="var(--color-bg-tertiary)"
+                      trackColor={ringTrackColor}
                       color="#31C4BE"
                     >
                       <motion.button
@@ -184,17 +227,19 @@ export default function AudioFloatingPlayer({
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.88, opacity: 0 }}
                     transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                    className="relative flex items-center h-[46px] px-2 rounded-full
-                      bg-[var(--color-bg-primary)]/95 backdrop-blur-xl
-                      border border-[var(--color-border)]
-                      shadow-[0_8px_30px_rgba(0,0,0,0.14)]"
+                    className="relative flex items-center h-[46px] px-2 rounded-full backdrop-blur-xl shadow-[0_8px_30px_rgba(0,0,0,0.14)]"
+                    style={{
+                      backgroundColor: btnBg,
+                      borderColor: btnBorder,
+                      borderWidth: '1px',
+                      borderStyle: 'solid',
+                    }}
                   >
                     {/* Left: Audio Controls Settings */}
                     <motion.button
                       whileTap={{ scale: 0.88 }}
                       onClick={(e) => { e.stopPropagation(); onOpenPanel(); }}
-                      className="size-9 rounded-full flex items-center justify-center
-                        text-[#31C4BE] hover:bg-[var(--color-bg-secondary)] transition-colors"
+                      className="size-9 rounded-full flex items-center justify-center text-[#31C4BE] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                       aria-label="Audio controls settings"
                       title="Audio settings"
                     >
@@ -207,7 +252,7 @@ export default function AudioFloatingPlayer({
                         progress={progress}
                         size={58}
                         strokeWidth={2.5}
-                        trackColor="var(--color-bg-tertiary)"
+                        trackColor={ringTrackColor}
                         color="#31C4BE"
                       >
                         <motion.button
@@ -233,8 +278,7 @@ export default function AudioFloatingPlayer({
                     <motion.button
                       whileTap={{ scale: 0.88 }}
                       onClick={(e) => { e.stopPropagation(); onStop?.(); }}
-                      className="size-9 rounded-full flex items-center justify-center
-                        text-[#31C4BE] hover:bg-[var(--color-bg-secondary)] transition-colors"
+                      className="size-9 rounded-full flex items-center justify-center text-[#31C4BE] hover:bg-black/5 dark:hover:bg-white/10 transition-colors"
                       aria-label="Stop narration"
                       title="Stop narration"
                     >
@@ -249,15 +293,16 @@ export default function AudioFloatingPlayer({
             <motion.button
               onClick={onNext}
               whileTap={{ scale: 0.86 }}
-              className="pointer-events-auto
-                size-10 rounded-full flex items-center justify-center
-                bg-[var(--color-bg-primary)]/90 backdrop-blur-xl
-                border border-[var(--color-border)]
-                shadow-[0_2px_12px_rgba(0,0,0,0.1),0_1px_3px_rgba(0,0,0,0.06)]
-                hover:bg-[var(--color-bg-secondary)] transition-colors"
+              className="pointer-events-auto size-10 rounded-full flex items-center justify-center backdrop-blur-xl shadow-[0_2px_12px_rgba(0,0,0,0.1),0_1px_3px_rgba(0,0,0,0.06)] transition-colors"
+              style={{
+                backgroundColor: btnBg,
+                borderColor: btnBorder,
+                borderWidth: '1px',
+                borderStyle: 'solid',
+              }}
               aria-label="Next chapter"
             >
-              <ChevronRight className="size-[18px] text-[var(--color-text-secondary)]" strokeWidth={2.5} />
+              <ChevronRight className="size-[18px]" style={{ color: iconColor }} strokeWidth={2.5} />
             </motion.button>
 
           </div>
@@ -278,24 +323,25 @@ export default function AudioFloatingPlayer({
           onClick={onOpenPanel}
         >
           <div
-            className="bg-[var(--color-bg-primary)]
-              border border-[var(--color-border)]
-              shadow-lg rounded-full px-4 py-2.5
-              flex items-center gap-3 cursor-pointer
-              hover:shadow-xl transition-shadow"
+            className="shadow-lg rounded-full px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:shadow-xl transition-shadow"
+            style={{
+              backgroundColor: btnBg,
+              borderColor: btnBorder,
+              borderWidth: '1px',
+              borderStyle: 'solid',
+            }}
           >
             {/* Progress ring + play */}
             <ProgressRing
               progress={progress}
               size={40}
               strokeWidth={2.5}
-              trackColor="var(--color-bg-tertiary)"
+              trackColor={ringTrackColor}
               color="#31C4BE"
             >
               <button
                 onClick={(e) => { e.stopPropagation(); onPlayPause(); }}
-                className="size-7 rounded-full flex items-center justify-center
-                  bg-[#31C4BE]"
+                className="size-7 rounded-full flex items-center justify-center bg-[#31C4BE]"
                 aria-label={isPlaying ? "Pause" : "Play"}
               >
                 {isPlaying ? (
@@ -308,15 +354,15 @@ export default function AudioFloatingPlayer({
 
             {/* Title + subtitle */}
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold truncate text-[var(--color-text-primary)]">
+              <p className="text-sm font-semibold truncate" style={{ color: iconColor }}>
                 {title}
               </p>
-              <p className="text-xs text-[var(--color-text-secondary)] truncate">
+              <p className="text-xs truncate" style={{ color: subTextColor }}>
                 {subtitle}
               </p>
             </div>
 
-            <ChevronUp className="size-4 text-[var(--color-text-tertiary)] shrink-0" />
+            <ChevronUp className="size-4 shrink-0" style={{ color: subTextColor }} />
           </div>
         </motion.div>
       )}

@@ -513,7 +513,7 @@ export default function AudioControlPanel({
               title="Download options (100 MB Limit)"
             >
               <div className="size-5 flex items-center justify-center">
-                <Download className="size-4 text-[var(--color-primary-teal)]" strokeWidth={2.2} />
+                <Download className="size-4" strokeWidth={2.2} />
               </div>
               <span className="text-[8px] font-bold whitespace-nowrap leading-none">
                 Download

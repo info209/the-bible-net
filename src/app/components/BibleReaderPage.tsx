@@ -2738,6 +2738,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           onOpenPanel={() => setShowAudioControlPanel(true)}
           isNarrationActive={narrationActive}
           onStop={stopNarration}
+          selectedTheme={selectedTheme}
+          isDark={selectedTheme === 'dark'}
         />
       )}
 
