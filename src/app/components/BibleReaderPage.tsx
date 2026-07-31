@@ -322,6 +322,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   useEffect(() => {
     if (selectedTheme) {
       localStorage.setItem('bible-reader-theme', selectedTheme);
+      window.dispatchEvent(new CustomEvent('bible-theme-change', { detail: { theme: selectedTheme } }));
     }
   }, [selectedTheme]);
 
