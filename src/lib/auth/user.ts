@@ -87,11 +87,17 @@ export const {
             
             if (isOAuth) {
                 try {
+                    const rawName = (user.name as string) || '';
+                    const nameParts = rawName.trim().split(' ');
+                    const givenName = (profile as any)?.given_name || nameParts[0] || 'Unknown';
+                    const familyName = (profile as any)?.family_name || nameParts.slice(1).join(' ') || 'Unknown';
+                    const avatarUrl = user.image || (profile as any)?.picture || undefined;
+
                     const dbUser = await UserService.findOrCreateOAuthUser({
                         email: user.email!,
-                        firstName: profile?.given_name || (user.name as string).split(' ')[0] || 'Unknown',
-                        lastName: profile?.family_name || (user.name as string).split(' ')[1] || 'Unknown',
-                        image: user.image || undefined,
+                        firstName: givenName,
+                        lastName: familyName,
+                        image: avatarUrl,
                         provider: account!.provider,
                         providerAccountId: account!.providerAccountId,
                     });
@@ -107,6 +113,12 @@ export const {
                     user.onboardingCompleted = dbUser.onboardingCompleted as boolean;
                     user.emailVerified = dbUser.emailVerified as any;
                     user.sessionType = 'USER';
+                    (user as any).firstName = dbUser.firstName;
+                    (user as any).lastName = dbUser.lastName;
+                    (user as any).country = dbUser.country;
+                    (user as any).preferredLanguage = dbUser.preferredLanguage;
+                    (user as any).preferredBibleVersion = dbUser.preferredBibleVersion;
+                    user.image = dbUser.image || avatarUrl;
 
                     return true;
                 } catch (error) {

@@ -91,13 +91,23 @@ export class UserService {
     }): Promise<IUser> {
         const existing = await UserRepository.findByEmail(data.email);
         if (existing) {
-            // If found, update provider info if not set
+            const updates: Partial<IUser> = { emailVerified: true };
             if (!existing.provider) {
-                return await UserRepository.update(existing.id, {
-                    provider: data.provider,
-                    providerAccountId: data.providerAccountId,
-                    emailVerified: true // OAuth providers verify email
-                }) as IUser;
+                updates.provider = data.provider;
+                updates.providerAccountId = data.providerAccountId;
+            }
+            if (!existing.image && data.image) {
+                updates.image = data.image;
+            }
+            if ((!existing.firstName || existing.firstName === 'Unknown') && data.firstName && data.firstName !== 'Unknown') {
+                updates.firstName = data.firstName;
+            }
+            if ((!existing.lastName || existing.lastName === 'Unknown') && data.lastName && data.lastName !== 'Unknown') {
+                updates.lastName = data.lastName;
+            }
+
+            if (Object.keys(updates).length > 0) {
+                return await UserRepository.update(existing.id, updates) as IUser;
             }
             return existing;
         }

@@ -187,7 +187,7 @@ export default function LoginPage() {
                     <button
                         key={social.name}
                         type="button"
-                        onClick={() => signIn(social.name.toLowerCase())}
+                        onClick={() => signIn(social.name.toLowerCase(), { callbackUrl: '/auth/profile-setup' })}
                         className="flex items-center justify-center p-3.5 border-none rounded-2xl bg-white/40 hover:bg-white/60 transition-all active:scale-[0.92] shadow-sm backdrop-blur-sm"
                         title={`Log in with ${social.name}`}
                     >

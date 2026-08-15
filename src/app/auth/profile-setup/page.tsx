@@ -26,15 +26,46 @@ function ProfileSetupContent() {
     const [bibleVersions, setBibleVersions] = useState<string[]>(['NKJV', 'KJV', 'NIV', 'ESV']);
 
     useEffect(() => {
+        const fetchUserProfile = async () => {
+            try {
+                const res = await fetch('/api/user/profile');
+                if (res.ok) {
+                    const json = await res.json();
+                    if (json.success && json.data) {
+                        const dbUser = json.data;
+                        setFormData(prev => ({
+                            firstName: dbUser.firstName && dbUser.firstName !== 'Unknown' ? dbUser.firstName : prev.firstName,
+                            lastName: dbUser.lastName && dbUser.lastName !== 'Unknown' ? dbUser.lastName : prev.lastName,
+                            email: dbUser.email || prev.email,
+                            country: dbUser.country || prev.country || 'New Zealand',
+                            preferredLanguage: dbUser.preferredLanguage || prev.preferredLanguage || 'English',
+                            preferredBibleVersion: dbUser.preferredBibleVersion || prev.preferredBibleVersion || 'NKJV',
+                        }));
+                    }
+                }
+            } catch (err) {
+                console.error('Failed to fetch user profile:', err);
+            }
+        };
+
+        fetchUserProfile();
+    }, []);
+
+    useEffect(() => {
         if (session?.user) {
+            const u = session.user as any;
+            const nameParts = (u.name || '').trim().split(' ');
+            const derivedFirstName = u.firstName || nameParts[0] || '';
+            const derivedLastName = u.lastName || nameParts.slice(1).join(' ') || '';
+
             setFormData(prev => ({
                 ...prev,
-                firstName: prev.firstName || (session.user as any).firstName || '',
-                lastName: prev.lastName || (session.user as any).lastName || '',
-                email: prev.email || session.user.email || '',
-                country: prev.country === 'New Zealand' ? ((session.user as any).country || 'New Zealand') : prev.country,
-                preferredLanguage: prev.preferredLanguage === 'English' ? ((session.user as any).preferredLanguage || 'English') : prev.preferredLanguage,
-                preferredBibleVersion: prev.preferredBibleVersion === 'NKJV' ? ((session.user as any).preferredBibleVersion || 'NKJV') : prev.preferredBibleVersion,
+                firstName: prev.firstName && prev.firstName !== 'Unknown' ? prev.firstName : (derivedFirstName || prev.firstName),
+                lastName: prev.lastName && prev.lastName !== 'Unknown' ? prev.lastName : (derivedLastName || prev.lastName),
+                email: prev.email || u.email || '',
+                country: prev.country || u.country || 'New Zealand',
+                preferredLanguage: prev.preferredLanguage || u.preferredLanguage || 'English',
+                preferredBibleVersion: prev.preferredBibleVersion || u.preferredBibleVersion || 'NKJV',
             }));
         }
     }, [session]);
