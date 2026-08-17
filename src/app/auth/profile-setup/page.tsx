@@ -370,7 +370,7 @@ function ProfileSetupContent() {
                             <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                             <select
                                 value={formData.country}
-                                onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                                onChange={(e) => setFormData({ ...formData, country: normalizeCountry(e.target.value) })}
                                 className="w-full bg-slate-50 border border-slate-200 focus:border-[var(--color-primary-teal)] rounded-xl py-3 pl-10 pr-4 outline-none font-semibold text-slate-800 transition-all text-sm appearance-none cursor-pointer"
                             >
                                 {SUPPORTED_COUNTRIES.map((c) => (
@@ -394,7 +394,7 @@ function ProfileSetupContent() {
                             <Languages className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
                             <select
                                 value={formData.preferredLanguage}
-                                onChange={(e) => setFormData({ ...formData, preferredLanguage: e.target.value })}
+                                onChange={(e) => setFormData({ ...formData, preferredLanguage: normalizeLanguage(e.target.value) })}
                                 className="w-full bg-slate-50 border border-slate-200 focus:border-[var(--color-primary-teal)] rounded-xl py-3 pl-10 pr-4 outline-none font-semibold text-slate-800 transition-all text-sm appearance-none cursor-pointer"
                             >
                                 {SUPPORTED_LANGUAGES.map((l) => (

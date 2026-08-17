@@ -57,7 +57,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         ...authConfig.callbacks,
         async signIn({ user, account, profile }) {
             // Check if it's an OAuth login
-            const isOAuth = ['google', 'facebook', 'twitter'].includes(account?.provider || '');
+            const isOAuth = ['google', 'facebook'].includes(account?.provider || '');
             
             if (isOAuth) {
                 try {

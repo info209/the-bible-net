@@ -2,7 +2,6 @@ import NextAuth, { CredentialsSignin } from 'next-auth';
 import CredentialsProvider from 'next-auth/providers/credentials';
 import GoogleProvider from 'next-auth/providers/google';
 import FacebookProvider from 'next-auth/providers/facebook';
-import TwitterProvider from 'next-auth/providers/twitter';
 import { UserService } from '@/services/userService';
 import { UserRole } from '@/types/user';
 import { userAuthConfig } from './user.config';
@@ -29,10 +28,6 @@ export const {
         FacebookProvider({
             clientId: process.env.FACEBOOK_CLIENT_ID || '',
             clientSecret: process.env.FACEBOOK_CLIENT_SECRET || '',
-        }),
-        TwitterProvider({
-            clientId: process.env.TWITTER_CLIENT_ID || '',
-            clientSecret: process.env.TWITTER_CLIENT_SECRET || '',
         }),
         CredentialsProvider({
             name: 'Credentials',
@@ -83,7 +78,7 @@ export const {
         ...userAuthConfig.callbacks,
         async signIn({ user, account, profile }) {
             // Check if it's an OAuth login
-            const isOAuth = ['google', 'facebook', 'twitter'].includes(account?.provider || '');
+            const isOAuth = ['google', 'facebook'].includes(account?.provider || '');
             
             if (isOAuth) {
                 try {
