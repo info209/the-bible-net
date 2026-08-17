@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getUserSession } from '@/lib/auth-helpers';
 import { UserRepository } from '@/repositories/user/userRepository';
 import { z } from 'zod';
+import { SUPPORTED_COUNTRIES, SUPPORTED_LANGUAGES, normalizeCountry, normalizeLanguage, normalizeBibleVersion } from '@/constants/profile';
 
 const profileUpdateSchema = z.object({
     firstName: z.string().min(2, 'First name must be at least 2 characters').optional(),
     lastName: z.string().min(1, 'Last name is required').optional(),
-    country: z.enum(['New Zealand', 'United States', 'United Kingdom', 'India', 'Australia', 'Canada']).optional(),
-    preferredLanguage: z.enum(['English', 'Spanish', 'French', 'Hindi', 'Telugu']).optional(),
+    country: z.enum(SUPPORTED_COUNTRIES).optional(),
+    preferredLanguage: z.enum(SUPPORTED_LANGUAGES).optional(),
     preferredBibleVersion: z.string().min(1, 'Preferred Bible version is required').optional(),
     onboardingCompleted: z.boolean().optional(),
     image: z.string().optional().nullable(),
@@ -131,8 +132,17 @@ export async function PUT(req: NextRequest) {
         const body = await req.json();
         console.log(`[Profile Update] User ID: ${session.user.id}`, body);
         
-        // Use partial for general updates if needed, but for setup we want full validation
-        // The user request specified these fields are required now
+        // Defensive normalization before Zod validation
+        if (body.country !== undefined && body.country !== null) {
+            body.country = normalizeCountry(body.country);
+        }
+        if (body.preferredLanguage !== undefined && body.preferredLanguage !== null) {
+            body.preferredLanguage = normalizeLanguage(body.preferredLanguage);
+        }
+        if (body.preferredBibleVersion !== undefined && body.preferredBibleVersion !== null) {
+            body.preferredBibleVersion = normalizeBibleVersion(body.preferredBibleVersion);
+        }
+
         const validatedData = profileUpdateSchema.parse(body);
 
         // Convert any possible 'null' to 'undefined' to match Partial<IUser> type definition

@@ -7,6 +7,16 @@ import { Globe, Languages, Book, Camera, ChevronLeft, Check, Lock, User } from '
 import { useSession } from 'next-auth/react';
 import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
+import {
+    SUPPORTED_COUNTRIES,
+    SUPPORTED_LANGUAGES,
+    normalizeCountry,
+    normalizeLanguage,
+    normalizeBibleVersion,
+    DEFAULT_COUNTRY,
+    DEFAULT_LANGUAGE,
+    DEFAULT_BIBLE_VERSION,
+} from '@/constants/profile';
 
 function ProfileSetupContent() {
     const router = useRouter();
@@ -16,9 +26,9 @@ function ProfileSetupContent() {
         firstName: session?.user?.firstName || '',
         lastName: session?.user?.lastName || '',
         email: session?.user?.email || '',
-        country: 'New Zealand',
-        preferredLanguage: 'English',
-        preferredBibleVersion: 'NKJV',
+        country: normalizeCountry(session?.user?.country),
+        preferredLanguage: normalizeLanguage(session?.user?.preferredLanguage),
+        preferredBibleVersion: normalizeBibleVersion(session?.user?.preferredBibleVersion),
     });
     const [loading, setLoading] = useState(false);
     const [isUploading, setIsUploading] = useState(false);
@@ -37,9 +47,9 @@ function ProfileSetupContent() {
                             firstName: dbUser.firstName && dbUser.firstName !== 'Unknown' ? dbUser.firstName : prev.firstName,
                             lastName: dbUser.lastName && dbUser.lastName !== 'Unknown' ? dbUser.lastName : prev.lastName,
                             email: dbUser.email || prev.email,
-                            country: dbUser.country || prev.country || 'New Zealand',
-                            preferredLanguage: dbUser.preferredLanguage || prev.preferredLanguage || 'English',
-                            preferredBibleVersion: dbUser.preferredBibleVersion || prev.preferredBibleVersion || 'NKJV',
+                            country: normalizeCountry(dbUser.country || prev.country),
+                            preferredLanguage: normalizeLanguage(dbUser.preferredLanguage || prev.preferredLanguage),
+                            preferredBibleVersion: normalizeBibleVersion(dbUser.preferredBibleVersion || prev.preferredBibleVersion),
                         }));
                     }
                 }
@@ -63,9 +73,9 @@ function ProfileSetupContent() {
                 firstName: prev.firstName && prev.firstName !== 'Unknown' ? prev.firstName : (derivedFirstName || prev.firstName),
                 lastName: prev.lastName && prev.lastName !== 'Unknown' ? prev.lastName : (derivedLastName || prev.lastName),
                 email: prev.email || u.email || '',
-                country: prev.country || u.country || 'New Zealand',
-                preferredLanguage: prev.preferredLanguage || u.preferredLanguage || 'English',
-                preferredBibleVersion: prev.preferredBibleVersion || u.preferredBibleVersion || 'NKJV',
+                country: normalizeCountry(prev.country || u.country),
+                preferredLanguage: normalizeLanguage(prev.preferredLanguage || u.preferredLanguage),
+                preferredBibleVersion: normalizeBibleVersion(prev.preferredBibleVersion || u.preferredBibleVersion),
             }));
         }
     }, [session]);
@@ -149,15 +159,19 @@ function ProfileSetupContent() {
         setLoading(true);
         setError('');
 
+        const normalizedCountry = normalizeCountry(formData.country);
+        const normalizedLang = normalizeLanguage(formData.preferredLanguage);
+        const normalizedVersion = normalizeBibleVersion(formData.preferredBibleVersion);
+
         try {
-            if (formData.firstName.length < 2) {
+            if (formData.firstName.trim().length < 2) {
                 const friendlyMsg = getFriendlyErrorMessage('First name must be at least 2 characters', 'profile');
                 toast.error(friendlyMsg);
                 setError(friendlyMsg);
                 setLoading(false);
                 return;
             }
-            if (!formData.lastName) {
+            if (!formData.lastName.trim()) {
                 const friendlyMsg = getFriendlyErrorMessage('Last name is required', 'profile');
                 toast.error(friendlyMsg);
                 setError(friendlyMsg);
@@ -169,11 +183,11 @@ function ProfileSetupContent() {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    firstName: formData.firstName,
-                    lastName: formData.lastName,
-                    country: formData.country,
-                    preferredLanguage: formData.preferredLanguage,
-                    preferredBibleVersion: formData.preferredBibleVersion,
+                    firstName: formData.firstName.trim(),
+                    lastName: formData.lastName.trim(),
+                    country: normalizedCountry,
+                    preferredLanguage: normalizedLang,
+                    preferredBibleVersion: normalizedVersion,
                     onboardingCompleted: true,
                 }),
             });
@@ -181,19 +195,21 @@ function ProfileSetupContent() {
             const data = await res.json();
 
             if (res.ok) {
-                await updateSession({ 
-                    user: { 
-                        ...session?.user,
-                        firstName: formData.firstName,
-                        lastName: formData.lastName,
-                        country: formData.country,
-                        preferredLanguage: formData.preferredLanguage,
-                        preferredBibleVersion: formData.preferredBibleVersion,
-                        onboardingCompleted: true 
-                    } 
-                });
+                if (updateSession) {
+                    await updateSession({ 
+                        user: { 
+                            ...session?.user,
+                            firstName: formData.firstName.trim(),
+                            lastName: formData.lastName.trim(),
+                            country: normalizedCountry,
+                            preferredLanguage: normalizedLang,
+                            preferredBibleVersion: normalizedVersion,
+                            onboardingCompleted: true 
+                        } 
+                    });
+                }
                 toast.success('Profile updated successfully!');
-                router.back();
+                router.replace('/home');
             } else {
                 const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Failed to save profile', 'profile');
                 toast.error(friendlyMsg);
@@ -224,7 +240,7 @@ function ProfileSetupContent() {
                 <div className="flex items-center justify-between">
                     <button
                         type="button"
-                        onClick={() => router.back()}
+                        onClick={() => router.replace('/home')}
                         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-white border border-slate-200 text-slate-700 hover:text-[var(--color-primary-teal)] hover:border-[var(--color-primary-teal)]/30 text-sm font-semibold shadow-sm transition-all outline-none cursor-pointer"
                     >
                         <ChevronLeft className="w-4 h-4" />
@@ -357,12 +373,9 @@ function ProfileSetupContent() {
                                 onChange={(e) => setFormData({ ...formData, country: e.target.value })}
                                 className="w-full bg-slate-50 border border-slate-200 focus:border-[var(--color-primary-teal)] rounded-xl py-3 pl-10 pr-4 outline-none font-semibold text-slate-800 transition-all text-sm appearance-none cursor-pointer"
                             >
-                                <option>New Zealand</option>
-                                <option>United States</option>
-                                <option>United Kingdom</option>
-                                <option>India</option>
-                                <option>Australia</option>
-                                <option>Canada</option>
+                                {SUPPORTED_COUNTRIES.map((c) => (
+                                    <option key={c} value={c}>{c}</option>
+                                ))}
                             </select>
                         </div>
                     </div>
@@ -384,11 +397,9 @@ function ProfileSetupContent() {
                                 onChange={(e) => setFormData({ ...formData, preferredLanguage: e.target.value })}
                                 className="w-full bg-slate-50 border border-slate-200 focus:border-[var(--color-primary-teal)] rounded-xl py-3 pl-10 pr-4 outline-none font-semibold text-slate-800 transition-all text-sm appearance-none cursor-pointer"
                             >
-                                <option>English</option>
-                                <option>Spanish</option>
-                                <option>French</option>
-                                <option>Hindi</option>
-                                <option>Telugu</option>
+                                {SUPPORTED_LANGUAGES.map((l) => (
+                                    <option key={l} value={l}>{l}</option>
+                                ))}
                             </select>
                         </div>
                     </div>

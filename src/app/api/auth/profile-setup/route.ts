@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UserService } from '@/services/userService';
 import { z } from 'zod';
 import { connectDB } from '@/lib/db';
-
 import { userAuth } from '@/lib/auth/user';
+import { normalizeCountry, normalizeLanguage, normalizeBibleVersion } from '@/constants/profile';
 
 const profileSetupSchema = z.object({
     userId: z.string().nullable().optional(),
@@ -59,7 +59,14 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ success: false, error: 'User ID is required or user must be logged in' }, { status: 400 });
         }
 
-        const updatedUser = await UserService.completeOnboarding(targetUserId, fields);
+        const normalizedFields = {
+            ...fields,
+            country: fields.country ? normalizeCountry(fields.country) : undefined,
+            preferredLanguage: fields.preferredLanguage ? normalizeLanguage(fields.preferredLanguage) : undefined,
+            preferredBibleVersion: fields.preferredBibleVersion ? normalizeBibleVersion(fields.preferredBibleVersion) : undefined,
+        };
+
+        const updatedUser = await UserService.completeOnboarding(targetUserId, normalizedFields);
         if (!updatedUser) {
             return NextResponse.json({ success: false, error: 'User not found' }, { status: 404 });
         }

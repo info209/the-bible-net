@@ -32,14 +32,20 @@ export const authConfig: NextAuthConfig = {
                 token.emailVerified = !!(user as any).emailVerified;
                 token.firstName = (user as any).firstName;
                 token.lastName = (user as any).lastName;
+                token.country = (user as any).country;
+                token.preferredLanguage = (user as any).preferredLanguage;
+                token.preferredBibleVersion = (user as any).preferredBibleVersion;
                 token.image = user.image;
             }
             if (trigger === 'update' && session?.user) {
-                token.onboardingCompleted = session.user.onboardingCompleted;
-                token.role = session.user.role;
-                token.firstName = session.user.firstName;
-                token.lastName = session.user.lastName;
-                token.image = session.user.image;
+                token.onboardingCompleted = session.user.onboardingCompleted ?? token.onboardingCompleted;
+                token.role = session.user.role ?? token.role;
+                token.firstName = session.user.firstName ?? token.firstName;
+                token.lastName = session.user.lastName ?? token.lastName;
+                token.country = session.user.country ?? token.country;
+                token.preferredLanguage = session.user.preferredLanguage ?? token.preferredLanguage;
+                token.preferredBibleVersion = session.user.preferredBibleVersion ?? token.preferredBibleVersion;
+                token.image = session.user.image ?? token.image;
             }
             return token;
         },
@@ -51,6 +57,9 @@ export const authConfig: NextAuthConfig = {
                 session.user.emailVerified = token.emailVerified as any;
                 (session.user as any).firstName = token.firstName;
                 (session.user as any).lastName = token.lastName;
+                (session.user as any).country = token.country;
+                (session.user as any).preferredLanguage = token.preferredLanguage;
+                (session.user as any).preferredBibleVersion = token.preferredBibleVersion;
                 session.user.image = token.image as string;
                 // For components using session.user.name
                 session.user.name = token.firstName && token.lastName 

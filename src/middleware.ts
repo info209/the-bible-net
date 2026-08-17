@@ -58,14 +58,10 @@ export default async function middleware(req: NextRequest) {
     const isUserAuthPage = authPageRoutes.some(route => pathname.startsWith(route));
     const isUserProtectedRoute = userProtectedPageRoutes.some(route => pathname.startsWith(route));
 
-    // Relaxed Check: If already logged in, we normally redirect to home.
-    // However, some users see 307 redirect loops, so let's allow access for now
-    // to ensure they can at least REACH the login/logout flow properly.
-    /*
+    // Redirect authenticated users away from auth pages (/auth/login, /auth/register, etc.) to /home
     if (isUserLoggedIn && isUserAuthPage) {
         return NextResponse.redirect(new URL('/home', nextUrl));
     }
-    */
 
     // Protect user-only pages
     if (!isUserLoggedIn && isUserProtectedRoute) {
