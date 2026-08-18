@@ -131,6 +131,34 @@ function JournalsContent() {
   // Custom features states
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [showColorMenu, setShowColorMenu] = useState<'text' | 'bg' | null>(null);
+  const [colorMenuPos, setColorMenuPos] = useState<{ top: number; left: number } | null>(null);
+
+  const handleOpenColorMenu = (type: 'text' | 'bg', e: React.MouseEvent<HTMLButtonElement>) => {
+    if (showColorMenu === type) {
+      setShowColorMenu(null);
+      setColorMenuPos(null);
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const menuWidth = type === 'text' ? 270 : 250;
+      const left = Math.max(12, Math.min(rect.left, window.innerWidth - menuWidth - 12));
+      setColorMenuPos({ top: rect.bottom + 6, left });
+      setShowColorMenu(type);
+    }
+  };
+
+  useEffect(() => {
+    if (!showColorMenu) return;
+    const handleScrollOrResize = () => {
+      setShowColorMenu(null);
+      setColorMenuPos(null);
+    };
+    window.addEventListener('scroll', handleScrollOrResize, true);
+    window.addEventListener('resize', handleScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', handleScrollOrResize, true);
+      window.removeEventListener('resize', handleScrollOrResize);
+    };
+  }, [showColorMenu]);
   
   // Editor Fields
   const [editTitle, setEditTitle] = useState('');
@@ -2279,14 +2307,17 @@ function JournalsContent() {
                         className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center ${showColorMenu === 'text' ? 'bg-gray-200 dark:bg-white/[0.1]' : ''}`}
                         title="Text Color"
                         aria-label="Text Color"
-                        onClick={() => setShowColorMenu(showColorMenu === 'text' ? null : 'text')}
+                        onClick={(e) => handleOpenColorMenu('text', e)}
                       >
                         <span className="font-bold border-b-2 border-current px-0.5 leading-none text-xs">A</span>
                       </button>
-                      {showColorMenu === 'text' && (
+                      {showColorMenu === 'text' && colorMenuPos && (
                         <>
-                          <div className="fixed inset-0 z-40" onClick={() => setShowColorMenu(null)} />
-                          <div className="absolute top-full mt-1.5 left-0 z-50 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/[0.12] p-2 rounded-xl shadow-xl flex items-center gap-1.5 min-w-max">
+                          <div className="fixed inset-0 z-[90]" onClick={() => setShowColorMenu(null)} />
+                          <div
+                            className="fixed z-[100] bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/[0.12] p-2 rounded-xl shadow-2xl flex items-center gap-1.5 min-w-max"
+                            style={{ top: `${colorMenuPos.top}px`, left: `${colorMenuPos.left}px` }}
+                          >
                             {['#000000', '#E23744', '#1890FF', '#52C41A', '#FADB14', '#722ED1', '#FF7A00'].map(color => (
                               <button
                                 key={color}
@@ -2296,7 +2327,7 @@ function JournalsContent() {
                                   editor?.chain().focus().setColor(color).run();
                                   setShowColorMenu(null);
                                 }}
-                                className="w-6 h-6 rounded-full border border-black/10 dark:border-white/20 transition-transform hover:scale-110 active:scale-95 shadow-sm"
+                                className="w-6 h-6 rounded-full border border-black/10 dark:border-white/20 transition-transform hover:scale-110 active:scale-95 shadow-sm cursor-pointer"
                                 style={{ backgroundColor: color }}
                                 title={color}
                                 aria-label={`Text color ${color}`}
@@ -2309,7 +2340,7 @@ function JournalsContent() {
                                 editor?.chain().focus().unsetColor().run();
                                 setShowColorMenu(null);
                               }}
-                              className="text-xs px-2 py-1 hover:bg-gray-100 dark:hover:bg-white/[0.08] rounded-md font-medium text-gray-600 dark:text-gray-300"
+                              className="text-xs px-2 py-1 hover:bg-gray-100 dark:hover:bg-white/[0.08] rounded-md font-medium text-gray-600 dark:text-gray-300 cursor-pointer"
                             >
                               Default
                             </button>
@@ -2325,14 +2356,17 @@ function JournalsContent() {
                         className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 flex items-center ${showColorMenu === 'bg' ? 'bg-gray-200 dark:bg-white/[0.1]' : ''}`}
                         title="Highlight Color"
                         aria-label="Highlight Color"
-                        onClick={() => setShowColorMenu(showColorMenu === 'bg' ? null : 'bg')}
+                        onClick={(e) => handleOpenColorMenu('bg', e)}
                       >
                         <span className="font-bold bg-yellow-200 text-black px-1 py-0.5 rounded leading-none text-xs">H</span>
                       </button>
-                      {showColorMenu === 'bg' && (
+                      {showColorMenu === 'bg' && colorMenuPos && (
                         <>
-                          <div className="fixed inset-0 z-40" onClick={() => setShowColorMenu(null)} />
-                          <div className="absolute top-full mt-1.5 left-0 z-50 bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/[0.12] p-2 rounded-xl shadow-xl flex items-center gap-1.5 min-w-max">
+                          <div className="fixed inset-0 z-[90]" onClick={() => setShowColorMenu(null)} />
+                          <div
+                            className="fixed z-[100] bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/[0.12] p-2 rounded-xl shadow-2xl flex items-center gap-1.5 min-w-max"
+                            style={{ top: `${colorMenuPos.top}px`, left: `${colorMenuPos.left}px` }}
+                          >
                             {[
                               { label: 'Clear', color: 'none' },
                               { label: 'Yellow', color: '#FFE58F' },
@@ -2354,7 +2388,7 @@ function JournalsContent() {
                                   }
                                   setShowColorMenu(null);
                                 }}
-                                className="w-6 h-6 rounded-full border border-black/10 dark:border-white/20 transition-transform hover:scale-110 active:scale-95 shadow-sm flex items-center justify-center text-[10px]"
+                                className="w-6 h-6 rounded-full border border-black/10 dark:border-white/20 transition-transform hover:scale-110 active:scale-95 shadow-sm flex items-center justify-center text-[10px] cursor-pointer"
                                 style={{ backgroundColor: color === 'none' ? '#FFFFFF' : color }}
                                 title={label}
                                 aria-label={`Highlight ${label}`}

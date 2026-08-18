@@ -568,7 +568,7 @@ export default function HomeView() {
       className="space-y-6 pt-0 pb-6 bg-transparent min-h-full px-0 overflow-hidden"
     >
       {/* Greeting - Figma Style */}
-      <div className="flex items-center gap-3.5 animate-fade-in px-6 mt-0.5">
+      <div className="flex items-center gap-3.5 animate-fade-in px-0 mt-0.5">
         <Avatar className="w-12 h-12 shrink-0">
           {session?.user?.image && (
             <AvatarImage

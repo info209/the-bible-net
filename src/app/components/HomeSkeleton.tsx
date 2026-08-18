@@ -8,7 +8,7 @@ const Skeleton = ({ className }: { className?: string }) => (
 
 /** Greeting row — exact mirror of HomeView's greeting div */
 export const GreetingSkeleton = () => (
-  <div className="flex items-center gap-3.5 px-4 mt-0.5">
+  <div className="flex items-center gap-3.5 px-0 mt-0.5">
     {/* Avatar — w-12 h-12 shrink-0, teal bg in real view */}
     <Skeleton className="w-12 h-12 rounded-full shrink-0" />
     {/* Text column — flex-col min-w-0, no gap (leading-tight in real view) */}
