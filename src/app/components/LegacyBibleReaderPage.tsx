@@ -1772,6 +1772,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
               onRemoveVersion={handleRemoveCompareVersion}
               onAddVersion={handleAddCompareVersion}
               onExitCompare={handleExitCompare}
+              selectedTheme={selectedTheme}
             />
           )}
         </AnimatePresence>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Mail, ArrowRight, RefreshCcw, AlertCircle } from 'lucide-react';
+import { ShieldCheck, Mail, ArrowRight, RefreshCcw, AlertCircle, ChevronLeft } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
@@ -144,7 +144,21 @@ function VerifyOTPContent() {
                     <ShieldCheck className="w-10 h-10 text-[var(--color-primary-teal)]" />
                 </div>
                 <div className="space-y-2">
-                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight font-sans">Verify identity</h1>
+                    <div className="relative flex items-center justify-center">
+                        <motion.button
+                            type="button"
+                            onPointerDown={(e) => e.preventDefault()}
+                            whileHover={{ x: -2, scale: 1.1 }}
+                            whileTap={{ scale: 0.9 }}
+                            onClick={() => router.back()}
+                            className="absolute left-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-100/80 text-slate-600 hover:text-[var(--color-primary-teal)] hover:bg-slate-200/80 transition-all outline-none cursor-pointer"
+                            title="Go back"
+                            aria-label="Go back"
+                        >
+                            <ChevronLeft className="w-5 h-5" />
+                        </motion.button>
+                        <h1 className="text-3xl font-bold text-slate-900 tracking-tight font-sans px-10">Verify identity</h1>
+                    </div>
                     <p className="text-slate-500/80 font-medium px-4 leading-relaxed">
                         We sent a 6-digit code to <span className="text-slate-900 font-bold block mt-1 underline decoration-[var(--color-primary-teal)]/30 underline-offset-4">{email || 'your email'}</span>
                     </p>

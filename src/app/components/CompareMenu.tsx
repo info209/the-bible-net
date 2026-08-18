@@ -240,17 +240,18 @@ export default function CompareMenu({
           </div>
 
           {/* 3. Exit Compare Mode button */}
-          <div className="p-5 border-t shadow-[0_-4px_10px_rgba(0,0,0,0.02)]" style={{ borderColor: borderCol, backgroundColor: isDark ? 'rgba(0,0,0,0.2)' : '#f9fafb' }}>
+          <div className="p-5 border-t shadow-[0_-4px_10px_rgba(0,0,0,0.02)]" style={{ borderColor: borderCol, backgroundColor: panelBg }}>
             <button
               onClick={() => {
                 onExitCompare();
                 onClose();
               }}
-              className={`w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl border transition-all group ${
-                isDark 
-                  ? 'bg-red-500/10 hover:bg-red-500/20 border-red-500/20 text-red-400' 
-                  : 'bg-red-50 hover:bg-red-100 border-red-100 text-red-600'
-              }`}
+              className="w-full flex items-center justify-center gap-2 py-3.5 px-4 rounded-xl border transition-all group hover:border-red-500/50 cursor-pointer"
+              style={{
+                backgroundColor: panelBg,
+                borderColor: theme === 'dark' ? 'rgba(239,68,68,0.3)' : 'rgba(220,38,38,0.25)',
+                color: theme === 'dark' ? '#f87171' : '#dc2626',
+              }}
             >
               <span className="text-sm font-bold">Exit Compare Mode</span>
               <ArrowRight className="size-4 transform group-hover:translate-x-1 transition-transform" strokeWidth={2.5} />

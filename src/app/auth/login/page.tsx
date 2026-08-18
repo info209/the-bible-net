@@ -74,21 +74,22 @@ export default function LoginPage() {
             transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }}
             className="w-full max-w-none sm:max-w-md min-h-screen sm:min-h-0 bg-white/95 sm:glass-ios border-none p-6 sm:p-8 space-y-6 sm:space-y-8 relative overflow-y-auto rounded-none sm:rounded-3xl shadow-none sm:shadow-2xl flex flex-col justify-center"
         >
-            <motion.button
-                type="button"
-                onPointerDown={(e) => e.preventDefault()}
-                whileHover={{ x: -2, scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
-                onClick={() => router.back()}
-                className="absolute left-6 top-6 p-2 rounded-full bg-white/10 text-slate-500 hover:text-[var(--color-primary-teal)] hover:bg-white/20 transition-all outline-none cursor-pointer"
-                title="Go back"
-                aria-label="Go back"
-            >
-                <ChevronLeft className="w-5 h-5" />
-            </motion.button>
-
-            <div className="text-center space-y-3 pt-4">
-                <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-sans">Welcome back</h1>
+            <div className="text-center space-y-3">
+                <div className="relative flex items-center justify-center">
+                    <motion.button
+                        type="button"
+                        onPointerDown={(e) => e.preventDefault()}
+                        whileHover={{ x: -2, scale: 1.1 }}
+                        whileTap={{ scale: 0.9 }}
+                        onClick={() => router.back()}
+                        className="absolute left-0 top-1/2 -translate-y-1/2 p-2 rounded-full bg-slate-100/80 text-slate-600 hover:text-[var(--color-primary-teal)] hover:bg-slate-200/80 transition-all outline-none cursor-pointer"
+                        title="Go back"
+                        aria-label="Go back"
+                    >
+                        <ChevronLeft className="w-5 h-5" />
+                    </motion.button>
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-sans px-10">Welcome back</h1>
+                </div>
                 <p className="text-slate-500/80 font-medium">Please sign in to your account</p>
             </div>
 
