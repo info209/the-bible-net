@@ -75,13 +75,9 @@ export async function POST(req: NextRequest) {
 
         const adminDb = createAdminClient();
         if (!adminDb) {
-            console.error('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Cannot execute admin database mutation.');
-            return NextResponse.json({
-                success: false,
-                error: 'SUPABASE_SERVICE_ROLE_KEY is missing in server environment variables. Admin database mutations require SUPABASE_SERVICE_ROLE_KEY.'
-            }, { status: 500 });
+            console.warn('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Falling back to auth context client.');
         }
-        const db = adminDb;
+        const db = adminDb || authContext.supabase;
 
         const body = await req.json();
         const { label, file_path, thumbnail_path } = body;
@@ -262,13 +258,9 @@ export async function DELETE(req: NextRequest) {
 
         const adminDb = createAdminClient();
         if (!adminDb) {
-            console.error('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Cannot execute admin database mutation.');
-            return NextResponse.json({
-                success: false,
-                error: 'SUPABASE_SERVICE_ROLE_KEY is missing in server environment variables. Admin database mutations require SUPABASE_SERVICE_ROLE_KEY.'
-            }, { status: 500 });
+            console.warn('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Falling back to auth context client.');
         }
-        const db = adminDb;
+        const db = adminDb || authContext.supabase;
 
         const { searchParams } = new URL(req.url);
         const id = searchParams.get('id');
@@ -340,13 +332,9 @@ export async function PUT(req: NextRequest) {
 
         const adminDb = createAdminClient();
         if (!adminDb) {
-            console.error('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Cannot execute admin database mutation.');
-            return NextResponse.json({
-                success: false,
-                error: 'SUPABASE_SERVICE_ROLE_KEY is missing in server environment variables. Admin database mutations require SUPABASE_SERVICE_ROLE_KEY.'
-            }, { status: 500 });
+            console.warn('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Falling back to auth context client.');
         }
-        const db = adminDb;
+        const db = adminDb || authContext.supabase;
 
         const body = await req.json();
         const { id, label, file_path, thumbnail_path } = body;

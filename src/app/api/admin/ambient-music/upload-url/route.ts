@@ -74,24 +74,25 @@ export async function POST(req: NextRequest) {
             : `ambient-music/${timestamp}-${randomId}-${sanitizedBase}${ext}`;
 
         // Create signed upload URL in the 'ambient-music' bucket
-        // We use the admin client from createAdminClient since RLS policies require service role key for admin uploads
         const adminDb = createAdminClient();
         if (!adminDb) {
-            console.error('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Cannot generate signed upload URL.');
-            return NextResponse.json({
-                success: false,
-                error: 'SUPABASE_SERVICE_ROLE_KEY is missing in server environment variables. Please configure SUPABASE_SERVICE_ROLE_KEY in your deployment environment.'
-            }, { status: 500 });
+            console.warn('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Falling back to auth context client.');
         }
+        const db = adminDb || authContext.supabase;
 
-        const { data, error: storageError } = await adminDb.storage
+        const { data, error: storageError } = await db.storage
             .from('ambient-music')
             .createSignedUploadUrl(filePath, {
                 upsert: false
             });
 
         if (storageError) {
-            throw storageError;
+            console.error('Storage signed URL creation error:', storageError);
+            let errMsg = storageError.message || 'Failed to create upload URL';
+            if (!adminDb) {
+                errMsg += '. Note: SUPABASE_SERVICE_ROLE_KEY is missing from environment. Database or Storage RLS policy may require SUPABASE_SERVICE_ROLE_KEY.';
+            }
+            return NextResponse.json({ success: false, error: errMsg }, { status: 500 });
         }
 
         return NextResponse.json({
