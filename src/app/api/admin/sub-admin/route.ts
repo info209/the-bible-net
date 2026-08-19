@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth-helpers';
+import { connectDB } from '@/lib/db';
 import { UserRole } from '@/types/user';
 import { UserRepository } from '@/repositories/user/userRepository';
 import { User } from '@/models/User';
@@ -70,13 +71,14 @@ import { LoggingService } from '@/services/loggingService';
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 export async function GET() {
-    const session = await auth();
+    const session = await getAdminSession();
     if (!session || session.user.role !== UserRole.SUPER_ADMIN) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     try {
-        const subAdmins = await User.find({ role: UserRole.SUB_ADMIN }).select('-password');
+        await connectDB();
+        const subAdmins = await User.find({ role: UserRole.SUB_ADMIN }).select('-password').sort({ createdAt: -1 });
         return NextResponse.json(subAdmins);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -84,14 +86,20 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-    const session = await auth();
+    const session = await getAdminSession();
     if (!session || session.user.role !== UserRole.SUPER_ADMIN) {
         return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
     try {
+        await connectDB();
         const body = await req.json();
-        const validatedData = subAdminSchema.parse(body);
+        const parseResult = subAdminSchema.safeParse(body);
+        if (!parseResult.success) {
+            const firstError = parseResult.error.issues[0]?.message || 'Validation error';
+            return NextResponse.json({ error: firstError }, { status: 400 });
+        }
+        const validatedData = parseResult.data;
 
         // Check if email already exists
         const existing = await UserRepository.findByEmail(validatedData.email);
@@ -106,6 +114,7 @@ export async function POST(req: Request) {
             password: hashedPassword,
             role: UserRole.SUB_ADMIN,
             emailVerified: true, // Manual creation by Super Admin
+            onboardingCompleted: true,
         });
 
         await LoggingService.logAdminAction({

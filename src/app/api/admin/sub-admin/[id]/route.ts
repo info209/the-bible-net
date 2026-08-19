@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
+import { getAdminSession } from '@/lib/auth-helpers';
+import { connectDB } from '@/lib/db';
 import { UserRole } from '@/types/user';
 import { UserRepository } from '@/repositories/user/userRepository';
 import { LoggingService } from '@/services/loggingService';
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const session = await auth();
+    const session = await getAdminSession();
     const { id } = await params;
     
     if (!session || session.user.role !== UserRole.SUPER_ADMIN) {
@@ -13,6 +14,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     }
 
     try {
+        await connectDB();
         const body = await req.json();
         const updated = await UserRepository.update(id, body);
         
@@ -31,7 +33,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-    const session = await auth();
+    const session = await getAdminSession();
     const { id } = await params;
 
     if (!session || session.user.role !== UserRole.SUPER_ADMIN) {
@@ -39,6 +41,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     }
 
     try {
+        await connectDB();
         // We deactivate instead of hard delete for audit trails
         const updated = await UserRepository.update(id, { isActive: false });
         

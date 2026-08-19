@@ -75,9 +75,13 @@ export async function POST(req: NextRequest) {
 
         const adminDb = createAdminClient();
         if (!adminDb) {
-            console.warn('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Falling back to anon client. Database writes may fail due to Row Level Security (RLS) policies.');
+            console.error('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Cannot execute admin database mutation.');
+            return NextResponse.json({
+                success: false,
+                error: 'SUPABASE_SERVICE_ROLE_KEY is missing in server environment variables. Admin database mutations require SUPABASE_SERVICE_ROLE_KEY.'
+            }, { status: 500 });
         }
-        const db = adminDb || authContext.supabase;
+        const db = adminDb;
 
         const body = await req.json();
         const { label, file_path, thumbnail_path } = body;
@@ -237,7 +241,11 @@ export async function POST(req: NextRequest) {
             }
         }
         
-        return NextResponse.json({ success: false, error: error.message || 'Upload failed' }, { status: 500 });
+        let errorMessage = error.message || 'Upload failed';
+        if (error.code === 'PGRST116' || errorMessage.includes('PGRST116')) {
+            errorMessage = 'Database insert failed: Row Level Security (RLS) policy blocked operation or SUPABASE_SERVICE_ROLE_KEY is missing.';
+        }
+        return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
     }
 }
 
@@ -254,9 +262,13 @@ export async function DELETE(req: NextRequest) {
 
         const adminDb = createAdminClient();
         if (!adminDb) {
-            console.warn('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Falling back to anon client. Database writes may fail due to Row Level Security (RLS) policies.');
+            console.error('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Cannot execute admin database mutation.');
+            return NextResponse.json({
+                success: false,
+                error: 'SUPABASE_SERVICE_ROLE_KEY is missing in server environment variables. Admin database mutations require SUPABASE_SERVICE_ROLE_KEY.'
+            }, { status: 500 });
         }
-        const db = adminDb || authContext.supabase;
+        const db = adminDb;
 
         const { searchParams } = new URL(req.url);
         const id = searchParams.get('id');
@@ -328,9 +340,13 @@ export async function PUT(req: NextRequest) {
 
         const adminDb = createAdminClient();
         if (!adminDb) {
-            console.warn('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Falling back to anon client. Database writes may fail due to Row Level Security (RLS) policies.');
+            console.error('SUPABASE_SERVICE_ROLE_KEY is missing from environment. Cannot execute admin database mutation.');
+            return NextResponse.json({
+                success: false,
+                error: 'SUPABASE_SERVICE_ROLE_KEY is missing in server environment variables. Admin database mutations require SUPABASE_SERVICE_ROLE_KEY.'
+            }, { status: 500 });
         }
-        const db = adminDb || authContext.supabase;
+        const db = adminDb;
 
         const body = await req.json();
         const { id, label, file_path, thumbnail_path } = body;
@@ -528,7 +544,12 @@ export async function PUT(req: NextRequest) {
             }
         }
 
-        return NextResponse.json({ success: false, error: error.message || 'Update failed' }, { status: 500 });
+        let errorMessage = error.message || 'Update failed';
+        if (error.code === 'PGRST116' || errorMessage.includes('PGRST116')) {
+            errorMessage = 'Database update failed: No matching record was found or Row Level Security (RLS) policy blocked the update.';
+        }
+
+        return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
     }
 }
 
