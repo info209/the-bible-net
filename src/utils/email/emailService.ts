@@ -4,14 +4,28 @@ export class EmailService {
   private static _transporter: nodemailer.Transporter | null = null;
 
   private static get transporter(): nodemailer.Transporter {
+    const smtpHost = process.env.EMAIL_HOST;
+    const smtpPort = parseInt(process.env.EMAIL_PORT || '587');
+    const smtpSecure = process.env.EMAIL_SECURE === 'true';
+    const smtpUser = process.env.EMAIL_USER;
+    const smtpPass = process.env.EMAIL_PASS;
+
+    console.log('[EmailService] SMTP config:', {
+      host: smtpHost,
+      port: smtpPort,
+      secure: smtpSecure,
+      user: smtpUser,
+      passSet: !!smtpPass,
+    });
+
     if (!this._transporter) {
       this._transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST,
-        port: parseInt(process.env.EMAIL_PORT || '587'),
-        secure: process.env.EMAIL_SECURE === 'true',
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
         auth: {
-          user: process.env.EMAIL_USER,
-          pass: process.env.EMAIL_PASS,
+          user: smtpUser,
+          pass: smtpPass,
         },
       });
     }
@@ -24,8 +38,20 @@ export class EmailService {
         await this.transporter.sendMail(mailOptions);
         return;
       } catch (error: any) {
-        console.error(`Email sending failed (attempt ${attempt}/${retries}):`, error);
-        
+        console.error('[EmailService] sendMail failed:', {
+          attempt,
+          retries,
+          code: error?.code,
+          message: error?.message,
+          responseCode: error?.responseCode,
+          response: error?.response,
+          host: process.env.EMAIL_HOST,
+          port: process.env.EMAIL_PORT,
+          user: process.env.EMAIL_USER,
+          secure: process.env.EMAIL_SECURE,
+          stack: error?.stack,
+        });
+
         if (attempt < retries && ['ECONNREFUSED', 'ETIMEDOUT', 'ECONNRESET'].includes(error.code)) {
           await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
           continue;
