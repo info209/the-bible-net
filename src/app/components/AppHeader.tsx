@@ -87,7 +87,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
               <DropdownMenuContent
                 align="end"
                 sideOffset={8}
-                className="w-64 rounded-2xl border-none bg-white p-0 shadow-2xl overflow-hidden"
+                className="w-64 rounded-lg border-none bg-white p-0 shadow-2xl overflow-hidden"
               >
                 <div className="px-4 py-4 bg-gray-50/50 border-b border-gray-100">
                   <p className="text-sm font-bold text-gray-900">Welcome</p>
