@@ -256,7 +256,7 @@ export default function PlanDetailsOrProgressPage() {
       </div>
 
       {/* Horizontal Row of Day Cards */}
-      <div className="w-full overflow-x-auto scrollbar-none py-1">
+      <div className="w-full overflow-x-auto scrollbar-none pt-2 pb-3 px-1">
         <div className="flex space-x-3 min-w-max">
           {(plan.days || []).map((day) => {
             const dayNum = day.dayNumber;

@@ -18,8 +18,8 @@ const tabs: { id: LibraryTabId; label: string }[] = [
 
 export default function LibraryTabs({ activeTab, onTabChange }: LibraryTabsProps) {
   return (
-    <div className="w-full overflow-x-auto scrollbar-none py-1 mb-4">
-      <div className="flex items-center space-x-2 min-w-max">
+    <div className="w-full overflow-x-auto scrollbar-none pt-2 pb-3 mb-5 px-1">
+      <div className="flex items-center space-x-2.5 min-w-max pb-0.5">
         {tabs.map((tab) => {
           const isSelected = activeTab === tab.id;
           return (
