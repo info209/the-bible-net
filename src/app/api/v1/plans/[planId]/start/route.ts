@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { PlanService } from '@/services/planService';
-import { getErrorResponse } from '@/lib/auth-helpers';
+import { getErrorResponse, getAnyUserSession } from '@/lib/auth-helpers';
 
 /**
  * POST /api/v1/plans/[planId]/start - Start a plan
@@ -11,14 +10,14 @@ export async function POST(
   { params }: { params: { planId: string } }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const userContext = await getAnyUserSession();
+    if (!userContext?.userId) {
       return getErrorResponse('Unauthorized', 401);
     }
 
     const { planId } = params;
 
-    const progress = await PlanService.startPlan(session.user.id, planId);
+    const progress = await PlanService.startPlan(userContext.userId, planId);
 
     return NextResponse.json(
       {

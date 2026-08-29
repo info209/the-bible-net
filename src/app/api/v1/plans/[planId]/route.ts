@@ -1,19 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { PlanService } from '@/services/planService';
-import { getErrorResponse } from '@/lib/auth-helpers';
+import { getErrorResponse, getAnyUserSession } from '@/lib/auth-helpers';
 
 export async function GET(
   request: NextRequest,
   { params }: { params: { planId: string } }
 ) {
   try {
-    const session = await auth();
+    const userContext = await getAnyUserSession();
     const { planId } = params;
 
     const planWithProgress = await PlanService.getPlanWithProgress(
       planId,
-      session?.user?.id
+      userContext?.userId
     );
 
     if (!planWithProgress) {

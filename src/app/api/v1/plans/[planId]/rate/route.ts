@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { PlanService } from '@/services/planService';
-import { getErrorResponse } from '@/lib/auth-helpers';
+import { getErrorResponse, getAnyUserSession } from '@/lib/auth-helpers';
 
 /**
  * POST /api/v1/plans/[planId]/rate - Rate a completed plan
@@ -11,8 +10,8 @@ export async function POST(
   { params }: { params: { planId: string } }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const userContext = await getAnyUserSession();
+    if (!userContext?.userId) {
       return getErrorResponse('Unauthorized', 401);
     }
 
@@ -25,7 +24,7 @@ export async function POST(
     }
 
     const progress = await PlanService.ratePlan(
-      session.user.id,
+      userContext.userId,
       planId,
       rating,
       review

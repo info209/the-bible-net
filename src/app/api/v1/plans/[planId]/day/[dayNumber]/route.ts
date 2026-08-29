@@ -54,8 +54,8 @@ export async function PUT(
   { params }: { params: { planId: string; dayNumber: string } }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user?.id) {
+    const userContext = await getAnyUserSession();
+    if (!userContext?.userId) {
       return getErrorResponse('Unauthorized', 401);
     }
 
@@ -70,7 +70,7 @@ export async function PUT(
     const { action } = body;
 
     if (action === 'mark-complete') {
-      const progress = await PlanService.markDayComplete(session.user.id, planId, dayNum);
+      const progress = await PlanService.markDayComplete(userContext.userId, planId, dayNum);
       return NextResponse.json(
         {
           success: true,
@@ -80,7 +80,7 @@ export async function PUT(
         { status: 200 }
       );
     } else {
-      const progress = await PlanService.getPlanWithProgress(planId, session.user.id);
+      const progress = await PlanService.getPlanWithProgress(planId, userContext.userId);
       return NextResponse.json(
         {
           success: true,

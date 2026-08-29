@@ -47,6 +47,27 @@ export async function getSessionWithType(): Promise<{ session: Session | null, t
 }
 
 /**
+ * Resolves any valid logged-in session (userAuth, adminAuth, or default NextAuth)
+ */
+export async function getAnyUserSession(): Promise<{ userId: string; session: Session } | null> {
+    try {
+        const userSession = await userAuth();
+        if (userSession?.user?.id) {
+            return { userId: userSession.user.id, session: userSession };
+        }
+    } catch (e) {}
+
+    try {
+        const adminSession = await adminAuth();
+        if (adminSession?.user?.id) {
+            return { userId: adminSession.user.id, session: adminSession };
+        }
+    } catch (e) {}
+
+    return null;
+}
+
+/**
  * Standardized error response for API routes
  */
 export function getErrorResponse(message: string, status: number = 500) {
