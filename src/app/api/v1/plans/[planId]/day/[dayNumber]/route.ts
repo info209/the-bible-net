@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth';
 import { PlanService } from '@/services/planService';
-import { getErrorResponse } from '@/lib/auth-helpers';
+import { getErrorResponse, getAnyUserSession } from '@/lib/auth-helpers';
 
 /**
  * GET /api/v1/plans/[planId]/day/[dayNumber] - Get day content

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef, Suspense } from 'react';
+import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,6 +19,7 @@ import { useConfirm } from '@/context/ConfirmContext';
 import { LiaBookMedicalSolid, LiaBookSolid } from 'react-icons/lia';
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 import { fetchWithOfflineCache } from '@/lib/offline';
+import { useVoiceDictation } from '@/hooks/useVoiceDictation';
 
 // â”€â”€ Tiptap Rich Text Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -847,6 +848,57 @@ function JournalsContent() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editorId, isEditing]);
+
+  // Voice Dictation integration for Journal & Prayer editor
+  const handleFinalTranscript = useCallback(
+    (text: string) => {
+      if (!editor || !text) return;
+
+      editor.chain().focus();
+
+      const { selection, doc } = editor.state;
+      const { from } = selection;
+
+      let formattedText = text;
+
+      // Handle intelligent spacing around cursor insertion point
+      if (from > 1) {
+        const charBefore = doc.textBetween(from - 1, from);
+        if (
+          charBefore &&
+          !/\s|[({[\-–—]/.test(charBefore) &&
+          !/^\s|[.,!?;:)]/.test(formattedText)
+        ) {
+          formattedText = ' ' + formattedText;
+        }
+      }
+
+      // Execute Tiptap command API for insertion at cursor position
+      editor.chain().focus().insertContent(formattedText).run();
+    },
+    [editor]
+  );
+
+  const {
+    isListening: isDictating,
+    isSupported: isDictationSupported,
+    interimTranscript,
+    stopListening: stopDictation,
+    toggleListening: toggleDictation,
+  } = useVoiceDictation({
+    onFinalTranscript: handleFinalTranscript,
+    onError: (msg: string) => showToast(msg),
+    lang: (session?.user as any)?.preferredLanguage || undefined,
+  });
+
+  // Automatically stop dictation when leaving editor mode or opening overlays
+  useEffect(() => {
+    if (!isEditing || editorMode === 'view' || isVerseSearchOpen || isLabelSelectorOpen) {
+      if (isDictating) {
+        stopDictation();
+      }
+    }
+  }, [isEditing, editorMode, isVerseSearchOpen, isLabelSelectorOpen, isDictating, stopDictation]);
 
   // Checklist Actions
   const handleAddChecklistItem = () => {
@@ -2132,6 +2184,7 @@ function JournalsContent() {
                       type="button"
                       onMouseDown={(e) => {
                         e.preventDefault();
+                        if (isDictating) stopDictation();
                         setAtTriggerPosition(null);
                         setIsVerseSearchOpen(true);
                       }}
@@ -2141,6 +2194,33 @@ function JournalsContent() {
                     >
                       <BookOpen className="w-4 h-4 shrink-0" />
                       <span className="text-xs font-bold whitespace-nowrap">Add verse</span>
+                    </button>
+                  </div>
+
+                  {/* Fixed Action 2: Voice Dictation (Mic) */}
+                  <div className="flex items-center shrink-0 pr-2.5 border-r border-gray-200 dark:border-white/[0.1] mr-1.5">
+                    <button
+                      type="button"
+                      onMouseDown={async (e) => {
+                        e.preventDefault();
+                        if (!isDictationSupported) {
+                          showToast('Voice typing is not supported on this browser.');
+                          return;
+                        }
+                        await toggleDictation();
+                      }}
+                      className={`h-8 px-2.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 font-medium active:scale-95 cursor-pointer shadow-xs ${
+                        isDictating
+                          ? 'bg-[#0B7A81] text-white dark:bg-[#14B8A6] dark:text-black font-semibold motion-reduce:animate-none animate-pulse'
+                          : 'bg-gray-100 dark:bg-white/[0.06] hover:bg-gray-200 dark:hover:bg-white/[0.1] text-gray-700 dark:text-gray-300'
+                      }`}
+                      title={isDictating ? 'Stop voice typing' : 'Start voice typing'}
+                      aria-label={isDictating ? 'Stop voice typing' : 'Start voice typing'}
+                    >
+                      <Mic className={`w-4 h-4 ${isDictating ? 'stroke-[2.5]' : ''}`} />
+                      <span className="text-xs font-bold whitespace-nowrap hidden sm:inline">
+                        {isDictating ? 'Listening…' : 'Voice'}
+                      </span>
                     </button>
                   </div>
 
