@@ -1,6 +1,7 @@
 import { Plan, IPlan } from '@/models/Plan';
 import { PlanProgress, IPlanProgress, IPlanDayProgress } from '@/models/PlanProgress';
 import mongoose, { Types } from 'mongoose';
+import connectDB from '@/lib/db';
 
 export class PlanRepository {
   /**
@@ -11,6 +12,7 @@ export class PlanRepository {
     skip: number = 0,
     limit: number = 20
   ) {
+    await connectDB();
     const query: Record<string, any> = { isPublished: true, ...filter };
     const plans = await Plan.find(query)
       .skip(skip)
@@ -25,6 +27,8 @@ export class PlanRepository {
    * Get plan by ID
    */
   static async getPlanById(planId: string) {
+    await connectDB();
+    if (!Types.ObjectId.isValid(planId)) return null;
     return await Plan.findById(planId).lean();
   }
 
@@ -36,6 +40,7 @@ export class PlanRepository {
     skip: number = 0,
     limit: number = 20
   ) {
+    await connectDB();
     return await Plan.find({ isPublished: true, category })
       .skip(skip)
       .limit(limit)
@@ -47,6 +52,7 @@ export class PlanRepository {
    * Get user's active plans (my plans tab)
    */
   static async getUserActivePlans(userId: string, skip: number = 0, limit: number = 20) {
+    await connectDB();
     const progresses = await PlanProgress.find({
       userId: new Types.ObjectId(userId),
       status: { $in: ['not-started', 'in-progress'] },
@@ -57,13 +63,14 @@ export class PlanRepository {
       .sort({ lastAccessedAt: -1 })
       .lean();
 
-    return progresses;
+    return progresses.filter((p) => p.planId != null);
   }
 
   /**
    * Get user's completed plans (completed tab)
    */
   static async getUserCompletedPlans(userId: string, skip: number = 0, limit: number = 20) {
+    await connectDB();
     const progresses = await PlanProgress.find({
       userId: new Types.ObjectId(userId),
       status: 'completed',
@@ -74,13 +81,14 @@ export class PlanRepository {
       .sort({ completedAt: -1 })
       .lean();
 
-    return progresses;
+    return progresses.filter((p) => p.planId != null);
   }
 
   /**
    * Get user's saved plans (saved tab)
    */
   static async getUserSavedPlans(userId: string, skip: number = 0, limit: number = 20) {
+    await connectDB();
     const progresses = await PlanProgress.find({
       userId: new Types.ObjectId(userId),
       isSaved: true,
@@ -91,13 +99,15 @@ export class PlanRepository {
       .sort({ lastAccessedAt: -1 })
       .lean();
 
-    return progresses;
+    return progresses.filter((p) => p.planId != null);
   }
 
   /**
    * Get plan progress for a user
    */
   static async getPlanProgress(userId: string, planId: string) {
+    await connectDB();
+    if (!Types.ObjectId.isValid(userId) || !Types.ObjectId.isValid(planId)) return null;
     return await PlanProgress.findOne({
       userId: new Types.ObjectId(userId),
       planId: new Types.ObjectId(planId),
@@ -105,15 +115,31 @@ export class PlanRepository {
   }
 
   /**
-   * Start a plan for user
+   * Start a plan for user (idempotent)
    */
   static async startPlan(userId: string, planId: string, plan: IPlan) {
-    // Initialize day progress
-    const daysProgress: IPlanDayProgress[] = plan.days.map((_, index) => ({
-      dayNumber: index + 1,
+    await connectDB();
+    const existing = await PlanProgress.findOne({
+      userId: new Types.ObjectId(userId),
+      planId: new Types.ObjectId(planId),
+    });
+
+    if (existing) {
+      if (existing.status === 'not-started') {
+        existing.status = 'in-progress';
+        existing.lastAccessedAt = new Date();
+        await existing.save();
+      }
+      return existing.toObject();
+    }
+
+    const daysProgress: IPlanDayProgress[] = (plan.days || []).map((day, index) => ({
+      dayNumber: day.dayNumber || index + 1,
+      dayId: day.dayId || `day_${index + 1}`,
       completed: false,
       readingState: 'not-started',
       scrollPosition: 0,
+      completedItemIds: [],
     }));
 
     const progress = new PlanProgress({
@@ -121,111 +147,217 @@ export class PlanRepository {
       planId: new Types.ObjectId(planId),
       status: 'in-progress',
       currentDay: 1,
-      totalDays: plan.duration,
+      totalDays: plan.duration || plan.days.length || 1,
       daysProgress,
+      completedItemIds: [],
+      completedDayNumbers: [],
       startedAt: new Date(),
       lastAccessedAt: new Date(),
     });
 
     await progress.save();
-    return progress;
+    return progress.toObject();
   }
 
   /**
-   * Update plan progress
+   * Complete a specific reading item
    */
-  static async updatePlanProgress(
+  static async completeReadingItem(
     userId: string,
     planId: string,
-    updates: Partial<IPlanProgress>
+    dayNumber: number,
+    itemId: string,
+    plan: IPlan
   ) {
-    return await PlanProgress.findOneAndUpdate(
-      {
-        userId: new Types.ObjectId(userId),
-        planId: new Types.ObjectId(planId),
-      },
-      {
-        ...updates,
-        lastAccessedAt: new Date(),
-      },
-      { new: true }
-    ).lean();
-  }
-
-  /**
-   * Mark a day as completed
-   */
-  static async markDayComplete(userId: string, planId: string, dayNumber: number) {
-    const progress = await PlanProgress.findOne({
+    await connectDB();
+    let progress = await PlanProgress.findOne({
       userId: new Types.ObjectId(userId),
       planId: new Types.ObjectId(planId),
     });
 
-    if (!progress) throw new Error('Plan progress not found');
-
-    // Update day progress
-    const dayProgress = progress.daysProgress.find((d) => d.dayNumber === dayNumber);
-    if (dayProgress) {
-      dayProgress.completed = true;
-      dayProgress.completedAt = new Date();
-      dayProgress.readingState = 'completed';
+    if (!progress) {
+      // Auto-start if not started
+      const newProg = await this.startPlan(userId, planId, plan);
+      progress = await PlanProgress.findById((newProg as any)._id);
     }
 
-    // Update current day
-    if (dayNumber === progress.totalDays) {
+    if (!progress) throw new Error('Progress record error');
+
+    // Add to global completed item IDs if not present
+    if (!progress.completedItemIds.includes(itemId)) {
+      progress.completedItemIds.push(itemId);
+    }
+
+    // Find day progress
+    let dayProg = progress.daysProgress.find((d) => d.dayNumber === dayNumber);
+    if (!dayProg) {
+      dayProg = {
+        dayNumber,
+        dayId: `day_${dayNumber}`,
+        completed: false,
+        readingState: 'in-progress',
+        scrollPosition: 0,
+        completedItemIds: [],
+      };
+      progress.daysProgress.push(dayProg);
+    }
+
+    if (!dayProg.completedItemIds.includes(itemId)) {
+      dayProg.completedItemIds.push(itemId);
+    }
+
+    dayProg.readingState = 'in-progress';
+
+    // Check if all items in this day are completed
+    const dayConfig = (plan.days || []).find((d) => d.dayNumber === dayNumber);
+    const dayItems = dayConfig?.items || [];
+
+    const allDayItemsCompleted =
+      dayItems.length > 0 &&
+      dayItems.every((item) =>
+        progress!.completedItemIds.includes(item.itemId) || dayProg!.completedItemIds.includes(item.itemId)
+      );
+
+    if (allDayItemsCompleted || dayItems.length === 0) {
+      dayProg.completed = true;
+      dayProg.completedAt = new Date();
+      dayProg.readingState = 'completed';
+
+      if (!progress.completedDayNumbers.includes(dayNumber)) {
+        progress.completedDayNumbers.push(dayNumber);
+      }
+
+      // Advance current day
+      if (dayNumber >= progress.currentDay && progress.currentDay < progress.totalDays) {
+        progress.currentDay = dayNumber + 1;
+      }
+    }
+
+    // Check if entire plan is completed
+    const totalDays = plan.duration || plan.days.length || 1;
+    const allDaysComplete =
+      progress.completedDayNumbers.length >= totalDays ||
+      (plan.days || []).every((d) => progress!.completedDayNumbers.includes(d.dayNumber));
+
+    if (allDaysComplete) {
       progress.status = 'completed';
-      progress.completedAt = new Date();
-    } else if (dayNumber >= progress.currentDay) {
-      progress.currentDay = dayNumber + 1;
+      if (!progress.completedAt) {
+        progress.completedAt = new Date();
+      }
     }
 
     progress.lastAccessedAt = new Date();
     await progress.save();
-
-    return progress;
+    return progress.toObject();
   }
 
   /**
-   * Update reading state for a day
+   * Mark an entire day complete
    */
-  static async updateDayReadingState(
-    userId: string,
-    planId: string,
-    dayNumber: number,
-    readingState: 'not-started' | 'in-progress' | 'completed',
-    scrollPosition?: number
-  ) {
-    return await PlanProgress.findOneAndUpdate(
-      {
+  static async markDayComplete(userId: string, planId: string, dayNumber: number) {
+    await connectDB();
+    const plan = await Plan.findById(planId).lean();
+    if (!plan) throw new Error('Plan not found');
+
+    const dayConfig = (plan.days || []).find((d) => d.dayNumber === dayNumber);
+    const dayItems = dayConfig?.items || [];
+
+    let updatedProgress: any = null;
+    if (dayItems.length > 0) {
+      for (const item of dayItems) {
+        updatedProgress = await this.completeReadingItem(userId, planId, dayNumber, item.itemId, plan);
+      }
+    } else {
+      let progress = await PlanProgress.findOne({
         userId: new Types.ObjectId(userId),
         planId: new Types.ObjectId(planId),
-        'daysProgress.dayNumber': dayNumber,
-      },
-      {
-        $set: {
-          'daysProgress.$.readingState': readingState,
-          ...(scrollPosition !== undefined && {
-            'daysProgress.$.scrollPosition': scrollPosition,
-          }),
-        },
+      });
+
+      if (!progress) {
+        progress = await this.startPlan(userId, planId, plan) as any;
+        progress = await PlanProgress.findById((progress as any)._id);
+      }
+
+      if (progress) {
+        let dayProg = progress.daysProgress.find((d) => d.dayNumber === dayNumber);
+        if (!dayProg) {
+          dayProg = {
+            dayNumber,
+            dayId: `day_${dayNumber}`,
+            completed: true,
+            completedAt: new Date(),
+            readingState: 'completed',
+            completedItemIds: [],
+          };
+          progress.daysProgress.push(dayProg);
+        } else {
+          dayProg.completed = true;
+          dayProg.completedAt = new Date();
+          dayProg.readingState = 'completed';
+        }
+
+        if (!progress.completedDayNumbers.includes(dayNumber)) {
+          progress.completedDayNumbers.push(dayNumber);
+        }
+
+        if (dayNumber >= progress.currentDay && progress.currentDay < progress.totalDays) {
+          progress.currentDay = dayNumber + 1;
+        }
+
+        if (progress.completedDayNumbers.length >= plan.duration) {
+          progress.status = 'completed';
+          progress.completedAt = new Date();
+        }
+
+        progress.lastAccessedAt = new Date();
+        await progress.save();
+        updatedProgress = progress.toObject();
+      }
+    }
+
+    return updatedProgress;
+  }
+
+  /**
+   * Save / unsave plan for user
+   */
+  static async toggleSavePlan(userId: string, planId: string, isSaved?: boolean) {
+    await connectDB();
+    let progress = await PlanProgress.findOne({
+      userId: new Types.ObjectId(userId),
+      planId: new Types.ObjectId(planId),
+    });
+
+    const newSavedState = isSaved !== undefined ? isSaved : !(progress?.isSaved);
+
+    if (!progress) {
+      const plan = await Plan.findById(planId).lean();
+      if (!plan) throw new Error('Plan not found');
+
+      progress = new PlanProgress({
+        userId: new Types.ObjectId(userId),
+        planId: new Types.ObjectId(planId),
+        status: 'not-started',
+        currentDay: 1,
+        totalDays: plan.duration,
+        daysProgress: (plan.days || []).map((d) => ({
+          dayNumber: d.dayNumber,
+          dayId: d.dayId || `day_${d.dayNumber}`,
+          completed: false,
+          readingState: 'not-started',
+          completedItemIds: [],
+        })),
+        startedAt: new Date(),
         lastAccessedAt: new Date(),
-      },
-      { new: true }
-    ).lean();
-  }
+        isSaved: newSavedState,
+      });
+    } else {
+      progress.isSaved = newSavedState;
+      progress.lastAccessedAt = new Date();
+    }
 
-  /**
-   * Save/unsave plan
-   */
-  static async toggleSavePlan(userId: string, planId: string, isSaved: boolean) {
-    return await PlanProgress.findOneAndUpdate(
-      {
-        userId: new Types.ObjectId(userId),
-        planId: new Types.ObjectId(planId),
-      },
-      { isSaved },
-      { new: true }
-    ).lean();
+    await progress.save();
+    return progress.toObject();
   }
 
   /**
@@ -237,97 +369,177 @@ export class PlanRepository {
     rating: number,
     review?: string
   ) {
+    await connectDB();
     if (rating < 1 || rating > 5) {
-      throw new Error('Rating must be between 1 and 5');
+      throw new Error('Rating must be between 1 and 5 stars');
     }
 
-    return await PlanProgress.findOneAndUpdate(
-      {
-        userId: new Types.ObjectId(userId),
-        planId: new Types.ObjectId(planId),
-      },
-      { rating, review },
-      { new: true }
-    ).lean();
+    const progress = await PlanProgress.findOne({
+      userId: new Types.ObjectId(userId),
+      planId: new Types.ObjectId(planId),
+    });
+
+    if (!progress || progress.status !== 'completed') {
+      throw new Error('Only users who have completed the plan can submit a rating');
+    }
+
+    const previousRating = progress.rating;
+    progress.rating = rating;
+    if (review !== undefined) {
+      progress.review = review;
+    }
+    await progress.save();
+
+    // Recalculate average rating on Plan
+    const ratedProgresses = await PlanProgress.find({
+      planId: new Types.ObjectId(planId),
+      rating: { $exists: true, $ne: null },
+    }).lean();
+
+    const totalRatings = ratedProgresses.length;
+    const sumRatings = ratedProgresses.reduce((acc, p) => acc + (p.rating || 0), 0);
+    const averageRating = totalRatings > 0 ? Math.round((sumRatings / totalRatings) * 10) / 10 : 0;
+
+    await Plan.findByIdAndUpdate(planId, {
+      totalRatings,
+      averageRating,
+    });
+
+    return progress.toObject();
   }
 
   /**
-   * Continue plan (resume from where user left off)
+   * Get related plans
    */
-  static async continuePlan(userId: string, planId: string) {
-    return await PlanProgress.findOneAndUpdate(
-      {
-        userId: new Types.ObjectId(userId),
-        planId: new Types.ObjectId(planId),
-      },
-      {
-        status: 'in-progress',
-        lastAccessedAt: new Date(),
-      },
-      { new: true }
-    ).lean();
+  static async getRelatedPlans(planId: string, limit: number = 6) {
+    await connectDB();
+    const currentPlan = await Plan.findById(planId).lean();
+    if (!currentPlan) return [];
+
+    let relatedPlans: IPlan[] = [];
+
+    // 1. Explicit Admin configured related plans
+    if (currentPlan.relatedPlanIds && currentPlan.relatedPlanIds.length > 0) {
+      relatedPlans = await Plan.find({
+        _id: { $in: currentPlan.relatedPlanIds },
+        isPublished: true,
+      })
+        .limit(limit)
+        .lean() as any;
+    }
+
+    // 2. Fallback to same category plans
+    if (relatedPlans.length < limit) {
+      const remainingLimit = limit - relatedPlans.length;
+      const existingIds = [currentPlan._id, ...relatedPlans.map((p) => p._id)];
+
+      const categoryPlans = await Plan.find({
+        _id: { $nin: existingIds },
+        category: currentPlan.category,
+        isPublished: true,
+      })
+        .limit(remainingLimit)
+        .sort({ createdAt: -1 })
+        .lean() as any;
+
+      relatedPlans = [...relatedPlans, ...categoryPlans];
+    }
+
+    // 3. Fallback to any published plans
+    if (relatedPlans.length < limit) {
+      const remainingLimit = limit - relatedPlans.length;
+      const existingIds = [currentPlan._id, ...relatedPlans.map((p) => p._id)];
+
+      const generalPlans = await Plan.find({
+        _id: { $nin: existingIds },
+        isPublished: true,
+      })
+        .limit(remainingLimit)
+        .sort({ createdAt: -1 })
+        .lean() as any;
+
+      relatedPlans = [...relatedPlans, ...generalPlans];
+    }
+
+    return relatedPlans;
   }
 
   /**
-   * Get user's plan library stats
-   */
-  static async getUserStats(userId: string) {
-    const userId_obj = new Types.ObjectId(userId);
-
-    const [totalPlans, completedPlans, inProgressPlans, savedPlans] = await Promise.all([
-      PlanProgress.countDocuments({ userId: userId_obj }),
-      PlanProgress.countDocuments({ userId: userId_obj, status: 'completed' }),
-      PlanProgress.countDocuments({ userId: userId_obj, status: 'in-progress' }),
-      PlanProgress.countDocuments({ userId: userId_obj, isSaved: true }),
-    ]);
-
-    return {
-      totalPlans,
-      completedPlans,
-      inProgressPlans,
-      savedPlans,
-    };
-  }
-
-  /**
-   * Create a new plan (admin/content creators)
+   * Admin: Create a new plan
    */
   static async createPlan(planData: Partial<IPlan>) {
+    await connectDB();
+    // Ensure stable IDs for days and items
+    if (planData.days) {
+      planData.days = planData.days.map((day, idx) => ({
+        ...day,
+        dayId: day.dayId || `day_${idx + 1}_${Date.now().toString(36)}`,
+        dayNumber: day.dayNumber || idx + 1,
+        items: (day.items || []).map((item, itemIdx) => ({
+          ...item,
+          itemId: item.itemId || `item_${idx + 1}_${itemIdx + 1}_${Date.now().toString(36)}`,
+        })),
+      }));
+    }
+
     const plan = new Plan(planData);
     await plan.save();
-    return plan;
+    return plan.toObject();
   }
 
   /**
-   * Update plan (admin/content creators)
+   * Admin: Update plan (safely preserves dayId & itemId)
    */
   static async updatePlan(planId: string, updates: Partial<IPlan>) {
+    await connectDB();
+    if (updates.days) {
+      updates.days = updates.days.map((day, idx) => ({
+        ...day,
+        dayId: day.dayId || `day_${idx + 1}_${Date.now().toString(36)}`,
+        dayNumber: day.dayNumber || idx + 1,
+        items: (day.items || []).map((item, itemIdx) => ({
+          ...item,
+          itemId: item.itemId || `item_${idx + 1}_${itemIdx + 1}_${Date.now().toString(36)}`,
+        })),
+      }));
+    }
+
     return await Plan.findByIdAndUpdate(planId, updates, { new: true }).lean();
   }
 
   /**
-   * Delete plan (admin only)
+   * Admin: Delete plan
    */
   static async deletePlan(planId: string) {
-    // Also delete all progress records
+    await connectDB();
     await PlanProgress.deleteMany({ planId: new Types.ObjectId(planId) });
     return await Plan.findByIdAndDelete(planId).lean();
   }
 
   /**
-   * Search plans by title or description
+   * Search plans
    */
   static async searchPlans(query: string, skip: number = 0, limit: number = 20) {
-    return await Plan.find({
+    await connectDB();
+    const regex = new RegExp(query.trim(), 'i');
+    const filter = {
       isPublished: true,
       $or: [
-        { title: { $regex: query, $options: 'i' } },
-        { description: { $regex: query, $options: 'i' } },
+        { title: regex },
+        { description: regex },
+        { category: regex },
+        { author: regex },
       ],
-    })
+    };
+
+    const plans = await Plan.find(filter)
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 })
       .lean();
+
+    const total = await Plan.countDocuments(filter);
+    return { plans, total };
   }
 }
+

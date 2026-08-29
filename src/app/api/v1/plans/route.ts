@@ -10,10 +10,17 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const category = searchParams.get('category');
+    const search = searchParams.get('search');
     const skip = parseInt(searchParams.get('skip') || '0');
     const limit = parseInt(searchParams.get('limit') || '20');
 
-    const plans = await PlanService.getAvailablePlans(category || undefined, skip, limit);
+    let plans: any[];
+    if (search && search.trim().length > 0) {
+      plans = await PlanService.searchPlans(search.trim(), skip, limit);
+    } else {
+      const result = await PlanService.getAvailablePlans(category || undefined, skip, limit);
+      plans = result.plans || [];
+    }
 
     return NextResponse.json(
       {

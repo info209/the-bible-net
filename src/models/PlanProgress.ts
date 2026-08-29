@@ -2,10 +2,12 @@ import mongoose, { Schema, Document, Model } from 'mongoose';
 
 export interface IPlanDayProgress {
   dayNumber: number;
+  dayId?: string;
   completed: boolean;
   completedAt?: Date;
   scrollPosition?: number; // store last scroll position
   readingState: 'not-started' | 'in-progress' | 'completed';
+  completedItemIds: string[];
 }
 
 export interface IPlanProgress extends Document {
@@ -15,6 +17,8 @@ export interface IPlanProgress extends Document {
   currentDay: number;
   totalDays: number;
   daysProgress: IPlanDayProgress[];
+  completedItemIds: string[];
+  completedDayNumbers: number[];
   startedAt: Date;
   completedAt?: Date;
   lastAccessedAt: Date;
@@ -31,6 +35,9 @@ const PlanDayProgressSchema = new Schema<IPlanDayProgress>(
       type: Number,
       required: true,
     },
+    dayId: {
+      type: String,
+    },
     completed: {
       type: Boolean,
       default: false,
@@ -46,6 +53,10 @@ const PlanDayProgressSchema = new Schema<IPlanDayProgress>(
       type: String,
       enum: ['not-started', 'in-progress', 'completed'],
       default: 'not-started',
+    },
+    completedItemIds: {
+      type: [String],
+      default: [],
     },
   },
   { _id: false }
@@ -82,6 +93,14 @@ const PlanProgressSchema = new Schema<IPlanProgress>(
     },
     daysProgress: {
       type: [PlanDayProgressSchema],
+      default: [],
+    },
+    completedItemIds: {
+      type: [String],
+      default: [],
+    },
+    completedDayNumbers: {
+      type: [Number],
       default: [],
     },
     startedAt: {
@@ -127,3 +146,4 @@ PlanProgressSchema.index({ userId: 1, lastAccessedAt: -1 });
 export const PlanProgress: Model<IPlanProgress> =
   mongoose.models.PlanProgress ||
   mongoose.model<IPlanProgress>('PlanProgress', PlanProgressSchema);
+

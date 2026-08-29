@@ -1,11 +1,12 @@
-import { IPlan, IPlanDay } from '@/models/Plan';
+import { IPlan, IPlanDay, IPlanReadingItem } from '@/models/Plan';
 import { IPlanProgress, IPlanDayProgress } from '@/models/PlanProgress';
 
 export type PlanStatus = 'not-started' | 'in-progress' | 'completed';
 export type ReadingState = 'not-started' | 'in-progress' | 'completed';
 
-export interface Plan extends Omit<IPlan, 'toObject' | 'toJSON'> {}
+export interface PlanReadingItem extends IPlanReadingItem {}
 export interface PlanDay extends IPlanDay {}
+export interface Plan extends Omit<IPlan, 'toObject' | 'toJSON'> {}
 export interface PlanProgress extends Omit<IPlanProgress, 'toObject' | 'toJSON'> {}
 export interface PlanDayProgress extends IPlanDayProgress {}
 
@@ -17,14 +18,13 @@ export interface PlanWithProgress {
 }
 
 export interface DayContentData {
+  dayId: string;
   dayNumber: number;
   dayTitle: string;
-  scripture: string;
-  devotional: string;
-  reflection?: string;
+  items: PlanReadingItem[];
   isCompleted: boolean;
   readingState: ReadingState;
-  scrollPosition: number;
+  completedItemIds: string[];
 }
 
 export interface CompletionData {
@@ -38,5 +38,5 @@ export interface CompletionData {
 export interface LibraryTab {
   id: 'my-plans' | 'find-plans' | 'saved' | 'completed';
   label: string;
-  icon?: React.ReactNode;
 }
+

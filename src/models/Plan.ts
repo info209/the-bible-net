@@ -1,12 +1,24 @@
 import mongoose, { Schema, Document, Model } from 'mongoose';
 
+export interface IPlanReadingItem {
+  itemId: string;
+  type: 'devotional' | 'scripture';
+  title: string;
+  devotionalText?: string;
+  mediaUrl?: string;
+  scriptureRef?: string;
+  bibleVersion?: string;
+}
+
 export interface IPlanDay {
+  dayId: string;
   dayNumber: number;
   title: string;
   description?: string;
-  scripture: string; // e.g., "James 1:18-24 NIV"
-  devotional: string; // devotional text
-  reflection?: string; // optional reflection questions
+  scripture?: string; // legacy fallback
+  devotional?: string; // legacy fallback
+  reflection?: string;
+  items: IPlanReadingItem[];
 }
 
 export interface IPlan extends Document {
@@ -15,9 +27,11 @@ export interface IPlan extends Document {
   duration: number; // number of days
   category: string; // e.g., 'spiritual-growth', 'faith-building', etc.
   difficulty: 'beginner' | 'intermediate' | 'advanced';
-  imageUrl?: string;
+  imageUrl?: string; // cover image
+  thumbnailUrl?: string; // thumbnail / list image
   author: string;
   days: IPlanDay[];
+  relatedPlanIds?: mongoose.Types.ObjectId[];
   totalLikes: number;
   totalRatings: number;
   averageRating: number; // 0-5
@@ -27,8 +41,51 @@ export interface IPlan extends Document {
   updatedAt: Date;
 }
 
+const PlanReadingItemSchema = new Schema<IPlanReadingItem>(
+  {
+    itemId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    type: {
+      type: String,
+      enum: ['devotional', 'scripture'],
+      required: true,
+    },
+    title: {
+      type: String,
+      required: [true, 'Item title is required'],
+      trim: true,
+    },
+    devotionalText: {
+      type: String,
+      trim: true,
+    },
+    mediaUrl: {
+      type: String,
+      trim: true,
+    },
+    scriptureRef: {
+      type: String,
+      trim: true,
+    },
+    bibleVersion: {
+      type: String,
+      trim: true,
+      default: 'NIV',
+    },
+  },
+  { _id: false }
+);
+
 const PlanDaySchema = new Schema<IPlanDay>(
   {
+    dayId: {
+      type: String,
+      required: true,
+      trim: true,
+    },
     dayNumber: {
       type: Number,
       required: [true, 'Day number is required'],
@@ -45,18 +102,19 @@ const PlanDaySchema = new Schema<IPlanDay>(
     },
     scripture: {
       type: String,
-      required: [true, 'Scripture reference is required'],
       trim: true,
-      maxlength: [100, 'Scripture reference cannot exceed 100 characters'],
     },
     devotional: {
       type: String,
-      required: [true, 'Devotional text is required'],
       trim: true,
     },
     reflection: {
       type: String,
       trim: true,
+    },
+    items: {
+      type: [PlanReadingItemSchema],
+      default: [],
     },
   },
   { _id: false }
@@ -97,6 +155,10 @@ const PlanSchema = new Schema<IPlan>(
       type: String,
       trim: true,
     },
+    thumbnailUrl: {
+      type: String,
+      trim: true,
+    },
     author: {
       type: String,
       required: [true, 'Author is required'],
@@ -112,6 +174,10 @@ const PlanSchema = new Schema<IPlan>(
         message: 'Number of days must match the plan duration',
       },
     },
+    relatedPlanIds: [{
+      type: Schema.Types.ObjectId,
+      ref: 'Plan',
+    }],
     totalLikes: {
       type: Number,
       default: 0,
@@ -152,3 +218,4 @@ PlanSchema.index({ createdBy: 1 });
 
 export const Plan: Model<IPlan> =
   mongoose.models.Plan || mongoose.model<IPlan>('Plan', PlanSchema);
+

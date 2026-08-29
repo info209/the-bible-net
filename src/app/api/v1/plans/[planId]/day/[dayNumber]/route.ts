@@ -12,13 +12,21 @@ export async function GET(
 ) {
   try {
     const { planId, dayNumber } = params;
-    const dayNum = parseInt(dayNumber);
+    const dayNum = parseInt(dayNumber, 10);
 
     if (isNaN(dayNum)) {
       return getErrorResponse('Invalid day number', 400);
     }
 
-    const dayContent = await PlanService.getDayContent(planId, dayNum);
+    const planData = await PlanService.getPlanWithProgress(planId);
+    if (!planData || !planData.plan) {
+      return getErrorResponse('Plan not found', 404);
+    }
+
+    const dayContent = (planData.plan.days || []).find((d: any) => d.dayNumber === dayNum);
+    if (!dayContent) {
+      return getErrorResponse('Day content not found', 404);
+    }
 
     return NextResponse.json(
       {
@@ -53,16 +61,16 @@ export async function PUT(
 
     const body = await request.json();
     const { planId, dayNumber } = params;
-    const dayNum = parseInt(dayNumber);
+    const dayNum = parseInt(dayNumber, 10);
 
     if (isNaN(dayNum)) {
       return getErrorResponse('Invalid day number', 400);
     }
 
-    const { action, scrollPosition } = body;
+    const { action } = body;
 
     if (action === 'mark-complete') {
-      const progress = await PlanService.completDay(session.user.id, planId, dayNum);
+      const progress = await PlanService.markDayComplete(session.user.id, planId, dayNum);
       return NextResponse.json(
         {
           success: true,
@@ -71,23 +79,16 @@ export async function PUT(
         },
         { status: 200 }
       );
-    } else if (action === 'update-progress' && scrollPosition !== undefined) {
-      const progress = await PlanService.updateReadingProgress(
-        session.user.id,
-        planId,
-        dayNum,
-        scrollPosition
-      );
+    } else {
+      const progress = await PlanService.getPlanWithProgress(planId, session.user.id);
       return NextResponse.json(
         {
           success: true,
           data: progress,
-          message: 'Progress updated',
+          message: 'Progress retrieved',
         },
         { status: 200 }
       );
-    } else {
-      return getErrorResponse('Invalid action', 400);
     }
   } catch (error: any) {
     return getErrorResponse(error.message, 500);

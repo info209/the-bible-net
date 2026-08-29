@@ -20,12 +20,12 @@ export class PlanService {
    * Get plan with user's progress
    */
   static async getPlanWithProgress(planId: string, userId?: string): Promise<PlanWithProgress | null> {
-    const plan = await PlanRepository.getPlanById(planId) as IPlan | null;
+    const plan = (await PlanRepository.getPlanById(planId)) as IPlan | null;
     if (!plan) return null;
 
     if (!userId) {
       return {
-        plan,
+        plan: plan as any,
         progress: null,
         status: 'not-started',
         progressPercentage: 0,
@@ -34,15 +34,16 @@ export class PlanService {
 
     const progress = await PlanRepository.getPlanProgress(userId, planId);
 
-    const progressPercentage = progress
-      ? (progress.daysProgress.filter((d) => d.completed).length /
-          progress.totalDays) *
-        100
+    const completedDaysCount = progress
+      ? progress.completedDayNumbers?.length || progress.daysProgress.filter((d) => d.completed).length
       : 0;
 
+    const totalDays = plan.duration || plan.days?.length || 1;
+    const progressPercentage = Math.min(100, Math.round((completedDaysCount / totalDays) * 100));
+
     return {
-      plan,
-      progress,
+      plan: plan as any,
+      progress: progress as any,
       status: (progress?.status || 'not-started') as PlanStatus,
       progressPercentage,
     };
@@ -57,102 +58,67 @@ export class PlanService {
     skip: number = 0,
     limit: number = 20
   ) {
-    let result: any[] = [];
-
     switch (tab) {
       case 'my-plans':
-        result = await PlanRepository.getUserActivePlans(userId, skip, limit);
-        break;
+        return await PlanRepository.getUserActivePlans(userId, skip, limit);
       case 'find-plans':
         const allPlans = await PlanRepository.getPublishedPlans({}, skip, limit);
-        result = allPlans.plans;
-        break;
+        return allPlans.plans;
       case 'saved':
-        result = await PlanRepository.getUserSavedPlans(userId, skip, limit);
-        break;
+        return await PlanRepository.getUserSavedPlans(userId, skip, limit);
       case 'completed':
-        result = await PlanRepository.getUserCompletedPlans(userId, skip, limit);
-        break;
+        return await PlanRepository.getUserCompletedPlans(userId, skip, limit);
+      default:
+        return [];
     }
-
-    return result;
   }
 
   /**
-   * Start a new plan
+   * Start a new plan (idempotent)
    */
   static async startPlan(userId: string, planId: string) {
-    const plan = await PlanRepository.getPlanById(planId) as IPlan;
+    const plan = (await PlanRepository.getPlanById(planId)) as IPlan | null;
     if (!plan) throw new Error('Plan not found');
-
-    // Check if already started
-    const existing = await PlanRepository.getPlanProgress(userId, planId);
-    if (existing) {
-      throw new Error('Plan already started');
-    }
 
     const progress = await PlanRepository.startPlan(userId, planId, plan);
     return progress;
   }
 
   /**
-   * Continue reading a plan
+   * Complete a specific reading item in a plan day
    */
-  static async continuePlan(userId: string, planId: string) {
-    const progress = await PlanRepository.continuePlan(userId, planId);
-    if (!progress) throw new Error('Plan progress not found');
-    return progress;
-  }
-
-  /**
-   * Get current day content
-   */
-  static async getDayContent(planId: string, dayNumber: number) {
-    const plan = await PlanRepository.getPlanById(planId) as IPlan;
-    if (!plan) throw new Error('Plan not found');
-
-    if (dayNumber < 1 || dayNumber > plan.duration) {
-      throw new Error('Invalid day number');
-    }
-
-    return plan.days[dayNumber - 1];
-  }
-
-  /**
-   * Mark day as complete
-   */
-  static async completDay(userId: string, planId: string, dayNumber: number) {
-    const progress = await PlanRepository.markDayComplete(userId, planId, dayNumber);
-    return progress;
-  }
-
-  /**
-   * Update reading progress
-   */
-  static async updateReadingProgress(
+  static async completeReadingItem(
     userId: string,
     planId: string,
     dayNumber: number,
-    scrollPosition: number
+    itemId: string
   ) {
-    const progress = await PlanRepository.updateDayReadingState(
+    const plan = (await PlanRepository.getPlanById(planId)) as IPlan | null;
+    if (!plan) throw new Error('Plan not found');
+
+    const progress = await PlanRepository.completeReadingItem(
       userId,
       planId,
       dayNumber,
-      'in-progress',
-      scrollPosition
+      itemId,
+      plan
     );
     return progress;
   }
 
   /**
-   * Save/unsave plan for later
+   * Mark an entire day as complete
    */
-  static async toggleSavePlan(userId: string, planId: string) {
-    const current = await PlanRepository.getPlanProgress(userId, planId);
-    const newState = !(current?.isSaved);
+  static async markDayComplete(userId: string, planId: string, dayNumber: number) {
+    const progress = await PlanRepository.markDayComplete(userId, planId, dayNumber);
+    return progress;
+  }
 
-    const progress = await PlanRepository.toggleSavePlan(userId, planId, newState);
+  /**
+   * Save / unsave plan for user
+   */
+  static async toggleSavePlan(userId: string, planId: string, isSaved?: boolean) {
+    const progress = await PlanRepository.toggleSavePlan(userId, planId, isSaved);
     return progress;
   }
 
@@ -160,60 +126,61 @@ export class PlanService {
    * Rate a completed plan
    */
   static async ratePlan(userId: string, planId: string, rating: number, review?: string) {
-    const progress = await PlanRepository.getPlanProgress(userId, planId);
-    if (!progress || progress.status !== 'completed') {
-      throw new Error('Can only rate completed plans');
-    }
-
     const updated = await PlanRepository.ratePlan(userId, planId, rating, review);
+    // Invalidate plan details cache
+    await CacheService.del(`tbnet:plan:${planId}`);
     return updated;
   }
 
   /**
    * Get related/recommended plans
    */
-  static async getRelatedPlans(planId: string, limit: number = 5) {
+  static async getRelatedPlans(planId: string, limit: number = 6) {
     const cacheKey = CacheKeys.planRelated(planId, limit);
     return CacheService.getOrSet(cacheKey, async () => {
-      const currentPlan = await PlanRepository.getPlanById(planId) as IPlan;
-      if (!currentPlan) throw new Error('Plan not found');
-
-      const related = await PlanRepository.getPlansByCategory(currentPlan.category, 0, limit + 1);
-      return related.filter((p) => p._id.toString() !== planId);
+      return await PlanRepository.getRelatedPlans(planId, limit);
     }, CACHE_TTL.PLANS);
-  }
-
-  /**
-   * Get user's stats
-   */
-  static async getUserStats(userId: string) {
-    return await PlanRepository.getUserStats(userId);
   }
 
   /**
    * Search plans
    */
   static async searchPlans(query: string, skip: number = 0, limit: number = 20) {
-    if (!query || query.trim().length < 2) {
-      throw new Error('Search query must be at least 2 characters');
+    if (!query || query.trim().length < 1) {
+      const all = await PlanRepository.getPublishedPlans({}, skip, limit);
+      return all.plans;
     }
-
-    return await PlanRepository.searchPlans(query, skip, limit);
+    const result = await PlanRepository.searchPlans(query, skip, limit);
+    return result.plans;
   }
 
   /**
-   * Calculate progress percentage
+   * Admin: Create plan
    */
-  static calculateProgressPercentage(completedDays: number, totalDays: number): number {
-    return Math.round((completedDays / totalDays) * 100);
+  static async createPlan(planData: Partial<IPlan>) {
+    const created = await PlanRepository.createPlan(planData);
+    await CacheService.invalidatePattern('tbnet:plans:*');
+    return created;
   }
 
   /**
-   * Get estimated completion date
+   * Admin: Update plan
    */
-  static getEstimatedCompletionDate(startDate: Date, daysRemaining: number): Date {
-    const estimatedDate = new Date(startDate);
-    estimatedDate.setDate(estimatedDate.getDate() + daysRemaining);
-    return estimatedDate;
+  static async updatePlan(planId: string, updates: Partial<IPlan>) {
+    const updated = await PlanRepository.updatePlan(planId, updates);
+    await CacheService.invalidatePattern('tbnet:plans:*');
+    await CacheService.del(`tbnet:plan:${planId}`);
+    return updated;
+  }
+
+  /**
+   * Admin: Delete plan
+   */
+  static async deletePlan(planId: string) {
+    const deleted = await PlanRepository.deletePlan(planId);
+    await CacheService.invalidatePattern('tbnet:plans:*');
+    await CacheService.del(`tbnet:plan:${planId}`);
+    return deleted;
   }
 }
+
