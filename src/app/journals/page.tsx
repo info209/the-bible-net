@@ -887,7 +887,7 @@ function JournalsContent() {
     toggleListening: toggleDictation,
   } = useVoiceDictation({
     onFinalTranscript: handleFinalTranscript,
-    onError: (msg) => showToast(msg),
+    onError: (msg: string) => showToast(msg),
     lang: (session?.user as any)?.preferredLanguage || undefined,
   });
 
@@ -2202,13 +2202,13 @@ function JournalsContent() {
                   <div className="flex items-center shrink-0 pr-2.5 border-r border-gray-200 dark:border-white/[0.1] mr-1.5">
                     <button
                       type="button"
-                      onMouseDown={(e) => {
+                      onMouseDown={async (e) => {
                         e.preventDefault();
                         if (!isDictationSupported) {
                           showToast('Voice typing is not supported on this browser.');
                           return;
                         }
-                        toggleDictation();
+                        await toggleDictation();
                       }}
                       className={`h-8 px-2.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 font-medium active:scale-95 cursor-pointer shadow-xs ${
                         isDictating

@@ -39,8 +39,8 @@ export async function PUT(
   { params }: { params: { planId: string } }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const userContext = await getAnyUserSession();
+    if (!userContext?.userId) {
       return getErrorResponse('Unauthorized', 401);
     }
 
@@ -70,8 +70,8 @@ export async function DELETE(
   { params }: { params: { planId: string } }
 ) {
   try {
-    const session = await auth();
-    if (!session?.user) {
+    const userContext = await getAnyUserSession();
+    if (!userContext?.userId) {
       return getErrorResponse('Unauthorized', 401);
     }
 

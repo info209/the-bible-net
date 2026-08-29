@@ -13,9 +13,9 @@ export interface UseVoiceDictationReturn {
   isSupported: boolean;
   interimTranscript: string;
   error: string | null;
-  startListening: () => void;
+  startListening: () => Promise<void>;
   stopListening: () => void;
-  toggleListening: () => void;
+  toggleListening: () => Promise<void>;
 }
 
 export function useVoiceDictation({
@@ -33,7 +33,7 @@ export function useVoiceDictation({
   const onFinalTranscriptRef = useRef(onFinalTranscript);
   const onErrorRef = useRef(onError);
 
-  // Keep refs up to date to prevent closure staleness
+  // Keep refs updated
   useEffect(() => {
     onFinalTranscriptRef.current = onFinalTranscript;
   }, [onFinalTranscript]);
@@ -65,7 +65,7 @@ export function useVoiceDictation({
     }
   }, []);
 
-  const startListening = useCallback(() => {
+  const startListening = useCallback(async () => {
     if (typeof window === 'undefined') return;
 
     const SpeechRecognition =
@@ -88,13 +88,32 @@ export function useVoiceDictation({
     setError(null);
     setInterimTranscript('');
 
+    // Step 1: Explicitly request microphone permission via getUserMedia
+    // This forces the browser to open the native microphone permission dialog box!
+    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Stop temporary tracks so SpeechRecognition can take control of the microphone
+        stream.getTracks().forEach((track) => track.stop());
+      } catch (err: any) {
+        console.warn('Microphone permission denied:', err);
+        const userMsg = 'Microphone access is required for voice typing.';
+        setError(userMsg);
+        setIsListening(false);
+        isListeningRef.current = false;
+        if (onErrorRef.current) onErrorRef.current(userMsg);
+        return;
+      }
+    }
+
+    // Step 2: Initialize SpeechRecognition
     try {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
 
-      // Determine language: priority passed lang -> navigator language -> en-US fallback
+      // Set language: priority passed lang -> navigator language -> en-US fallback
       recognition.lang =
         lang || (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
 
@@ -124,14 +143,13 @@ export function useVoiceDictation({
       };
 
       recognition.onerror = (event: any) => {
-        console.warn('Speech recognition error:', event.error);
+        console.warn('Speech recognition error event:', event.error);
         let userMessage = 'Voice typing error occurred.';
 
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           userMessage = 'Microphone access is required for voice typing.';
           stopListening();
         } else if (event.error === 'no-speech') {
-          // No speech detected for a period; keep listening if intentional
           return;
         } else if (event.error === 'audio-capture') {
           userMessage = 'No microphone detected.';
@@ -149,7 +167,6 @@ export function useVoiceDictation({
 
       recognition.onend = () => {
         setInterimTranscript('');
-        // Handle unexpected end while still marked listening
         if (isListeningRef.current) {
           setIsListening(false);
           isListeningRef.current = false;
@@ -168,11 +185,11 @@ export function useVoiceDictation({
     }
   }, [lang, stopListening]);
 
-  const toggleListening = useCallback(() => {
+  const toggleListening = useCallback(async () => {
     if (isListening) {
       stopListening();
     } else {
-      startListening();
+      await startListening();
     }
   }, [isListening, startListening, stopListening]);
 
