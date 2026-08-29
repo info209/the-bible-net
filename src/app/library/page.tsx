@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import LibraryHeader from '../components/library/LibraryHeader';
 import LibraryTabs, { LibraryTabId } from '../components/library/LibraryTabs';
@@ -11,7 +11,7 @@ import CompletedPlansView from '../components/library/CompletedPlansView';
 import { useUserLibrary, useFindPlans, useStartPlan } from '@/hooks/usePlanQueries';
 import { toast } from 'sonner';
 
-export default function LibraryPage() {
+function LibraryContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -103,5 +103,13 @@ export default function LibraryPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function LibraryPage() {
+  return (
+    <Suspense fallback={<div className="py-20 text-center animate-pulse text-gray-500">Loading Library...</div>}>
+      <LibraryContent />
+    </Suspense>
   );
 }
