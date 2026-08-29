@@ -96,8 +96,13 @@ export function useVoiceDictation({
         // Stop temporary tracks so SpeechRecognition can take control of the microphone
         stream.getTracks().forEach((track) => track.stop());
       } catch (err: any) {
-        console.warn('Microphone permission denied:', err);
-        const userMsg = 'Microphone access is required for voice typing.';
+        console.warn('Microphone permission request failed:', err);
+        let userMsg = 'Microphone access is required for voice typing.';
+        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+          userMsg = 'Microphone is blocked by your browser. Please allow microphone access in your site settings (lock icon in address bar).';
+        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+          userMsg = 'No microphone device was found on your system.';
+        }
         setError(userMsg);
         setIsListening(false);
         isListeningRef.current = false;

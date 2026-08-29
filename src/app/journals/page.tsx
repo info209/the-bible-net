@@ -2202,8 +2202,7 @@ function JournalsContent() {
                   <div className="flex items-center shrink-0 pr-2.5 border-r border-gray-200 dark:border-white/[0.1] mr-1.5">
                     <button
                       type="button"
-                      onMouseDown={async (e) => {
-                        e.preventDefault();
+                      onClick={async () => {
                         if (!isDictationSupported) {
                           showToast('Voice typing is not supported on this browser.');
                           return;
