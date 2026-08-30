@@ -34,11 +34,12 @@ export function useVoiceDictation({
 
   const recognitionRef = useRef<any>(null);
   const isUserIntentListeningRef = useRef(false);
+  const sessionCounterRef = useRef<number>(0);
   const sessionIdRef = useRef<number>(0);
   const onFinalTranscriptRef = useRef(onFinalTranscript);
   const onErrorRef = useRef(onError);
   const processedFinalKeysRef = useRef<Set<string>>(new Set());
-  const isWebKitRef = useRef<boolean>(false);
+  const isMobileRef = useRef<boolean>(false);
 
   // Keep refs updated to prevent stale closures
   useEffect(() => {
@@ -49,44 +50,64 @@ export function useVoiceDictation({
     onErrorRef.current = onError;
   }, [onError]);
 
-  // Feature detection & WebKit check on mount
+  // Feature detection & environment check on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const isSafariOrIOS =
-        /^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
-        (typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') && 'ontouchend' in document);
+      const userAgent = navigator.userAgent || '';
+      const isMobileDevice =
+        /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent) ||
+        (userAgent.includes('Mac') && typeof navigator.maxTouchPoints === 'number' && navigator.maxTouchPoints > 0);
+
+      isMobileRef.current = isMobileDevice;
+
       const SpeechRecognition =
         (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      const isUsingWebkitPrefix =
-        !(window as any).SpeechRecognition && !!(window as any).webkitSpeechRecognition;
 
-      isWebKitRef.current = isSafariOrIOS || isUsingWebkitPrefix;
       setIsSupported(!!SpeechRecognition);
     }
   }, []);
 
+  // Destructive teardown function used ONLY for unmount or replacing a broken/stale instance
+  const cleanupRecognitionInstance = useCallback((instanceToClean: any) => {
+    if (!instanceToClean) return;
+    try {
+      instanceToClean.onstart = null;
+      instanceToClean.onresult = null;
+      instanceToClean.onerror = null;
+      instanceToClean.onend = null;
+    } catch (e) {}
+    try {
+      instanceToClean.abort();
+    } catch (e) {}
+  }, []);
+
+  // User-requested graceful Stop
   const stopListening = useCallback(() => {
     isUserIntentListeningRef.current = false;
-    sessionIdRef.current = 0; // Invalidate current session callbacks
-    setStatus('idle');
-    setIsListening(false);
-    setInterimTranscript('');
-    processedFinalKeysRef.current.clear();
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`[Dictation Lifecycle] stop requested. SessionId: ${sessionIdRef.current}`);
+    }
 
     if (recognitionRef.current) {
-      const rec = recognitionRef.current;
-      recognitionRef.current = null;
+      setStatus('stopping');
       try {
-        rec.onstart = null;
-        rec.onresult = null;
-        rec.onerror = null;
-        rec.onend = null;
-        rec.stop();
+        recognitionRef.current.stop();
       } catch (e) {
-        // Ignore stop errors
+        // If stop fails synchronously, force cleanup
+        cleanupRecognitionInstance(recognitionRef.current);
+        recognitionRef.current = null;
+        sessionIdRef.current = 0;
+        setStatus('idle');
+        setIsListening(false);
+        setInterimTranscript('');
       }
+    } else {
+      setStatus('idle');
+      setIsListening(false);
+      setInterimTranscript('');
     }
-  }, []);
+  }, [cleanupRecognitionInstance]);
 
   const startNewRecognitionSession = useCallback((targetLang?: string) => {
     if (typeof window === 'undefined') return;
@@ -104,20 +125,19 @@ export function useVoiceDictation({
       return;
     }
 
-    // Clean up existing recognition instance if any
+    // If an existing stale recognition instance exists, destructively abort it ONCE before starting a brand-new instance
     if (recognitionRef.current) {
-      const oldRec = recognitionRef.current;
+      const staleInstance = recognitionRef.current;
       recognitionRef.current = null;
-      try {
-        oldRec.onstart = null;
-        oldRec.onresult = null;
-        oldRec.onerror = null;
-        oldRec.onend = null;
-        oldRec.abort();
-      } catch (e) {}
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`[Dictation Lifecycle] abort requested for stale instance.`);
+      }
+      cleanupRecognitionInstance(staleInstance);
     }
 
-    const currentSessionId = Date.now();
+    // Generate unique monotonic session ID
+    sessionCounterRef.current += 1;
+    const currentSessionId = sessionCounterRef.current;
     sessionIdRef.current = currentSessionId;
     processedFinalKeysRef.current.clear();
 
@@ -125,23 +145,34 @@ export function useVoiceDictation({
     setInterimTranscript('');
     setStatus('starting');
 
+    if (process.env.NODE_ENV === 'development') {
+      const ctorName = (window as any).SpeechRecognition ? 'SpeechRecognition' : 'webkitSpeechRecognition';
+      console.log(`[Dictation Lifecycle] start attempted. SessionId: ${currentSessionId}, Constructor: ${ctorName}`);
+    }
+
     try {
       const recognition = new SpeechRecognition();
-      // WebKit / Safari SpeechRecognition engine locks up if continuous = true is forced across sessions
-      recognition.continuous = !isWebKitRef.current;
+      recognition.continuous = !isMobileRef.current;
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
       recognition.lang =
         targetLang || lang || (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
 
       recognition.onstart = () => {
-        if (sessionIdRef.current !== currentSessionId) return;
+        // Strict ownership check
+        if (sessionIdRef.current !== currentSessionId || recognitionRef.current !== recognition) return;
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[Dictation Lifecycle] onstart fired. SessionId: ${currentSessionId}`);
+        }
+
         setStatus('listening');
         setIsListening(true);
       };
 
       recognition.onresult = (event: any) => {
-        if (sessionIdRef.current !== currentSessionId) return;
+        // Strict ownership check
+        if (sessionIdRef.current !== currentSessionId || recognitionRef.current !== recognition) return;
 
         let finalChunk = '';
         let interimChunk = '';
@@ -163,6 +194,11 @@ export function useVoiceDictation({
                 }
                 finalChunk += transcript;
               }
+              if (process.env.NODE_ENV === 'development') {
+                console.log(`[Dictation Lifecycle] SessionId: ${currentSessionId}, resultIndex: ${event.resultIndex}, itemIndex: ${i}, status: committed`);
+              }
+            } else if (process.env.NODE_ENV === 'development') {
+              console.log(`[Dictation Lifecycle] SessionId: ${currentSessionId}, resultIndex: ${event.resultIndex}, itemIndex: ${i}, status: skipped_duplicate`);
             }
           } else {
             const transcript = result[0]?.transcript || '';
@@ -180,64 +216,68 @@ export function useVoiceDictation({
       };
 
       recognition.onerror = (event: any) => {
-        if (sessionIdRef.current !== currentSessionId) return;
+        // Strict ownership check
+        if (sessionIdRef.current !== currentSessionId || recognitionRef.current !== recognition) return;
 
-        console.warn('Speech recognition error event:', event.error);
+        if (process.env.NODE_ENV === 'development') {
+          console.warn(`[Dictation Lifecycle] onerror fired. SessionId: ${currentSessionId}, Error: ${event.error}`);
+        }
 
         if (event.error === 'aborted') {
           return;
         }
 
         let userMessage = 'Voice typing error occurred.';
-        let isPermissionError = false;
+        let notifyUser = true;
 
         if (event.error === 'not-allowed') {
           userMessage = 'Microphone access is required for voice typing.';
-          isPermissionError = true;
-          isUserIntentListeningRef.current = false;
-          setStatus('idle');
-          setIsListening(false);
         } else if (event.error === 'service-not-allowed') {
           userMessage = 'Voice recognition service is currently unavailable. Please try again.';
-          isUserIntentListeningRef.current = false;
-          setStatus('idle');
-          setIsListening(false);
         } else if (event.error === 'no-speech') {
-          // No speech detected; reset status to idle cleanly without error toast
-          setStatus('idle');
-          setIsListening(false);
-          isUserIntentListeningRef.current = false;
-          return;
+          notifyUser = false;
         } else if (event.error === 'audio-capture') {
           userMessage = 'No microphone detected.';
-          isUserIntentListeningRef.current = false;
-          setStatus('idle');
-          setIsListening(false);
         } else if (event.error === 'network') {
           userMessage = 'Speech recognition network connection error.';
-          isUserIntentListeningRef.current = false;
-          setStatus('idle');
-          setIsListening(false);
         }
 
-        setError(userMessage);
-        if (onErrorRef.current && isPermissionError) {
-          onErrorRef.current(userMessage);
+        isUserIntentListeningRef.current = false;
+        cleanupRecognitionInstance(recognition);
+        recognitionRef.current = null;
+        sessionIdRef.current = 0;
+        setStatus('idle');
+        setIsListening(false);
+
+        if (notifyUser) {
+          setError(userMessage);
+          if (onErrorRef.current) {
+            onErrorRef.current(userMessage);
+          }
         }
       };
 
       recognition.onend = () => {
-        if (sessionIdRef.current !== currentSessionId) return;
+        // Strict ownership check
+        if (sessionIdRef.current !== currentSessionId || recognitionRef.current !== recognition) return;
+
+        if (process.env.NODE_ENV === 'development') {
+          console.log(`[Dictation Lifecycle] onend fired. SessionId: ${currentSessionId}`);
+        }
 
         setInterimTranscript('');
         setStatus('idle');
         setIsListening(false);
         isUserIntentListeningRef.current = false;
+        processedFinalKeysRef.current.clear();
+        cleanupRecognitionInstance(recognition);
+        recognitionRef.current = null;
+        sessionIdRef.current = 0;
       };
 
       recognitionRef.current = recognition;
 
-      // Synchronously trigger recognition.start() within user gesture context for Safari/iOS
+      // Synchronously trigger recognition.start() within user gesture context
       recognition.start();
     } catch (err: any) {
       console.error('Failed to start speech recognition:', err);
@@ -245,6 +285,10 @@ export function useVoiceDictation({
       isUserIntentListeningRef.current = false;
       setStatus('idle');
       setIsListening(false);
+      if (recognitionRef.current) {
+        cleanupRecognitionInstance(recognitionRef.current);
+        recognitionRef.current = null;
+      }
 
       let userMessage = err.message || 'Could not start voice dictation.';
       if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
@@ -253,7 +297,7 @@ export function useVoiceDictation({
       setError(userMessage);
       if (onErrorRef.current) onErrorRef.current(userMessage);
     }
-  }, [lang]);
+  }, [cleanupRecognitionInstance, lang]);
 
   const startListening = useCallback(() => {
     isUserIntentListeningRef.current = true;
@@ -261,12 +305,12 @@ export function useVoiceDictation({
   }, [lang, startNewRecognitionSession]);
 
   const toggleListening = useCallback(() => {
-    if (isListening || isUserIntentListeningRef.current) {
+    if (isListening || status === 'listening' || status === 'starting' || isUserIntentListeningRef.current) {
       stopListening();
     } else {
       startListening();
     }
-  }, [isListening, startListening, stopListening]);
+  }, [isListening, status, startListening, stopListening]);
 
   // Clean up recognition on unmount
   useEffect(() => {
@@ -274,18 +318,12 @@ export function useVoiceDictation({
       isUserIntentListeningRef.current = false;
       sessionIdRef.current = 0;
       if (recognitionRef.current) {
-        const oldRec = recognitionRef.current;
+        const instance = recognitionRef.current;
         recognitionRef.current = null;
-        try {
-          oldRec.onstart = null;
-          oldRec.onresult = null;
-          oldRec.onerror = null;
-          oldRec.onend = null;
-          oldRec.abort();
-        } catch (e) {}
+        cleanupRecognitionInstance(instance);
       }
     };
-  }, []);
+  }, [cleanupRecognitionInstance]);
 
   return {
     isListening,
