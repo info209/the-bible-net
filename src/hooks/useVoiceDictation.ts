@@ -32,6 +32,9 @@ export function useVoiceDictation({
   const isListeningRef = useRef(false);
   const onFinalTranscriptRef = useRef(onFinalTranscript);
   const onErrorRef = useRef(onError);
+  const processedFinalIndicesRef = useRef<Set<number>>(new Set());
+  const lastEmittedTextRef = useRef<string>('');
+  const lastEmittedTimeRef = useRef<number>(0);
 
   // Keep refs updated
   useEffect(() => {
@@ -55,6 +58,9 @@ export function useVoiceDictation({
     isListeningRef.current = false;
     setIsListening(false);
     setInterimTranscript('');
+    processedFinalIndicesRef.current.clear();
+    lastEmittedTextRef.current = '';
+    lastEmittedTimeRef.current = 0;
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop();
@@ -87,6 +93,9 @@ export function useVoiceDictation({
 
     setError(null);
     setInterimTranscript('');
+    processedFinalIndicesRef.current.clear();
+    lastEmittedTextRef.current = '';
+    lastEmittedTimeRef.current = 0;
 
     // Step 1: Explicitly request microphone permission via getUserMedia
     // This forces the browser to open the native microphone permission dialog box!
@@ -131,17 +140,41 @@ export function useVoiceDictation({
         let finalChunk = '';
         let interimChunk = '';
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
+        // Iterate through all results in event.results list.
+        // Mobile browsers (e.g. Chrome on Android) often do not update event.resultIndex
+        // properly, or re-emit previously finalized results starting from index 0.
+        // By maintaining processedFinalIndicesRef, we guarantee that each finalized index
+        // is processed and emitted to onFinalTranscript exactly ONCE.
+        for (let i = 0; i < event.results.length; ++i) {
           const result = event.results[i];
           if (result.isFinal) {
-            finalChunk += result[0].transcript;
+            if (!processedFinalIndicesRef.current.has(i)) {
+              processedFinalIndicesRef.current.add(i);
+              const transcript = result[0]?.transcript || '';
+              if (transcript) {
+                if (finalChunk && !finalChunk.endsWith(' ') && !transcript.startsWith(' ')) {
+                  finalChunk += ' ';
+                }
+                finalChunk += transcript;
+              }
+            }
           } else {
-            interimChunk += result[0].transcript;
+            const transcript = result[0]?.transcript || '';
+            if (transcript) {
+              interimChunk += transcript;
+            }
           }
         }
 
-        if (finalChunk.trim()) {
-          onFinalTranscriptRef.current(finalChunk);
+        const trimmedFinal = finalChunk.trim();
+        if (trimmedFinal) {
+          const now = Date.now();
+          // Additional safety: skip duplicate identical text emitted within 500ms
+          if (trimmedFinal !== lastEmittedTextRef.current || now - lastEmittedTimeRef.current > 500) {
+            lastEmittedTextRef.current = trimmedFinal;
+            lastEmittedTimeRef.current = now;
+            onFinalTranscriptRef.current(trimmedFinal);
+          }
         }
 
         setInterimTranscript(interimChunk);
@@ -172,6 +205,7 @@ export function useVoiceDictation({
 
       recognition.onend = () => {
         setInterimTranscript('');
+        processedFinalIndicesRef.current.clear();
         if (isListeningRef.current) {
           setIsListening(false);
           isListeningRef.current = false;
