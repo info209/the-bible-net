@@ -2202,12 +2202,12 @@ function JournalsContent() {
                   <div className="flex items-center shrink-0 pr-2.5 border-r border-gray-200 dark:border-white/[0.1] mr-1.5">
                     <button
                       type="button"
-                      onClick={async () => {
+                      onClick={() => {
                         if (!isDictationSupported) {
                           showToast('Voice typing is not supported on this browser.');
                           return;
                         }
-                        await toggleDictation();
+                        toggleDictation();
                       }}
                       className={`h-8 px-2.5 rounded-lg transition-all flex items-center gap-1.5 shrink-0 font-medium active:scale-95 cursor-pointer shadow-xs ${
                         isDictating

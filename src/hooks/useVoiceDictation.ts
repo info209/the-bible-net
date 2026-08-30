@@ -8,14 +8,17 @@ export interface UseVoiceDictationOptions {
   lang?: string;
 }
 
+export type DictationStatus = 'idle' | 'starting' | 'listening' | 'stopping';
+
 export interface UseVoiceDictationReturn {
   isListening: boolean;
   isSupported: boolean;
   interimTranscript: string;
   error: string | null;
-  startListening: () => Promise<void>;
+  status: DictationStatus;
+  startListening: () => void;
   stopListening: () => void;
-  toggleListening: () => Promise<void>;
+  toggleListening: () => void;
 }
 
 export function useVoiceDictation({
@@ -23,20 +26,20 @@ export function useVoiceDictation({
   onError,
   lang,
 }: UseVoiceDictationOptions): UseVoiceDictationReturn {
+  const [status, setStatus] = useState<DictationStatus>('idle');
   const [isListening, setIsListening] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
   const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const recognitionRef = useRef<any>(null);
-  const isListeningRef = useRef(false);
+  const isUserIntentListeningRef = useRef(false);
+  const sessionIdRef = useRef<number>(0);
   const onFinalTranscriptRef = useRef(onFinalTranscript);
   const onErrorRef = useRef(onError);
   const processedFinalIndicesRef = useRef<Set<number>>(new Set());
-  const lastEmittedTextRef = useRef<string>('');
-  const lastEmittedTimeRef = useRef<number>(0);
 
-  // Keep refs updated
+  // Keep refs updated to prevent stale closures
   useEffect(() => {
     onFinalTranscriptRef.current = onFinalTranscript;
   }, [onFinalTranscript]);
@@ -55,23 +58,29 @@ export function useVoiceDictation({
   }, []);
 
   const stopListening = useCallback(() => {
-    isListeningRef.current = false;
+    isUserIntentListeningRef.current = false;
+    sessionIdRef.current = 0; // Invalidate current session callbacks
+    setStatus('idle');
     setIsListening(false);
     setInterimTranscript('');
     processedFinalIndicesRef.current.clear();
-    lastEmittedTextRef.current = '';
-    lastEmittedTimeRef.current = 0;
+
     if (recognitionRef.current) {
-      try {
-        recognitionRef.current.stop();
-      } catch (e) {
-        // Ignore stop errors if already stopped
-      }
+      const rec = recognitionRef.current;
       recognitionRef.current = null;
+      try {
+        rec.onstart = null;
+        rec.onresult = null;
+        rec.onerror = null;
+        rec.onend = null;
+        rec.stop();
+      } catch (e) {
+        // Ignore stop errors
+      }
     }
   }, []);
 
-  const startListening = useCallback(async () => {
+  const startNewRecognitionSession = useCallback((targetLang?: string) => {
     if (typeof window === 'undefined') return;
 
     const SpeechRecognition =
@@ -80,73 +89,60 @@ export function useVoiceDictation({
     if (!SpeechRecognition) {
       const msg = 'Voice typing is not supported on this browser.';
       setError(msg);
+      setStatus('idle');
+      setIsListening(false);
+      isUserIntentListeningRef.current = false;
       if (onErrorRef.current) onErrorRef.current(msg);
       return;
     }
 
-    // Stop existing instance if running
+    // Clean up existing recognition instance if any
     if (recognitionRef.current) {
+      const oldRec = recognitionRef.current;
+      recognitionRef.current = null;
       try {
-        recognitionRef.current.abort();
+        oldRec.onstart = null;
+        oldRec.onresult = null;
+        oldRec.onerror = null;
+        oldRec.onend = null;
+        oldRec.abort();
       } catch (e) {}
     }
 
+    const currentSessionId = Date.now();
+    sessionIdRef.current = currentSessionId;
+    processedFinalIndicesRef.current.clear();
+
     setError(null);
     setInterimTranscript('');
-    processedFinalIndicesRef.current.clear();
-    lastEmittedTextRef.current = '';
-    lastEmittedTimeRef.current = 0;
+    setStatus('starting');
 
-    // Step 1: Explicitly request microphone permission via getUserMedia
-    // This forces the browser to open the native microphone permission dialog box!
-    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        // Stop temporary tracks so SpeechRecognition can take control of the microphone
-        stream.getTracks().forEach((track) => track.stop());
-      } catch (err: any) {
-        console.warn('Microphone permission request failed:', err);
-        let userMsg = 'Microphone access is required for voice typing.';
-        if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          userMsg = 'Microphone is blocked by your browser. Please allow microphone access in your site settings (lock icon in address bar).';
-        } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-          userMsg = 'No microphone device was found on your system.';
-        }
-        setError(userMsg);
-        setIsListening(false);
-        isListeningRef.current = false;
-        if (onErrorRef.current) onErrorRef.current(userMsg);
-        return;
-      }
-    }
-
-    // Step 2: Initialize SpeechRecognition
     try {
       const recognition = new SpeechRecognition();
       recognition.continuous = true;
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
-
-      // Set language: priority passed lang -> navigator language -> en-US fallback
       recognition.lang =
-        lang || (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
+        targetLang || lang || (typeof navigator !== 'undefined' ? navigator.language : 'en-US');
 
       recognition.onstart = () => {
-        isListeningRef.current = true;
+        if (sessionIdRef.current !== currentSessionId) return;
+        setStatus('listening');
         setIsListening(true);
       };
 
       recognition.onresult = (event: any) => {
+        if (sessionIdRef.current !== currentSessionId) return;
+
         let finalChunk = '';
         let interimChunk = '';
 
-        // Iterate through all results in event.results list.
-        // Mobile browsers (e.g. Chrome on Android) often do not update event.resultIndex
-        // properly, or re-emit previously finalized results starting from index 0.
-        // By maintaining processedFinalIndicesRef, we guarantee that each finalized index
-        // is processed and emitted to onFinalTranscript exactly ONCE.
-        for (let i = 0; i < event.results.length; ++i) {
+        const startIndex = Math.max(0, typeof event.resultIndex === 'number' ? event.resultIndex : 0);
+
+        for (let i = startIndex; i < event.results.length; ++i) {
           const result = event.results[i];
+          if (!result) continue;
+
           if (result.isFinal) {
             if (!processedFinalIndicesRef.current.has(i)) {
               processedFinalIndicesRef.current.add(i);
@@ -166,78 +162,112 @@ export function useVoiceDictation({
           }
         }
 
-        const trimmedFinal = finalChunk.trim();
-        if (trimmedFinal) {
-          const now = Date.now();
-          // Additional safety: skip duplicate identical text emitted within 500ms
-          if (trimmedFinal !== lastEmittedTextRef.current || now - lastEmittedTimeRef.current > 500) {
-            lastEmittedTextRef.current = trimmedFinal;
-            lastEmittedTimeRef.current = now;
-            onFinalTranscriptRef.current(trimmedFinal);
-          }
+        if (finalChunk.trim()) {
+          onFinalTranscriptRef.current(finalChunk.trim());
         }
 
         setInterimTranscript(interimChunk);
       };
 
       recognition.onerror = (event: any) => {
+        if (sessionIdRef.current !== currentSessionId) return;
+
         console.warn('Speech recognition error event:', event.error);
+
+        if (event.error === 'aborted') {
+          return;
+        }
+
         let userMessage = 'Voice typing error occurred.';
+        let isPermissionError = false;
 
         if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
           userMessage = 'Microphone access is required for voice typing.';
-          stopListening();
+          isPermissionError = true;
+          isUserIntentListeningRef.current = false;
+          setStatus('idle');
+          setIsListening(false);
         } else if (event.error === 'no-speech') {
           return;
         } else if (event.error === 'audio-capture') {
           userMessage = 'No microphone detected.';
-          stopListening();
+          isUserIntentListeningRef.current = false;
+          setStatus('idle');
+          setIsListening(false);
         } else if (event.error === 'network') {
           userMessage = 'Speech recognition network connection error.';
-          stopListening();
+          isUserIntentListeningRef.current = false;
+          setStatus('idle');
+          setIsListening(false);
         }
 
         setError(userMessage);
-        if (onErrorRef.current) {
+        if (onErrorRef.current && isPermissionError) {
           onErrorRef.current(userMessage);
         }
       };
 
       recognition.onend = () => {
+        if (sessionIdRef.current !== currentSessionId) return;
+
         setInterimTranscript('');
-        processedFinalIndicesRef.current.clear();
-        if (isListeningRef.current) {
+
+        // Handles automatic restart if recognition ended naturally while user still intends to listen
+        if (isUserIntentListeningRef.current) {
+          startNewRecognitionSession(targetLang);
+        } else {
+          setStatus('idle');
           setIsListening(false);
-          isListeningRef.current = false;
         }
       };
 
       recognitionRef.current = recognition;
+
+      // Synchronously trigger recognition.start() within user gesture context for Safari/iOS
       recognition.start();
     } catch (err: any) {
       console.error('Failed to start speech recognition:', err);
-      const userMessage = err.message || 'Could not start voice dictation.';
-      setError(userMessage);
+      sessionIdRef.current = 0;
+      isUserIntentListeningRef.current = false;
+      setStatus('idle');
       setIsListening(false);
-      isListeningRef.current = false;
+
+      let userMessage = err.message || 'Could not start voice dictation.';
+      if (err.name === 'NotAllowedError' || err.name === 'SecurityError') {
+        userMessage = 'Microphone access is required for voice typing.';
+      }
+      setError(userMessage);
       if (onErrorRef.current) onErrorRef.current(userMessage);
     }
-  }, [lang, stopListening]);
+  }, [lang]);
 
-  const toggleListening = useCallback(async () => {
-    if (isListening) {
+  const startListening = useCallback(() => {
+    isUserIntentListeningRef.current = true;
+    startNewRecognitionSession(lang);
+  }, [lang, startNewRecognitionSession]);
+
+  const toggleListening = useCallback(() => {
+    if (isListening || isUserIntentListeningRef.current) {
       stopListening();
     } else {
-      await startListening();
+      startListening();
     }
   }, [isListening, startListening, stopListening]);
 
   // Clean up recognition on unmount
   useEffect(() => {
     return () => {
+      isUserIntentListeningRef.current = false;
+      sessionIdRef.current = 0;
       if (recognitionRef.current) {
+        const oldRec = recognitionRef.current;
+        recognitionRef.current = null;
         try {
-          recognitionRef.current.abort();
+          oldRec.onstart = null;
+          oldRec.onresult = null;
+          oldRec.onerror = null;
+          oldRec.onend = null;
+          oldRec.abort();
         } catch (e) {}
       }
     };
@@ -248,6 +278,7 @@ export function useVoiceDictation({
     isSupported,
     interimTranscript,
     error,
+    status,
     startListening,
     stopListening,
     toggleListening,
