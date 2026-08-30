@@ -37,7 +37,8 @@ export function useVoiceDictation({
   const sessionIdRef = useRef<number>(0);
   const onFinalTranscriptRef = useRef(onFinalTranscript);
   const onErrorRef = useRef(onError);
-  const processedFinalIndicesRef = useRef<Set<number>>(new Set());
+  const processedFinalKeysRef = useRef<Set<string>>(new Set());
+  const isWebKitRef = useRef<boolean>(false);
 
   // Keep refs updated to prevent stale closures
   useEffect(() => {
@@ -48,11 +49,18 @@ export function useVoiceDictation({
     onErrorRef.current = onError;
   }, [onError]);
 
-  // Feature detection on mount
+  // Feature detection & WebKit check on mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
+      const isSafariOrIOS =
+        /^((?!chrome|android).)*safari/i.test(navigator.userAgent) ||
+        (typeof navigator !== 'undefined' && navigator.userAgent.includes('Mac') && 'ontouchend' in document);
       const SpeechRecognition =
         (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      const isUsingWebkitPrefix =
+        !(window as any).SpeechRecognition && !!(window as any).webkitSpeechRecognition;
+
+      isWebKitRef.current = isSafariOrIOS || isUsingWebkitPrefix;
       setIsSupported(!!SpeechRecognition);
     }
   }, []);
@@ -63,7 +71,7 @@ export function useVoiceDictation({
     setStatus('idle');
     setIsListening(false);
     setInterimTranscript('');
-    processedFinalIndicesRef.current.clear();
+    processedFinalKeysRef.current.clear();
 
     if (recognitionRef.current) {
       const rec = recognitionRef.current;
@@ -111,7 +119,7 @@ export function useVoiceDictation({
 
     const currentSessionId = Date.now();
     sessionIdRef.current = currentSessionId;
-    processedFinalIndicesRef.current.clear();
+    processedFinalKeysRef.current.clear();
 
     setError(null);
     setInterimTranscript('');
@@ -119,7 +127,8 @@ export function useVoiceDictation({
 
     try {
       const recognition = new SpeechRecognition();
-      recognition.continuous = true;
+      // WebKit / Safari SpeechRecognition engine locks up if continuous = true is forced across sessions
+      recognition.continuous = !isWebKitRef.current;
       recognition.interimResults = true;
       recognition.maxAlternatives = 1;
       recognition.lang =
@@ -144,8 +153,9 @@ export function useVoiceDictation({
           if (!result) continue;
 
           if (result.isFinal) {
-            if (!processedFinalIndicesRef.current.has(i)) {
-              processedFinalIndicesRef.current.add(i);
+            const key = `${currentSessionId}_${i}`;
+            if (!processedFinalKeysRef.current.has(key)) {
+              processedFinalKeysRef.current.add(key);
               const transcript = result[0]?.transcript || '';
               if (transcript) {
                 if (finalChunk && !finalChunk.endsWith(' ') && !transcript.startsWith(' ')) {
@@ -181,13 +191,22 @@ export function useVoiceDictation({
         let userMessage = 'Voice typing error occurred.';
         let isPermissionError = false;
 
-        if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
+        if (event.error === 'not-allowed') {
           userMessage = 'Microphone access is required for voice typing.';
           isPermissionError = true;
           isUserIntentListeningRef.current = false;
           setStatus('idle');
           setIsListening(false);
+        } else if (event.error === 'service-not-allowed') {
+          userMessage = 'Voice recognition service is currently unavailable. Please try again.';
+          isUserIntentListeningRef.current = false;
+          setStatus('idle');
+          setIsListening(false);
         } else if (event.error === 'no-speech') {
+          // No speech detected; reset status to idle cleanly without error toast
+          setStatus('idle');
+          setIsListening(false);
+          isUserIntentListeningRef.current = false;
           return;
         } else if (event.error === 'audio-capture') {
           userMessage = 'No microphone detected.';
@@ -211,14 +230,9 @@ export function useVoiceDictation({
         if (sessionIdRef.current !== currentSessionId) return;
 
         setInterimTranscript('');
-
-        // Handles automatic restart if recognition ended naturally while user still intends to listen
-        if (isUserIntentListeningRef.current) {
-          startNewRecognitionSession(targetLang);
-        } else {
-          setStatus('idle');
-          setIsListening(false);
-        }
+        setStatus('idle');
+        setIsListening(false);
+        isUserIntentListeningRef.current = false;
       };
 
       recognitionRef.current = recognition;
@@ -284,3 +298,4 @@ export function useVoiceDictation({
     toggleListening,
   };
 }
+
