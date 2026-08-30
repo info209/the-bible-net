@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { User, Mail, Lock, AlertCircle, ArrowRight, ChevronLeft, IdCard, Contact, Eye, EyeOff } from 'lucide-react';
+import { User, Mail, Lock, AlertCircle, ArrowRight, ChevronLeft, IdCard, Contact } from 'lucide-react';
+import { PasswordInput } from '@/components/ui/password-input';
 import { LegalModal } from '@/components/LegalModal';
 import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
@@ -19,7 +20,6 @@ export default function RegisterStep1() {
         password: '',
     });
     const [tncAccepted, setTncAccepted] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'terms' | 'privacy' }>({
@@ -150,23 +150,16 @@ export default function RegisterStep1() {
                 <div className="space-y-1.5">
                     <label className="text-sm font-bold text-slate-700 ml-1">Password</label>
                     <div className="relative group">
-                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
-                        <input
-                            type={showPassword ? "text" : "password"}
+                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors z-10" />
+                        <PasswordInput
                             required
                             minLength={8}
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                             className="w-full bg-gray-100/50 border-none rounded-2xl py-4 pl-12 pr-12 outline-none focus:ring-2 focus:ring-[var(--color-accent-rose)]/20 transition-all placeholder:text-gray-400 font-medium"
                             placeholder="Min. 8 characters"
+                            buttonClassName="hover:text-[var(--color-primary-teal)]"
                         />
-                        <button 
-                            type="button" 
-                            onClick={() => setShowPassword(!showPassword)} 
-                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-[var(--color-primary-teal)] transition-colors"
-                        >
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                        </button>
                     </div>
                 </div>
 

@@ -7,6 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { adminLoginSchema } from '@/lib/validations/admin';
 import { z } from 'zod';
+import { PasswordInput } from '@/components/ui/password-input';
 import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
@@ -76,11 +77,11 @@ export default function AdminLoginPage() {
 
                         <div>
                             <label className="block text-sm font-medium text-gray-300 mb-2">Password</label>
-                            <input
+                            <PasswordInput
                                 {...register('password')}
-                                type="password"
-                                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                                className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all pr-12"
                                 placeholder="••••••••"
+                                buttonClassName="hover:text-white text-gray-400"
                             />
                             {errors.password && <p className="mt-1 text-sm text-red-400">{errors.password.message}</p>}
                         </div>

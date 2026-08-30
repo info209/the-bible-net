@@ -3,7 +3,8 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Lock, Eye, EyeOff, Check, X, AlertCircle, ChevronLeft } from 'lucide-react';
+import { Lock, Check, X, AlertCircle, ChevronLeft } from 'lucide-react';
+import { PasswordInput } from '@/components/ui/password-input';
 import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 
@@ -14,7 +15,6 @@ function ResetPasswordContent() {
 
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
@@ -110,36 +110,29 @@ function ResetPasswordContent() {
                     <div className="space-y-1.5">
                         <label className="text-sm font-bold text-slate-700 ml-1">New password</label>
                         <div className="relative group">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
-                            <input
-                                type={showPassword ? 'text' : 'password'}
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors z-10" />
+                            <PasswordInput
                                 required
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full bg-gray-100/50 border-none rounded-2xl py-4 pl-12 pr-12 outline-none focus:ring-2 focus:ring-[var(--color-accent-rose)]/20 transition-all font-mono placeholder:text-gray-400 font-bold tracking-widest"
                                 placeholder="••••••••"
+                                buttonClassName="hover:text-[var(--color-primary-teal)]"
                             />
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-slate-400 hover:text-[var(--color-primary-teal)] transition-colors"
-                            >
-                                {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                            </button>
                         </div>
                     </div>
 
                     <div className="space-y-1.5">
                         <label className="text-sm font-bold text-slate-700 ml-1">Confirm password</label>
                         <div className="relative group">
-                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors" />
-                            <input
-                                type={showPassword ? 'text' : 'password'}
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 group-focus-within:text-[var(--color-accent-rose)] transition-colors z-10" />
+                            <PasswordInput
                                 required
                                 value={confirmPassword}
                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                className="w-full bg-gray-100/50 border-none rounded-2xl py-4 pl-12 pr-4 outline-none focus:ring-2 focus:ring-[var(--color-accent-rose)]/20 transition-all font-mono placeholder:text-gray-400 font-bold tracking-widest"
+                                className="w-full bg-gray-100/50 border-none rounded-2xl py-4 pl-12 pr-12 outline-none focus:ring-2 focus:ring-[var(--color-accent-rose)]/20 transition-all font-mono placeholder:text-gray-400 font-bold tracking-widest"
                                 placeholder="••••••••"
+                                buttonClassName="hover:text-[var(--color-primary-teal)]"
                             />
                         </div>
                     </div>

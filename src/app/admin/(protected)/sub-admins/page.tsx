@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { toast } from '@/context/ToastContext';
 import { UserRole } from '@/types/user';
+import { PasswordInput } from '@/components/ui/password-input';
 
 export default function AdminSubAdminsPage() {
     const { data: session } = useSession();
@@ -187,13 +188,13 @@ export default function AdminSubAdminsPage() {
                                 />
                             </div>
                             <div>
-                                <input 
-                                    type="password"
+                                <PasswordInput 
                                     placeholder="Temporary Password"
-                                    className="w-full bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl text-white outline-none focus:border-blue-500/50"
+                                    className="w-full bg-white/5 border border-white/10 px-4 py-2.5 rounded-xl text-white outline-none focus:border-blue-500/50 pr-12"
                                     value={formData.password}
                                     onChange={e => setFormData({...formData, password: e.target.value})}
                                     required
+                                    buttonClassName="hover:text-white text-gray-400"
                                 />
                                 <p className="text-[11px] text-gray-400 mt-1.5 leading-tight">
                                     Password must be at least 8 characters and include uppercase, lowercase, number, and special character.
