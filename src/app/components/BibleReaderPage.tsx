@@ -11,15 +11,15 @@ import { useChapterTransition } from './navigation/useChapterTransition';
 import ChapterTransitionStage from './navigation/ChapterTransitionStage';
 import AppHeader from './AppHeader';
 import EqualizerIcon from './EqualizerIcon';
-import ChapterContent, { mockBibleContent } from './ChapterContent';
+import ChapterContent from './ChapterContent';
 import AudioControlPanel from './AudioControlPanel';
 import VerseActionMenu from './VerseActionMenu';
-import { teluguBible, hindiBible } from './BibleData';
 import CompareVersionsModal from './CompareVersionsModal';
 import CompareMenu from './CompareMenu';
 import CompareView from './CompareView';
 import BibleSearchModal from './BibleSearchModal';
 import { useAmbientMusicStore } from '@/stores/useAmbientMusicStore';
+import { BookListSkeleton, VersionListSkeleton } from './BibleSkeleton';
 
 import FontsSettingsModal, { ThemeType, TransitionType } from './FontsSettingsModal';
 import AudioFloatingPlayer from './AudioFloatingPlayer';
@@ -27,31 +27,6 @@ import ModalHeader from './ModalHeader';
 import { toast } from '@/context/ToastContext';
 
 const VERSE_ACTION_MENU_OPEN_DELAY = 1800;
-
-const bibleBooks = {
-  'Old Testament': [
-    'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
-    '1 Samuel', '2 Samuel', '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles', 'Ezra',
-    'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs', 'Ecclesiastes', 'Song of Solomon',
-    'Isaiah', 'Jeremiah', 'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos',
-    'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi'
-  ],
-  'New Testament': [
-    'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians', '2 Corinthians',
-    'Galatians', 'Ephesians', 'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians',
-    '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James', '1 Peter', '2 Peter',
-    '1 John', '2 John', '3 John', 'Jude', 'Revelation'
-  ]
-};
-
-const fallbackVersions = [
-  { id: 'NKJV', name: 'NKJV', fullName: 'New King James Version', language: 'English' },
-  { id: 'KJV', name: 'KJV', fullName: 'King James Version', language: 'English' },
-  { id: 'NASB', name: 'NASB', fullName: 'New American Standard Bible', language: 'English' },
-  { id: 'AMP', name: 'AMP', fullName: 'Amplified Bible', language: 'English' },
-  { id: 'TELBSI', name: 'TELBSI', fullName: 'పవిత్ర గ్రంథము', language: 'Telugu' },
-  { id: 'HINBSI', name: 'HINBSI', fullName: 'पवित्र बाइबिल', language: 'Hindi' },
-];
 
 // Chapter counts for each book
 const bookChapters: { [key: string]: number } = {
@@ -126,14 +101,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     onNavigate,
     isReadingMode = false,
     showAudioControls = true,
-    apiVersions,
+    apiVersions = [],
     books = {
-      'Old Testament': bibleBooks['Old Testament'].map(name => ({ id: name, name })),
-      'New Testament': bibleBooks['New Testament'].map(name => ({ id: name, name }))
+      'Old Testament': [],
+      'New Testament': []
     },
     chapter = 1,
-    version = 'KJV',
-    book = 'Genesis',
+    version = '',
+    book = '',
     onChapterChange,
     onBookChange,
     onVersionChange,
@@ -496,12 +471,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   };
 
   // Helper functions for navigation
-  const allBooks = [...books['Old Testament'], ...books['New Testament']].map(b => typeof b === 'string' ? b : b.name);
+  const otBooks = books?.['Old Testament'] || [];
+  const ntBooks = books?.['New Testament'] || [];
+  const allBooks = [...otBooks, ...ntBooks].map(b => typeof b === 'string' ? b : b.name);
   const currentBookIndex = allBooks.indexOf(selectedBook);
-  const isFirstChapterOfBible = selectedBook === 'Genesis' && selectedChapter === 1;
-  const isLastChapterOfBible = selectedBook === 'Revelation' && selectedChapter === bookChapters['Revelation'];
-
   const totalChapters = bookChapters[selectedBook] || 50;
+  const isFirstChapterOfBible = allBooks.length > 0 && selectedBook === allBooks[0] && selectedChapter === 1;
+  const isLastChapterOfBible = allBooks.length > 0 && selectedBook === allBooks[allBooks.length - 1] && selectedChapter === (bookChapters[selectedBook] || totalChapters);
 
   // ─── Stable navigation refs ────────────────────────────────────────────────
   // handleNext/handlePrevious read from these refs so they never suffer from
@@ -536,7 +512,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       return { book: selectedBook, chapter: selectedChapter - 1 };
     } else if (currentBookIndex > 0) {
       const prevBook = allBooks[currentBookIndex - 1];
-      return { book: prevBook, chapter: bookChapters[prevBook] };
+      return { book: prevBook, chapter: bookChapters[prevBook] || 50 };
     }
     return { book: selectedBook, chapter: selectedChapter };
   };
@@ -568,7 +544,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   // Compare mode handlers
   const handleToggleCompareVersion = (versionName: string) => {
     setCompareMode(prev => {
-      const allVers = apiVersions || fallbackVersions;
+      const allVers = apiVersions || [];
       const targetVer = allVers.find(v => v.id === versionName || v.name === versionName || v.fullName === versionName);
       const targetId = targetVer ? targetVer.id : versionName;
       const targetName = targetVer ? targetVer.name : versionName;
@@ -1014,7 +990,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     }
 
     // ── Voice availability check ───────────────────────────────────────────────────
-    const currentVersionObj = (apiVersions || fallbackVersions).find(
+    const currentVersionObj = (apiVersions || []).find(
       v => v.name === selectedVersion || v.id === selectedVersion
     );
     const lang = currentVersionObj?.language;
@@ -1083,7 +1059,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     console.log('readNextVerse called with index:', index, 'of', verses.length, 'verses');
 
     // Find language tag from active version
-    const currentVersionObj = (apiVersions || fallbackVersions).find(
+    const currentVersionObj = (apiVersions || []).find(
       v => v.name === selectedVersion || v.id === selectedVersion
     );
     const lang = currentVersionObj?.language;
@@ -1291,23 +1267,14 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       const currentBookObj = allBooksList.find(b => b.name === nextBook || b.id === nextBook);
       const nextBookId = currentBookObj?.id || nextBook;
 
-      if (versionId === 'TELBSI') {
-        nextChapterVerses = (teluguBible as any)[nextBook]?.[nextChapter]?.verses || [];
-      } else if (versionId === 'HINBSI') {
-        nextChapterVerses = (hindiBible as any)[nextBook]?.[nextChapter]?.verses || [];
-      } else if (versionId === 'NKJV' || versionId === 'KJV' || versionId === 'NASB' || versionId === 'AMP') {
-        nextChapterVerses = (mockBibleContent as any)[nextBook]?.[nextChapter]?.verses || [];
-      } else {
-        // Fetch from API for dynamic custom versions
-        try {
-          const response = await fetch(`/api/v1/bible/${versionId}/${nextBookId}/${nextChapter}`);
-          const result = await response.json();
-          if (result.success && result.data && result.data.verses) {
-            nextChapterVerses = result.data.verses;
-          }
-        } catch (err) {
-          console.error('[Auto-Advance] Failed to fetch next chapter verses from API:', err);
+      try {
+        const response = await fetch(`/api/v1/bible/${versionId}/${nextBookId}/${nextChapter}`);
+        const result = await response.json();
+        if (result.success && result.data && result.data.verses) {
+          nextChapterVerses = result.data.verses;
         }
+      } catch (err) {
+        console.error('[Auto-Advance] Failed to fetch next chapter verses from API:', err);
       }
 
       console.log('Auto-advance: Fetched', nextChapterVerses.length, 'verses for', nextBook, nextChapter);
@@ -1470,7 +1437,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       return false;
     }
 
-    const currentVersionObj = (apiVersions || fallbackVersions).find(
+    const currentVersionObj = (apiVersions || []).find(
       v => v.name === selectedVersion || v.id === selectedVersion
     );
     const lang = currentVersionObj?.language;
@@ -1849,7 +1816,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   } else {
                     if (showCompareSelector) return;
                     setCompareMode(prev => {
-                      const allVers = apiVersions || fallbackVersions;
+                      const allVers = apiVersions || [];
                       const activeVerObj = allVers.find(v => v.id === selectedVersion || v.name === selectedVersion || v.fullName === selectedVersion);
                       const activeCode = activeVerObj ? activeVerObj.id : selectedVersion;
 
@@ -2001,85 +1968,91 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ backgroundColor: popupThemeConfig[selectedTheme].solidBg }}>
-              <div className="grid grid-cols-2 gap-8">
-                {/* Old Testament */}
-                <div>
-                  <h4 className="sticky top-0 mb-3 pt-2 pb-2 text-sm font-semibold z-10" style={{ backgroundColor: popupThemeConfig[selectedTheme].solidBg, color: currentTheme.text }}>Old Testament</h4>
-                  <div className="space-y-2">
-                    {(bookSortType === 'alphabetical'
-                      ? [...books['Old Testament']].sort((a, b) => {
-                        const nameA = typeof a === 'string' ? a : a.name;
-                        const nameB = typeof b === 'string' ? b : b.name;
-                        return nameA.localeCompare(nameB);
-                      })
-                      : books['Old Testament']
-                    ).map(book => {
-                      const bookName = typeof book === 'string' ? book : book.name;
-                      const bookId = typeof book === 'string' ? book : book.id;
-                      return (
-                        <button
-                          key={bookId}
-                          onClick={() => {
-                            setSelectedBook(bookId);
-                            setShowBookSelector(false);
-                            setSelectedChapter(1);
-                          }}
-                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
-                            ? 'font-bold'
-                            : 'hover:opacity-80'
-                            }`}
-                          style={{
-                            color: selectedBook === bookName
-                              ? currentTheme.verseNumber
-                              : currentTheme.text
-                          }}
-                        >
-                          {bookName}
-                        </button>
-                      );
-                    })}
-                  </div>
+              {(!books || (books['Old Testament'].length === 0 && books['New Testament'].length === 0)) ? (
+                <div className="py-6">
+                  <BookListSkeleton />
                 </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-8">
+                  {/* Old Testament */}
+                  <div>
+                    <h4 className="sticky top-0 mb-3 pt-2 pb-2 text-sm font-semibold z-10" style={{ backgroundColor: popupThemeConfig[selectedTheme].solidBg, color: currentTheme.text }}>Old Testament</h4>
+                    <div className="space-y-2">
+                      {(bookSortType === 'alphabetical'
+                        ? [...books['Old Testament']].sort((a, b) => {
+                          const nameA = typeof a === 'string' ? a : a.name;
+                          const nameB = typeof b === 'string' ? b : b.name;
+                          return nameA.localeCompare(nameB);
+                        })
+                        : books['Old Testament']
+                      ).map(book => {
+                        const bookName = typeof book === 'string' ? book : book.name;
+                        const bookId = typeof book === 'string' ? book : book.id;
+                        return (
+                          <button
+                            key={bookId}
+                            onClick={() => {
+                              setSelectedBook(bookId);
+                              setShowBookSelector(false);
+                              setSelectedChapter(1);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
+                              ? 'font-bold'
+                              : 'hover:opacity-80'
+                              }`}
+                            style={{
+                              color: selectedBook === bookName
+                                ? currentTheme.verseNumber
+                                : currentTheme.text
+                            }}
+                          >
+                            {bookName}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
 
-                {/* New Testament */}
-                <div>
-                  <h4 className="sticky top-0 mb-3 pt-2 pb-2 text-sm font-semibold z-10" style={{ backgroundColor: popupThemeConfig[selectedTheme].solidBg, color: currentTheme.text }}>New Testament</h4>
-                  <div className="space-y-2">
-                    {(bookSortType === 'alphabetical'
-                      ? [...books['New Testament']].sort((a, b) => {
-                        const nameA = typeof a === 'string' ? a : a.name;
-                        const nameB = typeof b === 'string' ? b : b.name;
-                        return nameA.localeCompare(nameB);
-                      })
-                      : books['New Testament']
-                    ).map(book => {
-                      const bookName = typeof book === 'string' ? book : book.name;
-                      const bookId = typeof book === 'string' ? book : book.id;
-                      return (
-                        <button
-                          key={bookId}
-                          onClick={() => {
-                            setSelectedBook(bookId);
-                            setShowBookSelector(false);
-                            setSelectedChapter(1);
-                          }}
-                          className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
-                            ? 'font-bold'
-                            : 'hover:opacity-80'
-                            }`}
-                          style={{
-                            color: selectedBook === bookName
-                              ? currentTheme.verseNumber
-                              : currentTheme.text
-                          }}
-                        >
-                          {bookName}
-                        </button>
-                      );
-                    })}
+                  {/* New Testament */}
+                  <div>
+                    <h4 className="sticky top-0 mb-3 pt-2 pb-2 text-sm font-semibold z-10" style={{ backgroundColor: popupThemeConfig[selectedTheme].solidBg, color: currentTheme.text }}>New Testament</h4>
+                    <div className="space-y-2">
+                      {(bookSortType === 'alphabetical'
+                        ? [...books['New Testament']].sort((a, b) => {
+                          const nameA = typeof a === 'string' ? a : a.name;
+                          const nameB = typeof b === 'string' ? b : b.name;
+                          return nameA.localeCompare(nameB);
+                        })
+                        : books['New Testament']
+                      ).map(book => {
+                        const bookName = typeof book === 'string' ? book : book.name;
+                        const bookId = typeof book === 'string' ? book : book.id;
+                        return (
+                          <button
+                            key={bookId}
+                            onClick={() => {
+                              setSelectedBook(bookId);
+                              setShowBookSelector(false);
+                              setSelectedChapter(1);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 rounded text-sm transition-colors ${selectedBook === bookName
+                              ? 'font-bold'
+                              : 'hover:opacity-80'
+                              }`}
+                            style={{
+                              color: selectedBook === bookName
+                                ? currentTheme.verseNumber
+                                : currentTheme.text
+                            }}
+                          >
+                            {bookName}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
@@ -2187,7 +2160,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 py-4">
-              {isLoadingContent ? (
+              {isLoadingContent || !verses || verses.length === 0 ? (
                 <div className="flex items-center justify-center py-12">
                   <Loader2 className="w-6 h-6 animate-spin text-[#0B7A81]" />
                 </div>
@@ -2196,7 +2169,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   {Array.from({
                     length: (verses && verses.length > 0)
                       ? (verses[verses.length - 1]?.number || verses.length)
-                      : 31
+                      : 0
                   }, (_, i) => i + 1).map(verse => (
                     <button
                       key={verse}
@@ -2253,51 +2226,57 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
             {/* Content */}
             <div className="flex-1 overflow-y-auto px-4 py-4">
-              <div className="space-y-3">
-                {(() => {
-                  const versionsList = (apiVersions && apiVersions.length > 0) ? apiVersions : fallbackVersions;
-                  const versionsByLang = versionsList.reduce((acc: Record<string, any[]>, ver: any) => {
-                    let lang = ver.language || 'English';
-                    if (lang === 'en') lang = 'English';
-                    else if (lang === 'te') lang = 'Telugu';
-                    else if (lang === 'hi') lang = 'Hindi';
-                    if (!acc[lang]) acc[lang] = [];
-                    acc[lang].push(ver);
-                    return acc;
-                  }, {});
+              {(!apiVersions || apiVersions.length === 0) ? (
+                <div className="py-2">
+                  <VersionListSkeleton />
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {(() => {
+                    const versionsList = apiVersions;
+                    const versionsByLang = versionsList.reduce((acc: Record<string, any[]>, ver: any) => {
+                      let lang = ver.language || 'English';
+                      if (lang === 'en') lang = 'English';
+                      else if (lang === 'te') lang = 'Telugu';
+                      else if (lang === 'hi') lang = 'Hindi';
+                      if (!acc[lang]) acc[lang] = [];
+                      acc[lang].push(ver);
+                      return acc;
+                    }, {});
 
-                  return Object.entries(versionsByLang).map(([lang, vGroup]) => (
-                    <div key={lang} className="space-y-2">
-                      <p className="text-sm mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>{lang}</p>
-                      {vGroup.map((version: any) => {
-                        const targetVal = version.name || version.id;
-                        const isSelected = selectedVersion === version.name || selectedVersion === version.id || selectedVersion === version.fullName;
-                        return (
-                          <button
-                            key={version.id || version.name}
-                            onClick={() => {
-                              setSelectedVersion(targetVal);
-                              onVersionChange?.(targetVal);
-                              setShowVersionSelector(false);
-                            }}
-                            className="w-full text-left px-4 py-2.5 rounded transition-colors"
-                            style={{
-                              backgroundColor: isSelected
-                                ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
-                                : popupThemeConfig[selectedTheme].selectedBg,
-                              color: isSelected
-                                ? currentTheme.verseNumber
-                                : currentTheme.text,
-                            }}
-                          >
-                            <div className="text-base font-medium">{version.fullName || version.name} ({version.name})</div>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ));
-                })()}
-              </div>
+                    return Object.entries(versionsByLang).map(([lang, vGroup]) => (
+                      <div key={lang} className="space-y-2">
+                        <p className="text-sm mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>{lang}</p>
+                        {vGroup.map((version: any) => {
+                          const targetVal = version.name || version.id;
+                          const isSelected = selectedVersion === version.name || selectedVersion === version.id || selectedVersion === version.fullName;
+                          return (
+                            <button
+                              key={version.id || version.name}
+                              onClick={() => {
+                                setSelectedVersion(targetVal);
+                                onVersionChange?.(targetVal);
+                                setShowVersionSelector(false);
+                              }}
+                              className="w-full text-left px-4 py-2.5 rounded transition-colors"
+                              style={{
+                                backgroundColor: isSelected
+                                  ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
+                                  : popupThemeConfig[selectedTheme].selectedBg,
+                                color: isSelected
+                                  ? currentTheme.verseNumber
+                                  : currentTheme.text,
+                              }}
+                            >
+                              <div className="text-base font-medium">{version.fullName || version.name} ({version.name})</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ));
+                  })()}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -2795,7 +2774,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             key="compare-versions-modal"
             isOpen={showCompareSelector}
             onClose={() => setShowCompareSelector(false)}
-            versions={apiVersions || fallbackVersions}
+            versions={apiVersions || []}
             selectedVersions={compareMode.selectedVersions}
             onToggleVersion={handleToggleCompareVersion}
             onStartCompare={handleStartCompare}
@@ -2812,7 +2791,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             key="compare-menu"
             isOpen={showCompareMenu}
             onClose={() => setShowCompareMenu(false)}
-            versions={apiVersions || fallbackVersions}
+            versions={apiVersions || []}
             selectedVersions={compareMode.selectedVersions}
             onRemoveVersion={handleRemoveCompareVersion}
             onAddVersion={handleAddCompareVersion}

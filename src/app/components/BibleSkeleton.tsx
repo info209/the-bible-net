@@ -111,13 +111,49 @@ export const ComparisonSkeleton = ({ theme }: { theme?: { bg: string } }) => {
   );
 };
 
-export default function BibleSkeleton({ theme }: { theme?: { bg: string } }) {
+export function BibleReaderSkeleton({ theme }: { theme?: { bg?: string; text?: string; verseNumber?: string } }) {
+  return (
+    <div
+      className="min-h-screen flex flex-col transition-colors duration-300 animate-fade-in"
+      style={{ backgroundColor: theme?.bg || '#fefefe' }}
+    >
+      {/* Sub Navigation Bar Skeleton */}
+      <div
+        className="sticky top-0 left-0 right-0 z-40 border-b border-black/[0.06] dark:border-white/[0.06] shadow-[var(--shadow-xs)]"
+        style={{ backgroundColor: theme?.bg || '#fefefe' }}
+      >
+        <div className="max-w-3xl mx-auto px-3 sm:px-8 py-2">
+          <div className="flex items-center justify-between">
+            {/* Book / Chapter / Version Selector chips skeleton */}
+            <div className="flex items-center space-x-3">
+              <Skeleton className="h-7 w-20 rounded-md" />
+              <Skeleton className="h-7 w-10 rounded-md" />
+              <Skeleton className="h-7 w-14 rounded-md" />
+            </div>
+
+            {/* Right side tools skeleton */}
+            <div className="flex items-center space-x-2">
+              <Skeleton className="size-8 rounded-full" />
+              <Skeleton className="size-8 rounded-full" />
+              <Skeleton className="size-8 rounded-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content Area Skeleton */}
+      <BibleSkeleton theme={theme as any} />
+    </div>
+  );
+}
+
+export default function BibleSkeleton({ theme }: { theme?: { bg?: string } }) {
   return (
     <div className="px-4 sm:px-6 py-4 sm:py-6 pb-20 animate-fade-in" style={{ backgroundColor: theme?.bg }}>
       <div className="max-w-2xl mx-auto space-y-8">
         {/* Chapter Title Skeleton */}
         <div className="mb-8">
-          <Skeleton className="h-8 w-48 mb-4" />
+          <Skeleton className="h-8 w-48 mb-4 rounded-md" />
         </div>
 
         {/* Verses Skeleton */}
@@ -125,11 +161,11 @@ export default function BibleSkeleton({ theme }: { theme?: { bg: string } }) {
           {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
             <div key={i} className="flex flex-col space-y-2">
               <div className="flex items-start gap-2">
-                <Skeleton className="h-3 w-4 mt-1 flex-shrink-0" />
+                <Skeleton className="h-3 w-4 mt-1 flex-shrink-0 rounded" />
                 <div className="flex-1 space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-[95%]" />
-                  {i % 2 === 0 && <Skeleton className="h-4 w-[80%]" />}
+                  <Skeleton className="h-4 w-full rounded" />
+                  <Skeleton className="h-4 w-[95%] rounded" />
+                  {i % 2 === 0 && <Skeleton className="h-4 w-[80%] rounded" />}
                 </div>
               </div>
             </div>
@@ -139,4 +175,5 @@ export default function BibleSkeleton({ theme }: { theme?: { bg: string } }) {
     </div>
   );
 }
+
 

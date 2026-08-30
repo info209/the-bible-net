@@ -567,7 +567,7 @@ export default function AudioControlPanel({
                   Offline Downloads
                 </h3>
                 <p className="text-xs opacity-70 mt-0.5" style={{ color: textSecondary }}>
-                  {selectedBook || 'Genesis'} {selectedChapter} &middot; {selectedVersion}
+                  {selectedBook} {selectedChapter} &middot; {selectedVersion}
                 </p>
               </div>
               <button
@@ -615,7 +615,7 @@ export default function AudioControlPanel({
                     Download Chapter {selectedChapter}
                   </p>
                   <p className="text-[11px] opacity-60 truncate">
-                    {selectedBook || 'Genesis'} {selectedChapter} ({selectedVersion})
+                    {selectedBook} {selectedChapter} ({selectedVersion})
                   </p>
                 </div>
                 {(() => {

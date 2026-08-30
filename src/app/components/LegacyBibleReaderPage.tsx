@@ -28,7 +28,7 @@ import CompareView from './CompareView';
 import { toast } from '@/context/ToastContext';
 
 import { useMediaStore } from '@/lib/mediaStore';
-import ChapterContent, { mockBibleContent } from './ChapterContent';
+import ChapterContent from './ChapterContent';
 import ComparisonContent from './ComparisonContent';
 import VerseActionMenu from './VerseActionMenu';
 import AudioControlPanel from './AudioControlPanel';

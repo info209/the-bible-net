@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { X, Check, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import ModalHeader from './ModalHeader';
+import { VersionListSkeleton } from './BibleSkeleton';
 
 interface CompareVersionsModalProps {
   isOpen: boolean;
@@ -157,83 +158,87 @@ export default function CompareVersionsModal({
             )}
 
             <div className="space-y-4">
-              {/* Group by language */}
-              {['English', 'Telugu', 'Hindi'].map((language) => {
-                const languageVersions = versions.filter(v => v.language === language);
-                if (languageVersions.length === 0) return null;
+              {versions.length === 0 ? (
+                <VersionListSkeleton />
+              ) : (
+                /* Group by language */
+                ['English', 'Telugu', 'Hindi'].map((language) => {
+                  const languageVersions = versions.filter(v => v.language === language);
+                  if (languageVersions.length === 0) return null;
 
-                return (
-                  <div key={language} className="space-y-2">
-                    <p className="text-xs font-bold tracking-wider mb-2" style={{ color: subTextCol }}>
-                      {language}
-                    </p>
-                    <div className="space-y-2">
-                      {languageVersions.map((version) => {
-                        const isActiveVersion = activeVersionObj ? matchesVersion(version, activeVersionObj.id) || matchesVersion(version, activeVersionObj.name) : false;
-                        const isSelected = effectiveSelectedVersions.some(s => matchesVersion(version, s));
-                        const isDisabled = !isSelected && effectiveSelectedVersions.length >= 4;
+                  return (
+                    <div key={language} className="space-y-2">
+                      <p className="text-xs font-bold tracking-wider mb-2" style={{ color: subTextCol }}>
+                        {language}
+                      </p>
+                      <div className="space-y-2">
+                        {languageVersions.map((version) => {
+                          const isActiveVersion = activeVersionObj ? matchesVersion(version, activeVersionObj.id) || matchesVersion(version, activeVersionObj.name) : false;
+                          const isSelected = effectiveSelectedVersions.some(s => matchesVersion(version, s));
+                          const isDisabled = !isSelected && effectiveSelectedVersions.length >= 4;
 
-                        // Dynamic colors for buttons
-                        let btnBg = '';
-                        let btnText = '';
-                        let btnBorder = 'transparent';
+                          // Dynamic colors for buttons
+                          let btnBg = '';
+                          let btnText = '';
+                          let btnBorder = 'transparent';
 
-                        if (isSelected) {
-                          btnBg = theme === 'dark' ? 'rgba(255,71,87,0.15)' : 'rgba(226,55,68,0.1)';
-                          btnText = theme === 'dark' ? '#ff4757' : '#E23744';
-                          btnBorder = theme === 'dark' ? 'rgba(255,71,87,0.3)' : 'rgba(226,55,68,0.15)';
-                        } else if (isDisabled) {
-                          btnBg = {
-                            light: '#f1f3f3',
-                            sepia: '#EDE3E1',
-                            cream: '#F5E8D5',
-                            dark: '#1c1c1e'
-                          }[theme];
-                          btnText = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(49,57,58,0.3)';
-                          btnBorder = theme === 'dark' ? 'rgba(255,255,255,0.04)' : 'transparent';
-                        } else {
-                          btnBg = {
-                            light: '#f1f3f3',
-                            sepia: '#EDE3E1',
-                            cream: '#F5E8D5',
-                            dark: '#2c2c2e'
-                          }[theme];
-                          btnText = textCol;
-                          btnBorder = theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'transparent';
-                        }
+                          if (isSelected) {
+                            btnBg = theme === 'dark' ? 'rgba(255,71,87,0.15)' : 'rgba(226,55,68,0.1)';
+                            btnText = theme === 'dark' ? '#ff4757' : '#E23744';
+                            btnBorder = theme === 'dark' ? 'rgba(255,71,87,0.3)' : 'rgba(226,55,68,0.15)';
+                          } else if (isDisabled) {
+                            btnBg = {
+                              light: '#f1f3f3',
+                              sepia: '#EDE3E1',
+                              cream: '#F5E8D5',
+                              dark: '#1c1c1e'
+                            }[theme];
+                            btnText = theme === 'dark' ? 'rgba(255,255,255,0.2)' : 'rgba(49,57,58,0.3)';
+                            btnBorder = theme === 'dark' ? 'rgba(255,255,255,0.04)' : 'transparent';
+                          } else {
+                            btnBg = {
+                              light: '#f1f3f3',
+                              sepia: '#EDE3E1',
+                              cream: '#F5E8D5',
+                              dark: '#2c2c2e'
+                            }[theme];
+                            btnText = textCol;
+                            btnBorder = theme === 'dark' ? 'rgba(255,255,255,0.05)' : 'transparent';
+                          }
 
-                        return (
-                          <button
-                            key={version.id}
-                            onClick={() => {
-                              if (isActiveVersion) {
-                                // Active version is locked as the base version
-                                return;
-                              }
-                              if (!isDisabled) {
-                                onToggleVersion(version.id);
-                              }
-                            }}
-                            disabled={isDisabled}
-                            className="w-full text-left px-4 py-2.5 rounded transition-all flex items-center justify-between border"
-                            style={{
-                              backgroundColor: btnBg,
-                              color: btnText,
-                              borderColor: btnBorder,
-                              cursor: isActiveVersion ? 'default' : (isDisabled ? 'not-allowed' : 'pointer')
-                            }}
-                            title={isActiveVersion ? "Active reading version (required base version)" : undefined}
-                          >
-                            <div className="flex items-center gap-2 min-w-0">
-                              <span className="text-sm font-semibold truncate">{version.fullName} ({version.name})</span>
-                            </div>
-                          </button>
-                        );
-                      })}
+                          return (
+                            <button
+                              key={version.id}
+                              onClick={() => {
+                                if (isActiveVersion) {
+                                  // Active version is locked as the base version
+                                  return;
+                                }
+                                if (!isDisabled) {
+                                  onToggleVersion(version.id);
+                                }
+                              }}
+                              disabled={isDisabled}
+                              className="w-full text-left px-4 py-2.5 rounded transition-all flex items-center justify-between border"
+                              style={{
+                                backgroundColor: btnBg,
+                                color: btnText,
+                                borderColor: btnBorder,
+                                cursor: isActiveVersion ? 'default' : (isDisabled ? 'not-allowed' : 'pointer')
+                              }}
+                              title={isActiveVersion ? "Active reading version (required base version)" : undefined}
+                            >
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm font-semibold truncate">{version.fullName} ({version.name})</span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })
+              )}
             </div>
           </div>
 
