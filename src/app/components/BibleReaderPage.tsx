@@ -68,6 +68,7 @@ interface BibleReaderPageProps {
   onPauseAudio?: () => void;
   onCompareVerses?: () => void;
   onShareVerses?: () => void;
+  onCopyVerses?: () => void;
   onSaveVerses?: (labels: string[], note: string, isPrivate: boolean) => void;
   onDeleteSavedVerse?: () => void;
   savedVerseIds?: number[];
@@ -121,6 +122,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     onSaveNote,
     onCompareVerses,
     onShareVerses,
+    onCopyVerses,
     onSaveVerses,
     onDeleteSavedVerse,
     onPlayAudio,
@@ -2823,6 +2825,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             onDelete={onDeleteSavedVerse}
             onNote={(note, labels) => onSaveNote?.(selectedVerses, note, labels)}
             onShare={() => onShareVerses?.()}
+            onCopy={() => onCopyVerses?.()}
             onCompare={onCompareVerses}
             isLoggedIn={isLoggedIn}
             selectedTheme={selectedTheme}

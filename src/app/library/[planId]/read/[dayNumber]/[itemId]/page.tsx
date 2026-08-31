@@ -15,6 +15,7 @@ import {
 import { usePlanDetails, usePlanScripture, useCompleteItem } from '@/hooks/usePlanQueries';
 import FontsSettingsModal from '@/app/components/FontsSettingsModal';
 import { toast } from 'sonner';
+import { shareVerse } from '@/utils/verseFormatter';
 
 export default function ReadingExperiencePage() {
   const params = useParams();
@@ -111,11 +112,22 @@ export default function ReadingExperiencePage() {
     }
   };
 
-  const handleShare = () => {
+  const handleShare = async () => {
+    if (isScripture) {
+      await shareVerse({
+        verseText: scriptureData?.fullText,
+        reference: scriptureRef || currentItem?.title,
+        version: bibleVersion,
+        customUrl: window.location.href,
+        title: `${plan?.title} - ${currentItem?.title || 'Day ' + dayNumber}`,
+      });
+      return;
+    }
+
     if (navigator.share) {
       navigator.share({
         title: `${plan?.title} - ${currentItem?.title || 'Day ' + dayNumber}`,
-        text: isScripture ? scriptureData?.fullText : currentItem?.devotionalText,
+        text: currentItem?.devotionalText,
         url: window.location.href,
       }).catch(() => {});
     } else {

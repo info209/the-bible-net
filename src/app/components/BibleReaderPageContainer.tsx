@@ -11,6 +11,7 @@ import {
 import { useSession } from 'next-auth/react';
 import { useSavedItems } from '@/lib/useSavedItems';
 import { useSavedVerses, buildVerseRangeText } from '@/lib/useSavedVerses';
+import { shareVerse, formatCopyVerseText } from '@/utils/verseFormatter';
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
 import { MdOutlineLibraryBooks } from 'react-icons/md';
@@ -261,13 +262,77 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     setSelectedVerses([]);
   };
 
-  const onVerseMenuShare = () => {
-    const shareText = `Check out these verses from ${displayBookName || ''} ${selectedChapter || 1}`;
-    if (navigator.share) {
-      navigator.share({ title: 'Bible Verses', text: shareText }).catch(console.error);
-    } else {
-      toast.info(shareText);
+  const onVerseMenuShare = async () => {
+    if (selectedVerses.length === 0) return;
+    const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
+
+    const selectedObjs = sortedVerses.map(vNum => {
+      const vObj = currentChapterVerses.find((v: any) => (v.number === vNum || v.verse === vNum));
+      return {
+        number: vNum,
+        text: vObj?.text || ''
+      };
+    });
+
+    let verseText = '';
+    if (selectedObjs.length > 1) {
+      verseText = selectedObjs.map(v => `${v.number} ${v.text}`).join(' ');
+    } else if (selectedObjs.length === 1) {
+      verseText = selectedObjs[0].text;
     }
+
+    const reference = buildVerseRangeText(displayBookName || selectedBookId || '', selectedChapter || 1, sortedVerses);
+    const version = displayVersionName || selectedVersionId || 'KJV';
+
+    await shareVerse({
+      verseText,
+      reference,
+      version,
+      book: selectedBookId || displayBookName,
+      chapter: selectedChapter,
+      verses: sortedVerses,
+    });
+
+    setSelectedVerses([]);
+  };
+
+  const onVerseMenuCopy = () => {
+    if (selectedVerses.length === 0) return;
+    const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
+
+    const selectedObjs = sortedVerses.map(vNum => {
+      const vObj = currentChapterVerses.find((v: any) => (v.number === vNum || v.verse === vNum));
+      return {
+        number: vNum,
+        text: vObj?.text || ''
+      };
+    });
+
+    let verseText = '';
+    if (selectedObjs.length > 1) {
+      verseText = selectedObjs.map(v => `${v.number} ${v.text}`).join(' ');
+    } else if (selectedObjs.length === 1) {
+      verseText = selectedObjs[0].text;
+    }
+
+    const reference = buildVerseRangeText(displayBookName || selectedBookId || '', selectedChapter || 1, sortedVerses);
+    const version = displayVersionName || selectedVersionId || 'KJV';
+
+    const textToCopy = formatCopyVerseText({
+      verseText,
+      verseReference: reference,
+      version,
+    });
+
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => toast.success('Verse copied to the clipboard'))
+        .catch((err) => {
+          console.error('Failed to copy text:', err);
+          toast.error('Failed to copy text.');
+        });
+    }
+
     setSelectedVerses([]);
   };
 
@@ -1883,6 +1948,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       onDeleteSavedVerse={onVerseMenuDelete}
       onCompareVerses={onVerseMenuCompare}
       onShareVerses={onVerseMenuShare}
+      onCopyVerses={onVerseMenuCopy}
       onPlayAudio={() => startTTS(0)}
       onPauseAudio={() => pauseTTS()}
       isSliderDragging={isSliderDragging}

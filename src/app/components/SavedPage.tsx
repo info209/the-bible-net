@@ -12,6 +12,7 @@ import {
 import { useSavedVerses, SavedVerseClient } from '@/lib/useSavedVerses';
 import { useSavedItems, SavedItemClient } from '@/lib/useSavedItems';
 import { toast } from '@/context/ToastContext';
+import { shareVerse } from '@/utils/verseFormatter';
 
 type FilterTab = 'All' | 'Bible' | 'Reading plans';
 
@@ -156,23 +157,17 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
   const handleShare = async () => {
     if (!selectedItemForMenu) return;
     setMenuOpenId(null);
-    const shareText = `"${selectedItemForMenu.verseText || ''}" - ${selectedItemForMenu.verseRangeText || ''} (${selectedItemForMenu.version || 'NKJV'})`;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Shared Saved Verse',
-          text: shareText,
-        });
-      } catch (err) {
-        // Fallback copy
-        navigator.clipboard.writeText(shareText);
-        showToast('Copied to clipboard!');
-      }
-    } else {
-      navigator.clipboard.writeText(shareText);
-      showToast('Copied to clipboard!');
-    }
+    const item = selectedItemForMenu;
+    const displayRef = item.verseRangeText || `${item.bookName || item.bookId || ''} ${item.chapter || 1}:${Array.isArray(item.verses) ? item.verses.join(', ') : ''}`;
+
+    await shareVerse({
+      verseText: item.verseText,
+      reference: displayRef,
+      version: item.version || 'NKJV',
+      book: item.bookId || item.bookName,
+      chapter: item.chapter,
+      verses: item.verses,
+    });
   };
 
   const handleDelete = async () => {

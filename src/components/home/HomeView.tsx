@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, MessageCircle, Pause, X, Send, MoreVertical, Check, Bookmark, BookOpen, Copy } from 'lucide-react';
+import { Play, MessageCircle, Pause, X, Send, MoreVertical, Check, Bookmark, BookOpen, Copy, User } from 'lucide-react';
 import { RiShareForwardLine } from 'react-icons/ri';
 import { LuNotebookPen } from 'react-icons/lu';
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -15,7 +15,7 @@ import { useReadingProgress } from '@/lib/useReadingProgress';
 import { useSavedVerses, buildVerseRangeText } from '@/lib/useSavedVerses';
 import { getRelativeTime } from '@/utils/time';
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
-import { formatCopyVerseText } from '@/utils/verseFormatter';
+import { formatCopyVerseText, shareVerse } from '@/utils/verseFormatter';
 import HomeSkeleton from '@/app/components/HomeSkeleton';
 import { CarouselCardSkeleton, PrayerSkeleton } from '@/app/components/HomeSkeleton';
 import { DailyDetailModal } from './DailyDetailModal';
@@ -28,9 +28,9 @@ import { HomeOfflineService } from '@/lib/offline/HomeOfflineService';
 import { fetchWithOfflineCache } from '@/lib/offline';
 
 const getGreetingByHour = (hour: number): string => {
-  if (hour >= 5 && hour < 12) return 'Good morning';
-  if (hour >= 12 && hour < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (hour >= 5 && hour < 12) return 'Good Morning';
+  if (hour >= 12 && hour < 17) return 'Good Afternoon';
+  return 'Good Evening';
 };
 
 export default function HomeView() {
@@ -62,7 +62,7 @@ export default function HomeView() {
   // it after the Radix Dialog closes (body-lock can otherwise jump the page)
   const savedScrollY = useRef<number>(0);
 
-  const [greeting, setGreeting] = useState('Shalom');
+  const [greeting, setGreeting] = useState('Good Morning');
 
   // Modal states
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
@@ -74,11 +74,12 @@ export default function HomeView() {
   const [devotionalProgressCache, setDevotionalProgressCache] = useState<Record<string, 'INCOMPLETE' | 'IN_PROGRESS' | 'COMPLETED'>>({});
 
   const userName = useMemo(() => {
-    return (session?.user as any)?.firstName || session?.user?.name || 'Believer';
+    const rawName = (session?.user as any)?.firstName || session?.user?.name;
+    return rawName ? rawName.trim() : '';
   }, [session]);
 
   const initials = useMemo(() => {
-    if (!session?.user) return 'G';
+    if (!session?.user) return '';
     const u = session.user as any;
 
     // First, try firstName/lastName
@@ -102,7 +103,7 @@ export default function HomeView() {
     const email = u.email || '';
     if (email) return email[0].toUpperCase();
 
-    return 'G';
+    return '';
   }, [session]);
 
   useEffect(() => {
@@ -337,39 +338,37 @@ export default function HomeView() {
     const shareKey = `${content._id}-${type}`;
     if (sharingStates.has(shareKey)) return;
 
-    let url: string;
-    let text: string;
+    let sharedSuccessfully = false;
 
     if (type === 'daily-verse') {
-      const params = new URLSearchParams();
       const versionVal = content.version || preferredVersion;
-      if (versionVal) params.set('version', versionVal);
-      if (content.verseBook) params.set('book', content.verseBook);
-      if (content.verseChapter) params.set('chapter', String(content.verseChapter));
-      if (content.verseNumber) params.set('verse', String(content.verseNumber));
-      url = `${window.location.origin}/bible?${params.toString()}`;
-      text = `"${content.verse}"\n - ${content.verseReference}`;
+      sharedSuccessfully = await shareVerse({
+        ...content,
+        version: versionVal,
+      });
     } else {
       const params = new URLSearchParams();
       if (content.date) params.set('devotionDate', content.date);
       if (content._id) params.set('devotionId', content._id);
-      url = `${window.location.origin}/home?${params.toString()}`;
-      text = `"${content.devotionalTitle || 'Daily Devotional'}"`;
-    }
+      const url = `${window.location.origin}/home?${params.toString()}`;
+      const text = `"${content.devotionalTitle || 'Daily Devotional'}"`;
 
-    let sharedSuccessfully = false;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'The Bible Net', text, url });
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'The Bible Net', text, url });
+          sharedSuccessfully = true;
+        } catch (error: any) {
+          if (error?.name !== 'AbortError') {
+            navigator.clipboard.writeText(`${text} ${url}`);
+            toast.success('Link copied to clipboard!');
+            sharedSuccessfully = true;
+          }
+        }
+      } else {
+        navigator.clipboard.writeText(`${text} ${url}`);
+        toast.success('Link copied to clipboard!');
         sharedSuccessfully = true;
-      } catch (error) {
-        console.log('Share failed', error);
       }
-    } else {
-      navigator.clipboard.writeText(`${text} ${url}`);
-      toast.success('Link copied to clipboard!');
-      sharedSuccessfully = true;
     }
 
     if (sharedSuccessfully) {
@@ -573,20 +572,32 @@ export default function HomeView() {
           {session?.user?.image && (
             <AvatarImage
               src={session.user.image}
-              alt={userName}
+              alt={userName || 'User'}
               className="object-cover"
             />
           )}
           <AvatarFallback className="bg-[#53b1b9] text-white font-bold text-lg select-none">
-            {initials}
+            {session?.user ? (
+              initials || <User className="size-6 text-white" />
+            ) : (
+              <User className="size-6 text-white" />
+            )}
           </AvatarFallback>
         </Avatar>
-        <div className="flex flex-col min-w-0">
-          <span className="text-gray-500 text-[15px] font-normal leading-tight">{greeting},</span>
-          <span className="truncate block max-w-full text-gray-900 text-[21px] font-bold leading-tight">
-            {userName}
-          </span>
-        </div>
+        {userName ? (
+          <div className="flex flex-col min-w-0">
+            <span className="text-gray-500 text-[15px] font-normal leading-tight">{greeting},</span>
+            <span className="truncate block max-w-full text-gray-900 text-[21px] font-bold leading-tight">
+              {userName}
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-col min-w-0">
+            <span className="truncate block max-w-full text-gray-900 text-[21px] font-bold leading-tight">
+              {greeting}
+            </span>
+          </div>
+        )}
       </div>
 
       {/*Profile Setup Banner (Preserved)

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import {
   BookmarkPlus, FileText, Plus, X, ChevronLeft, ChevronDown, ChevronUp,
   CheckCircle2, MinusCircle, ArrowRightLeft,
-  Share2, Bookmark, Lock, Trash2, BookmarkCheck
+  Share2, Bookmark, Lock, Trash2, BookmarkCheck, Copy
 } from 'lucide-react';
 import { RiShareForwardLine } from 'react-icons/ri';
 
@@ -56,6 +56,7 @@ export interface VerseActionMenuProps {
   onNote: (note: string, labels: string[]) => void | Promise<void>;
   onCompare?: () => void;
   onShare?: () => void;
+  onCopy?: () => void;
   existingHighlightColor?: string | null;
   /** Labels the verses are already saved under */
   existingSaveLabels?: string[] | null;
@@ -137,6 +138,7 @@ export default function VerseActionMenu({
   onNote,
   onCompare,
   onShare,
+  onCopy,
   existingHighlightColor = null,
   existingSaveLabels = null,
   existingSaveNote = null,
@@ -572,7 +574,7 @@ export default function VerseActionMenu({
                           }}
                           id="verse-action-save"
                           aria-label="Save verse"
-                          className="flex flex-col items-center justify-center gap-0.5 w-[50px] sm:w-[54px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[46px] sm:w-[50px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{
                             backgroundColor: isSavedVerse ? 'rgba(49,196,190,0.16)' : actionBg,
                             border: isSavedVerse ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
@@ -597,11 +599,23 @@ export default function VerseActionMenu({
                           }}
                           id="verse-action-note"
                           aria-label="Add note"
-                          className="flex flex-col items-center justify-center gap-0.5 w-[50px] sm:w-[54px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[46px] sm:w-[50px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
                           <FileText className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
                           <span className="text-[10px] font-bold" style={{ color: iconColor }}>Note</span>
+                        </button>
+
+                        {/* ── Copy Button ──────────────────────────── */}
+                        <button
+                          onClick={() => onCopy?.()}
+                          id="verse-action-copy"
+                          aria-label="Copy verse"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[46px] sm:w-[50px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          style={{ backgroundColor: actionBg, border: actionBorder }}
+                        >
+                          <Copy className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
+                          <span className="text-[10px] font-bold" style={{ color: iconColor }}>Copy</span>
                         </button>
 
                         {/* ── Share Button ──────────────────────────── */}
@@ -609,7 +623,7 @@ export default function VerseActionMenu({
                           onClick={() => onShare?.()}
                           id="verse-action-share"
                           aria-label="Share verse"
-                          className="flex flex-col items-center justify-center gap-0.5 w-[50px] sm:w-[54px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[46px] sm:w-[50px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
                           <RiShareForwardLine className="w-[18px] h-[18px]" style={{ color: iconColor }} />

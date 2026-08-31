@@ -7,6 +7,7 @@ import { ChevronLeft, Highlighter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import CardKebabMenu from '@/app/components/CardKebabMenu';
 import LibraryPageHeader from './LibraryPageHeader';
+import { shareVerse } from '@/utils/verseFormatter';
 
 const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
   yellow: '#FFD234', green: '#4CD964', blue: '#34AADC',
@@ -302,9 +303,14 @@ export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps 
                         }}
                         onDelete={() => handleDelete(h.ids || [h._id], h.refIds || [h.refId])}
                         onShare={() => {
-                          if (navigator.share) {
-                            navigator.share({ title: ref, text: content ?? ref }).catch(() => {});
-                          }
+                          shareVerse({
+                            verseText: content,
+                            reference: ref,
+                            version,
+                            book: h.metadata?.bookId || book,
+                            chapter,
+                            verses: versesArr,
+                          });
                         }}
                       />
                     </div>

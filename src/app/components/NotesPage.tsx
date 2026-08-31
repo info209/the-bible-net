@@ -6,10 +6,11 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, MoreVertical, Tag, MessageSquare, Plus, Check, X, FileText, Trash2, Edit2, Bookmark, BookOpen
+  ArrowLeft, MoreVertical, Tag, MessageSquare, Plus, Check, X, FileText, Trash2, Edit2, Bookmark, BookOpen, Share2
 } from 'lucide-react';
 import LibraryPageHeader from './LibraryPageHeader';
 import { toast } from '@/context/ToastContext';
+import { shareVerse } from '@/utils/verseFormatter';
 
 type FilterTab = 'All' | 'Bible' | 'Reading plans';
 
@@ -179,6 +180,31 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
     setNoteVersion(note.version || 'NKJV');
     setIsEditing(true);
     setMenuOpenId(null);
+  };
+
+  const handleShareNote = async (note: any) => {
+    setMenuOpenId(null);
+    const firstVerse = note?.verses?.[0];
+    if (firstVerse) {
+      const refStr = `${firstVerse.bookName} ${firstVerse.chapter}:${firstVerse.verses?.join(', ')}`;
+      await shareVerse({
+        verseText: firstVerse.verseText,
+        reference: refStr,
+        version: note.version || 'NKJV',
+        book: firstVerse.bookId || firstVerse.bookName,
+        chapter: firstVerse.chapter,
+        verses: firstVerse.verses,
+      });
+    } else if (note?.noteText) {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'Note', text: note.noteText });
+        } catch {}
+      } else {
+        navigator.clipboard.writeText(note.noteText);
+        showToast('Note copied to clipboard!');
+      }
+    }
   };
 
   const handleDeleteNote = async (id: string) => {
@@ -749,6 +775,13 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
               >
                 <span>Edit</span>
                 <Edit2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleShareNote(selectedNoteForMenu)}
+                className="w-full h-[44px] px-4 flex items-center justify-between text-[14px] font-[500] hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors active:bg-gray-100/50 text-gray-800 dark:text-gray-200"
+              >
+                <span>Share</span>
+                <Share2 className="w-4 h-4" />
               </button>
               <button
                 onClick={() => handleDeleteNote(selectedNoteForMenu._id)}
