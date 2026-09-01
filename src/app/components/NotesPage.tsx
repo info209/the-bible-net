@@ -482,7 +482,7 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
                             <div className="flex items-center gap-1.5 mt-2">
                               <Tag className="w-3.5 h-3.5 text-[#0B7A81]" />
                               <span className="text-[12px] font-[500] text-[#0B7A81]">
-                                Label: {cardLabel}
+                                {cardLabel}
                               </span>
                             </div>
                           </div>
@@ -522,9 +522,6 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
 
                         {/* User's Note Preview Container */}
                         <div className="mt-3 bg-[#F5F5F5] dark:bg-[#202020] rounded-[10px] p-[12px]">
-                          <p className="text-[12px] text-[#777777] dark:text-gray-400 font-[400]">
-                            Encouragement
-                          </p>
                           <p className="text-[16px] font-[500] text-[#222222] dark:text-white mt-1">
                             {note.noteText}
                           </p>

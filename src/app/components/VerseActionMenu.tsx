@@ -405,10 +405,9 @@ export default function VerseActionMenu({
               boxShadow: '0 -10px 40px rgba(0,0,0,0.18)',
               paddingBottom: 'env(safe-area-inset-bottom)',
               height: 'auto',
-              maxHeight: paletteExpanded ? '85vh' : '50vh',
+              maxHeight: view !== 'main' ? '85vh' : '50vh',
               display: 'flex',
               flexDirection: 'column',
-              transition: 'max-height 0.25s ease-out',
             }}
             data-bottom-sheet="true"
           >
@@ -475,20 +474,17 @@ export default function VerseActionMenu({
                   ) : (
                     <>
                       {/* ── Single Action Row (Highlight Palette + Action Icons) ── */}
-                      <div className="flex items-center gap-2 w-full shrink-0">
-                        {/* ── Highlight Palette Container (Wider Width) ──────────── */}
-                        <motion.div
-                          layout
-                          transition={{ duration: 0.2, ease: 'easeOut' }}
-                          className="flex-1 flex flex-wrap items-center justify-between gap-1 sm:gap-1.5 p-2 rounded-[16px] min-h-[58px]"
+                      <div className="flex items-center gap-1.5 sm:gap-2 w-full shrink-0">
+                        {/* ── Highlight Palette Container ──────────── */}
+                        <div
+                          className="flex-1 min-w-0 flex items-center justify-between gap-1 sm:gap-1.5 px-2 rounded-[16px] h-[58px] min-h-[58px] max-h-[58px] overflow-hidden"
                           style={{
                             backgroundColor: actionBg,
                             border: actionBorder,
                           }}
                         >
-                          <motion.div
-                            layout
-                            className="flex flex-wrap items-center justify-between gap-1.5 w-full"
+                          <div
+                            className="flex-1 min-w-0 flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-none flex-nowrap py-1 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
                           >
                             {paletteList.map((c, index) => {
                               const isApplied = isHighlighted && appliedColorObj && (c.id === appliedColorObj.id || c.color.toLowerCase() === appliedColorObj.color.toLowerCase());
@@ -533,37 +529,37 @@ export default function VerseActionMenu({
                                 </button>
                               );
                             })}
+                          </div>
 
-                            {/* Overlapping Double-Circle Expand / Collapse Button */}
-                            <button
-                              onClick={() => setPaletteExpanded((prev) => !prev)}
-                              title={paletteExpanded ? "Collapse colors" : "More colors"}
-                              aria-label={paletteExpanded ? "Collapse colors" : "More colors"}
-                              className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm overflow-hidden"
-                              style={{
-                                backgroundColor: dm ? '#2C2C2E' : '#E5E7EB',
-                                border: actionBorder,
-                              }}
-                            >
-                              {paletteExpanded ? (
-                                <ChevronUp className="w-4 h-4" style={{ color: labelText }} />
-                              ) : (
-                                <div className="relative w-full h-full flex items-center justify-center">
-                                  {/* Purple circle (underneath / right) */}
-                                  <span
-                                    className="absolute right-[2px] top-[4px] w-4 h-4 rounded-full border border-white dark:border-[#1c1c1e] shadow-sm"
-                                    style={{ backgroundColor: '#A66CFF' }}
-                                  />
-                                  {/* Pink circle (on top / left) */}
-                                  <span
-                                    className="absolute left-[2px] top-[4px] w-4 h-4 rounded-full border border-white dark:border-[#1c1c1e] shadow-sm"
-                                    style={{ backgroundColor: '#FF6B9D' }}
-                                  />
-                                </div>
-                              )}
-                            </button>
-                          </motion.div>
-                        </motion.div>
+                          {/* Overlapping Double-Circle Expand / Collapse Button */}
+                          <button
+                            onClick={() => setPaletteExpanded((prev) => !prev)}
+                            title={paletteExpanded ? "Collapse colors" : "More colors"}
+                            aria-label={paletteExpanded ? "Collapse colors" : "More colors"}
+                            className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm overflow-hidden ml-0.5"
+                            style={{
+                              backgroundColor: dm ? '#2C2C2E' : '#E5E7EB',
+                              border: actionBorder,
+                            }}
+                          >
+                            {paletteExpanded ? (
+                              <ChevronLeft className="w-4 h-4" style={{ color: labelText }} />
+                            ) : (
+                              <div className="relative w-full h-full flex items-center justify-center">
+                                {/* Purple circle (underneath / right) */}
+                                <span
+                                  className="absolute right-[2px] top-[4px] w-4 h-4 rounded-full border border-white dark:border-[#1c1c1e] shadow-sm"
+                                  style={{ backgroundColor: '#A66CFF' }}
+                                />
+                                {/* Pink circle (on top / left) */}
+                                <span
+                                  className="absolute left-[2px] top-[4px] w-4 h-4 rounded-full border border-white dark:border-[#1c1c1e] shadow-sm"
+                                  style={{ backgroundColor: '#FF6B9D' }}
+                                />
+                              </div>
+                            )}
+                          </button>
+                        </div>
 
                         {/* ── Save Button ──────────────────────────── */}
                         <button
@@ -574,7 +570,7 @@ export default function VerseActionMenu({
                           }}
                           id="verse-action-save"
                           aria-label="Save verse"
-                          className="flex flex-col items-center justify-center gap-0.5 w-[46px] sm:w-[50px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[42px] sm:w-[48px] md:w-[52px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{
                             backgroundColor: isSavedVerse ? 'rgba(49,196,190,0.16)' : actionBg,
                             border: isSavedVerse ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
@@ -599,7 +595,7 @@ export default function VerseActionMenu({
                           }}
                           id="verse-action-note"
                           aria-label="Add note"
-                          className="flex flex-col items-center justify-center gap-0.5 w-[46px] sm:w-[50px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[42px] sm:w-[48px] md:w-[52px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
                           <FileText className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
@@ -611,7 +607,7 @@ export default function VerseActionMenu({
                           onClick={() => onCopy?.()}
                           id="verse-action-copy"
                           aria-label="Copy verse"
-                          className="flex flex-col items-center justify-center gap-0.5 w-[46px] sm:w-[50px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[42px] sm:w-[48px] md:w-[52px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
                           <Copy className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
@@ -623,7 +619,7 @@ export default function VerseActionMenu({
                           onClick={() => onShare?.()}
                           id="verse-action-share"
                           aria-label="Share verse"
-                          className="flex flex-col items-center justify-center gap-0.5 w-[46px] sm:w-[50px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[42px] sm:w-[48px] md:w-[52px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
                           <RiShareForwardLine className="w-[18px] h-[18px]" style={{ color: iconColor }} />

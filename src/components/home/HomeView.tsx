@@ -16,6 +16,7 @@ import { useSavedVerses, buildVerseRangeText } from '@/lib/useSavedVerses';
 import { getRelativeTime } from '@/utils/time';
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 import { formatCopyVerseText, shareVerse } from '@/utils/verseFormatter';
+import { getUserInitials } from '@/utils/userInitials';
 import HomeSkeleton from '@/app/components/HomeSkeleton';
 import { CarouselCardSkeleton, PrayerSkeleton } from '@/app/components/HomeSkeleton';
 import { DailyDetailModal } from './DailyDetailModal';
@@ -80,30 +81,7 @@ export default function HomeView() {
 
   const initials = useMemo(() => {
     if (!session?.user) return '';
-    const u = session.user as any;
-
-    // First, try firstName/lastName
-    const first = u.firstName || '';
-    const last = u.lastName || '';
-    if (first || last) {
-      const fChar = first.trim()?.[0] || '';
-      const lChar = last.trim()?.[0] || '';
-      return `${fChar}${lChar}`.toUpperCase();
-    }
-
-    // Fallback to name
-    const name = u.name || '';
-    if (name) {
-      const parts = name.trim().split(/\s+/);
-      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-      return parts[0][0].toUpperCase();
-    }
-
-    // Fallback to email
-    const email = u.email || '';
-    if (email) return email[0].toUpperCase();
-
-    return '';
+    return getUserInitials(session.user);
   }, [session]);
 
   useEffect(() => {
@@ -1287,7 +1265,7 @@ export default function HomeView() {
                         <img src={comment.userId.image} alt={comment.userId?.firstName || 'User'} className="w-full h-full object-cover" />
                       ) : (
                         <div className="size-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-xs uppercase">
-                          {comment.userId?.firstName?.[0] || 'U'}
+                          {getUserInitials(comment.userId) || 'U'}
                         </div>
                       )}
                     </div>
