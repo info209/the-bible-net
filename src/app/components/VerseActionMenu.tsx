@@ -474,65 +474,73 @@ export default function VerseActionMenu({
                   ) : (
                     <>
                       {/* ── Single Action Row (Highlight Palette + Action Icons) ── */}
-                      <div className="flex items-center gap-1.5 sm:gap-2 w-full shrink-0">
+                      <div className="flex items-center gap-1.5 sm:gap-2 w-full overflow-x-auto scrollbar-none flex-nowrap py-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         {/* ── Highlight Palette Container ──────────── */}
-                        <div
-                          className="flex-1 min-w-0 flex items-center justify-between gap-1 sm:gap-1.5 px-2 rounded-[16px] h-[58px] min-h-[58px] max-h-[58px] overflow-hidden"
+                        <motion.div
+                          layout
+                          transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+                          className="shrink-0 flex items-center justify-between gap-1 sm:gap-1.5 px-2 rounded-[16px] h-[58px] min-h-[58px] max-h-[58px]"
                           style={{
                             backgroundColor: actionBg,
                             border: actionBorder,
                           }}
                         >
-                          <div
-                            className="flex-1 min-w-0 flex items-center gap-1 sm:gap-1.5 overflow-x-auto scrollbar-none flex-nowrap py-1 scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]"
-                          >
-                            {paletteList.map((c, index) => {
-                              const isApplied = isHighlighted && appliedColorObj && (c.id === appliedColorObj.id || c.color.toLowerCase() === appliedColorObj.color.toLowerCase());
-                              const isFirstItemWithRemove = isApplied && index === 0;
+                          <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap">
+                            <AnimatePresence initial={false} mode="popLayout">
+                              {paletteList.map((c, index) => {
+                                const isApplied = isHighlighted && appliedColorObj && (c.id === appliedColorObj.id || c.color.toLowerCase() === appliedColorObj.color.toLowerCase());
+                                const isFirstItemWithRemove = isApplied && index === 0;
 
-                              return (
-                                <button
-                                  key={c.id}
-                                  onClick={() => {
-                                    if (isFirstItemWithRemove) {
-                                      onHighlight('none');
-                                      onClose();
-                                    } else {
-                                      setSelectedColor(c.id);
-                                      onHighlight(c.id);
-                                      onClose();
-                                    }
-                                  }}
-                                  title={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
-                                  aria-label={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
-                                  className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
-                                  style={{ backgroundColor: c.color }}
-                                >
-                                  {/* Active selection ring */}
-                                  {isApplied && (
-                                    <span
-                                      className="absolute rounded-full pointer-events-none"
-                                      style={{
-                                        inset: -2.5,
-                                        border: '1.5px solid #31C4BE',
-                                        boxShadow: '0 0 5px rgba(49,196,190,0.35)',
-                                      }}
-                                    />
-                                  )}
+                                return (
+                                  <motion.button
+                                    key={c.id}
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    transition={{ duration: 0.15 }}
+                                    onClick={() => {
+                                      if (isFirstItemWithRemove) {
+                                        onHighlight('none');
+                                        onClose();
+                                      } else {
+                                        setSelectedColor(c.id);
+                                        onHighlight(c.id);
+                                        onClose();
+                                      }
+                                    }}
+                                    title={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
+                                    aria-label={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
+                                    className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
+                                    style={{ backgroundColor: c.color }}
+                                  >
+                                    {/* Active selection ring */}
+                                    {isApplied && (
+                                      <span
+                                        className="absolute rounded-full pointer-events-none"
+                                        style={{
+                                          inset: -2.5,
+                                          border: '1.5px solid #31C4BE',
+                                          boxShadow: '0 0 5px rgba(49,196,190,0.35)',
+                                        }}
+                                      />
+                                    )}
 
-                                  {/* Remove "×" icon overlay on the first item if highlighted */}
-                                  {isFirstItemWithRemove && (
-                                    <span className="w-4 h-4 rounded-full bg-black/65 backdrop-blur-sm flex items-center justify-center text-white shadow-sm border border-white/30">
-                                      <X className="w-2.5 h-2.5 stroke-[2.5]" />
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
+                                    {/* Remove "×" icon overlay on the first item if highlighted */}
+                                    {isFirstItemWithRemove && (
+                                      <span className="w-4 h-4 rounded-full bg-black/65 backdrop-blur-sm flex items-center justify-center text-white shadow-sm border border-white/30">
+                                        <X className="w-2.5 h-2.5 stroke-[2.5]" />
+                                      </span>
+                                    )}
+                                  </motion.button>
+                                );
+                              })}
+                            </AnimatePresence>
                           </div>
 
                           {/* Overlapping Double-Circle Expand / Collapse Button */}
-                          <button
+                          <motion.button
+                            layout
                             onClick={() => setPaletteExpanded((prev) => !prev)}
                             title={paletteExpanded ? "Collapse colors" : "More colors"}
                             aria-label={paletteExpanded ? "Collapse colors" : "More colors"}
@@ -558,8 +566,8 @@ export default function VerseActionMenu({
                                 />
                               </div>
                             )}
-                          </button>
-                        </div>
+                          </motion.button>
+                        </motion.div>
 
                         {/* ── Save Button ──────────────────────────── */}
                         <button

@@ -35,7 +35,7 @@ import ComparisonContent from './ComparisonContent';
 import VerseActionMenu from './VerseActionMenu';
 import AudioControlPanel from './AudioControlPanel';
 import { useReadingProgress } from '@/lib/useReadingProgress';
-import { BIBLE_BOOKS, TELUGU_BOOK_NAMES } from '@/utils/bibleBooks';
+import { BIBLE_BOOKS, TELUGU_BOOK_NAMES, HINDI_BOOK_NAMES, findCanonicalBookOrder, findCanonicalBookName } from '@/utils/bibleBooks';
 import {
   Dialog,
   DialogContent,
@@ -66,6 +66,45 @@ const bookChapters: { [key: string]: number } = {
   'James': 5, '1 Peter': 5, '2 Peter': 3, '1 John': 5, '2 John': 1,
   '3 John': 1, 'Jude': 1, 'Revelation': 22
 };
+
+function findBookInList(allBooksList: any[], identifier: string | number | undefined | null, fallbackOrder?: number | null) {
+  if (!allBooksList || allBooksList.length === 0) return null;
+
+  // 1. Direct ID match
+  if (identifier && typeof identifier === 'string') {
+    const byId = allBooksList.find(b => b.id === identifier || b._id === identifier);
+    if (byId) return byId;
+  }
+
+  // 2. Canonical order match
+  const order = fallbackOrder || findCanonicalBookOrder(identifier);
+  if (order !== null) {
+    const byOrder = allBooksList.find(b => b.order === order);
+    if (byOrder) return byOrder;
+
+    const canonicalEng = BIBLE_BOOKS.find(bb => bb.order === order)?.name;
+    if (canonicalEng) {
+      const byEng = allBooksList.find(b =>
+        b.englishName?.toLowerCase() === canonicalEng.toLowerCase() ||
+        b.name?.toLowerCase() === canonicalEng.toLowerCase()
+      );
+      if (byEng) return byEng;
+    }
+  }
+
+  // 3. Name or abbreviation match
+  if (identifier && typeof identifier === 'string') {
+    const norm = identifier.toLowerCase().trim();
+    const byName = allBooksList.find(b =>
+      b.name?.toLowerCase().trim() === norm ||
+      b.englishName?.toLowerCase().trim() === norm ||
+      b.abbreviation?.toLowerCase().trim() === norm
+    );
+    if (byName) return byName;
+  }
+
+  return null;
+}
 
 interface BibleReaderPageProps {
   onNavigate?: (page: 'home' | 'bible' | 'library' | 'explore') => void;
@@ -106,6 +145,17 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   // from a canonical source (localStorage, URL params, or latestProgress).
   // Prevents subsequent API responses from overriding the user's persisted preference.
   const versionHydrated = useRef(false);
+
+  // Pending deep-link parameters to consume once on arrival from Highlights, Notes, Saves, etc.
+  const pendingDeepLinkRef = useRef<{
+    version?: string | null;
+    book?: string | null;
+    chapter?: number | null;
+    verse?: number | null;
+  } | null>(null);
+
+  // Tracks the last processed searchParams query string to detect fresh incoming navigations
+  const lastProcessedQueryRef = useRef<string | null>(null);
 
   // Tracks pending highlight updates per verse for optimistic state and request sequencing/rollback
   const pendingHighlightUpdatesRef = useRef<Map<number, {
@@ -473,68 +523,96 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     networkMode: 'offlineFirst',
   });
 
+  // ── Deep-Link Detection (one-time consumption on arrival / external route push) ──
+  useEffect(() => {
+    if (!isBiblePage) return;
+
+    const currentQuery = searchParams?.toString() || '';
+    if (currentQuery && currentQuery !== lastProcessedQueryRef.current) {
+      const qVersion = searchParams.get('version');
+      const qBook = searchParams.get('book');
+      const qChapter = searchParams.get('chapter');
+      const qVerse = searchParams.get('verse') || searchParams.get('v');
+
+      if (qVersion || qBook || qChapter || qVerse) {
+        lastProcessedQueryRef.current = currentQuery;
+        pendingDeepLinkRef.current = {
+          version: qVersion,
+          book: qBook,
+          chapter: qChapter ? parseInt(qChapter, 10) : null,
+          verse: qVerse ? (parseInt(qVerse.includes(':') ? qVerse.split(':')[1] : qVerse, 10) || null) : null,
+        };
+
+        // Clean query parameters from URL history so they do not linger or re-trigger on subsequent re-renders
+        try {
+          window.history.replaceState(null, '', pathname);
+        } catch (e) {}
+      }
+    }
+  }, [isBiblePage, searchParams, pathname]);
+
   // ── 2. Resolve Active Version when bibleVersions is available ───────────
   useEffect(() => {
     if (!isBiblePage || !bibleVersions || bibleVersions.length === 0) return;
 
-    // Check URL parameters / deep link
-    const queryVersion = searchParams?.get('version');
-    const segments = pathname.split('/').filter(Boolean);
-    const pathVersion = segments.length >= 4 ? segments[1] : null;
-    const targetVerParam = queryVersion || pathVersion;
-
-    if (targetVerParam && targetVerParam !== 'undefined') {
+    // 1. If deep link version is pending, apply it
+    const deepVersion = pendingDeepLinkRef.current?.version;
+    if (deepVersion && deepVersion !== 'undefined') {
       const matched = bibleVersions.find(
         (v: any) =>
-          v.name?.toLowerCase() === targetVerParam.toLowerCase() ||
-          v.id?.toLowerCase() === targetVerParam.toLowerCase() ||
-          v.fullName?.toLowerCase() === targetVerParam.toLowerCase()
+          v.name?.toLowerCase() === deepVersion.toLowerCase() ||
+          v.id?.toLowerCase() === deepVersion.toLowerCase() ||
+          v.fullName?.toLowerCase() === deepVersion.toLowerCase()
       );
       if (matched) {
-        if (selectedVersionId !== matched.id || displayVersionName !== matched.name) {
-          setSelectedVersionId(matched.id);
-          setDisplayVersionName(matched.name);
-        }
+        setSelectedVersionId(matched.id);
+        setDisplayVersionName(matched.name);
         versionHydrated.current = true;
+        if (pendingDeepLinkRef.current) {
+          pendingDeepLinkRef.current.version = null;
+        }
         return;
       }
     }
 
-    // If not specified by URL, check localStorage / session preference / default
-    if (!versionHydrated.current || !selectedVersionId) {
-      const cachedVersionId = localStorage.getItem('bible-reader-version-id');
-      const cachedVersionName = localStorage.getItem('bible-reader-version-name');
-      const preferred = (session?.user as any)?.preferredBibleVersion;
-
-      let matchedVersion = null;
-      if (cachedVersionId || cachedVersionName) {
-        matchedVersion = bibleVersions.find(
-          (v: any) =>
-            v.id === cachedVersionId ||
-            v.name?.toLowerCase() === cachedVersionName?.toLowerCase()
-        );
-      }
-
-      if (!matchedVersion && preferred) {
-        matchedVersion = bibleVersions.find(
-          (v: any) =>
-            v.name?.toLowerCase() === preferred.toLowerCase() ||
-            v.id === preferred
-        );
-      }
-
-      const defaultVersion =
-        matchedVersion ||
-        bibleVersions.find((v: any) => v.name === 'KJV' || v.name === 'KJV-BSI') ||
-        bibleVersions[0];
-
-      if (defaultVersion) {
-        setSelectedVersionId(defaultVersion.id);
-        setDisplayVersionName(defaultVersion.name);
-        versionHydrated.current = true;
-      }
+    // 2. If version is already set and hydrated, do not overwrite manual selections!
+    if (selectedVersionId && versionHydrated.current) {
+      return;
     }
-  }, [isBiblePage, bibleVersions, pathname, searchParams, session, selectedVersionId, displayVersionName]);
+
+    // 3. Fallback to localStorage / user profile preference / KJV default
+    const cachedVersionId = localStorage.getItem('bible-reader-version-id');
+    const cachedVersionName = localStorage.getItem('bible-reader-version-name');
+    const preferred = (session?.user as any)?.preferredBibleVersion;
+
+    let matchedVersion = null;
+    if (cachedVersionId || cachedVersionName) {
+      matchedVersion = bibleVersions.find(
+        (v: any) =>
+          v.id === cachedVersionId ||
+          v.name?.toLowerCase() === cachedVersionName?.toLowerCase()
+      );
+    }
+
+    if (!matchedVersion && preferred) {
+      matchedVersion = bibleVersions.find(
+        (v: any) =>
+          v.name?.toLowerCase() === preferred.toLowerCase() ||
+          v.id === preferred
+      );
+    }
+
+    const defaultVersion =
+      matchedVersion ||
+      bibleVersions.find((v: any) => v.name === 'KJV' || v.name === 'KJV-BSI') ||
+      bibleVersions[0];
+
+    if (defaultVersion) {
+      setSelectedVersionId(defaultVersion.id);
+      setDisplayVersionName(defaultVersion.name);
+      versionHydrated.current = true;
+    }
+  }, [isBiblePage, bibleVersions, session, selectedVersionId]);
 
   // ── 3. Fetch Books for Resolved Version ────────────────────────────────
   const {
@@ -542,8 +620,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     isLoading: isLoadingBooks,
     isError: isErrorBooks,
   } = useQuery<{
-    'Old Testament': Array<{ id: string; name: string; englishName?: string; abbreviation?: string }>;
-    'New Testament': Array<{ id: string; name: string; englishName?: string; abbreviation?: string }>;
+    'Old Testament': Array<{ id: string; name: string; englishName?: string; abbreviation?: string; order: number }>;
+    'New Testament': Array<{ id: string; name: string; englishName?: string; abbreviation?: string; order: number }>;
   }>({
     queryKey: ['bible-books', selectedVersionId],
     queryFn: () =>
@@ -566,15 +644,35 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
           return b.name;
         };
 
+        const getBookOrder = (b: any): number => {
+          if (typeof b.order === 'number' && b.order >= 1 && b.order <= 66) return b.order;
+          const canonicalOrder = findCanonicalBookOrder(b.englishName || b.name || b.abbreviation);
+          return canonicalOrder ?? 1;
+        };
+
         const ot = books.filter((b: any) => {
           if (b.testament) return b.testament === 'OT';
-          return b.order <= 39;
-        }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name, abbreviation: b.abbreviation }));
+          const order = getBookOrder(b);
+          return order <= 39;
+        }).map((b: any) => ({
+          id: b._id,
+          name: resolveDisplayName(b),
+          englishName: b.name,
+          abbreviation: b.abbreviation,
+          order: getBookOrder(b),
+        }));
 
         const nt = books.filter((b: any) => {
           if (b.testament) return b.testament === 'NT';
-          return b.order > 39;
-        }).map((b: any) => ({ id: b._id, name: resolveDisplayName(b), englishName: b.name, abbreviation: b.abbreviation }));
+          const order = getBookOrder(b);
+          return order > 39;
+        }).map((b: any) => ({
+          id: b._id,
+          name: resolveDisplayName(b),
+          englishName: b.name,
+          abbreviation: b.abbreviation,
+          order: getBookOrder(b),
+        }));
 
         return {
           'Old Testament': ot,
@@ -596,106 +694,71 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     const allBooksList = [...ot, ...nt];
     if (allBooksList.length === 0) return;
 
-    const queryBook = searchParams?.get('book');
-    const queryChapter = searchParams?.get('chapter');
-    const queryVerse = searchParams?.get('verse') || searchParams?.get('v');
-
-    const segments = pathname.split('/').filter(Boolean);
-    const pathBook = segments.length >= 4 ? segments[2] : null;
-    const pathChapter = segments.length >= 4 ? segments[3] : null;
-
-    const targetBookParam = queryBook || pathBook;
-    const targetChapterParam = queryChapter || pathChapter;
-
-    let matchedBook = null;
-
-    // 1. Check URL parameters
-    if (targetBookParam && targetBookParam !== 'undefined') {
-      const normalized = targetBookParam.replace(/-/g, ' ').toLowerCase();
-      matchedBook = allBooksList.find(
-        b =>
-          b.name.toLowerCase() === normalized ||
-          b.englishName?.toLowerCase() === normalized ||
-          b.abbreviation?.toLowerCase() === normalized ||
-          b.id === targetBookParam
-      );
-    }
-
-    // 2. Check current selection if already valid in new version's books
-    if (!matchedBook && selectedBookId) {
-      matchedBook = allBooksList.find(
-        b =>
-          b.id === selectedBookId ||
-          (displayBookName && b.name.toLowerCase() === displayBookName.toLowerCase())
-      );
-    }
-
-    // 3. Check localStorage
-    if (!matchedBook) {
-      const cachedBookId = localStorage.getItem('bible-reader-book-id');
-      const cachedBookName = localStorage.getItem('bible-reader-book-name');
-      if (cachedBookId || cachedBookName) {
-        matchedBook = allBooksList.find(
-          b =>
-            b.id === cachedBookId ||
-            (cachedBookName && b.name.toLowerCase() === cachedBookName.toLowerCase())
-        );
-      }
-    }
-
-    // 4. Default to Genesis or first available book
-    if (!matchedBook) {
-      matchedBook =
-        allBooksList.find(b => b.name.toLowerCase() === 'genesis' || b.id === 'Genesis') ||
-        allBooksList[0];
-    }
-
-    if (matchedBook) {
-      if (selectedBookId !== matchedBook.id) {
+    // 1. Check if there is a pending deep link to apply
+    const deepLink = pendingDeepLinkRef.current;
+    if (deepLink?.book) {
+      const matchedBook = findBookInList(allBooksList, deepLink.book);
+      if (matchedBook) {
         setSelectedBookId(matchedBook.id);
-      }
-      if (displayBookName !== matchedBook.name) {
         setDisplayBookName(matchedBook.name);
-      }
-    }
 
-    // Chapter resolution
-    let targetCh = 1;
-    if (targetChapterParam) {
-      const parsedCh = parseInt(targetChapterParam, 10);
-      if (!isNaN(parsedCh) && parsedCh >= 1) {
-        targetCh = parsedCh;
-      }
-    } else if (selectedChapter !== null) {
-      targetCh = selectedChapter;
-    } else {
-      const cachedChapter = localStorage.getItem('bible-reader-chapter');
-      if (cachedChapter) {
-        const parsedCh = parseInt(cachedChapter, 10);
-        if (!isNaN(parsedCh) && parsedCh >= 1) {
-          targetCh = parsedCh;
+        if (deepLink.chapter && !isNaN(deepLink.chapter) && deepLink.chapter >= 1) {
+          setSelectedChapter(deepLink.chapter);
+        } else {
+          setSelectedChapter(1);
         }
+
+        if (deepLink.verse && !isNaN(deepLink.verse) && deepLink.verse > 0) {
+          setSelectedVerse(deepLink.verse);
+        }
+
+        pendingDeepLinkRef.current = null;
+        return;
       }
     }
 
-    if (selectedChapter !== targetCh) {
-      setSelectedChapter(targetCh);
-    }
+    // 2. Existing selection / version-switch canonical reconciliation
+    if (selectedBookId || displayBookName) {
+      const existingInCurrentList = allBooksList.find(b => b.id === selectedBookId);
+      if (existingInCurrentList) {
+        if (displayBookName !== existingInCurrentList.name) {
+          setDisplayBookName(existingInCurrentList.name);
+        }
+        return;
+      }
 
-    // Verse resolution
-    if (queryVerse) {
-      const rawNum = parseInt(queryVerse, 10);
-      if (!isNaN(rawNum) && rawNum > 0) {
-        setSelectedVerse(rawNum);
-      } else if (queryVerse.includes(':')) {
-        const splitV = parseInt(queryVerse.split(':')[1], 10);
-        setSelectedVerse(!isNaN(splitV) && splitV > 0 ? splitV : null);
-      } else {
-        const match = queryVerse.match(/\d+/);
-        setSelectedVerse(match ? parseInt(match[0], 10) : null);
+      // Version switched: find canonical equivalent in the newly active version
+      const prevOrder = findCanonicalBookOrder(displayBookName) || findCanonicalBookOrder(selectedBookId);
+      const equivalentBook = findBookInList(allBooksList, displayBookName, prevOrder);
+      if (equivalentBook) {
+        setSelectedBookId(equivalentBook.id);
+        setDisplayBookName(equivalentBook.name);
+        return;
       }
     }
-  }, [isBiblePage, bibleBooksState, pathname, searchParams, selectedBookId, displayBookName, selectedChapter]);
+
+    // 3. Fallback on initial load (no deep link, no prior selection)
+    const cachedBookId = localStorage.getItem('bible-reader-book-id');
+    const cachedBookName = localStorage.getItem('bible-reader-book-name');
+    let fallbackBook = null;
+    if (cachedBookId || cachedBookName) {
+      fallbackBook = findBookInList(allBooksList, cachedBookName || cachedBookId);
+    }
+    if (!fallbackBook) {
+      fallbackBook = allBooksList.find(b => b.order === 1) || allBooksList[0];
+    }
+
+    if (fallbackBook) {
+      setSelectedBookId(fallbackBook.id);
+      setDisplayBookName(fallbackBook.name);
+    }
+
+    if (selectedChapter === null) {
+      const cachedChapter = localStorage.getItem('bible-reader-chapter');
+      const parsedCh = cachedChapter ? parseInt(cachedChapter, 10) : 1;
+      setSelectedChapter(!isNaN(parsedCh) && parsedCh >= 1 ? parsedCh : 1);
+    }
+  }, [isBiblePage, bibleBooksState, selectedBookId, displayBookName, selectedChapter]);
 
   // ── 5. Chapter Count & Verses Queries ─────────────────────────────────
   const { data: currentBookChapters } = useQuery({
@@ -1727,16 +1790,32 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       scrollToVerse={selectedVerse ?? undefined}
       pageTransition={pageTransition}
       onPageTransitionChange={setPageTransition}
-      onChapterChange={(ch: number) => setSelectedChapter(ch)}
+      onChapterChange={(ch: number) => {
+        pendingDeepLinkRef.current = null;
+        setSelectedChapter(ch);
+        setSelectedVerse(null);
+        try {
+          localStorage.setItem('bible-reader-chapter', ch.toString());
+        } catch (e) {}
+      }}
       onBookChange={(bId: string) => {
+        pendingDeepLinkRef.current = null;
         const booksList = [...(bibleBooksState?.['Old Testament'] || []), ...(bibleBooksState?.['New Testament'] || [])];
-        const bookObj = booksList.find(b => b.id === bId || b.name === bId);
+        const bookObj = findBookInList(booksList, bId);
         if (bookObj) {
           setSelectedBookId(bookObj.id);
           setDisplayBookName(bookObj.name);
+          setSelectedChapter(1);
+          setSelectedVerse(null);
+          try {
+            localStorage.setItem('bible-reader-book-id', bookObj.id);
+            localStorage.setItem('bible-reader-book-name', bookObj.name);
+            localStorage.setItem('bible-reader-chapter', '1');
+          } catch (e) {}
         }
       }}
       onVersionChange={(vId: string) => {
+        pendingDeepLinkRef.current = null;
         const matchingVer = bibleVersions?.find((v: any) => v.id === vId || v.name === vId || v.fullName === vId);
         if (matchingVer) {
           setSelectedVersionId(matchingVer.id);

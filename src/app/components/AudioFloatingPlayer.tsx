@@ -189,7 +189,7 @@ export default function AudioFloatingPlayer({
             <div className="flex items-center justify-center pointer-events-auto">
               <AnimatePresence mode="wait">
                 {!isNarrationActive ? (
-                  /* ── Single Play Button (Narration Inactive) ── */
+                  /* ── Single Play Button (Narration Inactive - No Progress Ring) ── */
                   <motion.div
                     key="single-play-button"
                     initial={{ scale: 0.9, opacity: 0 }}
@@ -198,29 +198,27 @@ export default function AudioFloatingPlayer({
                     transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
                     className="z-10 relative"
                   >
-                    <ProgressRing
-                      progress={progress}
-                      size={58}
-                      strokeWidth={2.5}
-                      trackColor={ringTrackColor}
-                      color="#31C4BE"
+                    <motion.button
+                      onClick={(e) => { e.stopPropagation(); onPlayPause(); }}
+                      whileTap={{ scale: 0.9 }}
+                      className="size-11 rounded-full flex items-center justify-center
+                        shadow-[0_4px_16px_rgba(0,0,0,0.12)]
+                        select-none active:scale-95 transition-all"
+                      aria-label="Play narration"
+                      style={{
+                        backgroundColor: btnBg,
+                        borderColor: btnBorder,
+                        borderWidth: '1px',
+                        borderStyle: 'solid',
+                        userSelect: "none",
+                        WebkitUserSelect: "none",
+                      }}
                     >
-                      <motion.button
-                        onClick={(e) => { e.stopPropagation(); onPlayPause(); }}
-                        whileTap={{ scale: 0.9 }}
-                        className="size-11 rounded-full flex items-center justify-center
-                          bg-[#31C4BE]
-                          shadow-[0_4px_16px_rgba(49,196,190,0.4)]
-                          select-none active:scale-95 transition-all"
-                        aria-label="Play narration"
-                        style={{ userSelect: "none", WebkitUserSelect: "none" }}
-                      >
-                        <Play className="size-[18px] fill-white text-white ml-0.5" strokeWidth={0} />
-                      </motion.button>
-                    </ProgressRing>
+                      <Play className="size-[18px] fill-[#31C4BE] text-[#31C4BE] ml-0.5" strokeWidth={0} />
+                    </motion.button>
                   </motion.div>
                 ) : (
-                  /* ── Expanded 3-Control Pill Player (Narration Active) ── */
+                  /* ── Expanded 3-Control Pill Player (Narration Active - With Progress Ring) ── */
                   <motion.div
                     key="expanded-pill-player"
                     initial={{ scale: 0.88, opacity: 0 }}
@@ -246,7 +244,7 @@ export default function AudioFloatingPlayer({
                       <PiSlidersHorizontal className="size-[18px]" strokeWidth={2} />
                     </motion.button>
 
-                    {/* Center: Dominant Overlapping Teal Play/Pause Button */}
+                    {/* Center: Dominant Overlapping White Play/Pause Button with Teal Icon & Progress Ring */}
                     <div className="relative mx-1.5 -my-2.5 z-10 flex items-center justify-center">
                       <ProgressRing
                         progress={progress}
@@ -259,16 +257,22 @@ export default function AudioFloatingPlayer({
                           onClick={(e) => { e.stopPropagation(); onPlayPause(); }}
                           whileTap={{ scale: 0.9 }}
                           className="size-11 rounded-full flex items-center justify-center
-                            bg-[#31C4BE]
-                            shadow-[0_4px_16px_rgba(49,196,190,0.42)]
+                            shadow-[0_4px_16px_rgba(0,0,0,0.12)]
                             select-none transition-all"
                           aria-label={isPlaying ? "Pause" : "Play"}
-                          style={{ userSelect: "none", WebkitUserSelect: "none" }}
+                          style={{
+                            backgroundColor: btnBg,
+                            borderColor: btnBorder,
+                            borderWidth: '1px',
+                            borderStyle: 'solid',
+                            userSelect: "none",
+                            WebkitUserSelect: "none",
+                          }}
                         >
                           {isPlaying ? (
-                            <Pause className="size-[18px] fill-white text-white" strokeWidth={0} />
+                            <Pause className="size-[18px] fill-[#31C4BE] text-[#31C4BE]" strokeWidth={0} />
                           ) : (
-                            <Play className="size-[18px] fill-white text-white ml-0.5" strokeWidth={0} />
+                            <Play className="size-[18px] fill-[#31C4BE] text-[#31C4BE] ml-0.5" strokeWidth={0} />
                           )}
                         </motion.button>
                       </ProgressRing>
@@ -341,13 +345,19 @@ export default function AudioFloatingPlayer({
             >
               <button
                 onClick={(e) => { e.stopPropagation(); onPlayPause(); }}
-                className="size-7 rounded-full flex items-center justify-center bg-[#31C4BE]"
+                className="size-7 rounded-full flex items-center justify-center shadow-sm"
                 aria-label={isPlaying ? "Pause" : "Play"}
+                style={{
+                  backgroundColor: btnBg,
+                  borderColor: btnBorder,
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                }}
               >
                 {isPlaying ? (
-                  <Pause className="size-3 fill-white text-white" strokeWidth={0} />
+                  <Pause className="size-3 fill-[#31C4BE] text-[#31C4BE]" strokeWidth={0} />
                 ) : (
-                  <Play className="size-3 fill-white text-white ml-px" strokeWidth={0} />
+                  <Play className="size-3 fill-[#31C4BE] text-[#31C4BE] ml-px" strokeWidth={0} />
                 )}
               </button>
             </ProgressRing>
