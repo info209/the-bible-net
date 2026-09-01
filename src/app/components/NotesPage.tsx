@@ -11,6 +11,7 @@ import {
 import LibraryPageHeader from './LibraryPageHeader';
 import { toast } from '@/context/ToastContext';
 import { shareVerse } from '@/utils/verseFormatter';
+import { LabelTag } from '@/components/ui/LabelTag';
 
 type FilterTab = 'All' | 'Bible' | 'Reading plans';
 
@@ -563,24 +564,23 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
             </header>
 
             {/* Label Chips Section (Horizontal Scrollable) */}
-            <div className="flex gap-2.5 overflow-x-auto scrollbar-none py-2.5">
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-2.5">
               {/* Add Label Chip */}
               <button
+                type="button"
                 onClick={() => setLabelInputOpen(true)}
-                className="h-[36px] px-4 rounded-[999px] border border-[#0B7A81] text-[#0B7A81] bg-white dark:bg-[#151515] text-[13px] font-[500] whitespace-nowrap shrink-0 flex items-center justify-center"
+                className="h-8 px-3.5 rounded-full border border-[#0B7A81] text-[#0B7A81] dark:text-[#14B8A6] bg-white dark:bg-[#111111] text-xs font-semibold whitespace-nowrap shrink-0 flex items-center justify-center transition-all active:scale-95 shadow-2xs"
               >
                 Label +
               </button>
 
               {/* Selected Label Chips */}
               {noteLabels.map(label => (
-                <button
+                <LabelTag
                   key={label}
-                  onClick={() => handleRemoveLabel(label)}
-                  className="h-[36px] px-4 rounded-[999px] bg-[#E8EFF0] text-[#222222] text-[13px] font-[500] whitespace-nowrap shrink-0 flex items-center gap-1.5"
-                >
-                  {label} <span className="text-gray-400">✎</span>
-                </button>
+                  label={label}
+                  onRemove={() => handleRemoveLabel(label)}
+                />
               ))}
             </div>
 

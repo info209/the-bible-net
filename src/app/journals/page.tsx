@@ -32,6 +32,7 @@ import Highlight from '@tiptap/extension-highlight';
 import { VerseLink } from '@/app/components/VerseLink';
 import { VerseBlock } from '@/app/components/VerseBlock';
 import BibleVerseSearchSelector from '@/app/components/BibleVerseSearchSelector';
+import { LabelTag } from '@/components/ui/LabelTag';
 
 type Tab = 'All' | 'Journals' | 'Prayers';
 type ItemType = 'journal' | 'prayer';
@@ -2072,16 +2073,11 @@ function JournalsContent() {
 
                     {/* Removable Selected Chips beside summary button */}
                     {editLabels.map(l => (
-                      <span
+                      <LabelTag
                         key={l}
-                        onClick={() => editorMode !== 'view' && handleRemoveLabel(l)}
-                        className={`h-8 px-3 py-1 bg-[#E6F4F5] dark:bg-[#0B7A81]/20 text-[#0B7A81] dark:text-[#14B8A6] rounded-full text-xs font-semibold flex items-center gap-1.5 shrink-0 transition-colors ${
-                          editorMode !== 'view' ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400 cursor-pointer' : ''
-                        }`}
-                      >
-                        {l}
-                        {editorMode !== 'view' && <X className="w-3 h-3 opacity-70 hover:opacity-100" />}
-                      </span>
+                        label={l}
+                        onRemove={editorMode !== 'view' ? () => handleRemoveLabel(l) : undefined}
+                      />
                     ))}
                   </div>
 

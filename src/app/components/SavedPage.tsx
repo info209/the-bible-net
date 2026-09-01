@@ -13,6 +13,7 @@ import { useSavedVerses, SavedVerseClient } from '@/lib/useSavedVerses';
 import { useSavedItems, SavedItemClient } from '@/lib/useSavedItems';
 import { toast } from '@/context/ToastContext';
 import { shareVerse } from '@/utils/verseFormatter';
+import { LabelTag } from '@/components/ui/LabelTag';
 
 type FilterTab = 'All' | 'Bible' | 'Reading plans';
 
@@ -401,20 +402,13 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
                   </label>
                   
                   {/* Current Labels List */}
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     {tempLabels.map(l => (
-                      <span
+                      <LabelTag
                         key={l}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#0B7A81]/10 text-[#0B7A81] rounded-full text-xs font-semibold"
-                      >
-                        {l}
-                        <button
-                          onClick={() => handleRemoveLabel(l)}
-                          className="hover:text-red-500 font-bold ml-0.5"
-                        >
-                          &times;
-                        </button>
-                      </span>
+                        label={l}
+                        onRemove={() => handleRemoveLabel(l)}
+                      />
                     ))}
                     {tempLabels.length === 0 && (
                       <span className="text-[12px] text-gray-400 italic">No labels added yet.</span>

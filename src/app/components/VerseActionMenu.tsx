@@ -730,21 +730,22 @@ export default function VerseActionMenu({
                                 key={label}
                                 onClick={() => toggleLabel(label)}
                                 aria-selected={isSelected}
-                                className="flex items-center gap-1.5 transition-all active:scale-95"
+                                className={`flex items-center gap-1.5 transition-all active:scale-95 ${
+                                  isSelected ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400' : ''
+                                }`}
                                 style={{
                                   height: 28,
                                   borderRadius: 999,
                                   padding: '0 10px',
                                   fontSize: 11,
-                                  fontWeight: 500,
-                                  backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
-                                  border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
-                                  color: isSelected ? '#31C4BE' : labelText,
+                                  fontWeight: 600,
+                                  backgroundColor: isSelected ? (isDark ? 'rgba(11,122,129,0.20)' : '#E6F4F5') : chipBg,
+                                  border: isSelected ? (isDark ? '1px solid rgba(11,122,129,0.40)' : '1px solid rgba(11,122,129,0.20)') : chipBorder,
+                                  color: isSelected ? (isDark ? '#14B8A6' : '#0B7A81') : labelText,
                                 }}
                               >
-                                {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
                                 <span>{label}</span>
-                                {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
+                                {isSelected && <X className="w-3 h-3 shrink-0 ml-auto opacity-70 hover:opacity-100" />}
                               </button>
                             );
                           })}
@@ -765,21 +766,22 @@ export default function VerseActionMenu({
                               key={label}
                               onClick={() => toggleLabel(label)}
                               aria-selected={isSelected}
-                              className="flex items-center gap-1.5 transition-all active:scale-95"
+                              className={`flex items-center gap-1.5 transition-all active:scale-95 ${
+                                isSelected ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400' : ''
+                              }`}
                               style={{
                                 height: 28,
                                 borderRadius: 999,
-                                  padding: '0 10px',
-                                  fontSize: 11,
-                                  fontWeight: 500,
-                                  backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
-                                  border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
-                                  color: isSelected ? '#31C4BE' : labelText,
+                                padding: '0 10px',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                backgroundColor: isSelected ? (isDark ? 'rgba(11,122,129,0.20)' : '#E6F4F5') : chipBg,
+                                border: isSelected ? (isDark ? '1px solid rgba(11,122,129,0.40)' : '1px solid rgba(11,122,129,0.20)') : chipBorder,
+                                color: isSelected ? (isDark ? '#14B8A6' : '#0B7A81') : labelText,
                               }}
                             >
-                              {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
                               <span>{label}</span>
-                              {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
+                              {isSelected && <X className="w-3 h-3 shrink-0 ml-auto opacity-70 hover:opacity-100" />}
                             </button>
                           );
                         })}
@@ -936,21 +938,22 @@ export default function VerseActionMenu({
                                 key={label}
                                 onClick={() => toggleLabel(label)}
                                 aria-selected={isSelected}
-                                className="flex items-center gap-1.5 transition-all active:scale-95"
+                                className={`flex items-center gap-1.5 transition-all active:scale-95 ${
+                                  isSelected ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400' : ''
+                                }`}
                                 style={{
                                   height: 28,
                                   borderRadius: 999,
                                   padding: '0 10px',
                                   fontSize: 11,
-                                  fontWeight: 500,
-                                  backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
-                                  border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
-                                  color: isSelected ? '#31C4BE' : labelText,
+                                  fontWeight: 600,
+                                  backgroundColor: isSelected ? (isDark ? 'rgba(11,122,129,0.20)' : '#E6F4F5') : chipBg,
+                                  border: isSelected ? (isDark ? '1px solid rgba(11,122,129,0.40)' : '1px solid rgba(11,122,129,0.20)') : chipBorder,
+                                  color: isSelected ? (isDark ? '#14B8A6' : '#0B7A81') : labelText,
                                 }}
                               >
-                                {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
                                 <span>{label}</span>
-                                {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
+                                {isSelected && <X className="w-3 h-3 shrink-0 ml-auto opacity-70 hover:opacity-100" />}
                               </button>
                             );
                           })}
@@ -971,21 +974,22 @@ export default function VerseActionMenu({
                               key={label}
                               onClick={() => toggleLabel(label)}
                               aria-selected={isSelected}
-                              className="flex items-center gap-1.5 transition-all active:scale-95"
+                              className={`flex items-center gap-1.5 transition-all active:scale-95 ${
+                                isSelected ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400' : ''
+                              }`}
                               style={{
                                 height: 28,
                                 borderRadius: 999,
                                 padding: '0 10px',
                                 fontSize: 11,
-                                fontWeight: 500,
-                                backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
-                                border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
-                                color: isSelected ? '#31C4BE' : labelText,
+                                fontWeight: 600,
+                                backgroundColor: isSelected ? (isDark ? 'rgba(11,122,129,0.20)' : '#E6F4F5') : chipBg,
+                                border: isSelected ? (isDark ? '1px solid rgba(11,122,129,0.40)' : '1px solid rgba(11,122,129,0.20)') : chipBorder,
+                                color: isSelected ? (isDark ? '#14B8A6' : '#0B7A81') : labelText,
                               }}
                             >
-                              {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
                               <span>{label}</span>
-                              {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
+                              {isSelected && <X className="w-3 h-3 shrink-0 ml-auto opacity-70 hover:opacity-100" />}
                             </button>
                           );
                         })}
