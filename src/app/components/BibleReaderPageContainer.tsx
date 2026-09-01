@@ -1059,32 +1059,6 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   // Sync volume/rate changes with active utterance instantly
   // (Removed redundant cancel-and-restart effect for volume changes)
 
-  // States for highlights and notes
-  const [userHighlights, setUserHighlights] = useState<any[]>([]);
-  const [userNotes, setUserNotes] = useState<any[]>([]);
-
-  // Fetch highlights and notes for current chapter
-  useEffect(() => {
-    if (!session?.user || !selectedBookId || !selectedChapter) return;
-
-    const fetchData = async () => {
-      try {
-        // Fetch highlights
-        const hRes = await fetch(`/api/user/saved-items?type=highlight&bookId=${selectedBookId}&chapter=${selectedChapter}`);
-        const hData = await hRes.json();
-        if (hData.success) setUserHighlights(hData.data);
-
-        // Fetch notes
-        const nRes = await fetch(`/api/user/saved-items?type=note&bookId=${selectedBookId}&chapter=${selectedChapter}`);
-        const nData = await nRes.json();
-        if (nData.success) setUserNotes(nData.data);
-      } catch (err) {
-        console.error("Failed to fetch highlights/notes:", err);
-      }
-    };
-
-    fetchData();
-  }, [session?.user, selectedBookId, selectedChapter]);
 
   // ── Helper: find the best available voice for a given BCP-47 lang tag ────────
   // Returns the first voice whose lang starts with the target prefix (e.g. 'te' matches 'te-IN'),
@@ -1979,43 +1953,13 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
             pending.targetColor = color;
           }
 
-          // 2. Perform the optimistic UI update immediately
-          if (color === 'none') {
-            setUserHighlights(prev => prev.filter(h => h.metadata?.verse !== verseNum));
-          } else {
-            setUserHighlights(prev => {
-              const existing = prev.find(h => h.metadata?.verse === verseNum);
-              if (existing) {
-                return prev.map(h =>
-                  h.metadata?.verse === verseNum
-                    ? { ...h, metadata: { ...h.metadata, color } }
-                    : h
-                );
-              }
-              const tempId = pending?.originalItem?._id || `opt_${Date.now()}_${verseNum}`;
-              return [...prev, {
-                _id: tempId,
-                refId,
-                metadata: {
-                  bookId: selectedBookId,
-                  bookName: displayBookName,
-                  chapter: selectedChapter!,
-                  verse: verseNum,
-                  versionId: selectedVersionId,
-                  versionName: displayVersionName,
-                  color
-                }
-              }];
-            });
-          }
-
-          // 3. Clear any existing debounce timer
+          // 2. Clear any existing debounce timer
           if (pending.timer) {
             clearTimeout(pending.timer);
             pending.timer = null;
           }
 
-          // 4. Define execute function
+          // 3. Define execute function
           const executeUpdate = async () => {
             const currentPending = pendingHighlightUpdatesRef.current.get(verseNum);
             if (!currentPending) return;
@@ -2025,7 +1969,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
             try {
               if (target === 'none') {
-                const existingId = currentPending.originalItem?._id;
+                const existing = getSavedItem('highlight', refId) || userHighlights.find(h => h.metadata?.verse === verseNum || h.refId === refId);
+                const existingId = existing?._id;
                 if (existingId && !existingId.startsWith('opt_')) {
                   const success = await unsaveItem(existingId);
                   if (!success) {
@@ -2053,44 +1998,15 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
                 }
 
                 currentPending.originalItem = savedItem;
-
-                setUserHighlights(prev => {
-                  const latestPending = pendingHighlightUpdatesRef.current.get(verseNum);
-                  if (latestPending && latestPending.targetColor === target) {
-                    return prev.map(h =>
-                      h.metadata?.verse === verseNum
-                        ? { ...h, _id: savedItem._id }
-                        : h
-                    );
-                  }
-                  return prev;
-                });
               }
             } catch (err) {
               console.error(`Failed to sync highlight for verse ${verseNum}:`, err);
-              
-              const latestPending = pendingHighlightUpdatesRef.current.get(verseNum);
-              if (latestPending && latestPending.targetColor === target) {
-                const orig = latestPending.originalItem;
-                if (orig) {
-                  setUserHighlights(prev => {
-                    const existing = prev.find(h => h.metadata?.verse === verseNum);
-                    if (existing) {
-                      return prev.map(h => h.metadata?.verse === verseNum ? orig : h);
-                    }
-                    return [...prev, orig];
-                  });
-                } else {
-                  setUserHighlights(prev => prev.filter(h => h.metadata?.verse !== verseNum));
-                }
-
-                toast.error("Failed to update highlight. Please try again.");
-                pendingHighlightUpdatesRef.current.delete(verseNum);
-                return;
-              }
+              toast.error("Failed to update highlight. Please try again.");
+              pendingHighlightUpdatesRef.current.delete(verseNum);
+              return;
+            } finally {
+              currentPending.isProcessing = false;
             }
-
-            currentPending.isProcessing = false;
 
             const latestPending = pendingHighlightUpdatesRef.current.get(verseNum);
             if (latestPending) {
@@ -2102,7 +2018,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
             }
           };
 
-          // 5. Schedule execution (300ms debounce)
+          // 4. Schedule execution (300ms debounce)
           if (!pending.isProcessing) {
             pending.timer = setTimeout(executeUpdate, 300);
           }
