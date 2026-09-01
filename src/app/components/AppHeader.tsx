@@ -3,7 +3,7 @@
 import { Globe, Menu, User, LogIn, UserPlus } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ProfilePanel from './ProfilePanel';
 import {
@@ -24,18 +24,42 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
   const { data: session } = useSession();
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
-      if (searchParams.get('profile') === 'true') {
-        setIsProfilePanelOpen(true);
-        // Clean up the URL parameter without reloading
+    if (searchParams?.get('profile') === 'true') {
+      setIsProfilePanelOpen(true);
+      if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
         url.searchParams.delete('profile');
-        window.history.replaceState({}, '', url.pathname + url.search);
+        window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
       }
     }
+  }, [searchParams]);
+
+  useEffect(() => {
+    const checkProfileParam = () => {
+      if (typeof window !== 'undefined') {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('profile') === 'true') {
+          setIsProfilePanelOpen(true);
+          const url = new URL(window.location.href);
+          url.searchParams.delete('profile');
+          window.history.replaceState({}, '', url.pathname + (url.search ? url.search : ''));
+        }
+      }
+    };
+
+    checkProfileParam();
+    window.addEventListener('popstate', checkProfileParam);
+    const handleOpenProfile = () => {
+      setIsProfilePanelOpen(true);
+    };
+    window.addEventListener('open-profile-drawer', handleOpenProfile);
+    return () => {
+      window.removeEventListener('popstate', checkProfileParam);
+      window.removeEventListener('open-profile-drawer', handleOpenProfile);
+    };
   }, []);
 
   const navigateTo = (path: string) => {

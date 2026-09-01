@@ -40,6 +40,7 @@ export interface IChapter extends Document {
 
     // Enhanced fields added in place
     versesCount?: number;
+    footnotes?: Array<{ verse?: number; verseNumber?: number; text?: string; note?: string; marker?: string; reference?: string } | string>;
 }
 
 export interface IVerse extends Document {
@@ -48,6 +49,9 @@ export interface IVerse extends Document {
     chapter: mongoose.Types.ObjectId;
     book: mongoose.Types.ObjectId;    // Denormalized
     version: mongoose.Types.ObjectId; // Denormalized
+
+    // Optional footnotes for this verse
+    footnotes?: Array<{ text?: string; note?: string; marker?: string; reference?: string } | string>;
 
     // Enhanced denormalized metadata (optional for safety with existing documents)
     versionCode?: string;      // e.g., "KJV"
@@ -171,6 +175,10 @@ const ChapterSchema = new Schema<IChapter>({
     versesCount: {
         type: Number,
         default: 0
+    },
+    footnotes: {
+        type: [Schema.Types.Mixed],
+        default: undefined
     }
 });
 ChapterSchema.index({ book: 1, number: 1 }, { unique: true });
@@ -187,6 +195,10 @@ const VerseSchema = new Schema<IVerse>({
     chapter: { type: Schema.Types.ObjectId, ref: 'Chapter', required: true },
     book: { type: Schema.Types.ObjectId, ref: 'Book', required: true },
     version: { type: Schema.Types.ObjectId, ref: 'BibleVersion', required: true },
+    footnotes: {
+        type: [Schema.Types.Mixed],
+        default: undefined
+    },
     
     // Enhanced denormalized metadata
     versionCode: {

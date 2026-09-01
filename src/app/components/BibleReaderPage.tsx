@@ -23,6 +23,7 @@ import { BookListSkeleton, VersionListSkeleton } from './BibleSkeleton';
 
 import FontsSettingsModal, { ThemeType, TransitionType } from './FontsSettingsModal';
 import AudioFloatingPlayer from './AudioFloatingPlayer';
+import VerseNotesBottomSheet from './VerseNotesBottomSheet';
 import ModalHeader from './ModalHeader';
 import { toast } from '@/context/ToastContext';
 
@@ -91,6 +92,20 @@ interface BibleReaderPageProps {
   existingSaveLabels?: string[] | null;
   existingNoteText?: string | null;
   existingNoteLabels?: string[] | null;
+  showFootnotes?: boolean;
+  onToggleFootnotes?: (show: boolean) => void;
+  onSaveNoteFromSheet?: (payload: {
+    noteId?: string;
+    refId?: string;
+    verses: number[];
+    noteText: string;
+    labels: string[];
+    bookId?: string;
+    bookName?: string;
+    chapter?: number;
+    version?: string;
+  }) => Promise<void> | void;
+  onDeleteNoteFromSheet?: (noteId: string, refId?: string, verses?: number[]) => Promise<void> | void;
   pageTransition?: 'slide' | 'curl' | 'fade' | 'scroll';
   onPageTransitionChange?: (transition: 'slide' | 'curl' | 'fade' | 'scroll') => void;
   scrollToVerse?: number | null;
@@ -142,6 +157,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     existingSaveLabels = null,
     existingNoteText = null,
     existingNoteLabels = null,
+    showFootnotes: propShowFootnotes,
+    onToggleFootnotes: propOnToggleFootnotes,
+    onSaveNoteFromSheet,
+    onDeleteNoteFromSheet,
     pageTransition: propPageTransition,
     onPageTransitionChange: propOnPageTransitionChange,
     scrollToVerse,
@@ -189,7 +208,26 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [musicLoopMode, setMusicLoopMode] = useState<'shuffle' | 'repeat-all' | 'repeat-one'>('shuffle');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
-  const [hideFootnotes, setHideFootnotes] = useState(false);
+
+  // Footnotes preference (persisted to localStorage)
+  const [localShowFootnotes, setLocalShowFootnotes] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('bible-reader-show-footnotes');
+      return cached !== 'false';
+    }
+    return true;
+  });
+  const showFootnotes = propShowFootnotes ?? localShowFootnotes;
+  const setShowFootnotes = (val: boolean) => {
+    setLocalShowFootnotes(val);
+    propOnToggleFootnotes?.(val);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bible-reader-show-footnotes', val ? 'true' : 'false');
+    }
+  };
+
+  // Active verse for personal notes viewing/editing bottom sheet
+  const [activeNotesVerse, setActiveNotesVerse] = useState<number | null>(null);
   const [showAudioControlPanel, setShowAudioControlPanel] = useState(false);
   const [audioPlayerState, setAudioPlayerState] = useState<'default' | 'minimized'>('default');
   const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
@@ -1872,35 +1910,40 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="py-2">
+                    <div className="py-1">
                       <button
                         onClick={() => {
                           setShowMoreMenu(false);
                           setShowSettingsMenu(true);
                         }}
-                        className="w-full px-4 py-3 text-left text-sm font-medium transition-colors"
+                        className="w-full px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                         style={{ borderBottom: `1px solid ${popupThemeConfig[selectedTheme].divider}`, color: currentTheme.text }}
                       >
                         Fonts & Settings
                       </button>
 
-                      {/* <div className="flex items-center justify-between gap-4 px-4 py-3 transition-colors"> */}
-                        {/* <span className="text-sm font-medium" style={{ color: currentTheme.text }}>Hide footnotes</span>
+                      <div className="flex items-center justify-between gap-4 px-4 py-3 transition-colors">
+                        <span className="text-sm font-medium" style={{ color: currentTheme.text }}>Footnotes</span>
                         <button
+                          type="button"
+                          role="switch"
+                          aria-checked={showFootnotes}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setHideFootnotes(!hideFootnotes);
+                            setShowFootnotes(!showFootnotes);
                           }}
-                          className={`relative h-6 w-11 rounded-full transition-colors ${hideFootnotes ? 'bg-[var(--color-primary-teal)]' : 'bg-gray-300'
-                            }`}
-                          aria-pressed={hideFootnotes}
+                          className={`relative h-6 w-11 rounded-full transition-colors focus:outline-none cursor-pointer ${
+                            showFootnotes ? 'bg-[var(--color-primary-teal)]' : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                          aria-label="Toggle Footnotes"
                         >
                           <div
-                            className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-white transition-transform ${hideFootnotes ? 'translate-x-5' : 'translate-x-0'
-                              }`}
+                            className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-white transition-transform ${
+                              showFootnotes ? 'translate-x-5' : 'translate-x-0'
+                            }`}
                           />
-                        </button> */}
-                      {/* </div> */}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2620,6 +2663,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               version={selectedVersion}
               theme={currentTheme}
               savedVerseIds={savedVerseIds}
+              showFootnotes={showFootnotes}
               isSliderDragging={false}
             />
           ) : undefined}
@@ -2632,6 +2676,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               version={selectedVersion}
               theme={currentTheme}
               savedVerseIds={savedVerseIds}
+              showFootnotes={showFootnotes}
               isSliderDragging={false}
             />
           ) : undefined}
@@ -2661,8 +2706,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               savedVerseIds={savedVerseIds}
               onVerseDoubleTap={onVerseDoubleTap}
               onVerseTap={onVerseTap}
+              onOpenVerseNotes={(vNum) => setActiveNotesVerse(vNum)}
               highlights={userHighlights}
               notes={userNotes}
+              showFootnotes={showFootnotes}
               isSliderDragging={isSliderDragging}
               swipeActiveRef={isSwipingRef}
             />
@@ -2832,6 +2879,34 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           />
         )}
       </AnimatePresence>
+
+      {/* Verse Notes Bottom Sheet (for viewing/editing/deleting notes on a verse) */}
+      <VerseNotesBottomSheet
+        isOpen={activeNotesVerse !== null}
+        onClose={() => setActiveNotesVerse(null)}
+        bookName={selectedBook}
+        chapter={selectedChapter}
+        verseNumber={activeNotesVerse || 1}
+        notes={userNotes || []}
+        onSaveNote={async (payload) => {
+          if (onSaveNoteFromSheet) {
+            await onSaveNoteFromSheet(payload);
+          } else if (onSaveNote) {
+            onSaveNote(payload.verses, payload.noteText, payload.labels);
+          }
+        }}
+        onDeleteNote={async (noteId, refId, verses) => {
+          if (onDeleteNoteFromSheet) {
+            await onDeleteNoteFromSheet(noteId, refId, verses);
+          }
+        }}
+        userLabels={userLabels}
+        onAddUserLabel={onAddUserLabel}
+        selectedTheme={selectedTheme}
+        isDark={selectedTheme === 'dark'}
+        isLoggedIn={isLoggedIn}
+        version={selectedVersion}
+      />
     </div>
   );
 }

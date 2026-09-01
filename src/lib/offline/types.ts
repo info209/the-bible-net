@@ -62,6 +62,15 @@ export type VersionDownloadRecord = DownloadRecord;
 export interface OfflineVerseData {
   number: number;
   text: string;
+  footnotes?: Array<any>;
+}
+
+export interface OfflineChapterFootnote {
+  id?: string;
+  verseNumber: number;
+  text: string;
+  reference?: string;
+  marker?: string;
 }
 
 export interface OfflineChapterData {
@@ -74,6 +83,7 @@ export interface OfflineChapterData {
   chapterNumber: number;
   testament: 'OT' | 'NT';
   verses: OfflineVerseData[];
+  footnotes?: OfflineChapterFootnote[];
   /** ISO timestamp when cached */
   cachedAt: string;
   /** Whether this chapter was saved as part of an explicit download */

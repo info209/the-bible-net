@@ -283,7 +283,8 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
                     type="button"
                     onClick={() => {
                       handleClose();
-                      router.push('/auth/profile-setup');
+                      const currentUrl = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '/home';
+                      router.push(`/auth/profile-setup?source=profile&from=${encodeURIComponent(currentUrl)}`);
                     }}
                     className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white transition-all text-left group"
                   >

@@ -296,6 +296,61 @@ export class BibleService {
                     console.warn(`getChapterContent: No verses found for chapter ${chapter._id} (search: "${search || ''}")`);
                 }
 
+                // Defensively collect and normalize chapter and verse footnotes
+                const rawChapterFootnotes = (chapter as any)?.footnotes || [];
+                const normalizedFootnotes: Array<{ id: string; verseNumber: number; text: string; reference?: string; marker?: string }> = [];
+
+                if (Array.isArray(rawChapterFootnotes)) {
+                    rawChapterFootnotes.forEach((fn: any, idx: number) => {
+                        if (!fn) return;
+                        if (typeof fn === 'string' && fn.trim()) {
+                            normalizedFootnotes.push({
+                                id: `fn-${chapter.number}-${idx + 1}`,
+                                verseNumber: 1,
+                                text: fn.trim(),
+                                reference: `${book.name} ${chapter.number}:1`,
+                            });
+                        } else if (typeof fn === 'object') {
+                            const vNum = Number(fn.verseNumber || fn.verse || fn.verse_number || 1);
+                            const text = String(fn.text || fn.note || fn.content || '').trim();
+                            if (text) {
+                                normalizedFootnotes.push({
+                                    id: fn.id ? String(fn.id) : `fn-${chapter.number}-${vNum}-${idx + 1}`,
+                                    verseNumber: isNaN(vNum) ? 1 : vNum,
+                                    text,
+                                    reference: fn.reference || `${book.name} ${chapter.number}:${isNaN(vNum) ? 1 : vNum}`,
+                                    marker: fn.marker,
+                                });
+                            }
+                        }
+                    });
+                }
+
+                verses.forEach((v: any) => {
+                    if (v.footnotes && Array.isArray(v.footnotes)) {
+                        v.footnotes.forEach((fn: any, idx: number) => {
+                            if (!fn) return;
+                            const text = typeof fn === 'string' ? fn.trim() : String(fn.text || fn.note || fn.content || '').trim();
+                            if (text) {
+                                normalizedFootnotes.push({
+                                    id: typeof fn === 'object' && fn.id ? String(fn.id) : `fn-${chapter.number}-${v.number}-${idx + 1}`,
+                                    verseNumber: v.number,
+                                    text,
+                                    reference: typeof fn === 'object' && fn.reference ? fn.reference : `${book.name} ${chapter.number}:${v.number}`,
+                                    marker: typeof fn === 'object' ? fn.marker : undefined,
+                                });
+                            }
+                        });
+                    } else if (v.footnote && typeof v.footnote === 'string' && v.footnote.trim()) {
+                        normalizedFootnotes.push({
+                            id: `fn-${chapter.number}-${v.number}-1`,
+                            verseNumber: v.number,
+                            text: v.footnote.trim(),
+                            reference: `${book.name} ${chapter.number}:${v.number}`,
+                        });
+                    }
+                });
+
                 return {
                     version: {
                         name: version.name,
@@ -312,7 +367,9 @@ export class BibleService {
                     verses: verses.map((v) => ({
                         number: v.number,
                         text: v.text,
+                        ...(v.footnotes ? { footnotes: v.footnotes } : {}),
                     })),
+                    footnotes: normalizedFootnotes,
                 };
             }, CACHE_TTL.BIBLE);
         } catch (error: any) {

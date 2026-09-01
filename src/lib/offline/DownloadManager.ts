@@ -315,6 +315,7 @@ export class DownloadManager {
             chapterNumber: chapterNum,
             testament,
             verses: json.data.verses as Array<{ number: number; text: string }>,
+            footnotes: json.data.footnotes,
             cachedAt: new Date().toISOString(),
             isDownloaded: true,
           };

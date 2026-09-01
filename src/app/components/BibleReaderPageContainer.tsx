@@ -1700,6 +1700,136 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     return currentChapterVerses || [];
   };
 
+  // ── 6. Query User Personal Notes & Highlights ───────────────────────────
+  const { data: rawUserNotes = [] } = useQuery<any[]>({
+    queryKey: ['user-notes', session?.user?.id],
+    queryFn: () =>
+      fetchWithOfflineCache(`user_notes_${session?.user?.id}`, async () => {
+        const res = await fetch('/api/notes?limit=100');
+        if (!res.ok) return [];
+        const json = await res.json();
+        if (!json.success || !Array.isArray(json.data)) return [];
+        return json.data;
+      }),
+    enabled: isBiblePage && !!session?.user?.id,
+    staleTime: 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  });
+
+  const userHighlights = useMemo(() => {
+    return savedItems.filter(i => i.type === 'highlight');
+  }, [savedItems]);
+
+  const userNotes = useMemo(() => {
+    const list: any[] = [...rawUserNotes];
+    for (const item of savedItems) {
+      if (item.type === 'note') {
+        const alreadyInList = list.some(
+          n => n._id === item._id || n._id === item.metadata?.noteId || (item.refId && n.refId === item.refId)
+        );
+        if (!alreadyInList) {
+          list.push({
+            _id: item._id,
+            refId: item.refId,
+            noteText: item.metadata?.content || '',
+            labels: item.metadata?.labels || [],
+            version: item.metadata?.versionName || item.metadata?.versionId,
+            metadata: item.metadata,
+            verses: item.metadata?.verses ? [{
+              bookId: item.metadata.bookId,
+              bookName: item.metadata.bookName,
+              chapter: item.metadata.chapter,
+              verses: item.metadata.verses
+            }] : [],
+            createdAt: item.createdAt,
+          });
+        }
+      }
+    }
+    return list;
+  }, [rawUserNotes, savedItems]);
+
+  const handleSaveNoteFromSheet = async (payload: {
+    noteId?: string;
+    refId?: string;
+    verses: number[];
+    noteText: string;
+    labels: string[];
+    bookId?: string;
+    bookName?: string;
+    chapter?: number;
+    version?: string;
+  }) => {
+    if (!session?.user) {
+      toast.error('Please sign in to save notes');
+      return;
+    }
+
+    const bId = payload.bookId || selectedBookId || '';
+    const bName = payload.bookName || displayBookName || '';
+    const ch = payload.chapter || selectedChapter || 1;
+    const ver = payload.version || displayVersionName || 'NKJV';
+    const vList = payload.verses;
+
+    if (payload.noteId && !payload.noteId.startsWith('opt_')) {
+      // 1. Existing note update
+      const res = await fetch(`/api/notes/${payload.noteId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          noteText: payload.noteText,
+          labels: payload.labels,
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Failed to update note');
+    } else {
+      // 2. New note creation
+      const res = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          noteText: payload.noteText,
+          labels: payload.labels,
+          version: ver,
+          verses: [{
+            bookId: bId,
+            bookName: bName,
+            chapter: ch,
+            verses: vList,
+          }],
+        }),
+      });
+      const json = await res.json();
+      if (!json.success) throw new Error(json.error || 'Failed to create note');
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ['user-notes'] });
+    await queryClient.invalidateQueries({ queryKey: ['saved-items'] });
+    await queryClient.invalidateQueries({ queryKey: ['notes'] });
+  };
+
+  const handleDeleteNoteFromSheet = async (noteId: string, refId?: string, verses?: number[]) => {
+    if (!session?.user) return;
+
+    const res = await fetch(`/api/notes/${noteId}`, {
+      method: 'DELETE',
+    });
+    const json = await res.json();
+    if (!json.success) {
+      if (refId) {
+        const savedItem = getSavedItem('note', refId);
+        if (savedItem?._id) {
+          await unsaveItem(savedItem._id);
+        }
+      }
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ['user-notes'] });
+    await queryClient.invalidateQueries({ queryKey: ['saved-items'] });
+    await queryClient.invalidateQueries({ queryKey: ['notes'] });
+  };
+
   // ── Derive save data for the selected verses ───────────────────────────
   const existingSaveData = useMemo(() => {
     if (selectedVerses.length === 0 || !selectedBookId || typeof selectedChapter !== 'number') return null;
@@ -1980,41 +2110,18 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       }}
       onSaveNote={(verses: number[], note: string, labels: string[]) => {
         if (!session?.user || verses.length === 0) return;
-        const processNotes = async () => {
-          const refId = `${selectedBookId}_${selectedChapter}_${verses.join('-')}_${selectedVersionId}`;
-          if (!note.trim()) {
-            const existing = userNotes.find(n => n.refId === refId);
-            if (existing && existing._id) {
-              await unsaveItem(existing._id);
-              setUserNotes(prev => prev.filter(n => n._id !== existing._id));
-            }
-          } else {
-            await saveItem({
-              type: 'note',
-              refId,
-              metadata: {
-                bookId: selectedBookId || undefined,
-                bookName: displayBookName || undefined,
-                chapter: selectedChapter!,
-                verses: verses,
-                versionId: selectedVersionId || undefined,
-                versionName: displayVersionName || undefined,
-                content: note,
-                labels
-              }
-            });
-            // Update local state
-            setUserNotes(prev => {
-              const existing = prev.find(n => n.refId === refId);
-              if (existing) {
-                return prev.map(n => n.refId === refId ? { ...n, metadata: { ...n.metadata, content: note, labels } } : n);
-              }
-              return [...prev, { refId, metadata: { bookId: selectedBookId, bookName: displayBookName, chapter: selectedChapter!, verses, versionId: selectedVersionId, versionName: displayVersionName, content: note, labels } }];
-            });
-          }
-        };
-        processNotes();
+        handleSaveNoteFromSheet({
+          verses,
+          noteText: note,
+          labels,
+          bookId: selectedBookId || undefined,
+          bookName: displayBookName || undefined,
+          chapter: selectedChapter || 1,
+          version: displayVersionName || undefined,
+        });
       }}
+      onSaveNoteFromSheet={handleSaveNoteFromSheet}
+      onDeleteNoteFromSheet={handleDeleteNoteFromSheet}
       selectedVerses={selectedVerses}
       userHighlights={userHighlights}
       userNotes={userNotes}

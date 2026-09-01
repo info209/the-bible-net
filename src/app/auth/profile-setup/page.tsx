@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
 import { Globe, Languages, Book, Camera, ChevronLeft, Check, Lock, User } from 'lucide-react';
 import { useSession } from 'next-auth/react';
@@ -20,7 +20,19 @@ import {
 
 function ProfileSetupContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const from = searchParams?.get('from');
     const { data: session, update: updateSession } = useSession();
+
+    const navigateBackToProfileDrawer = () => {
+        if (from) {
+            const decodedFrom = decodeURIComponent(from);
+            const separator = decodedFrom.includes('?') ? '&' : '?';
+            router.push(`${decodedFrom}${separator}profile=true`);
+        } else {
+            router.push('/home?profile=true');
+        }
+    };
 
     const [formData, setFormData] = useState({
         firstName: session?.user?.firstName || '',
@@ -209,7 +221,7 @@ function ProfileSetupContent() {
                     });
                 }
                 toast.success('Profile updated successfully!');
-                router.replace('/home');
+                navigateBackToProfileDrawer();
             } else {
                 const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Failed to save profile', 'profile');
                 toast.error(friendlyMsg);
@@ -240,7 +252,7 @@ function ProfileSetupContent() {
                 <div className="flex items-center justify-between">
                     <button
                         type="button"
-                        onClick={() => router.replace('/home')}
+                        onClick={navigateBackToProfileDrawer}
                         className="inline-flex items-center gap-1.5 px-3 py-2 rounded-full bg-white border border-slate-200 text-slate-700 hover:text-[var(--color-primary-teal)] hover:border-[var(--color-primary-teal)]/30 text-sm font-semibold shadow-sm transition-all outline-none cursor-pointer"
                     >
                         <ChevronLeft className="w-4 h-4" />

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, useRef, PointerEvent, memo } from 'react';
+import { useEffect, useState, useRef, PointerEvent, memo, useMemo } from 'react';
 import { useVerseNavigation } from '@/lib/useVerseNavigation';
 import { motion } from 'framer-motion';
 import { Bookmark, FileText } from 'lucide-react';
@@ -7,6 +7,7 @@ import BibleSkeleton from './BibleSkeleton';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BibleOfflineService } from '@/lib/offline/BibleOfflineService';
 import { ChapterCacheService } from '@/lib/offline/ChapterCacheService';
+import { findCanonicalBookOrder } from '@/utils/bibleBooks';
 
 // Map color IDs (as stored in DB) to actual CSS colors
 const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
@@ -22,6 +23,14 @@ const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
   rose:   '#FF2D55',
 };
 
+export interface ChapterFootnote {
+  id?: string;
+  verseNumber: number;
+  text: string;
+  reference?: string;
+  marker?: string;
+}
+
 interface ChapterContentProps {
   book: string;
   chapter: number;
@@ -35,8 +44,10 @@ interface ChapterContentProps {
   onVerseDoubleTap?: (verseNumber: number, e?: React.PointerEvent) => void;
   onVerseTap?: (verseNumber: number, e?: React.PointerEvent) => void;
   onVerseLongPress?: (verseNumber: number, e?: React.PointerEvent) => void;
+  onOpenVerseNotes?: (verseNumber: number, notes: any[]) => void;
   highlights?: any[];
   notes?: any[];
+  showFootnotes?: boolean;
   theme: {
     bg: string;
     text: string;
@@ -57,7 +68,7 @@ export async function fetchChapterContent(
   book: string,
   chapter: number,
   versionId?: string,
-): Promise<{ title: string; verses: { number: number; text: string }[]; _isOfflineData?: boolean }> {
+): Promise<{ title: string; verses: { number: number; text: string }[]; footnotes?: ChapterFootnote[]; _isOfflineData?: boolean }> {
   try {
     const response = await fetch(
       `/api/v1/bible/${encodeURIComponent(version)}/${encodeURIComponent(book)}/${chapter}`,
@@ -69,6 +80,7 @@ export async function fetchChapterContent(
     const data = {
       title: `${result.data.book.name} ${result.data.chapter.number}`,
       verses: result.data.verses as { number: number; text: string }[],
+      footnotes: (result.data.footnotes || []) as ChapterFootnote[],
     };
     // Silently cache this chapter for offline access (fire-and-forget)
     ChapterCacheService.cacheChapter(
@@ -79,6 +91,7 @@ export async function fetchChapterContent(
       chapter,
       result.data.book.testament === 'NT' ? 'NT' : 'OT',
       data.verses,
+      data.footnotes,
     ).catch(() => {});
     return data;
   } catch (networkError) {
@@ -89,6 +102,7 @@ export async function fetchChapterContent(
         return {
           title: `${offlineChapter.bookName} ${chapter}`,
           verses: offlineChapter.verses,
+          footnotes: (offlineChapter.footnotes || []) as ChapterFootnote[],
           _isOfflineData: true,
         };
       }
@@ -108,8 +122,9 @@ function ChapterContent({
   book, chapter, font, fontSize, version,
   versionId,
   scrollToVerse, readingVerse, theme, selectedVerses = [], savedVerseIds = [], 
-  onVerseDoubleTap, onVerseTap,
+  onVerseDoubleTap, onVerseTap, onOpenVerseNotes,
   highlights = [], notes = [],
+  showFootnotes = true,
   isSliderDragging = false,
   swipeActiveRef,
 }: ChapterContentWithVersionIdProps) {
@@ -126,6 +141,54 @@ function ChapterContent({
 
   const error = queryError ? (queryError as Error).message : null;
   const isOfflineData = (apiContent as any)?._isOfflineData === true;
+
+  // Canonical book order resolution for stable cross-version/language matching
+  const currentBookOrder = useMemo(() => {
+    return findCanonicalBookOrder(book);
+  }, [book]);
+
+  // Index notes by verse number for $O(1)$ fast lookup
+  const verseNotesMap = useMemo(() => {
+    const map = new Map<number, any[]>();
+    if (!notes || !notes.length) return map;
+
+    for (const n of notes) {
+      const noteBookIdent =
+        n.metadata?.bookId ||
+        n.metadata?.bookName ||
+        n.verses?.[0]?.bookId ||
+        n.verses?.[0]?.bookName ||
+        (n as any).bookId ||
+        (n as any).bookName;
+
+      const noteBookOrder = findCanonicalBookOrder(noteBookIdent);
+      if (currentBookOrder !== null && noteBookOrder !== null && currentBookOrder !== noteBookOrder) {
+        continue;
+      }
+
+      const noteChapter =
+        n.metadata?.chapter ??
+        n.verses?.[0]?.chapter ??
+        (n as any).chapter;
+
+      if (typeof noteChapter === 'number' && noteChapter !== chapter) {
+        continue;
+      }
+
+      const vList: number[] =
+        n.metadata?.verses ??
+        n.verses?.[0]?.verses ??
+        (typeof n.metadata?.verse === 'number' ? [n.metadata.verse] : []);
+
+      for (const v of vList) {
+        const arr = map.get(v) || [];
+        arr.push(n);
+        map.set(v, arr);
+      }
+    }
+
+    return map;
+  }, [notes, currentBookOrder, chapter]);
 
   // Pre-fetch adjacent chapters in background while online
   useEffect(() => {
@@ -204,7 +267,6 @@ function ChapterContent({
 
   const content = apiContent;
 
-
   // Canonical verse navigation — uses MutationObserver, no setTimeout races.
   // isChapterReady is true only when data has been fetched and rendered, so
   // the hook never attempts to scroll before the verse elements exist.
@@ -234,6 +296,8 @@ function ChapterContent({
     return <BibleSkeleton theme={theme} />;
   }
 
+  const isDarkTheme = theme.bg === '#1c1c1e';
+
   return (
     <motion.div 
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}
@@ -255,11 +319,9 @@ function ChapterContent({
               h.metadata?.chapter === chapter &&
               (h.metadata?.bookId === book || h.metadata?.bookName === book)
             );
-            const hasNote = notes.some(n =>
-              n.metadata?.verses?.includes(verse.number) &&
-              n.metadata?.chapter === chapter &&
-              (n.metadata?.bookId === book || n.metadata?.bookName === book)
-            );
+            
+            const verseNotes = verseNotesMap.get(verse.number) || [];
+            const hasNote = verseNotes.length > 0;
 
             // Determine background: highlight > transparent
             let bgColor: string;
@@ -296,7 +358,18 @@ function ChapterContent({
                 >
                   {verse.text}
                   {hasNote && (
-                    <FileText className="w-[14px] h-[14px] ml-1.5 inline-block text-[var(--color-accent-rose)] fill-none" />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenVerseNotes?.(verse.number, verseNotes);
+                      }}
+                      className="inline-flex items-center justify-center p-0.5 ml-1.5 align-middle rounded hover:scale-110 active:scale-95 transition-all text-[var(--color-accent-rose)] focus:outline-none cursor-pointer"
+                      title={`View notes for ${book} ${chapter}:${verse.number}`}
+                      aria-label={`View notes for ${book} ${chapter}:${verse.number}`}
+                    >
+                      <FileText className="w-[14px] h-[14px] fill-none" />
+                    </button>
                   )}
                   {isSavedVerse && (
                     <Bookmark className="w-[14px] h-[14px] ml-1.5 inline-block fill-current text-[#31C4BE]" />
@@ -306,6 +379,61 @@ function ChapterContent({
             );
           })}
         </div>
+
+        {/* Footnotes Section at bottom of content */}
+        {showFootnotes && apiContent?.footnotes && apiContent.footnotes.length > 0 && (
+          <div
+            className="mt-10 pt-6 border-t"
+            style={{
+              borderColor: isDarkTheme ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            }}
+          >
+            <div className="flex items-center gap-2 mb-4">
+              <h3
+                className="text-xs font-bold uppercase tracking-wider select-none"
+                style={{ color: theme.verseNumber, opacity: 0.85 }}
+              >
+                Footnotes
+              </h3>
+              <span
+                className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                style={{
+                  backgroundColor: isDarkTheme ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.05)',
+                  color: theme.verseNumber,
+                }}
+              >
+                {apiContent.footnotes.length}
+              </span>
+            </div>
+
+            <div className="space-y-2.5">
+              {apiContent.footnotes.map((fn: ChapterFootnote, idx: number) => {
+                const refStr = fn.reference || `${book} ${chapter}:${fn.verseNumber || 1}`;
+                return (
+                  <div
+                    key={fn.id || `fn-${idx}`}
+                    className="text-xs leading-relaxed flex items-start gap-2.5 p-2.5 rounded-xl transition-colors"
+                    style={{
+                      backgroundColor: isDarkTheme ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)',
+                      color: theme.text,
+                    }}
+                  >
+                    <span
+                      className="font-bold shrink-0 text-[11px] px-1.5 py-0.5 rounded"
+                      style={{
+                        backgroundColor: isDarkTheme ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)',
+                        color: theme.verseNumber,
+                      }}
+                    >
+                      {refStr}
+                    </span>
+                    <span className="flex-1 opacity-90 text-[12px]">{fn.text}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
     </motion.div>
   );
