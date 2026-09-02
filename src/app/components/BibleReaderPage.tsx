@@ -2858,7 +2858,18 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             chapter={selectedChapter}
             selectedVerses={selectedVerses}
             onClose={() => onVerseTap?.(0)} // container handles clearing
-            existingHighlightColor={userHighlights.find(h => h.metadata?.verse === selectedVerses[0])?.metadata?.color}
+            existingHighlightColor={
+              userHighlights.find(
+                (h) =>
+                  h.type === 'highlight' &&
+                  Number(h.metadata?.verse) === Number(selectedVerses[0]) &&
+                  Number(h.metadata?.chapter) === Number(selectedChapter) &&
+                  (h.metadata?.bookId === selectedBook ||
+                    h.metadata?.bookName === selectedBook ||
+                    h.metadata?.bookId === book ||
+                    h.metadata?.bookName === book)
+              )?.metadata?.color || null
+            }
             existingSaveLabels={existingSaveLabels}
             existingSaveNote={existingSaveNote}
             existingSaveIsPrivate={existingSaveIsPrivate}

@@ -513,6 +513,68 @@ function JournalsContent() {
     }
   };
 
+  // Handle URL query parameters for direct tab/editor opening
+  const initialParamsHandledRef = useRef(false);
+  useEffect(() => {
+    if (!mounted || initialParamsHandledRef.current) return;
+
+    const action = searchParams.get('action');
+    const typeParam = searchParams.get('type');
+    const modeParam = searchParams.get('mode');
+    const createParam = searchParams.get('create');
+    const editorParam = searchParams.get('editor');
+    const tabParam = searchParams.get('tab');
+    const idParam = searchParams.get('id');
+
+    // Handle tab switching from URL
+    if (tabParam) {
+      const lowerTab = tabParam.toLowerCase();
+      if (lowerTab === 'journals' || lowerTab === 'journal') {
+        setActiveTab('Journals');
+      } else if (lowerTab === 'prayers' || lowerTab === 'prayer') {
+        setActiveTab('Prayers');
+      } else if (lowerTab === 'all') {
+        setActiveTab('All');
+      }
+    }
+
+    // Handle opening editor from URL
+    const isJournalCreate =
+      action === 'new_journal' ||
+      action === 'create_journal' ||
+      createParam === 'journal' ||
+      editorParam === 'journal' ||
+      (typeParam === 'journal' && (modeParam === 'create' || action === 'create' || editorParam === 'true'));
+
+    const isPrayerCreate =
+      action === 'new_prayer' ||
+      action === 'create_prayer' ||
+      createParam === 'prayer' ||
+      editorParam === 'prayer' ||
+      (typeParam === 'prayer' && (modeParam === 'create' || action === 'create' || editorParam === 'true'));
+
+    if (isJournalCreate) {
+      initialParamsHandledRef.current = true;
+      handleOpenEditor(null, 'journal');
+    } else if (isPrayerCreate) {
+      initialParamsHandledRef.current = true;
+      handleOpenEditor(null, 'prayer');
+    } else if (idParam && (journals.length > 0 || prayers.length > 0)) {
+      const itemType: ItemType = typeParam === 'prayer' ? 'prayer' : 'journal';
+      const existingItem = itemType === 'journal'
+        ? journals.find(j => j._id === idParam)
+        : prayers.find(p => p._id === idParam);
+      if (existingItem) {
+        initialParamsHandledRef.current = true;
+        if (modeParam === 'edit' || action === 'edit') {
+          handleOpenEditor(existingItem, itemType);
+        } else {
+          handleOpenReader(existingItem, itemType);
+        }
+      }
+    }
+  }, [mounted, searchParams, journals, prayers]);
+
   // Folder creation action - REMOVED (folder creation no longer supported)
 
   // Card Toggling (Pin / Bookmark)
@@ -936,6 +998,29 @@ function JournalsContent() {
     setEditChecklistItems(items);
   };
 
+  // Dedicated clean navigation back to list view from Editor
+  const handleBackFromEditor = useCallback(() => {
+    if (isDictating) {
+      stopDictation();
+    }
+    setIsLabelSelectorOpen(false);
+    setShowColorMenu(null);
+    setColorMenuPos(null);
+    setIsVerseSearchOpen(false);
+    setIsEditing(false);
+    setEditorId(null);
+    setEditorMode('create');
+
+    // Clean any query params that might have opened editor, preserving source if present
+    if (typeof window !== 'undefined' && window.location.search) {
+      const params = new URLSearchParams(window.location.search);
+      if (params.has('action') || params.has('type') || params.has('mode') || params.has('create') || params.has('editor') || params.has('id')) {
+        const targetUrl = navigationSource === 'profile' ? '/journals?source=profile' : '/journals';
+        router.replace(targetUrl);
+      }
+    }
+  }, [isDictating, stopDictation, navigationSource, router]);
+
   // Main Editor Save Actions
   const saveOrUpdateEditor = async (isAutosave = false) => {
     if (isDictating) {
@@ -978,6 +1063,15 @@ function JournalsContent() {
           } else {
             showToast('Changes saved successfully');
             setIsEditing(false);
+            setEditorId(null);
+            setEditorMode('create');
+            if (typeof window !== 'undefined' && window.location.search) {
+              const params = new URLSearchParams(window.location.search);
+              if (params.has('action') || params.has('type') || params.has('mode') || params.has('create') || params.has('editor') || params.has('id')) {
+                const targetUrl = navigationSource === 'profile' ? '/journals?source=profile' : '/journals';
+                router.replace(targetUrl);
+              }
+            }
           }
         }
       } else {
@@ -997,6 +1091,15 @@ function JournalsContent() {
           }
           showToast('Created successfully');
           setIsEditing(false);
+          setEditorId(null);
+          setEditorMode('create');
+          if (typeof window !== 'undefined' && window.location.search) {
+            const params = new URLSearchParams(window.location.search);
+            if (params.has('action') || params.has('type') || params.has('mode') || params.has('create') || params.has('editor') || params.has('id')) {
+              const targetUrl = navigationSource === 'profile' ? '/journals?source=profile' : '/journals';
+              router.replace(targetUrl);
+            }
+          }
         } else {
           showToast(data.error || 'Failed to create record');
         }
@@ -1993,7 +2096,7 @@ function JournalsContent() {
                 <button
                   type="button"
                   onPointerDown={(e) => e.preventDefault()}
-                  onClick={() => setIsEditing(false)}
+                  onClick={handleBackFromEditor}
                   className="w-10 h-10 -ml-2 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06] cursor-pointer"
                   aria-label="Go back to list"
                 >

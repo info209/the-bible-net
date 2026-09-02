@@ -155,7 +155,9 @@ export default function VerseActionMenu({
   const [view, setView] = useState<'main' | 'save' | 'note'>('main');
   const dragControls = useDragControls();
   const [paletteExpanded, setPaletteExpanded] = useState(false);
-  const [selectedColor, setSelectedColor] = useState<string>(existingHighlightColor || 'yellow');
+  const [selectedColor, setSelectedColor] = useState<string | null>(
+    existingHighlightColor && existingHighlightColor !== 'none' ? existingHighlightColor : null
+  );
 
   const [labelInput, setLabelInput] = useState('');
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
@@ -174,7 +176,9 @@ export default function VerseActionMenu({
     if (isOpen) {
       setView('main');
       setPaletteExpanded(false);
-      setSelectedColor(existingHighlightColor || 'yellow');
+      setSelectedColor(
+        existingHighlightColor && existingHighlightColor !== 'none' ? existingHighlightColor : null
+      );
       setSelectedLabels(existingSaveLabels ?? []);
       setNoteInput(existingSaveNote ?? '');
       setIsPrivate(existingSaveIsPrivate ?? false);

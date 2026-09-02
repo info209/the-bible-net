@@ -617,40 +617,24 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
               )}
             </AnimatePresence>
 
-            {/* Note Content Area */}
-            <div className="mt-4 flex flex-col">
-              <div className="flex items-center gap-3">
-                <MessageSquare className="w-5 h-5 text-gray-400" />
-                <span className="text-xs text-gray-400 font-semibold tracking-wide">Write note</span>
-              </div>
-              
-              {/* Primary Large Editor text area */}
-              <textarea
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                placeholder="New note content..."
-                rows={4}
-                className="w-full bg-transparent resize-none border-none focus:outline-none focus:ring-0 mt-4 text-[36px] font-[400] leading-[52px] text-[#333333] dark:text-white placeholder-gray-300"
-              />
-            </div>
-
-            {/* Verse Previews list */}
+            {/* Linked Verses Section (Positioned ABOVE Note Editor) */}
             {noteVerses.length > 0 && (
-              <div className="mt-6 space-y-4 pt-4 border-t border-gray-100 dark:border-white/[0.04]">
-                <p className="text-xs font-semibold text-gray-400 tracking-wide">Linked verses</p>
+              <div className="mt-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-400 tracking-wide uppercase">Linked verses</p>
                 {noteVerses.map((vRef, idx) => {
                   const r = `${vRef.bookName} ${vRef.chapter}:${vRef.verses.join(', ')}`;
                   return (
-                    <div key={idx} className="flex flex-col relative group bg-white dark:bg-[#151515] p-3 rounded-xl border border-gray-100 dark:border-white/[0.08]">
+                    <div key={idx} className="flex flex-col relative group bg-white dark:bg-[#151515] p-3.5 rounded-xl border border-gray-100 dark:border-white/[0.08]">
                       <button
+                        type="button"
                         onClick={() => setNoteVerses(noteVerses.filter((_, i) => i !== idx))}
-                        className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                        className="absolute top-2.5 right-2.5 text-gray-400 hover:text-red-500 transition-colors p-1"
                         title="Remove verse link"
                       >
                         <X className="w-4 h-4" />
                       </button>
-                      <span className="text-[20px] font-[500] text-[#0B7A81]">{r}</span>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 italic">
+                      <span className="text-[18px] sm:text-[20px] font-[500] text-[#0B7A81]">{r}</span>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 italic leading-relaxed">
                         "{vRef.verseText || 'For he spake of the temple of his body.'}"
                       </p>
                     </div>
@@ -661,11 +645,29 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
 
             {/* Add Verse Button */}
             <button
+              type="button"
               onClick={() => setVersePickerOpen(true)}
-              className="mt-6 flex items-center gap-1.5 text-[16px] font-[400] text-[#666666] dark:text-gray-400 hover:text-[#0B7A81]"
+              className="mt-3 flex items-center gap-1.5 text-[15px] font-[400] text-[#666666] dark:text-gray-400 hover:text-[#0B7A81] transition-colors"
             >
-              <Plus className="w-5 h-5" /> Add verse
+              <Plus className="w-4 h-4" /> Add verse
             </button>
+
+            {/* Note Content Area (Positioned BELOW Linked Verses) */}
+            <div className="mt-5 pt-4 border-t border-gray-100 dark:border-white/[0.06] flex flex-col">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageSquare className="w-4 h-4 text-gray-400" />
+                <span className="text-xs text-gray-400 font-semibold tracking-wide uppercase">Write note</span>
+              </div>
+              
+              {/* Primary Editor text area with natural typography & caret size */}
+              <textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="Write your note here..."
+                rows={6}
+                className="w-full bg-transparent resize-none border-none focus:outline-none focus:ring-0 text-[16px] sm:text-[17px] font-[400] leading-relaxed text-[#222222] dark:text-gray-100 placeholder-gray-400 caret-[#0B7A81] dark:caret-[#14B8A6]"
+              />
+            </div>
 
             {/* Dynamic Verse Selection dialog */}
             <AnimatePresence>

@@ -1941,7 +1941,12 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
           // 1. Get or create the pending record for this verse
           let pending = pendingHighlightUpdatesRef.current.get(verseNum);
           if (!pending) {
-            const original = userHighlights.find(h => h.metadata?.verse === verseNum) || null;
+            const original = userHighlights.find(h =>
+              h.type === 'highlight' &&
+              Number(h.metadata?.verse) === Number(verseNum) &&
+              Number(h.metadata?.chapter) === Number(selectedChapter) &&
+              (h.metadata?.bookId === selectedBookId || h.metadata?.bookName === displayBookName || h.refId === refId)
+            ) || null;
             pending = {
               targetColor: color,
               originalItem: original,
@@ -1969,7 +1974,14 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
             try {
               if (target === 'none') {
-                const existing = getSavedItem('highlight', refId) || userHighlights.find(h => h.metadata?.verse === verseNum || h.refId === refId);
+                const existing = getSavedItem('highlight', refId) || userHighlights.find(h =>
+                  h.type === 'highlight' &&
+                  (h.refId === refId || (
+                    Number(h.metadata?.verse) === Number(verseNum) &&
+                    Number(h.metadata?.chapter) === Number(selectedChapter) &&
+                    (h.metadata?.bookId === selectedBookId || h.metadata?.bookName === displayBookName)
+                  ))
+                );
                 const existingId = existing?._id;
                 if (existingId && !existingId.startsWith('opt_')) {
                   const success = await unsaveItem(existingId);
