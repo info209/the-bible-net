@@ -805,6 +805,180 @@ export class BibleService {
             return '';
         }
     }
+
+    /**
+     * Get complete dataset for an entire Bible version for offline download
+     * Returns version metadata, all books, chapters, verses, and footnotes.
+     */
+    static async getVersionFullDownloadData(versionIdentifier: string) {
+        await connectDB();
+
+        // 1. Resolve version
+        let versionDoc: any = null;
+        if (mongoose.Types.ObjectId.isValid(versionIdentifier)) {
+            versionDoc = await BibleVersion.findById(versionIdentifier).lean();
+        }
+        if (!versionDoc) {
+            const escaped = versionIdentifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            versionDoc = await BibleVersion.findOne({
+                $or: [
+                    { abbreviation: new RegExp(`^${escaped}$`, 'i') },
+                    { name: new RegExp(`^${escaped}$`, 'i') },
+                ],
+            }).lean();
+        }
+
+        if (!versionDoc) {
+            throw new Error(`Version not found: ${versionIdentifier}`);
+        }
+
+        const versionId = versionDoc._id;
+
+        // 2. Fetch all books, chapters, and verses for this version in parallel
+        const [books, chapters, verses] = await Promise.all([
+            Book.find({ version: versionId }).sort({ order: 1 }).lean(),
+            Chapter.find({ version: versionId }).sort({ number: 1 }).lean(),
+            Verse.find({ version: versionId }).sort({ book: 1, chapter: 1, number: 1 }).lean(),
+        ]);
+
+        // 3. Map chapters by book ID
+        const chaptersByBookId = new Map<string, any[]>();
+        for (const ch of chapters) {
+            const bId = ch.book.toString();
+            if (!chaptersByBookId.has(bId)) {
+                chaptersByBookId.set(bId, []);
+            }
+            chaptersByBookId.get(bId)!.push(ch);
+        }
+
+        // 4. Map verses by chapter ID
+        const versesByChapterId = new Map<string, any[]>();
+        for (const v of verses) {
+            const cId = v.chapter.toString();
+            if (!versesByChapterId.has(cId)) {
+                versesByChapterId.set(cId, []);
+            }
+            versesByChapterId.get(cId)!.push({
+                number: v.number,
+                text: v.text,
+                footnotes: v.footnotes || undefined,
+            });
+        }
+
+        // 5. Format books
+        const formattedBooks = books.map((b) => {
+            const bId = b._id.toString();
+            const bookChapters = chaptersByBookId.get(bId) || [];
+            return {
+                id: bId,
+                versionId: versionId.toString(),
+                name: b.name,
+                abbreviation: b.abbreviation,
+                englishName: b.name,
+                order: b.order,
+                testament: b.testament,
+                chapterCount: bookChapters.length || b.chaptersCount || 0,
+            };
+        });
+
+        // 6. Format chapters with verses & normalized footnotes
+        const formattedChapters: any[] = [];
+        for (const b of books) {
+            const bId = b._id.toString();
+            const bookChapters = chaptersByBookId.get(bId) || [];
+            bookChapters.sort((a, b) => a.number - b.number);
+
+            for (const ch of bookChapters) {
+                const cId = ch._id.toString();
+                const chVerses = versesByChapterId.get(cId) || [];
+                chVerses.sort((a, b) => a.number - b.number);
+
+                // Collect chapter & verse footnotes
+                const rawFootnotes = (ch as any)?.footnotes || [];
+                const normalizedFootnotes: Array<{
+                    id: string;
+                    verseNumber: number;
+                    text: string;
+                    reference?: string;
+                    marker?: string;
+                }> = [];
+
+                if (Array.isArray(rawFootnotes)) {
+                    rawFootnotes.forEach((fn: any, idx: number) => {
+                        if (!fn) return;
+                        if (typeof fn === 'string' && fn.trim()) {
+                            normalizedFootnotes.push({
+                                id: `fn-${ch.number}-${idx + 1}`,
+                                verseNumber: 1,
+                                text: fn.trim(),
+                                reference: `${b.name} ${ch.number}:1`,
+                            });
+                        } else if (typeof fn === 'object') {
+                            const vNum = Number(fn.verseNumber || fn.verse || fn.verse_number || 1);
+                            const text = String(fn.text || fn.note || fn.content || '').trim();
+                            if (text) {
+                                normalizedFootnotes.push({
+                                    id: fn.id ? String(fn.id) : `fn-${ch.number}-${vNum}-${idx + 1}`,
+                                    verseNumber: isNaN(vNum) ? 1 : vNum,
+                                    text,
+                                    reference: fn.reference || `${b.name} ${ch.number}:${isNaN(vNum) ? 1 : vNum}`,
+                                    marker: fn.marker,
+                                });
+                            }
+                        }
+                    });
+                }
+
+                // Check verse-level footnotes
+                chVerses.forEach((v: any) => {
+                    if (v.footnotes && Array.isArray(v.footnotes)) {
+                        v.footnotes.forEach((fn: any, idx: number) => {
+                            if (!fn) return;
+                            const text = typeof fn === 'string' ? fn.trim() : String(fn.text || fn.note || '').trim();
+                            if (text) {
+                                normalizedFootnotes.push({
+                                    id: `fn-v-${ch.number}-${v.number}-${idx + 1}`,
+                                    verseNumber: v.number,
+                                    text,
+                                    reference: `${b.name} ${ch.number}:${v.number}`,
+                                    marker: typeof fn === 'object' ? fn.marker : undefined,
+                                });
+                            }
+                        });
+                    }
+                });
+
+                formattedChapters.push({
+                    id: `${versionId.toString()}::${bId}::${ch.number}`,
+                    versionId: versionId.toString(),
+                    bookId: bId,
+                    bookName: b.name,
+                    bookAbbreviation: b.abbreviation || versionDoc.abbreviation,
+                    chapterNumber: ch.number,
+                    testament: b.testament,
+                    verses: chVerses,
+                    footnotes: normalizedFootnotes.length > 0 ? normalizedFootnotes : undefined,
+                    cachedAt: new Date().toISOString(),
+                    isDownloaded: true,
+                });
+            }
+        }
+
+        return {
+            version: {
+                id: versionId.toString(),
+                abbreviation: versionDoc.abbreviation,
+                name: versionDoc.name,
+                language: versionDoc.language,
+                isActive: versionDoc.isActive,
+                updatedAt: versionDoc.updatedAt
+                    ? new Date(versionDoc.updatedAt).toISOString()
+                    : new Date().toISOString(),
+            },
+            books: formattedBooks,
+            chapters: formattedChapters,
+        };
+    }
 }
 
 

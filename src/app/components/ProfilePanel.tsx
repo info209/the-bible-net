@@ -41,6 +41,7 @@ import NotesPage from './NotesPage';
 import HighlightsPage from './HighlightsPage';
 import CommentsPage from './CommentsPage';
 import ComingSoonPage from './ComingSoonPage';
+import EditProfilePage from './EditProfilePage';
 
 interface ProfilePanelProps {
   isOpen: boolean;
@@ -60,7 +61,8 @@ type ProfileView =
   | 'streaks'
   | 'share'
   | 'support'
-  | 'settings';
+  | 'settings'
+  | 'edit-profile';
 
 const gridItems: Array<{
   icon: React.ElementType;
@@ -100,16 +102,17 @@ function Shimmer({ className, style }: { className?: string; style?: React.CSSPr
 
 // Labels for sub-view header titles
 const VIEW_LABELS: Record<Exclude<ProfileView, null>, string> = {
-  likes:      'Likes',
-  saved:      'Saved',
-  notes:      'Notes',
-  highlights: 'Highlights',
-  comments:   'Comments',
-  journals:   'Journals & prayers',
-  streaks:    'Streaks',
-  share:      'Share',
-  support:    'Support',
-  settings:   'Settings',
+  likes:        'Likes',
+  saved:        'Saved',
+  notes:        'Notes',
+  highlights:   'Highlights',
+  comments:     'Comments',
+  journals:     'Journals & prayers',
+  streaks:      'Streaks',
+  share:        'Share',
+  support:      'Support',
+  settings:     'Settings',
+  'edit-profile': 'Edit Profile',
 };
 
 // Which views show ComingSoon (undeveloped features)
@@ -278,25 +281,23 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
               {/* Account Section */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">Account</p>
-                <div className="bg-gray-50 rounded-2xl p-2 space-y-1">
+                <div className="bg-gray-50 dark:bg-[#1c1c1e] rounded-2xl p-2 space-y-1">
                   <button
                     type="button"
                     onClick={() => {
-                      handleClose();
-                      const currentUrl = typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '/home';
-                      router.push(`/auth/profile-setup?source=profile&from=${encodeURIComponent(currentUrl)}`);
+                      setActiveView('edit-profile');
                     }}
-                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white transition-all text-left group"
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white dark:hover:bg-[#2c2c2e] transition-all text-left group cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-teal-50 text-[var(--color-primary-teal)] flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-teal-50 dark:bg-teal-950/40 text-[var(--color-primary-teal)] flex items-center justify-center">
                         <Pencil className="w-5 h-5" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900 group-hover:text-[var(--color-primary-teal)] transition-colors">
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white group-hover:text-[var(--color-primary-teal)] transition-colors">
                           Edit Profile
                         </p>
-                        <p className="text-xs text-gray-500">Name, avatar, country & reading preferences</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Name, avatar, country & reading preferences</p>
                       </div>
                     </div>
                     <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180" />
@@ -307,19 +308,19 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
               {/* Preferences Section */}
               <div className="space-y-2">
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-wider px-1">Preferences</p>
-                <div className="bg-gray-50 rounded-2xl p-2 space-y-1">
+                <div className="bg-gray-50 dark:bg-[#1c1c1e] rounded-2xl p-2 space-y-1">
                   <button
                     type="button"
                     onClick={() => {}}
-                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white transition-all text-left group"
+                    className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white dark:hover:bg-[#2c2c2e] transition-all text-left group"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-950/40 text-blue-600 flex items-center justify-center">
                         <Globe className="w-5 h-5" />
                       </div>
                       <div>
-                        <p className="text-sm font-semibold text-gray-900">Language</p>
-                        <p className="text-xs text-gray-500">English (default)</p>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">Language</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">English (default)</p>
                       </div>
                     </div>
                     <ChevronLeft className="w-4 h-4 text-gray-400 rotate-180" />
@@ -327,6 +328,16 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
                 </div>
               </div>
             </div>
+          </div>
+        );
+      case 'edit-profile':
+        return (
+          <div className={commonScrollClass}>
+            <EditProfilePage
+              onBack={() => setActiveView('settings')}
+              onSaveSuccess={() => setActiveView('settings')}
+              isInsideDrawer={true}
+            />
           </div>
         );
       default:

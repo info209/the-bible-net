@@ -115,7 +115,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
               >
                 <div className="px-4 py-4 bg-gray-50/50 border-b border-gray-100">
                   <p className="text-sm font-bold text-gray-900">Welcome</p>
-                  <p className="text-xs text-gray-500 mt-0.5">Sign in to sync your progress</p>
+                  <p className="text-xs text-gray-500 mt-0.5"></p>
                 </div>
                 <DropdownMenuGroup className="py-1.5">
                   <DropdownMenuItem onClick={() => navigateTo('/auth/login')} className="px-4 py-3 gap-3 cursor-pointer font-medium">
@@ -123,7 +123,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
                     <span>Log in</span>
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigateTo('/auth/register')} className="px-4 py-3 gap-3 cursor-pointer">
-                    <UserPlus className="w-4 h-4 text-gray-400" />
+                    <UserPlus className="w-4 h-4 text-primary-teal" />
                     <span>Create account</span>
                   </DropdownMenuItem>
                 </DropdownMenuGroup>

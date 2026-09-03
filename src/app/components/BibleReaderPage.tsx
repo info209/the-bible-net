@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, Home, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, Loader2 } from 'lucide-react';
+import { ChevronDown, Home, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, Loader2, Trash2, CheckCircle2, RefreshCw, WifiOff, AlertTriangle } from 'lucide-react';
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
 import { MdCompareArrows } from 'react-icons/md';
@@ -20,6 +20,10 @@ import CompareView from './CompareView';
 import BibleSearchModal from './BibleSearchModal';
 import { useAmbientMusicStore } from '@/stores/useAmbientMusicStore';
 import { BookListSkeleton, VersionListSkeleton } from './BibleSkeleton';
+import { useDownloadManager } from '@/hooks/useDownloadManager';
+import { useNetworkStatusContext } from '@/lib/offline/NetworkStatusContext';
+import { StorageManager } from '@/lib/offline/StorageManager';
+import type { DownloadStatus } from '@/lib/offline/types';
 
 import FontsSettingsModal, { ThemeType, TransitionType } from './FontsSettingsModal';
 import AudioFloatingPlayer from './AudioFloatingPlayer';
@@ -193,6 +197,18 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     togglePlay: toggleAmbientPlay,
     restoreSession: restoreAmbientSession
   } = useAmbientMusicStore();
+
+  const { isOnline } = useNetworkStatusContext();
+  const {
+    downloadStates,
+    downloadVersion,
+    deleteVersion,
+    pauseDownload,
+    resumeDownload,
+    retryDownload,
+    cancelDownload,
+    getVersionStatus,
+  } = useDownloadManager();
 
   useEffect(() => {
     if (showMusicSelector) {
@@ -2291,30 +2307,292 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
                     return Object.entries(versionsByLang).map(([lang, vGroup]) => (
                       <div key={lang} className="space-y-2">
-                        <p className="text-sm mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>{lang}</p>
-                        {vGroup.map((version: any) => {
-                          const targetVal = version.name || version.id;
-                          const isSelected = selectedVersion === version.name || selectedVersion === version.id || selectedVersion === version.fullName;
+                        <p className="text-xs font-bold uppercase tracking-wider mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>
+                          {lang}
+                        </p>
+                        {vGroup.map((versionItem: any) => {
+                          const versionId = versionItem.id || versionItem._id || versionItem.name;
+                          const versionAbbr = versionItem.name || versionItem.abbreviation || versionItem.id;
+                          const versionFullName = versionItem.fullName || versionItem.name;
+                          const targetVal = versionItem.name || versionItem.id;
+                          const isSelected = selectedVersion === versionItem.name || selectedVersion === versionItem.id || selectedVersion === versionItem.fullName;
+                          
+                          const record = getVersionStatus(versionId) || getVersionStatus(versionAbbr);
+                          const status: DownloadStatus = record?.status ?? 'not_downloaded';
+                          const isDownloaded = status === 'downloaded';
+                          const isDownloading = status === 'downloading';
+                          const isPaused = status === 'paused';
+                          const isFailed = status === 'failed';
+                          const isUpdateAvailable = status === 'update_available';
+                          const progressPercent = record?.progressPercent ?? 0;
+                          const sizeLabel = record?.estimatedBytes ? StorageManager.formatBytes(record.estimatedBytes) : null;
+
                           return (
-                            <button
-                              key={version.id || version.name}
-                              onClick={() => {
-                                setSelectedVersion(targetVal);
-                                onVersionChange?.(targetVal);
-                                setShowVersionSelector(false);
-                              }}
-                              className="w-full text-left px-4 py-2.5 rounded transition-colors"
+                            <div
+                              key={versionId}
+                              className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 border"
                               style={{
                                 backgroundColor: isSelected
                                   ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
                                   : popupThemeConfig[selectedTheme].selectedBg,
+                                borderColor: isSelected
+                                  ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.3)' : 'rgba(226, 55, 68, 0.25)')
+                                  : 'transparent',
                                 color: isSelected
                                   ? currentTheme.verseNumber
                                   : currentTheme.text,
                               }}
                             >
-                              <div className="text-base font-medium">{version.fullName || version.name} ({version.name})</div>
-                            </button>
+                              {/* Left: Version Info Clickable */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!isOnline && !isDownloaded) {
+                                    toast.info(`${versionFullName} is not downloaded for offline reading. Please select a downloaded version or connect to the internet.`);
+                                    return;
+                                  }
+                                  setSelectedVersion(targetVal);
+                                  onVersionChange?.(targetVal);
+                                  setShowVersionSelector(false);
+                                }}
+                                className="flex-1 text-left min-w-0 flex flex-col justify-center cursor-pointer group"
+                              >
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-semibold truncate group-hover:opacity-80 transition-opacity">
+                                    {versionFullName} ({versionAbbr})
+                                  </span>
+                                  {isDownloaded && (
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center gap-1 shrink-0">
+                                      <CheckCircle2 className="size-2.5" /> Offline
+                                    </span>
+                                  )}
+                                  {!isOnline && !isDownloaded && (
+                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-500 flex items-center gap-1 shrink-0">
+                                      <WifiOff className="size-2.5" /> Online only
+                                    </span>
+                                  )}
+                                </div>
+                                {sizeLabel && isDownloaded && (
+                                  <span className="text-[11px] opacity-60 mt-0.5">{sizeLabel}</span>
+                                )}
+                              </button>
+
+                              {/* Right: Download Action / Status */}
+                              <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                {/* Not Downloaded */}
+                                {status === 'not_downloaded' && (
+                                  <button
+                                    type="button"
+                                    id={`download-version-${versionAbbr}`}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (!isOnline) {
+                                        toast.error('Connect to internet to download Bible version.');
+                                        return;
+                                      }
+                                      try {
+                                        await downloadVersion({
+                                          versionId,
+                                          versionAbbreviation: versionAbbr,
+                                          versionName: versionFullName,
+                                          language: versionItem.language,
+                                        });
+                                        toast.success(`Downloaded ${versionFullName} for offline use.`);
+                                      } catch (err: any) {
+                                        toast.error(err?.message || 'Download failed');
+                                      }
+                                    }}
+                                    disabled={!isOnline}
+                                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-[var(--color-primary-teal)] text-white hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                                    title={!isOnline ? 'Internet connection required to download' : `Download ${versionAbbr} for offline use`}
+                                  >
+                                    <Download className="size-3.5" />
+                                    <span className="hidden sm:inline">Download</span>
+                                  </button>
+                                )}
+
+                                {/* Downloading */}
+                                {isDownloading && (
+                                  <div className="flex items-center gap-1.5 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/50 rounded-lg px-2 py-1">
+                                    <Loader2 className="size-3.5 animate-spin text-[var(--color-primary-teal)]" />
+                                    <span className="text-xs font-bold text-[var(--color-primary-teal)] min-w-[32px] text-right">
+                                      {progressPercent}%
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        pauseDownload(versionId);
+                                      }}
+                                      className="p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/50 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 transition-colors"
+                                      title="Pause download"
+                                    >
+                                      <Pause className="size-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        cancelDownload(versionId);
+                                      }}
+                                      className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-900/40 text-zinc-400 hover:text-rose-500 transition-colors"
+                                      title="Cancel download"
+                                    >
+                                      <X className="size-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Paused */}
+                                {isPaused && (
+                                  <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 rounded-lg px-2 py-1">
+                                    <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 mr-1">
+                                      {progressPercent}% Paused
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!isOnline) {
+                                          toast.error('Connect to internet to resume download.');
+                                          return;
+                                        }
+                                        try {
+                                          await resumeDownload({
+                                            versionId,
+                                            versionAbbreviation: versionAbbr,
+                                            versionName: versionFullName,
+                                            language: versionItem.language,
+                                          });
+                                        } catch (err: any) {
+                                          toast.error(err?.message || 'Download failed');
+                                        }
+                                      }}
+                                      className="p-1 rounded bg-[var(--color-primary-teal)] text-white hover:opacity-90 transition-opacity"
+                                      title="Resume download"
+                                    >
+                                      <Play className="size-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        cancelDownload(versionId);
+                                      }}
+                                      className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-900/40 text-zinc-400 hover:text-rose-500 transition-colors"
+                                      title="Cancel download"
+                                    >
+                                      <X className="size-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Downloaded */}
+                                {isDownloaded && (
+                                  <div className="flex items-center gap-1">
+                                    <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mr-1" />
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await deleteVersion(versionId);
+                                        toast.success(`Removed ${versionFullName} from offline storage.`);
+                                      }}
+                                      className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:border-rose-300 dark:hover:border-rose-800 transition-all"
+                                      title={`Delete ${versionAbbr} offline download`}
+                                    >
+                                      <Trash2 className="size-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Failed */}
+                                {isFailed && (
+                                  <div className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/50 rounded-lg px-2 py-1">
+                                    <AlertTriangle className="size-3.5 text-rose-500 shrink-0" />
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!isOnline) {
+                                          toast.error('Connect to internet to retry download.');
+                                          return;
+                                        }
+                                        try {
+                                          await retryDownload({
+                                            versionId,
+                                            versionAbbreviation: versionAbbr,
+                                            versionName: versionFullName,
+                                            language: versionItem.language,
+                                          });
+                                        } catch (err: any) {
+                                          toast.error(err?.message || 'Download failed');
+                                        }
+                                      }}
+                                      className="flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline"
+                                      title={record?.errorMessage || 'Retry download'}
+                                    >
+                                      <RefreshCw className="size-3" /> Retry
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        cancelDownload(versionId);
+                                      }}
+                                      className="p-0.5 rounded text-zinc-400 hover:text-rose-500 transition-colors"
+                                      title="Dismiss"
+                                    >
+                                      <X className="size-3" />
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Update Available */}
+                                {isUpdateAvailable && (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!isOnline) {
+                                          toast.error('Connect to internet to update Bible version.');
+                                          return;
+                                        }
+                                        try {
+                                          await downloadVersion({
+                                            versionId,
+                                            versionAbbreviation: versionAbbr,
+                                            versionName: versionFullName,
+                                            language: versionItem.language,
+                                          });
+                                          toast.success(`Updated ${versionFullName}.`);
+                                        } catch (err: any) {
+                                          toast.error(err?.message || 'Update failed');
+                                        }
+                                      }}
+                                      disabled={!isOnline}
+                                      className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg bg-amber-500 text-white hover:opacity-90 active:scale-95 transition-all shadow-sm"
+                                      title="Update available"
+                                    >
+                                      <RefreshCw className="size-3" /> Update
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        await deleteVersion(versionId);
+                                        toast.success(`Removed ${versionFullName} from offline storage.`);
+                                      }}
+                                      className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all"
+                                      title={`Delete ${versionAbbr} offline download`}
+                                    >
+                                      <Trash2 className="size-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           );
                         })}
                       </div>

@@ -39,8 +39,7 @@ export default function OfflineManagementPage() {
     downloadStates,
     storageInfo,
     isLoading: isLoadingStates,
-    deleteBook,
-    deleteChapter,
+    deleteVersion,
     refresh: refreshStates,
   } = useDownloadManager();
 
@@ -92,13 +91,13 @@ export default function OfflineManagementPage() {
     loadStorageInfo();
   }, [loadStorageInfo, downloadStates]);
 
-  const handleDeleteBook = useCallback(
-    async (versionId: string, bookId: string) => {
-      await deleteBook(versionId, bookId);
-      toast.success('Book deleted from offline storage.');
+  const handleDeleteVersion = useCallback(
+    async (versionId: string) => {
+      await deleteVersion(versionId);
+      toast.success('Version deleted from offline storage.');
       loadStorageInfo();
     },
-    [deleteBook, loadStorageInfo],
+    [deleteVersion, loadStorageInfo],
   );
 
   const handleClearCache = useCallback(async () => {
@@ -127,8 +126,8 @@ export default function OfflineManagementPage() {
     }
   }, [refreshStates, loadStorageInfo]);
 
-  const downloadedBooks = Object.values(downloadStates).filter(
-    (s) => s.status === 'downloaded' && s.targetType === 'book',
+  const downloadedVersions = Object.values(downloadStates).filter(
+    (s) => s.status === 'downloaded' && (s.targetType === 'version' || !s.targetType),
   );
 
   const usagePercent =
@@ -165,7 +164,7 @@ export default function OfflineManagementPage() {
           <div className="flex items-center gap-3 p-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
             <WifiOff className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
             <p className="text-sm text-amber-700 dark:text-amber-300">
-              You&apos;re offline. Connect to download books in the Audio Control Panel.
+              You&apos;re offline. Connect to download new Bible versions.
             </p>
           </div>
         )}
@@ -221,11 +220,11 @@ export default function OfflineManagementPage() {
           </section>
         )}
 
-        {/* Downloaded Books */}
+        {/* Downloaded Versions */}
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
-              Downloaded Books
+              Downloaded Versions
             </h2>
             {isOnline && (
               <button
@@ -247,18 +246,18 @@ export default function OfflineManagementPage() {
                 />
               ))}
             </div>
-          ) : downloadedBooks.length === 0 ? (
+          ) : downloadedVersions.length === 0 ? (
             <div className="text-center py-12 text-zinc-400 dark:text-zinc-600 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800">
               <BookOpen className="h-10 w-10 mx-auto mb-3 opacity-40" />
-              <p className="text-sm font-semibold">No downloaded books</p>
+              <p className="text-sm font-semibold">No downloaded versions</p>
               <p className="text-xs text-zinc-400 mt-1 max-w-xs mx-auto">
-                Open the Audio Control Panel in the Bible Reader to download individual books or chapters for offline use.
+                Open the Bible Version selector in the Bible Reader to download full versions for offline reading.
               </p>
             </div>
           ) : (
             <div className="space-y-3">
               <AnimatePresence>
-                {downloadedBooks.map((rec) => (
+                {downloadedVersions.map((rec) => (
                   <motion.div
                     key={rec.id}
                     layout
@@ -270,20 +269,20 @@ export default function OfflineManagementPage() {
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-bold text-sm text-zinc-900 dark:text-zinc-100">
-                          {rec.bookName}
+                          {rec.versionName || rec.versionAbbreviation} ({rec.versionAbbreviation})
                         </span>
                         <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
                           <CheckCircle2 className="size-3" /> Downloaded
                         </span>
                       </div>
                       <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
-                        {rec.totalChapters} chapters &middot; {rec.versionAbbreviation} &middot;{' '}
+                        {rec.totalChapters || 1189} chapters &middot; {rec.language || 'English'} &middot;{' '}
                         {rec.estimatedBytes ? StorageManager.formatBytes(rec.estimatedBytes) : 'Stored'}
                       </p>
                     </div>
 
                     <button
-                      onClick={() => handleDeleteBook(rec.versionId, rec.bookId!)}
+                      onClick={() => handleDeleteVersion(rec.versionId)}
                       className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
                     >
                       <Trash2 className="size-3.5" />

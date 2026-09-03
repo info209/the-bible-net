@@ -1,24 +1,27 @@
 /**
  * DownloadManager
  *
- * Handles Book-level and Chapter-level downloads:
- * - Downloads one book at a time (all chapters of that book) or individual chapters
- * - Strictly enforces the 100 MB storage cap via StorageManager
- * - Tracks download progress with percentage and callbacks
- * - Supports cancellation via AbortController
+ * Handles Version-level Bible downloads:
+ * - Downloads an entire Bible version (all books, chapters, verses, and footnotes)
+ * - Strictly enforces the 100 MB storage cap and browser quota via StorageManager
+ * - Tracks download progress (0% - 100%) with reactive callbacks
+ * - Protects downloaded chapters in LRU cache
+ * - Supports cancellation, pause, resume, and retry via AbortController
+ * - Resilient to network interruptions, app reloads, and partial failures
  */
 
 import { BibleOfflineService } from './BibleOfflineService';
 import { ChapterCacheService } from './ChapterCacheService';
+import { ModuleOfflineService } from './ModuleOfflineService';
 import { StorageManager } from './StorageManager';
-import { buildBookDownloadKey, buildChapterDownloadKey } from './db';
-import type { OfflineChapterData, DownloadRecord } from './types';
+import { buildVersionDownloadKey } from './db';
+import type { OfflineChapterData, OfflineBookData, OfflineVersionData, DownloadRecord } from './types';
 
-const CHAPTER_BATCH_SIZE = 5;
-const FETCH_TIMEOUT_MS = 15_000;
+const FETCH_TIMEOUT_MS = 60_000;
+const CHAPTER_BATCH_SIZE = 50;
 
-/** Active download controllers keyed by record ID */
-const activeAbortControllers = new Map<string, AbortController>();
+/** Active download controllers keyed by record ID (versionId) */
+const activeAbortControllers = new Map<string, { controller: AbortController; isPause?: boolean }>();
 
 export type DownloadProgressCallback = (
   progress: number,
@@ -29,42 +32,46 @@ export type DownloadProgressCallback = (
 
 export class DownloadManager {
   /**
-   * Download all chapters of a single book.
+   * Download a complete Bible version (all books, chapters, verses, and footnotes).
    */
-  static async downloadBook({
+  static async downloadVersion({
     versionId,
     versionAbbreviation,
-    bookId,
-    bookName,
-    chapterCount,
-    testament = 'OT',
+    versionName,
+    language = 'English',
     onProgress,
   }: {
     versionId: string;
     versionAbbreviation: string;
-    bookId: string;
-    bookName: string;
-    chapterCount: number;
-    testament?: 'OT' | 'NT';
+    versionName?: string;
+    language?: string;
     onProgress?: DownloadProgressCallback;
   }): Promise<void> {
-    const recordId = buildBookDownloadKey(versionId, bookId);
+    const recordId = buildVersionDownloadKey(versionId);
 
-    // 100 MB Storage Cap Check (~5KB per chapter average)
-    const estimatedBytes = chapterCount * 5000;
+    if (this.isDownloading(recordId)) {
+      console.warn(`[DownloadManager] Download already in progress for version ${versionAbbreviation}`);
+      return;
+    }
+
+    // Check if this version was already successfully downloaded (to avoid wiping if update fails)
+    const previousRecord = await BibleOfflineService.getVersionDownloadStatus(recordId);
+    const wasPreviouslyDownloaded = previousRecord?.status === 'downloaded';
+
+    // 1. Storage Cap & Browser Quota Check (~10 MB average per complete version)
+    const estimatedBytes = 15 * 1024 * 1024;
     const canFit = await StorageManager.canFit(estimatedBytes);
     if (!canFit) {
-      const errMessage = '100 MB storage limit reached. Please delete some downloaded books to free up space.';
+      const errMessage = '100 MB offline storage limit reached. Please delete some downloaded versions to free up space.';
       await BibleOfflineService.setDownloadStatus({
         id: recordId,
-        targetType: 'book',
+        targetType: 'version',
         versionId,
         versionAbbreviation,
-        bookId,
-        bookName,
-        totalChapters: chapterCount,
+        versionName: versionName || versionAbbreviation,
+        language,
         status: 'failed',
-        progressPercent: 0,
+        progressPercent: previousRecord?.progressPercent ?? 0,
         errorMessage: errMessage,
       });
       throw new Error(errMessage);
@@ -72,76 +79,156 @@ export class DownloadManager {
 
     this.cancelAbort(recordId);
     const controller = new AbortController();
-    activeAbortControllers.set(recordId, controller);
+    activeAbortControllers.set(recordId, { controller, isPause: false });
 
     try {
       await BibleOfflineService.setDownloadStatus({
         id: recordId,
-        targetType: 'book',
+        targetType: 'version',
         versionId,
         versionAbbreviation,
-        bookId,
-        bookName,
-        totalChapters: chapterCount,
-        downloadedChapters: 0,
+        versionName: versionName || versionAbbreviation,
+        language,
         status: 'downloading',
-        progressPercent: 0,
+        progressPercent: 5,
+        downloadedChapters: 0,
+        totalChapters: previousRecord?.totalChapters ?? 1189,
+        errorMessage: undefined,
       });
 
-      const chapterNumbers = Array.from({ length: chapterCount }, (_, i) => i + 1);
-      let downloadedChapters = 0;
+      onProgress?.(5, 0, previousRecord?.totalChapters ?? 1189, `Connecting to download ${versionAbbreviation}...`);
 
-      for (let i = 0; i < chapterNumbers.length; i += CHAPTER_BATCH_SIZE) {
-        if (controller.signal.aborted) break;
+      // 2. Fetch full version download payload from API
+      let versionData: OfflineVersionData;
+      let booksData: OfflineBookData[] = [];
+      let chaptersData: OfflineChapterData[] = [];
 
-        const batch = chapterNumbers.slice(i, i + CHAPTER_BATCH_SIZE);
-        const chapterDataList = await this.fetchChapterBatch(
-          versionId,
-          versionAbbreviation,
-          bookId,
-          bookName,
-          testament,
-          batch,
-          controller.signal,
+      try {
+        const response = await fetchWithTimeout(
+          `/api/v1/bible/${encodeURIComponent(versionAbbreviation || versionId)}/download`,
+          { signal: controller.signal },
         );
 
-        await BibleOfflineService.saveChapters(chapterDataList);
-
-        for (const ch of chapterDataList) {
-          await ChapterCacheService.updateAccessLog(ch.id, versionId, true);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: Failed to download version`);
         }
 
-        downloadedChapters += chapterDataList.length;
-        const percent = Math.round((downloadedChapters / chapterCount) * 100);
+        const json = await response.json();
+        if (!json.success || !json.data) {
+          throw new Error(json.error || 'Invalid version download response');
+        }
 
-        await BibleOfflineService.updateDownloadProgress(recordId, {
-          progressPercent: percent,
-          downloadedChapters,
-        });
-
-        onProgress?.(percent, downloadedChapters, chapterCount, `Downloading ${bookName}...`);
+        versionData = json.data.version;
+        booksData = json.data.books || [];
+        chaptersData = json.data.chapters || [];
+      } catch (err: any) {
+        if (controller.signal.aborted) throw err;
+        console.warn('[DownloadManager] Bulk download endpoint failed, attempting fallback...', err.message);
+        // Fallback fetch via books & chapters
+        const fallbackResult = await this.fallbackFetchVersion(
+          versionId,
+          versionAbbreviation,
+          versionName,
+          language,
+          controller.signal,
+          onProgress,
+        );
+        versionData = fallbackResult.version;
+        booksData = fallbackResult.books;
+        chaptersData = fallbackResult.chapters;
       }
 
       if (controller.signal.aborted) return;
 
-      const actualBytes = await BibleOfflineService.estimateBookSize(versionId, bookId);
+      const totalChapters = chaptersData.length || 1189;
+      const totalBooks = booksData.length || 66;
+
+      onProgress?.(25, 0, totalChapters, `Storing ${totalBooks} books & ${totalChapters} chapters...`);
+      await BibleOfflineService.updateDownloadProgress(recordId, {
+        progressPercent: 25,
+        totalChapters,
+        totalBooks,
+      });
+
+      // 3. Save Version metadata
+      await BibleOfflineService.saveVersion(versionData);
+
+      // 4. Save Books into IndexedDB & ModuleCache
+      await BibleOfflineService.saveBooks(booksData);
+      
+      // Structure books for ModuleOfflineService compatibility with BibleReader
+      const ot = booksData.filter((b) => b.testament === 'OT' || b.order <= 39);
+      const nt = booksData.filter((b) => b.testament === 'NT' || b.order > 39);
+      const booksCacheObj = { 'Old Testament': ot, 'New Testament': nt };
+      ModuleOfflineService.saveCache(`bible_books_${versionId}`, booksCacheObj).catch(() => {});
+      ModuleOfflineService.saveCache(`bible_books_${versionAbbreviation}`, booksCacheObj).catch(() => {});
+
+      // 5. Batch save Chapters into IndexedDB with protection in access log
+      let savedChapters = 0;
+      for (let i = 0; i < chaptersData.length; i += CHAPTER_BATCH_SIZE) {
+        if (controller.signal.aborted) break;
+
+        const batch = chaptersData.slice(i, i + CHAPTER_BATCH_SIZE);
+        await BibleOfflineService.saveChapters(batch);
+
+        for (const ch of batch) {
+          await ChapterCacheService.updateAccessLog(ch.id, versionId, true);
+        }
+
+        savedChapters += batch.length;
+        const percent = Math.min(95, Math.round(25 + (savedChapters / totalChapters) * 70));
+
+        await BibleOfflineService.updateDownloadProgress(recordId, {
+          progressPercent: percent,
+          downloadedChapters: savedChapters,
+          downloadedBooks: Math.round((savedChapters / totalChapters) * totalBooks),
+        });
+
+        onProgress?.(percent, savedChapters, totalChapters, `Saving chapters (${savedChapters}/${totalChapters})...`);
+      }
+
+      if (controller.signal.aborted) return;
+
+      // 6. Verify and finalize download
+      const actualBytes = await BibleOfflineService.estimateVersionSize(versionId);
       await BibleOfflineService.updateDownloadProgress(recordId, {
         status: 'downloaded',
         progressPercent: 100,
-        downloadedChapters: chapterCount,
+        downloadedChapters: totalChapters,
+        totalChapters,
+        downloadedBooks: totalBooks,
+        totalBooks,
         downloadedAt: new Date().toISOString(),
         estimatedBytes: actualBytes,
         errorMessage: undefined,
       });
 
-      onProgress?.(100, chapterCount, chapterCount, `${bookName} downloaded`);
+      onProgress?.(100, totalChapters, totalChapters, `${versionName || versionAbbreviation} is ready for offline reading.`);
     } catch (err: any) {
-      if (err.name === 'AbortError') return;
-      console.error('[DownloadManager] Book download failed:', err);
-      await BibleOfflineService.updateDownloadProgress(recordId, {
-        status: 'failed',
-        errorMessage: err.message || 'Download failed',
-      });
+      const abortInfo = activeAbortControllers.get(recordId);
+      if (err.name === 'AbortError' || controller.signal.aborted) {
+        if (abortInfo?.isPause) {
+          await BibleOfflineService.updateDownloadProgress(recordId, {
+            status: 'paused',
+          });
+        }
+        return;
+      }
+
+      console.error('[DownloadManager] Version download failed:', err);
+
+      // If this was an update on a previously valid version, don't wipe out the valid download
+      if (wasPreviouslyDownloaded) {
+        await BibleOfflineService.updateDownloadProgress(recordId, {
+          status: 'update_available',
+          errorMessage: `Update failed: ${err.message || 'Network error'}`,
+        });
+      } else {
+        await BibleOfflineService.updateDownloadProgress(recordId, {
+          status: 'failed',
+          errorMessage: err.message || 'Download failed. Please check internet and retry.',
+        });
+      }
       throw err;
     } finally {
       activeAbortControllers.delete(recordId);
@@ -149,122 +236,67 @@ export class DownloadManager {
   }
 
   /**
-   * Download a single chapter of a book.
+   * Delete an entire downloaded Bible version from offline storage.
    */
-  static async downloadChapter({
+  static async deleteVersion(versionId: string): Promise<void> {
+    const recordId = buildVersionDownloadKey(versionId);
+    this.cancelAbort(recordId);
+    await BibleOfflineService.deleteVersionData(versionId);
+    // Also remove from ModuleOfflineService cache
+    ModuleOfflineService.saveCache(`bible_books_${versionId}`, null).catch(() => {});
+  }
+
+  /**
+   * Pause an active download.
+   */
+  static pauseDownload(versionId: string): void {
+    const recordId = buildVersionDownloadKey(versionId);
+    const active = activeAbortControllers.get(recordId);
+    if (active) {
+      active.isPause = true;
+      active.controller.abort();
+      activeAbortControllers.delete(recordId);
+    }
+    BibleOfflineService.updateDownloadProgress(recordId, {
+      status: 'paused',
+    }).catch(() => {});
+  }
+
+  /**
+   * Resume / Retry a paused or failed download.
+   */
+  static async resumeDownload({
     versionId,
     versionAbbreviation,
-    bookId,
-    bookName,
-    chapterNumber,
-    testament = 'OT',
+    versionName,
+    language,
     onProgress,
   }: {
     versionId: string;
     versionAbbreviation: string;
-    bookId: string;
-    bookName: string;
-    chapterNumber: number;
-    testament?: 'OT' | 'NT';
+    versionName?: string;
+    language?: string;
     onProgress?: DownloadProgressCallback;
   }): Promise<void> {
-    const recordId = buildChapterDownloadKey(versionId, bookId, chapterNumber);
-
-    // 100 MB Storage Cap Check (~6KB for one chapter)
-    const canFit = await StorageManager.canFit(6000);
-    if (!canFit) {
-      const errMessage = '100 MB storage limit reached. Please delete some downloaded content.';
-      await BibleOfflineService.setDownloadStatus({
-        id: recordId,
-        targetType: 'chapter',
-        versionId,
-        versionAbbreviation,
-        bookId,
-        bookName,
-        chapterNumber,
-        status: 'failed',
-        progressPercent: 0,
-        errorMessage: errMessage,
-      });
-      throw new Error(errMessage);
-    }
-
-    this.cancelAbort(recordId);
-    const controller = new AbortController();
-    activeAbortControllers.set(recordId, controller);
-
-    try {
-      await BibleOfflineService.setDownloadStatus({
-        id: recordId,
-        targetType: 'chapter',
-        versionId,
-        versionAbbreviation,
-        bookId,
-        bookName,
-        chapterNumber,
-        status: 'downloading',
-        progressPercent: 30,
-      });
-
-      onProgress?.(30, 0, 1, `Downloading ${bookName} ${chapterNumber}...`);
-
-      const batch = await this.fetchChapterBatch(
-        versionId,
-        versionAbbreviation,
-        bookId,
-        bookName,
-        testament,
-        [chapterNumber],
-        controller.signal,
-      );
-
-      if (batch.length === 0) throw new Error('Failed to fetch chapter content');
-
-      await BibleOfflineService.saveChapters(batch);
-      await ChapterCacheService.updateAccessLog(batch[0].id, versionId, true);
-
-      await BibleOfflineService.updateDownloadProgress(recordId, {
-        status: 'downloaded',
-        progressPercent: 100,
-        downloadedAt: new Date().toISOString(),
-        estimatedBytes: batch[0].verses.reduce((acc, v) => acc + v.text.length, 0) * 2,
-        errorMessage: undefined,
-      });
-
-      onProgress?.(100, 1, 1, `${bookName} ${chapterNumber} downloaded`);
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
-      console.error('[DownloadManager] Chapter download failed:', err);
-      await BibleOfflineService.updateDownloadProgress(recordId, {
-        status: 'failed',
-        errorMessage: err.message || 'Download failed',
-      });
-      throw err;
-    } finally {
-      activeAbortControllers.delete(recordId);
-    }
+    await this.downloadVersion({
+      versionId,
+      versionAbbreviation,
+      versionName,
+      language,
+      onProgress,
+    });
   }
 
   /**
-   * Delete a downloaded book (and all its stored chapters).
+   * Cancel an active download and revert/clean up state.
    */
-  static async deleteBook(versionId: string, bookId: string): Promise<void> {
-    const recordId = buildBookDownloadKey(versionId, bookId);
+  static async cancelDownload(versionId: string): Promise<void> {
+    const recordId = buildVersionDownloadKey(versionId);
     this.cancelAbort(recordId);
-    await BibleOfflineService.deleteBookData(versionId, bookId);
-  }
-
-  /**
-   * Delete a downloaded chapter.
-   */
-  static async deleteChapter(
-    versionId: string,
-    bookId: string,
-    chapterNumber: number,
-  ): Promise<void> {
-    const recordId = buildChapterDownloadKey(versionId, bookId, chapterNumber);
-    this.cancelAbort(recordId);
-    await BibleOfflineService.deleteSingleChapter(versionId, bookId, chapterNumber);
+    const previous = await BibleOfflineService.getVersionDownloadStatus(recordId);
+    if (previous?.status !== 'downloaded') {
+      await BibleOfflineService.deleteVersionData(versionId);
+    }
   }
 
   /**
@@ -277,61 +309,143 @@ export class DownloadManager {
   private static cancelAbort(recordId: string): void {
     const existing = activeAbortControllers.get(recordId);
     if (existing) {
-      existing.abort();
+      existing.controller.abort();
       activeAbortControllers.delete(recordId);
     }
   }
 
-  private static async fetchChapterBatch(
+  /**
+   * Fallback method: fetch books and chapter content if bulk endpoint is unavailable.
+   */
+  private static async fallbackFetchVersion(
     versionId: string,
     versionAbbreviation: string,
-    bookId: string,
-    bookName: string,
-    testament: 'OT' | 'NT',
-    chapterNumbers: number[],
-    signal: AbortSignal,
-  ): Promise<OfflineChapterData[]> {
-    const results: OfflineChapterData[] = [];
+    versionName?: string,
+    language: string = 'English',
+    signal?: AbortSignal,
+    onProgress?: DownloadProgressCallback,
+  ): Promise<{
+    version: OfflineVersionData;
+    books: OfflineBookData[];
+    chapters: OfflineChapterData[];
+  }> {
+    const booksRes = await fetchWithTimeout(
+      `/api/v1/bible/${encodeURIComponent(versionAbbreviation || versionId)}/books`,
+      { signal },
+    );
+    const booksJson = await booksRes.json();
+    if (!booksJson.success || !Array.isArray(booksJson.data)) {
+      throw new Error('Failed to fetch books for version');
+    }
 
-    await Promise.all(
-      chapterNumbers.map(async (chapterNum) => {
-        if (signal.aborted) return;
+    const rawBooks = booksJson.data;
+    const books: OfflineBookData[] = rawBooks.map((b: any) => ({
+      id: b._id || b.id,
+      versionId,
+      name: b.name,
+      abbreviation: b.abbreviation,
+      englishName: b.name,
+      order: b.order,
+      testament: b.testament || (b.order <= 39 ? 'OT' : 'NT'),
+      chapterCount: b.chaptersCount || b.chapterCount || 1,
+    }));
+
+    const chapters: OfflineChapterData[] = [];
+    const totalBooks = books.length;
+
+    for (let bIdx = 0; bIdx < totalBooks; bIdx++) {
+      if (signal?.aborted) break;
+      const b = books[bIdx];
+      const chCount = b.chapterCount;
+      const chNums = Array.from({ length: chCount }, (_, i) => i + 1);
+
+      for (const chNum of chNums) {
+        if (signal?.aborted) break;
         try {
-          const res = await fetchWithTimeout(
-            `/api/v1/bible/${encodeURIComponent(versionAbbreviation)}/${encodeURIComponent(bookId)}/${chapterNum}`,
+          const chRes = await fetchWithTimeout(
+            `/api/v1/bible/${encodeURIComponent(versionAbbreviation)}/${encodeURIComponent(b.id)}/${chNum}`,
             { signal },
           );
-          if (!res.ok) return;
-
-          const json = await res.json();
-          if (!json.success || !json.data?.verses) return;
-
-          const chapter: OfflineChapterData = {
-            id: `${versionId}::${bookId}::${chapterNum}`,
-            versionId,
-            bookId,
-            bookName,
-            bookAbbreviation: versionAbbreviation,
-            chapterNumber: chapterNum,
-            testament,
-            verses: json.data.verses as Array<{ number: number; text: string }>,
-            footnotes: json.data.footnotes,
-            cachedAt: new Date().toISOString(),
-            isDownloaded: true,
-          };
-          results.push(chapter);
-        } catch (err: any) {
-          if (err.name !== 'AbortError') {
-            console.warn(
-              `[DownloadManager] Failed to fetch ${bookName} ${chapterNum}:`,
-              err.message,
-            );
+          if (chRes.ok) {
+            const chJson = await chRes.json();
+            if (chJson.success && chJson.data?.verses) {
+              chapters.push({
+                id: `${versionId}::${b.id}::${chNum}`,
+                versionId,
+                bookId: b.id,
+                bookName: b.name,
+                bookAbbreviation: b.abbreviation || versionAbbreviation,
+                chapterNumber: chNum,
+                testament: b.testament,
+                verses: chJson.data.verses,
+                footnotes: chJson.data.footnotes,
+                cachedAt: new Date().toISOString(),
+                isDownloaded: true,
+              });
+            }
           }
+        } catch {
+          // Continue with next chapter in fallback
         }
-      }),
-    );
+      }
 
-    return results;
+      onProgress?.(
+        Math.round(5 + (bIdx / totalBooks) * 20),
+        chapters.length,
+        1189,
+        `Fetching ${b.name}...`,
+      );
+    }
+
+    return {
+      version: {
+        id: versionId,
+        abbreviation: versionAbbreviation,
+        name: versionName || versionAbbreviation,
+        language,
+        isActive: true,
+        updatedAt: new Date().toISOString(),
+      },
+      books,
+      chapters,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Backward compatibility wrappers for single Book / Chapter
+  // ---------------------------------------------------------------------------
+
+  static async downloadBook(params: {
+    versionId: string;
+    versionAbbreviation: string;
+    bookId: string;
+    bookName: string;
+    chapterCount: number;
+    testament?: 'OT' | 'NT';
+    onProgress?: DownloadProgressCallback;
+  }): Promise<void> {
+    return this.downloadVersion({
+      versionId: params.versionId,
+      versionAbbreviation: params.versionAbbreviation,
+      versionName: params.versionAbbreviation,
+      onProgress: params.onProgress,
+    });
+  }
+
+  static async downloadChapter(params: any): Promise<void> {
+    return this.downloadVersion({
+      versionId: params.versionId,
+      versionAbbreviation: params.versionAbbreviation,
+      onProgress: params.onProgress,
+    });
+  }
+
+  static async deleteBook(versionId: string, _bookId: string): Promise<void> {
+    return this.deleteVersion(versionId);
+  }
+
+  static async deleteChapter(versionId: string, _bookId: string, _chapterNumber: number): Promise<void> {
+    return this.deleteVersion(versionId);
   }
 }
 

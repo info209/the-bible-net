@@ -170,6 +170,10 @@ export function buildChapterDownloadKey(
   return `${versionId}::${bookId}::${chapterNumber}`;
 }
 
+export function buildVersionDownloadKey(versionId: string): string {
+  return versionId;
+}
+
 export function closeOfflineDB(): void {
   dbPromise = null;
 }

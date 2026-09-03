@@ -48,6 +48,10 @@ export interface DownloadRecord {
   totalChapters?: number;
   /** Chapters downloaded so far */
   downloadedChapters?: number;
+  /** Total books for version download */
+  totalBooks?: number;
+  /** Books downloaded so far */
+  downloadedBooks?: number;
   /** Error message when status === 'failed' */
   errorMessage?: string;
 }
@@ -110,6 +114,10 @@ export interface OfflineVersionData {
   language: string;
   isActive: boolean;
   updatedAt?: string;
+  downloadedAt?: string;
+  totalChapters?: number;
+  totalBooks?: number;
+  estimatedBytes?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -122,7 +130,7 @@ export interface ChapterAccessLog {
   versionId: string;
   /** Unix timestamp (ms) of last access */
   lastAccessedAt: number;
-  /** Whether this entry is protected (part of an explicit book/chapter download) */
+  /** Whether this entry is protected (part of an explicit book/chapter/version download) */
   isProtected: boolean;
 }
 
@@ -184,8 +192,10 @@ export interface StorageUsageBreakdown {
   totalBytes: number;
   /** Hard cap limit in bytes (100 MB) */
   maxCapBytes: number;
-  /** Usage by downloaded books (map: `${versionId}::${bookId}` -> bytes) */
-  byBook: Record<string, number>;
+  /** Usage by downloaded versions (map: `${versionId}` -> bytes) */
+  byVersion: Record<string, number>;
+  /** Usage by downloaded books (backward compatibility map: `${versionId}::${bookId}` -> bytes) */
+  byBook?: Record<string, number>;
   /** Usage by LRU chapter cache */
   chapterCacheBytes: number;
   /** Usage by home cache */

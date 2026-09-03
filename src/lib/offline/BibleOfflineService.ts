@@ -67,7 +67,11 @@ export class BibleOfflineService {
   static async getBooks(versionId: string): Promise<OfflineBookData[]> {
     try {
       const db = await getOfflineDB();
-      const books = await db.getAllFromIndex('bible_books', 'by_version', versionId);
+      let books = await db.getAllFromIndex('bible_books', 'by_version', versionId);
+      if (books.length === 0) {
+        const all = await db.getAll('bible_books');
+        books = all.filter((b) => b.versionId === versionId);
+      }
       return books.sort((a, b) => a.order - b.order);
     } catch {
       return [];
@@ -246,6 +250,12 @@ export class BibleOfflineService {
     }
   }
 
+  static async getVersionDownloadStatus(
+    versionId: string,
+  ): Promise<DownloadRecord | undefined> {
+    return this.getDownloadStatus(versionId);
+  }
+
   static async getBookDownloadStatus(
     versionId: string,
     bookId: string,
@@ -300,7 +310,24 @@ export class BibleOfflineService {
   // Helpers
   // -------------------------------------------------------------------------
 
+  static async isVersionDownloaded(versionId: string): Promise<boolean> {
+    const status = await this.getVersionDownloadStatus(versionId);
+    if (status?.status === 'downloaded') return true;
+
+    // Also check by version abbreviation if versionId is an abbreviation
+    const allStatuses = await this.getAllDownloadStatuses();
+    const match = allStatuses.find(
+      (s) =>
+        (s.versionId === versionId || s.versionAbbreviation?.toLowerCase() === versionId.toLowerCase()) &&
+        s.status === 'downloaded' &&
+        (s.targetType === 'version' || !s.targetType),
+    );
+    return !!match;
+  }
+
   static async isBookDownloaded(versionId: string, bookId: string): Promise<boolean> {
+    // If the entire version is downloaded, book is downloaded
+    if (await this.isVersionDownloaded(versionId)) return true;
     const status = await this.getBookDownloadStatus(versionId, bookId);
     return status?.status === 'downloaded';
   }
@@ -310,11 +337,30 @@ export class BibleOfflineService {
     bookId: string,
     chapterNumber: number,
   ): Promise<boolean> {
+    // If the entire version is downloaded, chapter is downloaded
+    if (await this.isVersionDownloaded(versionId)) return true;
     const status = await this.getChapterDownloadStatus(versionId, bookId, chapterNumber);
     if (status?.status === 'downloaded') return true;
 
     // If the whole book is downloaded, chapter is also downloaded
     return this.isBookDownloaded(versionId, bookId);
+  }
+
+  static async estimateVersionSize(versionId: string): Promise<number> {
+    try {
+      const chapters = await this.getChaptersByVersion(versionId);
+      let totalChars = 0;
+      for (const chapter of chapters) {
+        if (Array.isArray(chapter.verses)) {
+          for (const verse of chapter.verses) {
+            totalChars += (verse.text || '').length;
+          }
+        }
+      }
+      return Math.round(totalChars * 2.5) || 5 * 1024 * 1024;
+    } catch {
+      return 0;
+    }
   }
 
   static async estimateBookSize(versionId: string, bookId: string): Promise<number> {
@@ -329,6 +375,42 @@ export class BibleOfflineService {
       return Math.round(totalChars * 2.5);
     } catch {
       return 0;
+    }
+  }
+
+  static async deleteChaptersForVersion(versionId: string): Promise<void> {
+    try {
+      const db = await getOfflineDB();
+      const chapters = await db.getAllFromIndex('bible_chapters', 'by_version', versionId);
+      if (chapters.length > 0) {
+        const tx = db.transaction(['bible_chapters', 'chapter_access_log'], 'readwrite');
+        await Promise.all([
+          ...chapters.map((c) => tx.objectStore('bible_chapters').delete(c.id)),
+          ...chapters.map((c) => tx.objectStore('chapter_access_log').delete(c.id)),
+          tx.done,
+        ]);
+      }
+    } catch (err) {
+      console.error('[BibleOfflineService] deleteChaptersForVersion failed:', err);
+    }
+  }
+
+  static async deleteVersionData(versionId: string): Promise<void> {
+    try {
+      const db = await getOfflineDB();
+      // 1. Delete all chapters and access logs for this version
+      await this.deleteChaptersForVersion(versionId);
+
+      // 2. Delete all books for this version
+      await this.deleteBooks(versionId);
+
+      // 3. Delete version entry
+      await db.delete('bible_versions', versionId);
+
+      // 4. Delete download status record
+      await this.deleteDownloadStatus(versionId);
+    } catch (err) {
+      console.error('[BibleOfflineService] deleteVersionData failed:', err);
     }
   }
 
