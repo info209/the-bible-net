@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useCallback, useRef, useEff
 import { toast } from '@/context/ToastContext';
 import { useQueryClient, QueryClient } from '@tanstack/react-query';
 import { PendingActionsService } from '@/lib/offline/PendingActionsService';
+import { HomeOfflineService } from '@/lib/offline/HomeOfflineService';
 import { useAuth } from '@/context/AuthContext';
 
 export type LikeStatus = 'liked' | 'unliked';
@@ -80,6 +81,16 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
     likesRef.current = likes;
   }, [likes]);
 
+  // Listen for global sync completion to refresh server-authoritative state
+  useEffect(() => {
+    const handleSyncCompleted = () => {
+      queryClient.invalidateQueries({ queryKey: ['likes'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-content-list'] });
+    };
+    window.addEventListener('bible-sync-completed', handleSyncCompleted);
+    return () => window.removeEventListener('bible-sync-completed', handleSyncCompleted);
+  }, [queryClient]);
+
   const registerItem = useCallback((contentId: string, contentType: string, initialLiked: boolean, initialCount: number) => {
     const key = `${contentId}_${contentType}`;
     const initialVal: LikeStatus = initialLiked ? 'liked' : 'unliked';
@@ -87,8 +98,22 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
     setLikes(prev => {
       const existing = prev[key];
       if (existing) {
-        // Once registered, never let a stale initialCount prop from re-rendering
-        // components or modal transitions overwrite the active or confirmed count!
+        // If user has an active in-flight mutation or pending change, preserve their desired state
+        if (existing.inFlight || existing.desiredState !== existing.serverState) {
+          return prev;
+        }
+        // If server authoritative state updated, reconcile smoothly
+        if (existing.serverState !== initialVal || existing.confirmedCount !== initialCount) {
+          return {
+            ...prev,
+            [key]: {
+              ...existing,
+              desiredState: initialVal,
+              serverState: initialVal,
+              confirmedCount: initialCount,
+            }
+          };
+        }
         return prev;
       }
 
@@ -214,6 +239,13 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
       // If network is offline or connection dropped, do not revert optimistic state.
       // Enqueue to PendingActionsService so it syncs when connection returns.
       if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        HomeOfflineService.updateLikeInDailyCache(
+          contentId,
+          contentType,
+          state.desiredState === 'liked',
+          Math.max(0, state.confirmedCount + (state.desiredState === 'liked' ? 1 : 0) - (state.serverState === 'liked' ? 1 : 0)),
+        ).catch(() => {});
+
         await PendingActionsService.enqueue(
           targetAction === 'like' ? 'like_content' : 'unlike_content',
           '/api/interactions/like',
@@ -278,6 +310,14 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
 
     // Optimistically update React Query cache so carousel and modal sync immediately
     updateLikeInCache(queryClient, contentId, contentType, optimisticCount, newDesired === 'liked');
+
+    // Also persist optimistic like to persistent IndexedDB storage (home_cache)
+    HomeOfflineService.updateLikeInDailyCache(
+      contentId,
+      contentType,
+      newDesired === 'liked',
+      optimisticCount,
+    ).catch(() => {});
 
     // If offline, enqueue to PendingActionsService directly
     if (typeof navigator !== 'undefined' && !navigator.onLine) {

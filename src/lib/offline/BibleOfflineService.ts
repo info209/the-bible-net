@@ -351,18 +351,52 @@ export class BibleOfflineService {
   }
 
   // -------------------------------------------------------------------------
-  // Helpers
+  // Helpers & Canonical Resolution
   // -------------------------------------------------------------------------
 
-  static async isVersionDownloaded(versionId: string): Promise<boolean> {
-    const status = await this.getVersionDownloadStatus(versionId);
-    if (status?.status === 'downloaded') return true;
+  static async resolveVersionIdentifiers(versionIdentifier: string): Promise<{ id: string; abbr?: string }> {
+    try {
+      const db = await getOfflineDB();
+      // 1. Direct version table lookup
+      const direct = await db.get('bible_versions', versionIdentifier);
+      if (direct) {
+        return { id: direct.id, abbr: direct.abbreviation };
+      }
+      // 2. Lookup by abbreviation index
+      const byAbbr = await db.getFromIndex('bible_versions', 'by_abbreviation', versionIdentifier);
+      if (byAbbr) {
+        return { id: byAbbr.id, abbr: byAbbr.abbreviation };
+      }
+      // 3. Lookup from download_status
+      const allStatuses = await db.getAll('download_status');
+      const statusMatch = allStatuses.find(
+        (s) =>
+          s.versionId === versionIdentifier ||
+          s.versionAbbreviation?.toLowerCase() === versionIdentifier.toLowerCase() ||
+          s.id === versionIdentifier,
+      );
+      if (statusMatch) {
+        return { id: statusMatch.versionId, abbr: statusMatch.versionAbbreviation };
+      }
+    } catch {
+      // Fallback
+    }
+    return { id: versionIdentifier, abbr: versionIdentifier };
+  }
 
-    // Also check by version abbreviation if versionId is an abbreviation
+  static async isVersionDownloaded(versionId: string): Promise<boolean> {
+    const { id: verId, abbr: verAbbr } = await this.resolveVersionIdentifiers(versionId);
+    const identifiers = Array.from(new Set([versionId, verId, verAbbr].filter(Boolean) as string[]));
+
     const allStatuses = await this.getAllDownloadStatuses();
     const match = allStatuses.find(
       (s) =>
-        (s.versionId === versionId || s.versionAbbreviation?.toLowerCase() === versionId.toLowerCase()) &&
+        identifiers.some(
+          (ident) =>
+            s.id === ident ||
+            s.versionId === ident ||
+            s.versionAbbreviation?.toLowerCase() === ident.toLowerCase(),
+        ) &&
         s.status === 'downloaded' &&
         (s.targetType === 'version' || !s.targetType),
     );
@@ -439,20 +473,81 @@ export class BibleOfflineService {
     }
   }
 
-  static async deleteVersionData(versionId: string): Promise<void> {
+  static async deleteVersionData(versionIdentifier: string): Promise<void> {
     try {
       const db = await getOfflineDB();
-      // 1. Delete all chapters and access logs for this version
-      await this.deleteChaptersForVersion(versionId);
+      const { id: verId, abbr: verAbbr } = await this.resolveVersionIdentifiers(versionIdentifier);
+      const identifiers = Array.from(
+        new Set([versionIdentifier, verId, verAbbr].filter(Boolean) as string[]),
+      );
 
-      // 2. Delete all books for this version
-      await this.deleteBooks(versionId);
+      // 1. Find and delete all chapters for all matching version identifiers from bible_chapters & chapter_access_log
+      const allChapters = await db.getAll('bible_chapters');
+      const matchingChapters = allChapters.filter((c) =>
+        identifiers.some((ident) => c.versionId === ident || c.id.startsWith(`${ident}::`)),
+      );
+      if (matchingChapters.length > 0) {
+        const tx = db.transaction(['bible_chapters', 'chapter_access_log'], 'readwrite');
+        for (const c of matchingChapters) {
+          await tx.objectStore('bible_chapters').delete(c.id);
+          await tx.objectStore('chapter_access_log').delete(c.id);
+        }
+        await tx.done;
+      }
 
-      // 3. Delete version entry
-      await db.delete('bible_versions', versionId);
+      // Also clean up any lingering chapter_access_log entries for this version
+      const allLogs = await db.getAll('chapter_access_log');
+      const matchingLogs = allLogs.filter((l) =>
+        identifiers.some((ident) => l.versionId === ident || l.cacheKey.startsWith(`${ident}::`)),
+      );
+      if (matchingLogs.length > 0) {
+        const txLog = db.transaction('chapter_access_log', 'readwrite');
+        for (const l of matchingLogs) {
+          await txLog.store.delete(l.cacheKey);
+        }
+        await txLog.done;
+      }
 
-      // 4. Delete download status record
-      await this.deleteDownloadStatus(versionId);
+      // 2. Delete all books matching version identifiers
+      const allBooks = await db.getAll('bible_books');
+      const matchingBooks = allBooks.filter((b) => identifiers.includes(b.versionId));
+      if (matchingBooks.length > 0) {
+        const txBook = db.transaction('bible_books', 'readwrite');
+        for (const b of matchingBooks) {
+          await txBook.store.delete(b.id);
+        }
+        await txBook.done;
+      }
+
+      // 3. Delete version entries from bible_versions
+      for (const ident of identifiers) {
+        await db.delete('bible_versions', ident);
+      }
+
+      // 4. Delete all download_status records matching version (version, books, chapters)
+      const allStatuses = await db.getAll('download_status');
+      const matchingStatuses = allStatuses.filter((s) =>
+        identifiers.some(
+          (ident) =>
+            s.id === ident ||
+            s.versionId === ident ||
+            s.versionAbbreviation === ident ||
+            s.id.startsWith(`${ident}::`),
+        ),
+      );
+      if (matchingStatuses.length > 0) {
+        const txStatus = db.transaction('download_status', 'readwrite');
+        for (const s of matchingStatuses) {
+          await txStatus.store.delete(s.id);
+        }
+        await txStatus.done;
+      }
+
+      // 5. Purge ModuleOfflineService book caches
+      const { ModuleOfflineService } = await import('./ModuleOfflineService');
+      for (const ident of identifiers) {
+        await ModuleOfflineService.deleteCache(`bible_books_${ident}`).catch(() => {});
+      }
     } catch (err) {
       console.error('[BibleOfflineService] deleteVersionData failed:', err);
     }

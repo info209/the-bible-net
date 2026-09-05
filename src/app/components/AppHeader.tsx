@@ -80,8 +80,8 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
   return (
     <>
       <header
-        style={isStatic ? undefined : { top: 'var(--offline-banner-total-height, 0px)' }}
-        className={`fixed left-0 right-[var(--removed-body-scroll-bar-size,0px)] z-50 h-16 glass-teal flex justify-center shadow-sm border-b border-white/10 transition-[top] duration-250 ease-out ${className || ''}`}
+        style={isStatic ? { marginTop: 'var(--offline-banner-total-height, 0px)' } : { top: 'var(--offline-banner-total-height, 0px)' }}
+        className={`fixed left-0 right-[var(--removed-body-scroll-bar-size,0px)] z-50 h-16 glass-teal flex justify-center shadow-sm border-b border-white/10 transition-[top,margin-top] duration-250 ease-out ${className || ''}`}
       >
         <div className="w-full max-w-3xl mx-auto px-3 sm:px-8 h-full flex items-center justify-between">
 

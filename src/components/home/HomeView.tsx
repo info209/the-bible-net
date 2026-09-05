@@ -148,26 +148,41 @@ export default function HomeView() {
           queryClient.setQueryData(['daily-devotion', item.date, preferredVersion], item);
         });
         // Save to offline cache (fire-and-forget)
+        HomeOfflineService.saveHomeCache('daily_content_list', items).catch(() => {});
         HomeOfflineService.saveHomeCache('daily_verse', items).catch(() => {});
         return items;
       } catch (err) {
-        // Offline fallback: serve from IndexedDB
-        const cached = await HomeOfflineService.getHomeCache('daily_verse');
-        if (cached?.data) return cached.data as any[];
+        // Offline fallback: serve from persistent IndexedDB storage
+        const cachedList = await HomeOfflineService.getDailyContentList();
+        if (cachedList && Array.isArray(cachedList) && cachedList.length > 0) {
+          return cachedList;
+        }
         throw err;
       }
     },
-    staleTime: 0,
+    staleTime: 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
     networkMode: 'offlineFirst',
   });
 
+  // Listen for sync completion to refresh daily content and prayers from server
+  useEffect(() => {
+    const handleSyncCompleted = () => {
+      queryClient.invalidateQueries({ queryKey: ['daily-content-list'] });
+      queryClient.invalidateQueries({ queryKey: ['prayers', 'home'] });
+    };
+    window.addEventListener('bible-sync-completed', handleSyncCompleted);
+    return () => window.removeEventListener('bible-sync-completed', handleSyncCompleted);
+  }, [queryClient]);
+
   const dailyVerses = useMemo(() => {
-    return (dailyContentData || []).filter((item: any) => item.verseBook && item.verseBook !== 'Unknown');
+    const list = Array.isArray(dailyContentData) ? dailyContentData : [];
+    return list.filter((item: any) => item && item.verseBook && item.verseBook !== 'Unknown');
   }, [dailyContentData]);
 
   const dailyDevotions = useMemo(() => {
-    return (dailyContentData || []).filter((item: any) => item.devotionalTitle && item.devotionalContent);
+    const list = Array.isArray(dailyContentData) ? dailyContentData : [];
+    return list.filter((item: any) => item && item.devotionalTitle && item.devotionalContent);
   }, [dailyContentData]);
 
   const modalContents = useMemo(() => {

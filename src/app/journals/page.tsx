@@ -19,6 +19,8 @@ import { useConfirm } from '@/context/ConfirmContext';
 import { LiaBookMedicalSolid, LiaBookSolid } from 'react-icons/lia';
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 import { fetchWithOfflineCache } from '@/lib/offline';
+import { ModuleOfflineService } from '@/lib/offline/ModuleOfflineService';
+import { PendingActionsService } from '@/lib/offline/PendingActionsService';
 import { useVoiceDictation } from '@/hooks/useVoiceDictation';
 
 // â”€â”€ Tiptap Rich Text Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
@@ -501,8 +503,11 @@ function JournalsContent() {
         }),
       ]);
 
-      if (jData?.success) setJournals(jData.data);
-      if (pData?.success) setPrayers(pData.data);
+      if (jData?.success && Array.isArray(jData.data)) setJournals(jData.data);
+      else if (Array.isArray(jData)) setJournals(jData);
+
+      if (pData?.success && Array.isArray(pData.data)) setPrayers(pData.data);
+      else if (Array.isArray(pData)) setPrayers(pData);
     } catch (err) {
       console.error('Error fetching data:', err);
       if (typeof navigator !== 'undefined' && navigator.onLine) {
@@ -512,6 +517,15 @@ function JournalsContent() {
       setLoading(false);
     }
   };
+
+  // Listen for sync completion to refresh journals & prayers
+  useEffect(() => {
+    const handleSyncCompleted = () => {
+      fetchData();
+    };
+    window.addEventListener('bible-sync-completed', handleSyncCompleted);
+    return () => window.removeEventListener('bible-sync-completed', handleSyncCompleted);
+  }, []);
 
   // Handle URL query parameters for direct tab/editor opening
   const initialParamsHandledRef = useRef(false);
@@ -581,56 +595,112 @@ function JournalsContent() {
   const handleTogglePin = async (id: string, type: ItemType, currentPin: boolean, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     
-    // Optimistic Update
+    // Optimistic Update & local IndexedDB cache update
     if (type === 'journal') {
-      setJournals(journals.map(j => j._id === id ? { ...j, isPinned: !currentPin } : j));
+      const updated = journals.map(j => j._id === id ? { ...j, isPinned: !currentPin, updatedAt: new Date().toISOString() } : j);
+      setJournals(updated);
+      ModuleOfflineService.saveCache('journals_user', updated).catch(() => {});
     } else {
-      setPrayers(prayers.map(p => p._id === id ? { ...p, isPinned: !currentPin } : p));
+      const updated = prayers.map(p => p._id === id ? { ...p, isPinned: !currentPin, updatedAt: new Date().toISOString() } : p);
+      setPrayers(updated);
+      ModuleOfflineService.saveCache('prayers_personal', updated).catch(() => {});
+    }
+
+    const endpoint = type === 'journal' ? `/api/journals/${id}` : `/api/prayers/${id}`;
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+    if (!isOnline) {
+      await PendingActionsService.enqueue(
+        type === 'journal' ? 'toggle_journal_pin' : 'toggle_prayer_pin',
+        endpoint,
+        'PATCH',
+        { isPinned: !currentPin },
+        {
+          userId: (session?.user as any)?.id,
+          entityTempId: id.startsWith('local_') ? id : undefined,
+          entityType: type,
+        }
+      );
+      return;
     }
 
     try {
-      const endpoint = type === 'journal' ? `/api/journals/${id}` : `/api/prayers/${id}`;
       const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isPinned: !currentPin })
       });
-      const data = await res.json();
-      if (!data.success) {
-        showToast('Failed to toggle pin');
-        fetchData(); // Rollback
+      if (!res.ok) {
+        throw new Error('Failed to toggle pin');
       }
-    } catch (err) {
-      showToast('Network error');
-      fetchData(); // Rollback
+    } catch {
+      await PendingActionsService.enqueue(
+        type === 'journal' ? 'toggle_journal_pin' : 'toggle_prayer_pin',
+        endpoint,
+        'PATCH',
+        { isPinned: !currentPin },
+        {
+          userId: (session?.user as any)?.id,
+          entityTempId: id.startsWith('local_') ? id : undefined,
+          entityType: type,
+        }
+      );
     }
   };
 
   const handleToggleBookmark = async (id: string, type: ItemType, currentBookmarked: boolean, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
 
-    // Optimistic Update
+    // Optimistic Update & local IndexedDB cache update
     if (type === 'journal') {
-      setJournals(journals.map(j => j._id === id ? { ...j, isBookmarked: !currentBookmarked } : j));
+      const updated = journals.map(j => j._id === id ? { ...j, isBookmarked: !currentBookmarked, updatedAt: new Date().toISOString() } : j);
+      setJournals(updated);
+      ModuleOfflineService.saveCache('journals_user', updated).catch(() => {});
     } else {
-      setPrayers(prayers.map(p => p._id === id ? { ...p, isBookmarked: !currentBookmarked } : p));
+      const updated = prayers.map(p => p._id === id ? { ...p, isBookmarked: !currentBookmarked, updatedAt: new Date().toISOString() } : p);
+      setPrayers(updated);
+      ModuleOfflineService.saveCache('prayers_personal', updated).catch(() => {});
+    }
+
+    const endpoint = type === 'journal' ? `/api/journals/${id}` : `/api/prayers/${id}`;
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+    if (!isOnline) {
+      await PendingActionsService.enqueue(
+        type === 'journal' ? 'toggle_journal_bookmark' : 'toggle_prayer_bookmark',
+        endpoint,
+        'PATCH',
+        { isBookmarked: !currentBookmarked },
+        {
+          userId: (session?.user as any)?.id,
+          entityTempId: id.startsWith('local_') ? id : undefined,
+          entityType: type,
+        }
+      );
+      return;
     }
 
     try {
-      const endpoint = type === 'journal' ? `/api/journals/${id}` : `/api/prayers/${id}`;
       const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isBookmarked: !currentBookmarked })
       });
-      const data = await res.json();
-      if (!data.success) {
-        showToast('Failed to toggle bookmark');
-        fetchData(); // Rollback
+      if (!res.ok) {
+        throw new Error('Failed to toggle bookmark');
       }
-    } catch (err) {
-      showToast('Network error');
-      fetchData(); // Rollback
+    } catch {
+      await PendingActionsService.enqueue(
+        type === 'journal' ? 'toggle_journal_bookmark' : 'toggle_prayer_bookmark',
+        endpoint,
+        'PATCH',
+        { isBookmarked: !currentBookmarked },
+        {
+          userId: (session?.user as any)?.id,
+          entityTempId: id.startsWith('local_') ? id : undefined,
+          entityType: type,
+        }
+      );
     }
   };
 
@@ -1041,55 +1111,33 @@ function JournalsContent() {
       isBookmarked: editIsBookmarked
     };
 
-    try {
-      if (editorMode === 'edit' && editorId) {
-        // PATCH
-        const endpoint = editorType === 'journal' ? `/api/journals/${editorId}` : `/api/prayers/${editorId}`;
-        const res = await fetch(endpoint, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (data.success) {
-          // Update item in local list
-          if (editorType === 'journal') {
-            setJournals(prev => prev.map(j => j._id === editorId ? data.data : j));
-          } else {
-            setPrayers(prev => prev.map(p => p._id === editorId ? data.data : p));
-          }
-          if (isAutosave) {
-            console.log('[Autosave] Saved.');
-          } else {
-            showToast('Changes saved successfully');
-            setIsEditing(false);
-            setEditorId(null);
-            setEditorMode('create');
-            if (typeof window !== 'undefined' && window.location.search) {
-              const params = new URLSearchParams(window.location.search);
-              if (params.has('action') || params.has('type') || params.has('mode') || params.has('create') || params.has('editor') || params.has('id')) {
-                const targetUrl = navigationSource === 'profile' ? '/journals?source=profile' : '/journals';
-                router.replace(targetUrl);
-              }
-            }
-          }
-        }
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+    if (editorMode === 'edit' && editorId) {
+      // Edit mode
+      const localUpdatedEntity = {
+        _id: editorId,
+        ...payload,
+        updatedAt: new Date().toISOString(),
+      };
+
+      if (editorType === 'journal') {
+        const updated = journals.map(j => j._id === editorId ? { ...j, ...localUpdatedEntity } : j);
+        setJournals(updated);
+        ModuleOfflineService.saveCache('journals_user', updated).catch(() => {});
       } else {
-        // POST (Creation)
-        const endpoint = editorType === 'journal' ? '/api/journals' : '/api/prayers?personal=true';
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (data.success) {
-          if (editorType === 'journal') {
-            setJournals([data.data, ...journals]);
-          } else {
-            setPrayers([data.data, ...prayers]);
-          }
-          showToast('Created successfully');
+        const updated = prayers.map(p => p._id === editorId ? { ...p, ...localUpdatedEntity } : p);
+        setPrayers(updated);
+        ModuleOfflineService.saveCache('prayers_personal', updated).catch(() => {});
+      }
+
+      const endpoint = editorType === 'journal' ? `/api/journals/${editorId}` : `/api/prayers/${editorId}`;
+
+      const handleEditCompletion = () => {
+        if (isAutosave) {
+          console.log('[Autosave] Saved.');
+        } else {
+          showToast('Changes saved successfully');
           setIsEditing(false);
           setEditorId(null);
           setEditorMode('create');
@@ -1100,13 +1148,146 @@ function JournalsContent() {
               router.replace(targetUrl);
             }
           }
-        } else {
-          showToast(data.error || 'Failed to create record');
         }
+      };
+
+      if (!isOnline) {
+        await PendingActionsService.enqueue(
+          editorType === 'journal' ? 'edit_journal' : 'edit_prayer',
+          endpoint,
+          'PATCH',
+          payload,
+          {
+            userId: (session?.user as any)?.id,
+            entityTempId: editorId.startsWith('local_') ? editorId : undefined,
+            entityType: editorType,
+          }
+        );
+        handleEditCompletion();
+        return;
       }
-    } catch (err) {
-      console.error('Editor save error:', err);
-      if (!isAutosave) showToast('Error saving changes');
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success) {
+          if (editorType === 'journal') {
+            const list = journals.map(j => j._id === editorId ? data.data : j);
+            setJournals(list);
+            ModuleOfflineService.saveCache('journals_user', list).catch(() => {});
+          } else {
+            const list = prayers.map(p => p._id === editorId ? data.data : p);
+            setPrayers(list);
+            ModuleOfflineService.saveCache('prayers_personal', list).catch(() => {});
+          }
+          handleEditCompletion();
+        } else {
+          throw new Error(data.error || 'Failed to update record');
+        }
+      } catch {
+        // Fallback to offline queue
+        await PendingActionsService.enqueue(
+          editorType === 'journal' ? 'edit_journal' : 'edit_prayer',
+          endpoint,
+          'PATCH',
+          payload,
+          {
+            userId: (session?.user as any)?.id,
+            entityTempId: editorId.startsWith('local_') ? editorId : undefined,
+            entityType: editorType,
+          }
+        );
+        handleEditCompletion();
+      }
+    } else {
+      // Creation mode
+      const clientMutationId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+      const localId = `local_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+      const nowIso = new Date().toISOString();
+
+      const localNewEntity = {
+        _id: localId,
+        ...payload,
+        status: editorType === 'prayer' ? 'active' : undefined,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+        userId: (session?.user as any)?.id,
+      };
+
+      const handleCreateCompletion = (createdItem: any) => {
+        if (editorType === 'journal') {
+          const list = [createdItem, ...journals];
+          setJournals(list);
+          ModuleOfflineService.saveCache('journals_user', list).catch(() => {});
+        } else {
+          const list = [createdItem, ...prayers];
+          setPrayers(list);
+          ModuleOfflineService.saveCache('prayers_personal', list).catch(() => {});
+        }
+        showToast('Created successfully');
+        setIsEditing(false);
+        setEditorId(null);
+        setEditorMode('create');
+        if (typeof window !== 'undefined' && window.location.search) {
+          const params = new URLSearchParams(window.location.search);
+          if (params.has('action') || params.has('type') || params.has('mode') || params.has('create') || params.has('editor') || params.has('id')) {
+            const targetUrl = navigationSource === 'profile' ? '/journals?source=profile' : '/journals';
+            router.replace(targetUrl);
+          }
+        }
+      };
+
+      const endpoint = editorType === 'journal' ? '/api/journals' : '/api/prayers?personal=true';
+
+      if (!isOnline) {
+        await PendingActionsService.enqueue(
+          editorType === 'journal' ? 'add_journal' : 'add_prayer',
+          endpoint,
+          'POST',
+          payload,
+          {
+            userId: (session?.user as any)?.id,
+            clientMutationId,
+            entityTempId: localId,
+            entityType: editorType,
+          }
+        );
+        handleCreateCompletion(localNewEntity);
+        return;
+      }
+
+      try {
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (data.success && data.data) {
+          handleCreateCompletion(data.data);
+        } else {
+          throw new Error(data.error || 'Failed to create record');
+        }
+      } catch {
+        // Fallback to offline queue
+        await PendingActionsService.enqueue(
+          editorType === 'journal' ? 'add_journal' : 'add_prayer',
+          endpoint,
+          'POST',
+          payload,
+          {
+            userId: (session?.user as any)?.id,
+            clientMutationId,
+            entityTempId: localId,
+            entityType: editorType,
+          }
+        );
+        handleCreateCompletion(localNewEntity);
+      }
     }
   };
 
@@ -1139,23 +1320,51 @@ function JournalsContent() {
     setPrayedTargetId(null);
 
     // Optimistic update
-    setPrayers(prev => prev.map(p => p._id === id ? { ...p, status: 'prayed' } : p));
+    const updatedPrayers = prayers.map(p => p._id === id ? { ...p, status: 'prayed' as const, updatedAt: new Date().toISOString() } : p);
+    setPrayers(updatedPrayers);
+    ModuleOfflineService.saveCache('prayers_personal', updatedPrayers).catch(() => {});
+
+    showToast('Prayer moved to prayed');
+
+    const endpoint = `/api/prayers/${id}`;
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+    if (!isOnline) {
+      await PendingActionsService.enqueue(
+        'edit_prayer',
+        endpoint,
+        'PATCH',
+        { status: 'prayed' },
+        {
+          userId: (session?.user as any)?.id,
+          entityTempId: id.startsWith('local_') ? id : undefined,
+          entityType: 'prayer',
+        }
+      );
+      return;
+    }
+
     try {
-      const res = await fetch(`/api/prayers/${id}`, {
+      const res = await fetch(endpoint, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'prayed' })
       });
-      const data = await res.json();
-      if (!data.success) {
-        showToast('Failed to update prayer status');
-        fetchData(); // rollback
-      } else {
-        showToast('Prayer moved to prayed');
+      if (!res.ok) {
+        throw new Error('Failed to update prayer status');
       }
     } catch {
-      showToast('Network error');
-      fetchData(); // rollback
+      await PendingActionsService.enqueue(
+        'edit_prayer',
+        endpoint,
+        'PATCH',
+        { status: 'prayed' },
+        {
+          userId: (session?.user as any)?.id,
+          entityTempId: id.startsWith('local_') ? id : undefined,
+          entityType: 'prayer',
+        }
+      );
     }
   };
 
@@ -1163,27 +1372,56 @@ function JournalsContent() {
   const handleConfirmDelete = async () => {
     if (!targetItem) return;
     const { id, type } = targetItem;
+    setShowDeleteSheet(false);
+    setTargetItem(null);
+
+    // Optimistically remove from state & update IndexedDB cache
+    if (type === 'journal') {
+      const updated = journals.filter(j => j._id !== id);
+      setJournals(updated);
+      ModuleOfflineService.saveCache('journals_user', updated).catch(() => {});
+    } else {
+      const updated = prayers.filter(p => p._id !== id);
+      setPrayers(updated);
+      ModuleOfflineService.saveCache('prayers_personal', updated).catch(() => {});
+    }
+    showToast('Deleted successfully');
+
+    const endpoint = type === 'journal' ? `/api/journals/${id}` : `/api/prayers/${id}`;
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+    if (!isOnline) {
+      await PendingActionsService.enqueue(
+        type === 'journal' ? 'delete_journal' : 'delete_prayer',
+        endpoint,
+        'DELETE',
+        {},
+        {
+          userId: (session?.user as any)?.id,
+          entityTempId: id.startsWith('local_') ? id : undefined,
+          entityType: type,
+        }
+      );
+      return;
+    }
 
     try {
-      const endpoint = type === 'journal' ? `/api/journals/${id}` : `/api/prayers/${id}`;
       const res = await fetch(endpoint, { method: 'DELETE' });
-      const data = await res.json();
-      
-      if (data.success) {
-        if (type === 'journal') {
-          setJournals(journals.filter(j => j._id !== id));
-        } else {
-          setPrayers(prayers.filter(p => p._id !== id));
-        }
-        showToast('Deleted successfully');
-      } else {
-        showToast('Error deleting item');
+      if (!res.ok && res.status !== 404) {
+        throw new Error('Failed to delete on server');
       }
-    } catch (err) {
-      showToast('Network error');
-    } finally {
-      setShowDeleteSheet(false);
-      setTargetItem(null);
+    } catch {
+      await PendingActionsService.enqueue(
+        type === 'journal' ? 'delete_journal' : 'delete_prayer',
+        endpoint,
+        'DELETE',
+        {},
+        {
+          userId: (session?.user as any)?.id,
+          entityTempId: id.startsWith('local_') ? id : undefined,
+          entityType: type,
+        }
+      );
     }
   };
 
@@ -1197,26 +1435,55 @@ function JournalsContent() {
     });
     if (!confirmBatch) return;
 
-    setLoading(true);
-    try {
-      // Run deletions in parallel
-      await Promise.all(selectedIds.map(async (id) => {
-        // Guess the type from local arrays
-        const isJ = journals.some(j => j._id === id);
-        const endpoint = isJ ? `/api/journals/${id}` : `/api/prayers/${id}`;
-        await fetch(endpoint, { method: 'DELETE' });
-      }));
+    const idsToDelete = [...selectedIds];
+    setSelectionMode(false);
+    setSelectedIds([]);
 
-      // Filter locally
-      setJournals(prev => prev.filter(j => !selectedIds.includes(j._id)));
-      setPrayers(prev => prev.filter(p => !selectedIds.includes(p._id)));
-      showToast('Batch items deleted successfully');
-      setSelectionMode(false);
-      setSelectedIds([]);
-    } catch (err) {
-      showToast('Error in batch deletion');
-    } finally {
-      setLoading(false);
+    const updatedJournals = journals.filter(j => !idsToDelete.includes(j._id));
+    const updatedPrayers = prayers.filter(p => !idsToDelete.includes(p._id));
+    setJournals(updatedJournals);
+    setPrayers(updatedPrayers);
+    ModuleOfflineService.saveCache('journals_user', updatedJournals).catch(() => {});
+    ModuleOfflineService.saveCache('prayers_personal', updatedPrayers).catch(() => {});
+    showToast('Batch items deleted successfully');
+
+    const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+    for (const id of idsToDelete) {
+      const isJ = journals.some(j => j._id === id);
+      const type: ItemType = isJ ? 'journal' : 'prayer';
+      const endpoint = isJ ? `/api/journals/${id}` : `/api/prayers/${id}`;
+
+      if (!isOnline) {
+        await PendingActionsService.enqueue(
+          type === 'journal' ? 'delete_journal' : 'delete_prayer',
+          endpoint,
+          'DELETE',
+          {},
+          {
+            userId: (session?.user as any)?.id,
+            entityTempId: id.startsWith('local_') ? id : undefined,
+            entityType: type,
+          }
+        );
+      } else {
+        try {
+          const res = await fetch(endpoint, { method: 'DELETE' });
+          if (!res.ok && res.status !== 404) throw new Error('Delete failed');
+        } catch {
+          await PendingActionsService.enqueue(
+            type === 'journal' ? 'delete_journal' : 'delete_prayer',
+            endpoint,
+            'DELETE',
+            {},
+            {
+              userId: (session?.user as any)?.id,
+              entityTempId: id.startsWith('local_') ? id : undefined,
+              entityType: type,
+            }
+          );
+        }
+      }
     }
   };
 
