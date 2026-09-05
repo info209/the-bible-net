@@ -60,6 +60,7 @@ interface BibleReaderPageProps {
   verses?: any[];
   chapter?: number;
   version?: string;
+  versionId?: string;
   book?: string;
   onChapterChange?: (chapter: number) => void;
   onBookChange?: (book: string) => void;
@@ -128,6 +129,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     },
     chapter = 1,
     version = '',
+    versionId,
     book = '',
     onChapterChange,
     onBookChange,
@@ -2956,6 +2958,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               font={selectedFont}
               fontSize={fontSize}
               version={selectedVersion}
+              versionId={versionId || apiVersions?.find((v: any) => v.name === selectedVersion || v.id === selectedVersion)?.id}
               theme={currentTheme}
               savedVerseIds={savedVerseIds}
               showFootnotes={showFootnotes}
@@ -2969,6 +2972,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               font={selectedFont}
               fontSize={fontSize}
               version={selectedVersion}
+              versionId={versionId || apiVersions?.find((v: any) => v.name === selectedVersion || v.id === selectedVersion)?.id}
               theme={currentTheme}
               savedVerseIds={savedVerseIds}
               showFootnotes={showFootnotes}
@@ -2994,6 +2998,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               font={selectedFont}
               fontSize={fontSize}
               version={selectedVersion}
+              versionId={versionId || apiVersions?.find((v: any) => v.name === selectedVersion || v.id === selectedVersion)?.id}
               scrollToVerse={selectedVerse}
               readingVerse={currentReadingVerse}
               theme={currentTheme}

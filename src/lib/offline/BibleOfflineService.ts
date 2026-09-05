@@ -140,6 +140,50 @@ export class BibleOfflineService {
         // Index lookup fallback
       }
 
+      // Strategy 2b: Resolve canonical version ID and book ID from IndexedDB records
+      try {
+        let resolvedVerId = versionIdOrAbbr;
+        // Check if versionIdOrAbbr is an abbreviation (e.g. "KJV")
+        const verRecord = await db.getFromIndex('bible_versions', 'by_abbreviation', versionIdOrAbbr);
+        if (verRecord) {
+          resolvedVerId = verRecord.id;
+        }
+
+        let resolvedBookId = bookIdOrName;
+        const allBooks = await db.getAll('bible_books');
+        const targetClean = String(bookIdOrName).toLowerCase().replace(/[-_]/g, ' ').trim();
+        const matchedBook = allBooks.find((b) => {
+          if (b.id === bookIdOrName) return true;
+          const nameClean = (b.name || '').toLowerCase().replace(/[-_]/g, ' ').trim();
+          const engClean = (b.englishName || '').toLowerCase().replace(/[-_]/g, ' ').trim();
+          const abbrClean = (b.abbreviation || '').toLowerCase().replace(/[-_]/g, ' ').trim();
+          return nameClean === targetClean || engClean === targetClean || abbrClean === targetClean;
+        });
+        if (matchedBook) {
+          resolvedBookId = matchedBook.id;
+        }
+
+        if (resolvedVerId !== versionIdOrAbbr || resolvedBookId !== bookIdOrName) {
+          const keyResolved = buildChapterKey(resolvedVerId, resolvedBookId, num);
+          const directResolved = await db.get('bible_chapters', keyResolved);
+          if (directResolved && directResolved.verses && directResolved.verses.length > 0) {
+            return directResolved;
+          }
+
+          const resolvedChapters = await db.getAllFromIndex(
+            'bible_chapters',
+            'by_version_book',
+            [resolvedVerId, resolvedBookId],
+          );
+          const matchResolved = resolvedChapters.find((c) => Number(c.chapterNumber) === num);
+          if (matchResolved && matchResolved.verses && matchResolved.verses.length > 0) {
+            return matchResolved;
+          }
+        }
+      } catch {
+        // Fallback to table scan
+      }
+
       // Strategy 3: Comprehensive scan across all stored chapters
       const allChapters = await db.getAll('bible_chapters');
       if (allChapters.length === 0) return undefined;

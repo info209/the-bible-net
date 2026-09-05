@@ -8,13 +8,14 @@
  * 4. Automatic cache version cleanup on activation
  */
 
-const CACHE_VERSION = 'bible-net-v1.0.0';
+const CACHE_VERSION = 'bible-net-v1.1.0';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const SHELL_CACHE = `shell-${CACHE_VERSION}`;
 
 const PRECACHE_ASSETS = [
   '/',
   '/home',
+  '/bible',
   '/manifest.json',
   '/logo.svg',
   '/banner_bible.jpg',
@@ -40,7 +41,7 @@ self.addEventListener('install', (event) => {
           try {
             const response = await fetch(url, { cache: 'no-cache' });
             if (response.ok) {
-              if (url === '/' || url === '/home') {
+              if (url === '/' || url === '/home' || url === '/bible') {
                 await shellCache.put(url, response.clone());
               } else {
                 await staticCache.put(url, response.clone());
@@ -80,7 +81,7 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Fetch: Handle navigation and asset requests
+// Fetch: Handle navigation, Next.js RSC, and asset requests
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
@@ -91,10 +92,12 @@ self.addEventListener('fetch', (event) => {
   }
 
   // 1. Navigation requests (HTML pages)
-  // Ensures cold start with zero network boots the App Shell
+  // Ensures zero-network navigations, reloads, and route changes boot the App Shell
   if (request.mode === 'navigate' || request.destination === 'document') {
     event.respondWith(
       (async () => {
+        const shellCache = await caches.open(SHELL_CACHE);
+
         try {
           // Try network with a 2.5 second timeout
           const controller = new AbortController();
@@ -106,31 +109,52 @@ self.addEventListener('fetch', (event) => {
           clearTimeout(timeoutId);
 
           if (networkResponse && networkResponse.status === 200) {
-            const shellCache = await caches.open(SHELL_CACHE);
-            // Cache this HTML for this exact URL and also update default /home shell
+            // Cache by exact URL and normalized pathname
             shellCache.put(request.url, networkResponse.clone());
-            shellCache.put('/home', networkResponse.clone());
+            shellCache.put(url.pathname, networkResponse.clone());
+
+            if (url.pathname === '/bible' || url.pathname.startsWith('/bible/')) {
+              shellCache.put('/bible', networkResponse.clone());
+            } else if (url.pathname === '/home' || url.pathname === '/') {
+              shellCache.put('/home', networkResponse.clone());
+              shellCache.put('/', networkResponse.clone());
+            }
+
             return networkResponse;
           }
         } catch (err) {
-          // Network failed or timed out (offline)
+          // Network failed or timed out (offline) - fall through to cached shell
         }
 
-        // Offline fallback: First try cached page for this URL
-        const shellCache = await caches.open(SHELL_CACHE);
-        const cachedPage = await shellCache.match(request.url);
-        if (cachedPage) {
-          return cachedPage;
+        // Offline multi-tiered fallback:
+        // Tier 1: Exact URL match in SHELL_CACHE
+        const exactMatch = await shellCache.match(request.url);
+        if (exactMatch) return exactMatch;
+
+        // Tier 2: Match ignoring search query parameters (e.g. /bible?book=Exodus&chapter=1 -> /bible)
+        const ignoreSearchMatch = await shellCache.match(request.url, { ignoreSearch: true });
+        if (ignoreSearchMatch) return ignoreSearchMatch;
+
+        // Tier 3: Pathname match
+        const pathnameMatch = await shellCache.match(url.pathname);
+        if (pathnameMatch) return pathnameMatch;
+
+        // Tier 4: Bible route fallback (use cached /bible shell)
+        if (url.pathname === '/bible' || url.pathname.startsWith('/bible/')) {
+          const bibleShell = await shellCache.match('/bible');
+          if (bibleShell) return bibleShell;
         }
 
-        // Fallback to /home or root App Shell
+        // Tier 5: General App Shell fallback (/home, /, or /bible)
         const defaultShell =
-          (await shellCache.match('/home')) || (await shellCache.match('/'));
+          (await shellCache.match('/home')) ||
+          (await shellCache.match('/')) ||
+          (await shellCache.match('/bible'));
         if (defaultShell) {
           return defaultShell;
         }
 
-        // Return a basic HTML fallback response if no shell is in cache
+        // Tier 6: Clean self-reloading fallback shell if cache is empty
         return new Response(
           `<!DOCTYPE html>
           <html lang="en">
@@ -148,8 +172,8 @@ self.addEventListener('fetch', (event) => {
             </head>
             <body>
               <h1>The Bible Net</h1>
-              <p>You are offline. Please reconnect to the internet to load this page.</p>
-              <button onclick="window.location.reload()">Reload</button>
+              <p>You are offline. Please reconnect to the internet or open your downloaded Bible.</p>
+              <button onclick="window.location.href='/bible'">Open Bible</button>
             </body>
           </html>`,
           { headers: { 'Content-Type': 'text/html' } },
@@ -159,7 +183,54 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 2. Next.js Static Chunks, Assets & Fonts: Cache-First
+  // 2. Next.js App Router RSC & Client Navigation requests
+  // Intercepting RSC prevents network fetch failures that force Next.js to do hard window.location reloads
+  const isRscRequest =
+    url.searchParams.has('_rsc') ||
+    request.headers.get('RSC') === '1' ||
+    request.headers.has('Next-Router-State-Tree') ||
+    request.headers.get('Next-Router-Prefetch') === '1';
+
+  if (isRscRequest) {
+    event.respondWith(
+      (async () => {
+        const shellCache = await caches.open(SHELL_CACHE);
+        try {
+          const networkResponse = await fetch(request);
+          if (networkResponse && networkResponse.status === 200) {
+            shellCache.put(request.url, networkResponse.clone());
+            return networkResponse;
+          }
+        } catch (err) {
+          // Offline
+        }
+
+        // Try cached RSC payload
+        const cachedRsc =
+          (await shellCache.match(request.url)) ||
+          (await shellCache.match(request.url, { ignoreSearch: true })) ||
+          (await shellCache.match(url.pathname));
+
+        if (cachedRsc) return cachedRsc;
+
+        // For router prefetch requests, return a clean 204 No Content
+        if (request.headers.get('Next-Router-Prefetch') === '1') {
+          return new Response(null, { status: 204 });
+        }
+
+        // For Bible routes, return cached /bible shell or 200 OK so client router doesn't crash
+        if (url.pathname === '/bible' || url.pathname.startsWith('/bible/')) {
+          const bibleShell = await shellCache.match('/bible');
+          if (bibleShell) return bibleShell;
+        }
+
+        return new Response('', { status: 200, headers: { 'Content-Type': 'text/x-component' } });
+      })(),
+    );
+    return;
+  }
+
+  // 3. Next.js Static Chunks, Assets & Fonts: Cache-First
   if (
     url.pathname.startsWith('/_next/static/') ||
     url.pathname.startsWith('/icons/') ||
@@ -178,14 +249,16 @@ self.addEventListener('fetch', (event) => {
         const cached = await caches.match(request);
         if (cached) {
           // Return cache and revalidate in background if online
-          fetch(request)
-            .then(async (freshResponse) => {
-              if (freshResponse && freshResponse.status === 200) {
-                const staticCache = await caches.open(STATIC_CACHE);
-                staticCache.put(request, freshResponse);
-              }
-            })
-            .catch(() => {});
+          if (navigator.onLine) {
+            fetch(request)
+              .then(async (freshResponse) => {
+                if (freshResponse && freshResponse.status === 200) {
+                  const staticCache = await caches.open(STATIC_CACHE);
+                  staticCache.put(request, freshResponse);
+                }
+              })
+              .catch(() => {});
+          }
           return cached;
         }
 
@@ -197,14 +270,13 @@ self.addEventListener('fetch', (event) => {
           }
           return networkResponse;
         } catch (err) {
-          // If offline and not in cache, let it fail
-          return cached || Response.error();
+          // If offline and not in cache, fail gracefully with 404 instead of throwing unhandled
+          return cached || new Response('', { status: 404 });
         }
       })(),
     );
     return;
   }
 
-  // 3. API Requests: Let network handle them. (Offline data fallback is handled by IndexedDB in app code)
-  // Do not intercept or cache dynamically mutating API routes in SW to prevent cache corruption.
+  // 4. API Requests: Handled by network/offline database strategies in application code
 });

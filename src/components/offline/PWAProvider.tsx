@@ -82,6 +82,14 @@ export function PWAProvider({ children }: { children: ReactNode }) {
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         console.log('[PWA] Controller changed.');
       });
+
+      // Warm the shell cache for core offline routes
+      navigator.serviceWorker.ready.then(() => {
+        if (typeof window !== 'undefined' && navigator.onLine) {
+          fetch('/bible', { cache: 'no-cache' }).catch(() => {});
+          fetch('/home', { cache: 'no-cache' }).catch(() => {});
+        }
+      });
     }
 
     // Capture install prompt
