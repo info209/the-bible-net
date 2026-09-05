@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Highlighter } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -141,7 +141,7 @@ function groupHighlights(items: any[]): any[] {
 }
 
 export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps = {}) {
-  const { data: session, status } = useSession();
+  const { session, status } = useAuth();
   const router = useRouter();
   const { savedItems, isLoading, unsaveItem } = useSavedItems();
   const [activeTab, setActiveTab] = useState('all');

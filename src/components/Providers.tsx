@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NetworkStatusProvider } from "@/lib/offline/NetworkStatusContext";
 
 import { PWAProvider } from "@/components/offline/PWAProvider";
+import { AuthProvider } from "@/context/AuthContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
@@ -36,10 +37,17 @@ export function Providers({ children }: { children: React.ReactNode }) {
         <QueryClientProvider client={queryClient}>
             <PWAProvider>
                 <NetworkStatusProvider>
-                    <SessionProvider basePath={basePath}>
-                        <LikeProvider>
-                            {children}
-                        </LikeProvider>
+                    <SessionProvider
+                        basePath={basePath}
+                        refetchInterval={0}
+                        refetchOnWindowFocus={false}
+                        refetchWhenOffline={false}
+                    >
+                        <AuthProvider>
+                            <LikeProvider>
+                                {children}
+                            </LikeProvider>
+                        </AuthProvider>
                     </SessionProvider>
                 </NetworkStatusProvider>
             </PWAProvider>

@@ -229,6 +229,11 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleLike = useCallback(async (contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion') => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.info('Likes require an internet connection.');
+      return;
+    }
+
     const key = `${contentId}_${contentType}`;
     
     setLikes(prev => {

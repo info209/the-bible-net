@@ -20,6 +20,12 @@ export default function LoginPage() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            const offlineMsg = 'Sign in requires an internet connection.';
+            toast.info(offlineMsg);
+            setError(offlineMsg);
+            return;
+        }
         setLoading(true);
         setError('');
 

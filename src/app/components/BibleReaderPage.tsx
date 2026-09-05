@@ -1813,8 +1813,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       {/* Sub Navigation Bar - BECOMES STICKY */}
       <div 
-        className="sticky top-0 left-0 right-0 z-40 border-b border-white/20 shadow-[var(--shadow-xs)] transition-colors duration-300"
-        style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }}
+        className="sticky left-0 right-0 z-40 border-b border-white/20 shadow-[var(--shadow-xs)] transition-[top,background-color,color] duration-250 ease-out"
+        style={{ top: 'var(--offline-banner-total-height, 0px)', backgroundColor: currentTheme.bg, color: currentTheme.text }}
       >
         <div className="max-w-3xl mx-auto px-3 sm:px-8 py-1">
           <div className="flex items-center justify-between">

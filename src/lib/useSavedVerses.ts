@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useEffect } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchWithOfflineCache } from '@/lib/offline';
 import { ModuleOfflineService } from '@/lib/offline/ModuleOfflineService';
@@ -100,7 +100,7 @@ interface UseSavedVersesReturn {
 }
 
 export function useSavedVerses(): UseSavedVersesReturn {
-  const { data: session, status } = useSession();
+  const { session, isAuthenticated } = useAuth();
   const userId = session?.user?.id as string | undefined;
   const queryClient = useQueryClient();
 
@@ -117,7 +117,7 @@ export function useSavedVerses(): UseSavedVersesReturn {
         if (!json.success) throw new Error(json.error || 'Failed to fetch saved verses');
         return json.data as SavedVerseClient[];
       }),
-    enabled: status === 'authenticated' && !!userId,
+    enabled: isAuthenticated && !!userId,
     staleTime: 5 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
     networkMode: 'offlineFirst',
@@ -133,7 +133,7 @@ export function useSavedVerses(): UseSavedVersesReturn {
         if (!json.success) throw new Error(json.error || 'Failed to fetch user labels');
         return json.data as string[];
       }),
-    enabled: status === 'authenticated' && !!userId,
+    enabled: isAuthenticated && !!userId,
     staleTime: 5 * 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
     networkMode: 'offlineFirst',

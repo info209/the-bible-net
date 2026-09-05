@@ -8,7 +8,7 @@
  * 4. Automatic cache version cleanup on activation
  */
 
-const CACHE_VERSION = 'bible-net-v1.1.0';
+const CACHE_VERSION = 'bible-net-v1.2.0';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const SHELL_CACHE = `shell-${CACHE_VERSION}`;
 
@@ -79,6 +79,20 @@ self.addEventListener('activate', (event) => {
       await self.clients.claim();
     })(),
   );
+});
+
+// Listen for application messages
+self.addEventListener('message', async (event) => {
+  if (event.data && event.data.type === 'CLEAR_AUTH_CACHE') {
+    try {
+      const shellCache = await caches.open(SHELL_CACHE);
+      await shellCache.delete('/api/auth/user/session');
+      await shellCache.delete('/api/auth/session');
+      await shellCache.delete('/api/auth/admin/session');
+    } catch (err) {
+      console.warn('[SW] Failed to clear auth cache:', err);
+    }
+  }
 });
 
 // Fetch: Handle navigation, Next.js RSC, and asset requests
@@ -278,5 +292,43 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // 4. API Requests: Handled by network/offline database strategies in application code
+  // 4. Auth Session Requests: Cache-first fallback when offline
+  if (
+    url.pathname === '/api/auth/user/session' ||
+    url.pathname === '/api/auth/session' ||
+    url.pathname === '/api/auth/admin/session'
+  ) {
+    event.respondWith(
+      (async () => {
+        const shellCache = await caches.open(SHELL_CACHE);
+        try {
+          const networkResponse = await fetch(request);
+          if (networkResponse && networkResponse.status === 200) {
+            shellCache.put(request.url, networkResponse.clone());
+            shellCache.put(url.pathname, networkResponse.clone());
+            return networkResponse;
+          }
+        } catch (err) {
+          // Offline
+        }
+
+        const cached =
+          (await shellCache.match(request.url)) ||
+          (await shellCache.match(url.pathname));
+
+        if (cached) {
+          return cached;
+        }
+
+        // Return empty authenticated session object instead of failing with network error
+        return new Response(JSON.stringify({ user: null }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
+      })(),
+    );
+    return;
+  }
+
+  // 5. Other API Requests: Handled by network/offline database strategies in application code
 });

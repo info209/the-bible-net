@@ -9,6 +9,7 @@ import {
   Share2, Bookmark, Lock, Trash2, BookmarkCheck, Copy
 } from 'lucide-react';
 import { RiShareForwardLine } from 'react-icons/ri';
+import { toast } from '@/context/ToastContext';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const MAX_LABEL_LENGTH = 40;
@@ -468,6 +469,12 @@ export default function VerseActionMenu({
                         <div className="flex w-full">
                           <Link
                             href="/auth/login"
+                            onClick={(e) => {
+                              if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                                e.preventDefault();
+                                toast.info('Sign in requires an internet connection.');
+                              }
+                            }}
                             className="flex-1 py-2 bg-[#31C4BE] text-white text-[12px] font-bold rounded-[12px] shadow-[0_4px_15px_rgba(49,196,190,0.22)] active:scale-95 transition-all text-center"
                           >
                             Log in

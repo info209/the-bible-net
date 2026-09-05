@@ -4,7 +4,7 @@ import { Play, MessageCircle, Pause, X, Send, MoreVertical, Check, Bookmark, Boo
 import { RiShareForwardLine } from 'react-icons/ri';
 import { LuNotebookPen } from 'react-icons/lu';
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/context/ToastContext';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -35,7 +35,7 @@ const getGreetingByHour = (hour: number): string => {
 };
 
 export default function HomeView() {
-  const { data: session } = useSession();
+  const { session } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoading: progressLoading } = useReadingProgress();
@@ -264,6 +264,10 @@ export default function HomeView() {
   };
 
   const handleAddComment = async () => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.info('Posting comments requires an internet connection.');
+      return;
+    }
     if (!newComment.trim() || !activeContent) return;
     setSubmittingComment(true);
     try {
@@ -407,6 +411,10 @@ export default function HomeView() {
   };
 
   const handleIntercede = async (prayerId: string) => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.info('Interceding prayers requires an internet connection.');
+      return;
+    }
     if (!session) {
       router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`);
       return;

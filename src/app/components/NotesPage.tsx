@@ -3,7 +3,7 @@
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, MoreVertical, Tag, MessageSquare, Plus, Check, X, FileText, Trash2, Edit2, Bookmark, BookOpen, Share2
@@ -38,7 +38,7 @@ interface NotesPageProps {
 }
 
 export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
-  const { data: session, status } = useSession();
+  const { session, status } = useAuth();
   const router = useRouter();
 
   // Notes hook

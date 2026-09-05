@@ -1,10 +1,10 @@
 import { useEffect, useCallback, useMemo } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { useReadingProgressStore, ProgressItem } from './readingProgressStore';
 import { debounce } from '@/utils/debounce';
 
 export function useReadingProgress() {
-  const { data: session, status } = useSession();
+  const { session, status, isAuthenticated } = useAuth();
   const userId = session?.user?.id;
   
   const { 

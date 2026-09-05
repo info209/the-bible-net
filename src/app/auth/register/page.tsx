@@ -30,6 +30,12 @@ export default function RegisterStep1() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            const offlineMsg = 'Creating an account requires an internet connection.';
+            toast.info(offlineMsg);
+            setError(offlineMsg);
+            return;
+        }
         setLoading(true);
         setError('');
 

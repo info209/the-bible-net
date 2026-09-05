@@ -8,7 +8,7 @@ import {
   Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download,
   Gauge, Timer, Circle, Activity, Music2, Columns2
 } from 'lucide-react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { useSavedItems } from '@/lib/useSavedItems';
 import { useSavedVerses, buildVerseRangeText } from '@/lib/useSavedVerses';
 import { shareVerse, formatCopyVerseText } from '@/utils/verseFormatter';
@@ -116,7 +116,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const queryClient = useQueryClient();
   const { currentVerse, setCurrentVerse, setCurrentChapter: setStoreChapter } = useMediaStore();
   const { updateProgress, latestProgress } = useReadingProgress();
-  const { data: session } = useSession();
+  const { session, isAuthenticated } = useAuth();
   const router = useRouter();
   const { savedItems, isSaved, getSavedItem, toggleSave, saveItem, unsaveItem } = useSavedItems();
   const {
@@ -2160,7 +2160,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       isSliderDragging={isSliderDragging}
       onSliderDragStart={() => setIsSliderDragging(true)}
       onSliderDragEnd={() => setIsSliderDragging(false)}
-      isLoggedIn={!!session?.user}
+      isLoggedIn={isAuthenticated}
       existingSaveLabels={existingSaveLabels}
       existingSaveNote={existingSaveNote}
       existingSaveIsPrivate={existingSaveIsPrivate}
