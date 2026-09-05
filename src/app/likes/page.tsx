@@ -1,5 +1,3 @@
-import { redirect } from 'next/navigation';
-import { getUserSession } from '@/lib/auth-helpers';
 import LikesPage from '@/app/components/LikesPage';
 
 export const metadata = {
@@ -7,12 +5,6 @@ export const metadata = {
   description: 'Your liked Bible verses and daily devotionals.',
 };
 
-export default async function Page() {
-  const session = await getUserSession();
-
-  if (!session?.user) {
-    redirect('/auth/signin');
-  }
-
+export default function Page() {
   return <LikesPage />;
 }

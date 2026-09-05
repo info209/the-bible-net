@@ -30,6 +30,8 @@ const BIBLE_BOOKS = [
   '1 John', '2 John', '3 John', 'Jude', 'Revelation'
 ];
 
+import { useNotes } from '@/hooks/useNotes';
+
 interface NotesPageProps {
   onBack?: () => void;
   onClose?: () => void;
@@ -39,9 +41,8 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
   const { data: session, status } = useSession();
   const router = useRouter();
 
-  // Notes state
-  const [notes, setNotes] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Notes hook
+  const { notes, isLoading, createNote, updateNote, deleteNote } = useNotes();
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   
   // Menu state
@@ -69,37 +70,6 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
 
   // Toast state
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Fetch Notes
-  const fetchNotes = async () => {
-    if (!session?.user) return;
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/notes');
-      const json = await res.json();
-      if (json.success) {
-        setNotes(json.data);
-      }
-    } catch (e) {
-      console.error('[NotesPage] fetch error:', e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      // Clear any data cached from a previous user session
-      setNotes([]);
-      setIsLoading(false);
-      return;
-    }
-    if (status === 'authenticated' && session?.user?.id) {
-      // Clear stale data before re-fetching for this user
-      setNotes([]);
-      fetchNotes();
-    }
-  }, [status, session?.user?.id]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -211,16 +181,8 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
   const handleDeleteNote = async (id: string) => {
     setMenuOpenId(null);
     try {
-      const res = await fetch(`/api/notes/${id}`, {
-        method: 'DELETE',
-      });
-      const json = await res.json();
-      if (json.success) {
-        setNotes(prev => prev.filter(n => n._id !== id));
-        showToast('Note deleted successfully');
-      } else {
-        showToast('Failed to delete note');
-      }
+      await deleteNote(id);
+      showToast('Note deleted successfully');
     } catch (e) {
       showToast('Error deleting note');
     }
@@ -297,40 +259,21 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
         bookId: v.bookId,
         bookName: v.bookName,
         chapter: v.chapter,
-        verses: v.verses
+        verses: v.verses,
+        verseText: v.verseText
       })),
       version: noteVersion
     };
 
     try {
       if (editingNoteId) {
-        const res = await fetch(`/api/notes/${editingNoteId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const json = await res.json();
-        if (json.success) {
-          showToast('Note updated');
-          fetchNotes();
-          setIsEditing(false);
-        } else {
-          showToast('Failed to update note');
-        }
+        await updateNote(editingNoteId, payload);
+        showToast('Note updated');
+        setIsEditing(false);
       } else {
-        const res = await fetch('/api/notes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const json = await res.json();
-        if (json.success) {
-          showToast('Note created');
-          fetchNotes();
-          setIsEditing(false);
-        } else {
-          showToast('Failed to create note');
-        }
+        await createNote(payload);
+        showToast('Note created');
+        setIsEditing(false);
       }
     } catch (e) {
       showToast('Error saving note');

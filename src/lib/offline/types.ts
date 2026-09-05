@@ -165,11 +165,19 @@ export type PendingActionType =
   | 'add_highlight'
   | 'remove_highlight'
   | 'add_note'
+  | 'edit_note'
+  | 'delete_note'
   | 'save_reading_progress'
   | 'add_journal'
   | 'add_prayer'
+  | 'intercede_prayer'
   | 'save_item'
-  | 'delete_item';
+  | 'delete_item'
+  | 'save_plan'
+  | 'complete_plan_item'
+  | 'rate_plan'
+  | 'like_content'
+  | 'unlike_content';
 
 export interface PendingAction {
   id: string;

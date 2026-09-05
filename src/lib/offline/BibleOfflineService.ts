@@ -419,4 +419,122 @@ export class BibleOfflineService {
     await this.deleteChaptersForBook(versionId, bookId);
     await this.deleteDownloadStatus(bookKey);
   }
+
+  // -------------------------------------------------------------------------
+  // Offline Bible Search
+  // -------------------------------------------------------------------------
+
+  static async searchOffline(query: string, preferredVersion: string = 'NKJV'): Promise<any | null> {
+    const cleanQ = query.trim();
+    if (cleanQ.length < 2) return null;
+
+    try {
+      const db = await getOfflineDB();
+      const allChapters = await db.getAll('bible_chapters');
+      if (allChapters.length === 0) return null;
+
+      // 1. Reference check: e.g. "John 3:16" or "Genesis 1"
+      const refMatch = cleanQ.match(/^([1-3]?\s*[a-zA-Z\s]+?)\s+(\d+)(?::(\d+))?$/);
+      if (refMatch) {
+        const bookRaw = refMatch[1].trim();
+        const chapterNum = parseInt(refMatch[2], 10);
+        const verseNum = refMatch[3] ? parseInt(refMatch[3], 10) : undefined;
+
+        const chapter = await this.getChapter(preferredVersion, bookRaw, chapterNum);
+        if (chapter && Array.isArray(chapter.verses)) {
+          if (verseNum != null) {
+            const verse = chapter.verses.find((v) => Number((v as any).verseNumber || (v as any).number) === verseNum);
+            if (verse) {
+              return {
+                mode: 'exact',
+                reference: `${chapter.bookName || bookRaw} ${chapterNum}:${verseNum}`,
+                book: chapter.bookName || bookRaw,
+                chapter: chapterNum,
+                verse: verseNum,
+                text: verse.text,
+                versionCode: preferredVersion,
+                themes: [],
+                emotions: [],
+                availableVersions: [{ versionCode: preferredVersion, text: verse.text }],
+              };
+            }
+          } else {
+            return {
+              mode: 'book',
+              book: chapter.bookName || bookRaw,
+              displayName: chapter.bookName || bookRaw,
+              abbreviation: chapter.bookAbbreviation || chapter.bookId || bookRaw.substring(0, 3).toUpperCase(),
+              testament: chapter.testament || 'OT',
+              totalChapters: 50,
+              chapters: Array.from({ length: 50 }, (_, i) => i + 1),
+              focusChapter: chapterNum,
+            };
+          }
+        }
+      }
+
+      // 2. Book name search
+      const bookLower = cleanQ.toLowerCase();
+      const matchingBookChapter = allChapters.find((c) => {
+        const name = (c.bookName || '').toLowerCase();
+        const abbr = (c.bookAbbreviation || c.bookId || '').toLowerCase();
+        return name === bookLower || abbr === bookLower || name.startsWith(bookLower);
+      });
+
+      if (matchingBookChapter) {
+        const bookName = matchingBookChapter.bookName || cleanQ;
+        return {
+          mode: 'book',
+          book: bookName,
+          displayName: bookName,
+          abbreviation: matchingBookChapter.bookAbbreviation || matchingBookChapter.bookId || bookName.substring(0, 3).toUpperCase(),
+          testament: matchingBookChapter.testament || 'OT',
+          totalChapters: 50,
+          chapters: Array.from({ length: 50 }, (_, i) => i + 1),
+        };
+      }
+
+      // 3. Keyword / Hybrid search across downloaded chapters
+      const results: any[] = [];
+      const lowerKeyword = cleanQ.toLowerCase();
+
+      for (const chapter of allChapters) {
+        if (!Array.isArray(chapter.verses)) continue;
+        for (const verse of chapter.verses) {
+          if (verse.text && verse.text.toLowerCase().includes(lowerKeyword)) {
+            const verseNo = Number((verse as any).verseNumber || (verse as any).number || 1);
+            results.push({
+              verseId: `${chapter.bookId}_${chapter.chapterNumber}_${verseNo}`,
+              number: verseNo,
+              text: verse.text,
+              book: {
+                name: chapter.bookName || 'Bible',
+                abbreviation: chapter.bookAbbreviation || chapter.bookId || 'BIB',
+                displayName: chapter.bookName || 'Bible',
+              },
+              chapter: { number: Number(chapter.chapterNumber) },
+              version: { abbreviation: preferredVersion, name: preferredVersion },
+              emotions: [],
+              themes: [],
+            });
+            if (results.length >= 30) break;
+          }
+        }
+        if (results.length >= 30) break;
+      }
+
+      if (results.length > 0) {
+        return {
+          mode: 'hybrid',
+          results,
+          total: results.length,
+          query: cleanQ,
+        };
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
+  }
 }

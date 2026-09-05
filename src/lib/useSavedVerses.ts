@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchWithOfflineCache } from '@/lib/offline';
+import { ModuleOfflineService } from '@/lib/offline/ModuleOfflineService';
+import { PendingActionsService } from '@/lib/offline/PendingActionsService';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 export interface SavedVerseClient {
@@ -81,13 +83,13 @@ interface UseSavedVersesReturn {
   /** All verse numbers that have been saved in the given (bookId, chapter) */
   savedVerseIdsForChapter: (bookId: string, chapter: number) => number[];
 
-  /** Save (upsert) verses — optimistic update */
+  /** Save (upsert) verses — optimistic update + offline queue */
   saveVerse: (payload: SaveVersePayload) => Promise<void>;
 
-  /** Update an existing save — optimistic update */
+  /** Update an existing save — optimistic update + offline queue */
   updateSavedVerse: (id: string, patch: UpdateVersePayload) => Promise<void>;
 
-  /** Delete a save — optimistic update */
+  /** Delete a save — optimistic update + offline queue */
   deleteSavedVerse: (id: string) => Promise<void>;
 
   /** Add a user-created label to DB */
@@ -108,7 +110,7 @@ export function useSavedVerses(): UseSavedVersesReturn {
   const { data: savedVerses = [], isLoading } = useQuery<SavedVerseClient[]>({
     queryKey: queryKeySavedVerses,
     queryFn: () =>
-      fetchWithOfflineCache(`saved_verses_${userId}`, async () => {
+      fetchWithOfflineCache(`saved_verses_${userId || 'anonymous'}`, async () => {
         const res = await fetch('/api/saved-verses?limit=200');
         if (!res.ok) throw new Error('Failed to fetch saved verses');
         const json = await res.json();
@@ -124,7 +126,7 @@ export function useSavedVerses(): UseSavedVersesReturn {
   const { data: userLabels = [], isLoading: isLabelsLoading } = useQuery<string[]>({
     queryKey: queryKeyUserLabels,
     queryFn: () =>
-      fetchWithOfflineCache(`user_labels_${userId}`, async () => {
+      fetchWithOfflineCache(`user_labels_${userId || 'anonymous'}`, async () => {
         const res = await fetch('/api/user-labels');
         if (!res.ok) throw new Error('Failed to fetch user labels');
         const json = await res.json();
@@ -136,6 +138,16 @@ export function useSavedVerses(): UseSavedVersesReturn {
     gcTime: 24 * 60 * 60 * 1000,
     networkMode: 'offlineFirst',
   });
+
+  // Listen for sync completion to refresh
+  useEffect(() => {
+    const handleSyncCompleted = () => {
+      queryClient.invalidateQueries({ queryKey: queryKeySavedVerses });
+      queryClient.invalidateQueries({ queryKey: queryKeyUserLabels });
+    };
+    window.addEventListener('bible-sync-completed', handleSyncCompleted);
+    return () => window.removeEventListener('bible-sync-completed', handleSyncCompleted);
+  }, [queryClient, queryKeySavedVerses, queryKeyUserLabels]);
 
   const isSaved = useCallback(
     (bookId: string, chapter: number, verses: number[]): boolean => {
@@ -174,15 +186,56 @@ export function useSavedVerses(): UseSavedVersesReturn {
 
   const saveVerseMutation = useMutation({
     mutationFn: async (payload: SaveVersePayload) => {
-      const res = await fetch('/api/saved-verses', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error('Failed to save verse');
-      const json = await res.json();
-      if (!json.success || !json.data) throw new Error(json.error || 'Failed to save verse');
-      return json.data as SavedVerseClient;
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!isOnline) {
+        // Enqueue action for background sync when back online
+        await PendingActionsService.enqueue(
+          'save_verse',
+          '/api/saved-verses',
+          'POST',
+          payload as unknown as Record<string, unknown>,
+        );
+        return {
+          _id: `offline_${Date.now()}`,
+          bookId: payload.bookId,
+          bookName: payload.bookName,
+          chapter: payload.chapter,
+          verses: [...payload.verses].sort((a, b) => a - b),
+          verseRangeText: payload.verseRangeText,
+          labels: payload.labels ?? [],
+          note: payload.note ?? '',
+          version: payload.version,
+          isPrivate: payload.isPrivate ?? false,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as SavedVerseClient;
+      }
+
+      try {
+        const res = await fetch('/api/saved-verses', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Failed to save verse');
+        const json = await res.json();
+        if (!json.success || !json.data) throw new Error(json.error || 'Failed to save verse');
+        return json.data as SavedVerseClient;
+      } catch (err) {
+        // Fallback to queueing if network error occurs
+        await PendingActionsService.enqueue(
+          'save_verse',
+          '/api/saved-verses',
+          'POST',
+          payload as unknown as Record<string, unknown>,
+        );
+        return {
+          _id: `offline_${Date.now()}`,
+          ...payload,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        } as unknown as SavedVerseClient;
+      }
     },
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey: queryKeySavedVerses });
@@ -204,33 +257,34 @@ export function useSavedVerses(): UseSavedVersesReturn {
         updatedAt: new Date().toISOString(),
       };
 
-      queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, (prev) => {
-        const filtered = (prev || []).filter(
+      const updated = [
+        optimistic,
+        ...previousVerses.filter(
           (sv) =>
             !(
               sv.bookId === payload.bookId &&
               sv.chapter === payload.chapter &&
               payload.verses.some((v) => sv.verses.includes(v))
-            )
-        );
-        return [optimistic, ...filtered];
-      });
+            ),
+        ),
+      ];
+
+      queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, updated);
+      ModuleOfflineService.saveCache(`saved_verses_${userId || 'anonymous'}`, updated).catch(() => {});
 
       return { previousVerses, optimistic };
     },
-    onError: (err, payload, context) => {
-      if (context?.previousVerses) {
-        queryClient.setQueryData(queryKeySavedVerses, context.previousVerses);
-      }
-    },
     onSuccess: (data, payload, context) => {
-      // Replace optimistic item with actual response data
       queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, (prev) => {
-        return (prev || []).map((sv) => (sv._id === context?.optimistic._id ? data : sv));
+        const list = (prev || []).map((sv) => (sv._id === context?.optimistic._id ? data : sv));
+        ModuleOfflineService.saveCache(`saved_verses_${userId || 'anonymous'}`, list).catch(() => {});
+        return list;
       });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeySavedVerses });
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        queryClient.invalidateQueries({ queryKey: queryKeySavedVerses });
+      }
     },
   });
 
@@ -240,44 +294,64 @@ export function useSavedVerses(): UseSavedVersesReturn {
 
   const updateSavedVerseMutation = useMutation({
     mutationFn: async ({ id, patch }: { id: string; patch: UpdateVersePayload }) => {
-      const res = await fetch(`/api/saved-verses/${id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      });
-      if (!res.ok) throw new Error('Failed to update saved verse');
-      const json = await res.json();
-      if (!json.success || !json.data) throw new Error(json.error || 'Failed to update saved verse');
-      return json.data as SavedVerseClient;
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!isOnline) {
+        await PendingActionsService.enqueue(
+          'save_verse',
+          `/api/saved-verses/${id}`,
+          'PATCH',
+          patch as unknown as Record<string, unknown>,
+        );
+        return { _id: id, ...patch } as unknown as SavedVerseClient;
+      }
+
+      try {
+        const res = await fetch(`/api/saved-verses/${id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(patch),
+        });
+        if (!res.ok) throw new Error('Failed to update saved verse');
+        const json = await res.json();
+        if (!json.success || !json.data) throw new Error(json.error || 'Failed to update saved verse');
+        return json.data as SavedVerseClient;
+      } catch (err) {
+        await PendingActionsService.enqueue(
+          'save_verse',
+          `/api/saved-verses/${id}`,
+          'PATCH',
+          patch as unknown as Record<string, unknown>,
+        );
+        return { _id: id, ...patch } as unknown as SavedVerseClient;
+      }
     },
     onMutate: async ({ id, patch }) => {
       await queryClient.cancelQueries({ queryKey: queryKeySavedVerses });
       const previousVerses = queryClient.getQueryData<SavedVerseClient[]>(queryKeySavedVerses) || [];
 
-      // Optimistic patch
-      queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, (prev) => {
-        return (prev || []).map((sv) => {
-          if (sv._id === id) {
-            return { ...sv, ...patch, updatedAt: new Date().toISOString() };
-          }
-          return sv;
-        });
+      const updated = previousVerses.map((sv) => {
+        if (sv._id === id) {
+          return { ...sv, ...patch, updatedAt: new Date().toISOString() };
+        }
+        return sv;
       });
+
+      queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, updated);
+      ModuleOfflineService.saveCache(`saved_verses_${userId || 'anonymous'}`, updated).catch(() => {});
 
       return { previousVerses };
     },
-    onError: (err, variables, context) => {
-      if (context?.previousVerses) {
-        queryClient.setQueryData(queryKeySavedVerses, context.previousVerses);
-      }
-    },
     onSuccess: (data, variables) => {
       queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, (prev) => {
-        return (prev || []).map((sv) => (sv._id === variables.id ? data : sv));
+        const list = (prev || []).map((sv) => (sv._id === variables.id ? { ...sv, ...data } : sv));
+        ModuleOfflineService.saveCache(`saved_verses_${userId || 'anonymous'}`, list).catch(() => {});
+        return list;
       });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeySavedVerses });
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        queryClient.invalidateQueries({ queryKey: queryKeySavedVerses });
+      }
     },
   });
 
@@ -287,27 +361,43 @@ export function useSavedVerses(): UseSavedVersesReturn {
 
   const deleteSavedVerseMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/saved-verses/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to delete saved verse');
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!isOnline) {
+        await PendingActionsService.enqueue(
+          'delete_verse',
+          `/api/saved-verses/${id}`,
+          'DELETE',
+          { id },
+        );
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/saved-verses/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to delete saved verse');
+      } catch (err) {
+        await PendingActionsService.enqueue(
+          'delete_verse',
+          `/api/saved-verses/${id}`,
+          'DELETE',
+          { id },
+        );
+      }
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: queryKeySavedVerses });
       const previousVerses = queryClient.getQueryData<SavedVerseClient[]>(queryKeySavedVerses) || [];
 
-      // Optimistic delete
-      queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, (prev) => {
-        return (prev || []).filter((sv) => sv._id !== id);
-      });
+      const updated = previousVerses.filter((sv) => sv._id !== id);
+      queryClient.setQueryData<SavedVerseClient[]>(queryKeySavedVerses, updated);
+      ModuleOfflineService.saveCache(`saved_verses_${userId || 'anonymous'}`, updated).catch(() => {});
 
       return { previousVerses };
     },
-    onError: (err, id, context) => {
-      if (context?.previousVerses) {
-        queryClient.setQueryData(queryKeySavedVerses, context.previousVerses);
-      }
-    },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeySavedVerses });
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        queryClient.invalidateQueries({ queryKey: queryKeySavedVerses });
+      }
     },
   });
 
@@ -318,6 +408,9 @@ export function useSavedVerses(): UseSavedVersesReturn {
   const addUserLabelMutation = useMutation({
     mutationFn: async (label: string) => {
       const trimmed = label.trim();
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!isOnline) return;
+
       const res = await fetch('/api/user-labels', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -330,20 +423,19 @@ export function useSavedVerses(): UseSavedVersesReturn {
       await queryClient.cancelQueries({ queryKey: queryKeyUserLabels });
       const previousLabels = queryClient.getQueryData<string[]>(queryKeyUserLabels) || [];
 
-      queryClient.setQueryData<string[]>(queryKeyUserLabels, (prev) => {
-        if ((prev || []).some((l) => l.toLowerCase() === trimmed.toLowerCase())) return prev;
-        return [trimmed, ...(prev || [])];
-      });
+      const updated = (previousLabels || []).some((l) => l.toLowerCase() === trimmed.toLowerCase())
+        ? previousLabels
+        : [trimmed, ...(previousLabels || [])];
+
+      queryClient.setQueryData<string[]>(queryKeyUserLabels, updated);
+      ModuleOfflineService.saveCache(`user_labels_${userId || 'anonymous'}`, updated).catch(() => {});
 
       return { previousLabels };
     },
-    onError: (err, label, context) => {
-      if (context?.previousLabels) {
-        queryClient.setQueryData(queryKeyUserLabels, context.previousLabels);
-      }
-    },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeyUserLabels });
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        queryClient.invalidateQueries({ queryKey: queryKeyUserLabels });
+      }
     },
   });
 

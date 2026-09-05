@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { ChevronLeft, Highlighter } from 'lucide-react';
@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import CardKebabMenu from '@/app/components/CardKebabMenu';
 import LibraryPageHeader from './LibraryPageHeader';
 import { shareVerse } from '@/utils/verseFormatter';
+import { useSavedItems } from '@/lib/useSavedItems';
 
 const HIGHLIGHT_COLOR_MAP: Record<string, string> = {
   yellow: '#FFD234', green: '#4CD964', blue: '#34AADC',
@@ -142,38 +143,23 @@ function groupHighlights(items: any[]): any[] {
 export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps = {}) {
   const { data: session, status } = useSession();
   const router = useRouter();
-  const [highlights, setHighlights] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const { savedItems, isLoading, unsaveItem } = useSavedItems();
   const [activeTab, setActiveTab] = useState('all');
 
-  useEffect(() => {
-    if (status === 'loading') return;
+  const highlights = useMemo(() => {
+    return savedItems.filter(i => i.type === 'highlight');
+  }, [savedItems]);
 
-    // Clear stale highlights when user signs out
-    if (status === 'unauthenticated' || !session?.user) {
-      setHighlights([]);
-      setIsLoading(false);
-      return;
-    }
-
-    // Re-fetch whenever the authenticated user's ID changes
-    setHighlights([]);
-    setIsLoading(true);
-    fetch('/api/user/saved-items?type=highlight')
-      .then(r => r.json())
-      .then(d => { if (d.success) setHighlights(d.data); })
-      .catch(console.error)
-      .finally(() => setIsLoading(false));
-  }, [status, session?.user?.id]);
+  const filteredHighlights = useMemo(() => {
+    if (activeTab === 'all') return highlights;
+    if (activeTab === 'bible') return highlights.filter(h => !h.metadata?.planId);
+    if (activeTab === 'reading_plan') return highlights.filter(h => !!h.metadata?.planId);
+    return highlights;
+  }, [highlights, activeTab]);
 
   const handleDelete = async (ids: string[], refIds: string[]) => {
-    setHighlights(prev => prev.filter(h => !ids.includes(h._id)));
     try {
-      await Promise.all(
-        ids.map(id =>
-          fetch(`/api/user/save/${id}`, { method: 'DELETE' })
-        )
-      );
+      await Promise.all(ids.map(id => unsaveItem(id)));
     } catch (err) {
       console.error("Failed to delete highlights:", err);
     }
@@ -190,7 +176,7 @@ export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps 
         </div>
         <h2 className="text-lg font-bold text-[#111111] dark:text-white mb-1">Sign in to see your highlights</h2>
         <p className="text-sm text-gray-400 mb-6">Your highlighted verses will appear here.</p>
-        <button onClick={() => router.push('/auth/signin')}
+        <button onClick={() => router.push('/auth/login')}
           className="px-6 py-2.5 bg-[#0B7A81] text-white rounded-full text-sm font-semibold shadow-md active:bg-[#095f64]">
           Sign In
         </button>
@@ -235,7 +221,7 @@ export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps 
               />
             ))}
           </div>
-        ) : highlights.length === 0 ? (
+        ) : filteredHighlights.length === 0 ? (
           /* Empty state */
           <div className="flex flex-col items-center justify-center py-20 text-center">
             <div className="w-16 h-16 rounded-full bg-[#0B7A81]/10 flex items-center justify-center mb-4">
@@ -249,7 +235,7 @@ export default function HighlightsPage({ onBack, onClose }: HighlightsPageProps 
         ) : (
           <AnimatePresence>
             <div className="space-y-3">
-              {groupHighlights(highlights).map((h) => {
+              {groupHighlights(filteredHighlights).map((h) => {
                 const colorId = h.metadata?.color as string | undefined;
                 const hex = colorId ? (HIGHLIGHT_COLOR_MAP[colorId] ?? colorId) : '#FFD234';
                 const book = (h.metadata?.bookName ?? h.metadata?.bookId ?? '—') as string;

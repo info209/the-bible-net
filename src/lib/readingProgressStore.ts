@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage } from 'zustand/middleware';
+import { fetchWithOfflineCache } from '@/lib/offline';
+import { ModuleOfflineService } from '@/lib/offline/ModuleOfflineService';
+import { PendingActionsService } from '@/lib/offline/PendingActionsService';
 
 export interface ProgressItem {
   bookId: string;
@@ -58,11 +61,34 @@ export const useReadingProgressStore = create<ReadingProgressState>()(
         const timestamp = new Date().toISOString();
         const progressItem: ProgressItem = { ...data, lastReadAt: timestamp };
 
-        // 1. Optimistic Update
-        set({ latestProgress: progressItem });
+        // 1. Optimistic Update in store
+        set((state) => {
+          const prevAll = state.allProgress.filter(
+            p => !(p.bookId === data.bookId && p.chapter === data.chapter && p.versionId === data.versionId)
+          );
+          const newAll = [progressItem, ...prevAll];
+          return {
+            latestProgress: progressItem,
+            allProgress: newAll,
+          };
+        });
 
         // 2. Logic based on Auth
         if (userId) {
+          const currentItems = get().allProgress;
+          await ModuleOfflineService.saveCache(`reading_progress_${userId}`, currentItems).catch(() => {});
+
+          const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+          if (!isOnline) {
+            await PendingActionsService.enqueue(
+              'save_reading_progress',
+              '/api/user/reading-progress',
+              'POST',
+              progressItem as unknown as Record<string, unknown>
+            );
+            return;
+          }
+
           try {
             const res = await fetch('/api/user/reading-progress', {
               method: 'POST',
@@ -71,20 +97,19 @@ export const useReadingProgressStore = create<ReadingProgressState>()(
             });
             if (!res.ok) throw new Error('Failed to save to cloud');
             
-            // Refresh from server to ensure consistency
             const result = await res.json();
             if (result.success && result.data) {
-                // Update with server returned data if needed
+              // updated successfully
             }
           } catch (err: any) {
-            console.error('Cloud save failed:', err);
-            // Fallback: stay in local state (handled by persist middleware below)
+            console.error('Cloud save failed, queueing offline pending action:', err);
+            await PendingActionsService.enqueue(
+              'save_reading_progress',
+              '/api/user/reading-progress',
+              'POST',
+              progressItem as unknown as Record<string, unknown>
+            );
           }
-        } else {
-          // Guest Logic: handled by persist middleware automatically 
-          // but we can also manually manage if preferred.
-          // Since we use 'persist', the state will go to localStorage.
-          // However, the user specifically asked for 'reading_progress_guest' key.
         }
       },
 
@@ -92,28 +117,32 @@ export const useReadingProgressStore = create<ReadingProgressState>()(
         set({ isLoading: true });
         try {
           if (userId) {
-            const res = await fetch('/api/user/reading-progress?latest=false');
-            if (res.ok) {
-              const result = await res.json();
-              if (result.success) {
-                const items = result.data.map((item: any) => ({
-                    bookId: item.bookId,
-                    bookName: item.bookName,
-                    chapter: item.chapter,
-                    versionId: item.versionId,
-                    versionName: item.versionName,
-                    lastReadAt: item.lastReadAt,
-                    completed: item.completed,
-                    progressPercent: item.progressPercent
+            const items = await fetchWithOfflineCache<ProgressItem[]>(
+              `reading_progress_${userId}`,
+              async () => {
+                const res = await fetch('/api/user/reading-progress?latest=false');
+                if (!res.ok) throw new Error('Failed to fetch reading progress');
+                const result = await res.json();
+                if (!result.success) throw new Error(result.error || 'Failed to fetch');
+                return (result.data || []).map((item: any) => ({
+                  bookId: item.bookId,
+                  bookName: item.bookName,
+                  chapter: item.chapter,
+                  versionId: item.versionId,
+                  versionName: item.versionName,
+                  lastReadAt: item.lastReadAt,
+                  completed: item.completed,
+                  progressPercent: item.progressPercent,
                 }));
-                set({ 
-                    allProgress: items,
-                    latestProgress: items.length > 0 ? items[0] : null 
-                });
               }
+            );
+
+            if (items && Array.isArray(items)) {
+              set({ 
+                allProgress: items,
+                latestProgress: items.length > 0 ? items[0] : null 
+              });
             }
-          } else {
-            // Guest logic: already loaded by persist middleware
           }
         } catch (err: any) {
           set({ error: err.message });
@@ -123,7 +152,6 @@ export const useReadingProgressStore = create<ReadingProgressState>()(
       },
 
       syncGuestToUser: async (userId) => {
-        // Find guest items in current state
         const guestItems = get().allProgress;
         if (guestItems.length === 0) return;
 
@@ -135,32 +163,28 @@ export const useReadingProgressStore = create<ReadingProgressState>()(
           });
 
           if (res.ok) {
-            console.log('Synced guest progress to user');
-            
-            // Clear current state and localStorage
             set({ allProgress: [], latestProgress: null });
-            // The persist middleware will clear the storage since the state is now empty
             
-            // Reload from server to get merged state
             const loadRes = await fetch('/api/user/reading-progress?latest=false');
             if (loadRes.ok) {
-                const result = await loadRes.json();
-                if (result.success) {
-                    const items = result.data.map((item: any) => ({
-                        bookId: item.bookId,
-                        bookName: item.bookName,
-                        chapter: item.chapter,
-                        versionId: item.versionId,
-                        versionName: item.versionName,
-                        lastReadAt: item.lastReadAt,
-                        completed: item.completed,
-                        progressPercent: item.progressPercent
-                    }));
-                    set({ 
-                        allProgress: items, 
-                        latestProgress: items.length > 0 ? items[0] : null 
-                    });
-                }
+              const result = await loadRes.json();
+              if (result.success) {
+                const items = (result.data || []).map((item: any) => ({
+                  bookId: item.bookId,
+                  bookName: item.bookName,
+                  chapter: item.chapter,
+                  versionId: item.versionId,
+                  versionName: item.versionName,
+                  lastReadAt: item.lastReadAt,
+                  completed: item.completed,
+                  progressPercent: item.progressPercent,
+                }));
+                set({ 
+                  allProgress: items, 
+                  latestProgress: items.length > 0 ? items[0] : null 
+                });
+                ModuleOfflineService.saveCache(`reading_progress_${userId}`, items).catch(() => {});
+              }
             }
           }
         } catch (err) {
@@ -171,20 +195,14 @@ export const useReadingProgressStore = create<ReadingProgressState>()(
     {
       name: GUEST_STORAGE_KEY,
       storage: createJSONStorage(() => localStorage),
-      // Only persist when NOT logged in? 
-      // Actually, persist always, but we handle DB sync separately.
-      // If we are logged in, we sync then we could potentially stop persisting 
-      // but keeping it doesn't hurt for offline.
       partialize: (state) => {
-          // IMPORTANT: Only persist to localStorage for GUESTS.
-          // If we have a userId, this is user-specific data that should NOT be in the guest storage.
-          if (state.userId) {
-              return { latestProgress: null, allProgress: [] };
-          }
-          return { 
-              latestProgress: state.latestProgress, 
-              allProgress: state.allProgress 
-          };
+        if (state.userId) {
+          return { latestProgress: null, allProgress: [] };
+        }
+        return { 
+          latestProgress: state.latestProgress, 
+          allProgress: state.allProgress 
+        };
       },
     }
   )

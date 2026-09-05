@@ -2,9 +2,9 @@
  * PendingActionsService
  *
  * Manages the offline write queue.
- * When the user performs a write action (save verse, add highlight, etc.)
- * while offline, the action is enqueued here. When connectivity returns,
- * SyncService replays these actions against the server APIs.
+ * When the user performs a write action (save verse, add highlight, create note,
+ * log reading progress, etc.) while offline, the action is enqueued in IndexedDB.
+ * When connectivity returns, SyncService replays these actions against the server APIs.
  */
 
 import { getOfflineDB } from './db';
@@ -26,7 +26,29 @@ function generateId(): string {
   });
 }
 
+type PendingCountListener = (count: number) => void;
+const countListeners = new Set<PendingCountListener>();
+
+function emitCount(count: number) {
+  countListeners.forEach((fn) => {
+    try {
+      fn(count);
+    } catch (e) {
+      console.error('[PendingActionsService] listener error:', e);
+    }
+  });
+}
+
 export class PendingActionsService {
+  /**
+   * Subscribe to changes in pending actions count.
+   */
+  static onCountChange(listener: PendingCountListener): () => void {
+    countListeners.add(listener);
+    this.getCount().then(listener).catch(() => {});
+    return () => countListeners.delete(listener);
+  }
+
   /**
    * Enqueue a pending write action.
    * Returns the generated action ID.
@@ -50,6 +72,8 @@ export class PendingActionsService {
     try {
       const db = await getOfflineDB();
       await db.put('pending_actions', action);
+      const newCount = await db.count('pending_actions');
+      emitCount(newCount);
     } catch (err) {
       console.error('[PendingActionsService] enqueue failed:', err);
     }
@@ -91,6 +115,8 @@ export class PendingActionsService {
     try {
       const db = await getOfflineDB();
       await db.delete('pending_actions', id);
+      const newCount = await db.count('pending_actions');
+      emitCount(newCount);
     } catch (err) {
       console.warn('[PendingActionsService] remove failed:', err);
     }
@@ -111,6 +137,8 @@ export class PendingActionsService {
           `[PendingActionsService] Abandoning action ${id} after ${MAX_RETRY_COUNT} attempts`,
         );
         await db.delete('pending_actions', id);
+        const newCount = await db.count('pending_actions');
+        emitCount(newCount);
         return;
       }
 
@@ -132,6 +160,7 @@ export class PendingActionsService {
     try {
       const db = await getOfflineDB();
       await db.clear('pending_actions');
+      emitCount(0);
     } catch (err) {
       console.warn('[PendingActionsService] clearAll failed:', err);
     }

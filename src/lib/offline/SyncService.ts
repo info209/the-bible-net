@@ -2,10 +2,10 @@
  * SyncService
  *
  * Orchestrates background synchronization when connectivity returns.
- * - Replays pending write actions against server APIs
+ * - Replays pending write actions against server APIs in FIFO order
  * - Refreshes home content (daily verse, devotional, plans)
  * - Checks for Bible version updates
- * - Uses last-write-wins by timestamp for conflict resolution
+ * - Dispatches 'bible-sync-completed' event so client caches update
  */
 
 import { PendingActionsService } from './PendingActionsService';
@@ -25,14 +25,26 @@ const listeners: Set<SyncStatusListener> = new Set();
 
 function emitStatus(patch: Partial<SyncStatus>): void {
   currentSyncStatus = { ...currentSyncStatus, ...patch };
-  listeners.forEach((fn) => fn(currentSyncStatus));
+  listeners.forEach((fn) => {
+    try {
+      fn(currentSyncStatus);
+    } catch (e) {
+      console.error('[SyncService] listener error:', e);
+    }
+  });
 }
 
 export class SyncService {
+  /** Initialize pending action listener */
+  static init(): void {
+    PendingActionsService.onCountChange((count) => {
+      emitStatus({ pendingActionsCount: count });
+    });
+  }
+
   /** Subscribe to sync status updates */
   static onStatusChange(listener: SyncStatusListener): () => void {
     listeners.add(listener);
-    // Immediately emit current status to new subscriber
     listener(currentSyncStatus);
     return () => listeners.delete(listener);
   }
@@ -47,6 +59,12 @@ export class SyncService {
    * Safe to call multiple times — will debounce if already syncing.
    */
   static async syncAll(preferredVersion: string = 'KJV'): Promise<void> {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const pendingCount = await PendingActionsService.getCount();
+      emitStatus({ state: 'idle', pendingActionsCount: pendingCount });
+      return;
+    }
+
     if (currentSyncStatus.state === 'syncing') return;
 
     const pendingCount = await PendingActionsService.getCount();
@@ -58,13 +76,13 @@ export class SyncService {
     });
 
     try {
-      // 1. Sync home content (non-critical — don't let failures block actions)
+      // 1. Replay pending write actions first
+      await this.syncPendingActions();
+
+      // 2. Sync home content (non-critical — don't let failures block actions)
       await this.syncHomeContent(preferredVersion).catch((err) =>
         console.warn('[SyncService] syncHomeContent failed:', err),
       );
-
-      // 2. Replay pending write actions
-      await this.syncPendingActions();
 
       // 3. Check for Bible version updates (lightweight)
       await this.syncBibleVersions().catch((err) =>
@@ -77,6 +95,11 @@ export class SyncService {
         lastSyncedAt: new Date().toISOString(),
         pendingActionsCount: remainingCount,
       });
+
+      // Dispatch global event so React Query queries can invalidate and refresh
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('bible-sync-completed'));
+      }
     } catch (err: any) {
       const remainingCount = await PendingActionsService.getCount();
       emitStatus({
@@ -127,18 +150,25 @@ export class SyncService {
 
     for (const action of actions) {
       try {
+        const hasBody =
+          action.method !== 'DELETE' &&
+          action.payload &&
+          Object.keys(action.payload).length > 0;
+
         const res = await fetch(action.endpoint, {
           method: action.method,
-          headers: { 'Content-Type': 'application/json' },
-          body: action.method !== 'DELETE' ? JSON.stringify(action.payload) : undefined,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: hasBody ? JSON.stringify(action.payload) : undefined,
         });
 
         if (res.ok) {
           await PendingActionsService.remove(action.id);
-        } else if (res.status === 409) {
-          // Conflict — server wins for 409; remove the pending action
+        } else if (res.status === 409 || res.status === 404) {
+          // Conflict or already deleted — remove the pending action
           console.warn(
-            `[SyncService] Conflict on action ${action.type} — server rejected; removing`,
+            `[SyncService] Conflict/404 on action ${action.type} (HTTP ${res.status}) — removing from queue`,
           );
           await PendingActionsService.remove(action.id);
         } else {
@@ -148,7 +178,10 @@ export class SyncService {
           );
         }
       } catch (err: any) {
-        await PendingActionsService.markFailed(action.id, err?.message || 'Network error');
+        await PendingActionsService.markFailed(
+          action.id,
+          err?.message || 'Network error',
+        );
       }
     }
   }
@@ -174,8 +207,9 @@ export class SyncService {
       for (const serverVersion of json.data) {
         if (!downloadedIds.has(serverVersion._id)) continue;
 
-        // Check if server version is newer than when we downloaded
-        const downloadRecord = downloadedStatuses.find((s) => s.versionId === serverVersion._id);
+        const downloadRecord = downloadedStatuses.find(
+          (s) => s.versionId === serverVersion._id,
+        );
         if (!downloadRecord?.downloadedAt) continue;
 
         const serverUpdatedAt = serverVersion.updatedAt
@@ -195,3 +229,6 @@ export class SyncService {
     }
   }
 }
+
+// Auto-initialize count listener
+SyncService.init();

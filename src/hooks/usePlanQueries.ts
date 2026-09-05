@@ -1,5 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchWithOfflineCache } from '@/lib/offline/queryOfflineFallback';
+import { ModuleOfflineService } from '@/lib/offline/ModuleOfflineService';
+import { PendingActionsService } from '@/lib/offline/PendingActionsService';
 import { Plan, PlanWithProgress, PlanProgress } from '@/types/plan';
 
 /**
@@ -108,14 +110,35 @@ export function useStartPlan() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (planId: string) => {
-      const res = await fetch(`/api/v1/plans/${planId}/start`, {
-        method: 'POST',
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to start plan');
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!isOnline) {
+        await PendingActionsService.enqueue(
+          'save_plan',
+          `/api/v1/plans/${planId}/start`,
+          'POST',
+          { planId }
+        );
+        return { success: true, offline: true };
       }
-      return await res.json();
+
+      try {
+        const res = await fetch(`/api/v1/plans/${planId}/start`, {
+          method: 'POST',
+        });
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || 'Failed to start plan');
+        }
+        return await res.json();
+      } catch (err: any) {
+        await PendingActionsService.enqueue(
+          'save_plan',
+          `/api/v1/plans/${planId}/start`,
+          'POST',
+          { planId }
+        );
+        return { success: true, offline: true };
+      }
     },
     onSuccess: (_, planId) => {
       queryClient.invalidateQueries({ queryKey: ['plan', planId] });
@@ -131,16 +154,59 @@ export function useCompleteItem() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ planId, dayNumber, itemId }: { planId: string; dayNumber: number; itemId: string }) => {
-      const res = await fetch(`/api/v1/plans/${planId}/complete-item`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ dayNumber, itemId }),
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to complete item');
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!isOnline) {
+        await PendingActionsService.enqueue(
+          'complete_plan_item',
+          `/api/v1/plans/${planId}/complete-item`,
+          'POST',
+          { dayNumber, itemId }
+        );
+        return { success: true, offline: true };
       }
-      return await res.json();
+
+      try {
+        const res = await fetch(`/api/v1/plans/${planId}/complete-item`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dayNumber, itemId }),
+        });
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || 'Failed to complete item');
+        }
+        return await res.json();
+      } catch (err: any) {
+        await PendingActionsService.enqueue(
+          'complete_plan_item',
+          `/api/v1/plans/${planId}/complete-item`,
+          'POST',
+          { dayNumber, itemId }
+        );
+        return { success: true, offline: true };
+      }
+    },
+    onMutate: async ({ planId, dayNumber, itemId }) => {
+      await queryClient.cancelQueries({ queryKey: ['plan', planId] });
+      const previousPlan = queryClient.getQueryData<PlanWithProgress>(['plan', planId]);
+
+      if (previousPlan && previousPlan.progress) {
+        const currentCompleted = previousPlan.progress.completedItemIds || [];
+        const exists = currentCompleted.includes(itemId);
+        if (!exists) {
+          const updatedPlan: PlanWithProgress = {
+            ...previousPlan,
+            progress: {
+              ...previousPlan.progress,
+              completedItemIds: [...currentCompleted, itemId],
+            },
+          };
+          queryClient.setQueryData(['plan', planId], updatedPlan);
+          ModuleOfflineService.saveCache(`plan_details_${planId}`, updatedPlan).catch(() => {});
+        }
+      }
+
+      return { previousPlan };
     },
     onSuccess: (data, { planId }) => {
       queryClient.invalidateQueries({ queryKey: ['plan', planId] });
@@ -156,14 +222,35 @@ export function useSavePlan() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (planId: string) => {
-      const res = await fetch(`/api/v1/plans/${planId}/save`, {
-        method: 'POST',
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to save plan');
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!isOnline) {
+        await PendingActionsService.enqueue(
+          'save_plan',
+          `/api/v1/plans/${planId}/save`,
+          'POST',
+          { planId }
+        );
+        return { success: true, offline: true };
       }
-      return await res.json();
+
+      try {
+        const res = await fetch(`/api/v1/plans/${planId}/save`, {
+          method: 'POST',
+        });
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || 'Failed to save plan');
+        }
+        return await res.json();
+      } catch (err: any) {
+        await PendingActionsService.enqueue(
+          'save_plan',
+          `/api/v1/plans/${planId}/save`,
+          'POST',
+          { planId }
+        );
+        return { success: true, offline: true };
+      }
     },
     onSuccess: (_, planId) => {
       queryClient.invalidateQueries({ queryKey: ['plan', planId] });
@@ -179,16 +266,37 @@ export function useRatePlan() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ planId, rating, review }: { planId: string; rating: number; review?: string }) => {
-      const res = await fetch(`/api/v1/plans/${planId}/rate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ rating, review }),
-      });
-      if (!res.ok) {
-        const error = await res.json();
-        throw new Error(error.error || 'Failed to submit rating');
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!isOnline) {
+        await PendingActionsService.enqueue(
+          'rate_plan',
+          `/api/v1/plans/${planId}/rate`,
+          'POST',
+          { rating, review }
+        );
+        return { success: true, offline: true };
       }
-      return await res.json();
+
+      try {
+        const res = await fetch(`/api/v1/plans/${planId}/rate`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ rating, review }),
+        });
+        if (!res.ok) {
+          const error = await res.json();
+          throw new Error(error.error || 'Failed to submit rating');
+        }
+        return await res.json();
+      } catch (err: any) {
+        await PendingActionsService.enqueue(
+          'rate_plan',
+          `/api/v1/plans/${planId}/rate`,
+          'POST',
+          { rating, review }
+        );
+        return { success: true, offline: true };
+      }
     },
     onSuccess: (_, { planId }) => {
       queryClient.invalidateQueries({ queryKey: ['plan', planId] });

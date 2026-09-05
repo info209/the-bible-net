@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect } from 'react';
 import { useSession } from 'next-auth/react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchWithOfflineCache } from '@/lib/offline';
+import { ModuleOfflineService } from '@/lib/offline/ModuleOfflineService';
+import { PendingActionsService } from '@/lib/offline/PendingActionsService';
 import type { SavedItemType, ISavedItemMetadata } from '@/models/SavedItem';
 
 export interface SavedItemClient {
@@ -27,9 +29,9 @@ interface UseSavedItemsReturn {
   isSaved: (type: SavedItemType, refId: string) => boolean;
   /** Get the saved item document for a given (type, refId) — needed to get its _id for unsave */
   getSavedItem: (type: SavedItemType, refId: string) => SavedItemClient | undefined;
-  /** Save a new item. Optimistic update + request. */
+  /** Save a new item. Optimistic update + request / offline queue. */
   saveItem: (payload: SavePayloadClient) => Promise<SavedItemClient | undefined>;
-  /** Unsave by the saved item's _id. Optimistic update + request. */
+  /** Unsave by the saved item's _id. Optimistic update + request / offline queue. */
   unsaveItem: (id: string) => Promise<boolean>;
   /** Convenience toggle — saves or unsaves based on current state */
   toggleSave: (payload: SavePayloadClient) => Promise<void>;
@@ -45,8 +47,8 @@ export function useSavedItems(): UseSavedItemsReturn {
   const { data: savedItems = [], isLoading } = useQuery<SavedItemClient[]>({
     queryKey: queryKeySavedItems,
     queryFn: () =>
-      fetchWithOfflineCache(`saved_items_${userId}`, async () => {
-        const res = await fetch('/api/user/saved-items?limit=100');
+      fetchWithOfflineCache(`saved_items_${userId || 'anonymous'}`, async () => {
+        const res = await fetch('/api/user/saved-items?limit=200');
         if (!res.ok) throw new Error('Failed to fetch saved items');
         const json = await res.json();
         if (!json.success) throw new Error(json.error || 'Failed to fetch saved items');
@@ -57,6 +59,15 @@ export function useSavedItems(): UseSavedItemsReturn {
     gcTime: 24 * 60 * 60 * 1000,
     networkMode: 'offlineFirst',
   });
+
+  // Listen for sync completion
+  useEffect(() => {
+    const handleSyncCompleted = () => {
+      queryClient.invalidateQueries({ queryKey: queryKeySavedItems });
+    };
+    window.addEventListener('bible-sync-completed', handleSyncCompleted);
+    return () => window.removeEventListener('bible-sync-completed', handleSyncCompleted);
+  }, [queryClient, queryKeySavedItems]);
 
   const isSaved = useCallback(
     (type: SavedItemType, refId: string) =>
@@ -72,15 +83,50 @@ export function useSavedItems(): UseSavedItemsReturn {
 
   const saveItemMutation = useMutation({
     mutationFn: async (payload: SavePayloadClient) => {
-      const res = await fetch('/api/user/save', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) throw new Error('Failed to save item');
-      const json = await res.json();
-      if (!json.success || !json.data) throw new Error(json.error || 'Failed to save item');
-      return json.data as SavedItemClient;
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!isOnline) {
+        const actionType = payload.type === 'highlight' ? 'add_highlight' : 'save_item';
+        await PendingActionsService.enqueue(
+          actionType,
+          '/api/user/save',
+          'POST',
+          payload as unknown as Record<string, unknown>,
+        );
+        return {
+          _id: `offline_${Date.now()}`,
+          type: payload.type,
+          refId: payload.refId,
+          metadata: payload.metadata ?? {},
+          createdAt: new Date().toISOString(),
+        } as SavedItemClient;
+      }
+
+      try {
+        const res = await fetch('/api/user/save', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        if (!res.ok) throw new Error('Failed to save item');
+        const json = await res.json();
+        if (!json.success || !json.data) throw new Error(json.error || 'Failed to save item');
+        return json.data as SavedItemClient;
+      } catch (err) {
+        const actionType = payload.type === 'highlight' ? 'add_highlight' : 'save_item';
+        await PendingActionsService.enqueue(
+          actionType,
+          '/api/user/save',
+          'POST',
+          payload as unknown as Record<string, unknown>,
+        );
+        return {
+          _id: `offline_${Date.now()}`,
+          type: payload.type,
+          refId: payload.refId,
+          metadata: payload.metadata ?? {},
+          createdAt: new Date().toISOString(),
+        } as SavedItemClient;
+      }
     },
     onMutate: async (payload) => {
       await queryClient.cancelQueries({ queryKey: queryKeySavedItems });
@@ -95,28 +141,28 @@ export function useSavedItems(): UseSavedItemsReturn {
         createdAt: new Date().toISOString(),
       };
 
-      queryClient.setQueryData<SavedItemClient[]>(queryKeySavedItems, (prev) => {
-        if ((prev || []).some((i) => i.type === payload.type && i.refId === payload.refId)) {
-          return prev;
-        }
-        return [optimistic, ...(prev || [])];
-      });
+      const updated = (previousItems || []).some(
+        (i) => i.type === payload.type && i.refId === payload.refId,
+      )
+        ? previousItems
+        : [optimistic, ...(previousItems || [])];
+
+      queryClient.setQueryData<SavedItemClient[]>(queryKeySavedItems, updated);
+      ModuleOfflineService.saveCache(`saved_items_${userId || 'anonymous'}`, updated).catch(() => {});
 
       return { previousItems, optimistic };
     },
-    onError: (err, payload, context) => {
-      if (context?.previousItems) {
-        queryClient.setQueryData(queryKeySavedItems, context.previousItems);
-      }
-    },
     onSuccess: (data, payload, context) => {
-      // Replace optimistic entry with real one
       queryClient.setQueryData<SavedItemClient[]>(queryKeySavedItems, (prev) => {
-        return (prev || []).map((i) => (i._id === context?.optimistic._id ? data : i));
+        const list = (prev || []).map((i) => (i._id === context?.optimistic._id ? data : i));
+        ModuleOfflineService.saveCache(`saved_items_${userId || 'anonymous'}`, list).catch(() => {});
+        return list;
       });
     },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeySavedItems });
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        queryClient.invalidateQueries({ queryKey: queryKeySavedItems });
+      }
     },
   });
 
@@ -134,27 +180,43 @@ export function useSavedItems(): UseSavedItemsReturn {
 
   const unsaveItemMutation = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/user/save/${id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error('Failed to unsave item');
+      const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      if (!isOnline) {
+        await PendingActionsService.enqueue(
+          'delete_item',
+          `/api/user/save/${id}`,
+          'DELETE',
+          { id },
+        );
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/user/save/${id}`, { method: 'DELETE' });
+        if (!res.ok) throw new Error('Failed to unsave item');
+      } catch (err) {
+        await PendingActionsService.enqueue(
+          'delete_item',
+          `/api/user/save/${id}`,
+          'DELETE',
+          { id },
+        );
+      }
     },
     onMutate: async (id) => {
       await queryClient.cancelQueries({ queryKey: queryKeySavedItems });
       const previousItems = queryClient.getQueryData<SavedItemClient[]>(queryKeySavedItems) || [];
 
-      // Optimistic removal
-      queryClient.setQueryData<SavedItemClient[]>(queryKeySavedItems, (prev) => {
-        return (prev || []).filter((i) => i._id !== id);
-      });
+      const updated = (previousItems || []).filter((i) => i._id !== id);
+      queryClient.setQueryData<SavedItemClient[]>(queryKeySavedItems, updated);
+      ModuleOfflineService.saveCache(`saved_items_${userId || 'anonymous'}`, updated).catch(() => {});
 
       return { previousItems };
     },
-    onError: (err, id, context) => {
-      if (context?.previousItems) {
-        queryClient.setQueryData(queryKeySavedItems, context.previousItems);
-      }
-    },
     onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: queryKeySavedItems });
+      if (typeof navigator !== 'undefined' && navigator.onLine) {
+        queryClient.invalidateQueries({ queryKey: queryKeySavedItems });
+      }
     },
   });
 

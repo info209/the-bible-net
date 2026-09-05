@@ -208,6 +208,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     retryDownload,
     cancelDownload,
     getVersionStatus,
+    storageInfo,
   } = useDownloadManager();
 
   useEffect(() => {
@@ -2600,6 +2601,22 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   })()}
                 </div>
               )}
+            </div>
+
+            {/* Storage Meter Footer */}
+            <div
+              className="px-4 py-3 border-t flex items-center justify-between text-xs shrink-0"
+              style={{
+                borderColor: selectedTheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : selectedTheme === 'sepia' || selectedTheme === 'cream' ? 'rgba(92, 74, 58, 0.15)' : 'rgba(0,0,0,0.1)',
+                backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)',
+              }}
+            >
+              <span className="opacity-70 font-medium" style={{ color: popupThemeConfig[selectedTheme].text }}>
+                Offline Storage: {StorageManager.formatBytes(storageInfo?.totalBytes ?? 0)} / 100 MB
+              </span>
+              <span className="text-[11px] font-semibold text-[var(--color-primary-teal)]">
+                {StorageManager.formatBytes(storageInfo?.availableCapBytes ?? (100 * 1024 * 1024))} available
+              </span>
             </div>
           </div>
         </div>
