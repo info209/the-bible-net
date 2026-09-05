@@ -8,6 +8,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NetworkStatusProvider } from "@/lib/offline/NetworkStatusContext";
 
 import { PWAProvider } from "@/components/offline/PWAProvider";
+import InstallAppModal from "@/components/offline/InstallAppModal";
 import { AuthProvider } from "@/context/AuthContext";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -50,6 +51,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
                         </AuthProvider>
                     </SessionProvider>
                 </NetworkStatusProvider>
+                <InstallAppModal />
             </PWAProvider>
         </QueryClientProvider>
     );

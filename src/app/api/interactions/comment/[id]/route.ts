@@ -13,13 +13,17 @@ export async function DELETE(
         }
 
         const commentId = params.id;
-        const success = await CommentRepository.deleteComment(commentId, session.user.id as string);
+        const result = await CommentRepository.deleteComment(commentId, session.user.id as string);
 
-        if (!success) {
+        if (!result.success) {
             return NextResponse.json({ error: 'Comment not found or unauthorized' }, { status: 404 });
         }
 
-        return NextResponse.json({ success: true });
+        return NextResponse.json({
+            success: true,
+            contentId: result.contentId,
+            contentType: result.contentType,
+        });
     } catch (error: any) {
         console.error('Error deleting comment:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

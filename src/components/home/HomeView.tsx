@@ -27,6 +27,7 @@ import verseTexture from '../../../assets/textures/verse-texture.svg';
 import devotionalTexture from '../../../assets/textures/devotional-texture.svg';
 import { HomeOfflineService } from '@/lib/offline/HomeOfflineService';
 import { fetchWithOfflineCache } from '@/lib/offline';
+import { PendingActionsService } from '@/lib/offline/PendingActionsService';
 
 const getGreetingByHour = (hour: number): string => {
   if (hour >= 5 && hour < 12) return 'Good Morning';
@@ -69,7 +70,6 @@ export default function HomeView() {
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [initialModalIndex, setInitialModalIndex] = useState(0);
   const [initialModalSection, setInitialModalSection] = useState<'verse' | 'devotional' | 'prayer' | undefined>();
-  const [modalContents, setModalContents] = useState<any[]>([]);
 
   // Local cache of devotional progress by date — updated optimistically when modal fires onProgressChange
   const [devotionalProgressCache, setDevotionalProgressCache] = useState<Record<string, 'INCOMPLETE' | 'IN_PROGRESS' | 'COMPLETED'>>({});
@@ -157,7 +157,7 @@ export default function HomeView() {
         throw err;
       }
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 0,
     gcTime: 24 * 60 * 60 * 1000,
     networkMode: 'offlineFirst',
   });
@@ -169,6 +169,15 @@ export default function HomeView() {
   const dailyDevotions = useMemo(() => {
     return (dailyContentData || []).filter((item: any) => item.devotionalTitle && item.devotionalContent);
   }, [dailyContentData]);
+
+  const modalContents = useMemo(() => {
+    if (initialModalSection === 'verse') {
+      return dailyVerses;
+    } else if (initialModalSection === 'devotional') {
+      return dailyDevotions;
+    }
+    return [];
+  }, [initialModalSection, dailyVerses, dailyDevotions]);
 
   const { data: prayers = [], isLoading: prayersLoading } = useQuery({
     queryKey: ['prayers', 'home'],
@@ -203,11 +212,6 @@ export default function HomeView() {
   const openDetailModal = (index: number, section: 'verse' | 'devotional' | 'prayer') => {
     setOpenVerseKebabIndex(null);
     setOpenDevotionKebabIndex(null);
-    if (section === 'verse') {
-      setModalContents(dailyVerses);
-    } else {
-      setModalContents(dailyDevotions);
-    }
     setInitialModalIndex(index);
     setInitialModalSection(section);
     setIsDetailModalOpen(true);
@@ -264,11 +268,92 @@ export default function HomeView() {
   };
 
   const handleAddComment = async () => {
+    if (!newComment.trim() || !activeContent) return;
+    const commentText = newComment.trim();
+    const clientMutationId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+    const tempCommentId = `temp_${clientMutationId}`;
+
+    const optimisticComment = {
+      _id: tempCommentId,
+      contentId: activeContent.id,
+      contentType: activeContent.type,
+      commentText,
+      createdAt: new Date().toISOString(),
+      userId: {
+        _id: (session?.user as any)?.id || 'current_user',
+        firstName: (session?.user as any)?.firstName || session?.user?.name?.split(' ')[0] || 'You',
+        lastName: (session?.user as any)?.lastName || session?.user?.name?.split(' ').slice(1).join(' ') || '',
+        image: session?.user?.image,
+      }
+    };
+
+    // Optimistically update comments list
+    setComments(prev => [optimisticComment as any, ...prev]);
+    setNewComment('');
+
+    // Patch comment count in all query caches immediately
+    const patchCommentCount = (countOverride?: number) => {
+      const patcher = (prev: any[] | undefined) => {
+        if (!Array.isArray(prev)) return prev;
+        return prev.map(content => {
+          if (String(content._id) === String(activeContent.id)) {
+            const countField = activeContent.type === 'daily-verse' ? 'verseCommentCount' : 'devotionCommentCount';
+            const newCount = countOverride !== undefined
+              ? countOverride
+              : (content[countField] || 0) + 1;
+            const updatedItem = {
+              ...content,
+              [countField]: newCount,
+            };
+            // Keep per-date queries in sync
+            if (content.date) {
+              const allKeys = queryClient.getQueriesData({ queryKey: ['daily-verse', content.date] });
+              allKeys.forEach(([key]) => {
+                queryClient.setQueryData(key, (prev2: any) =>
+                  prev2 && String(prev2._id) === String(activeContent.id) ? { ...prev2, [countField]: newCount } : prev2
+                );
+              });
+              const allKeys2 = queryClient.getQueriesData({ queryKey: ['daily-devotion', content.date] });
+              allKeys2.forEach(([key]) => {
+                queryClient.setQueryData(key, (prev2: any) =>
+                  prev2 && String(prev2._id) === String(activeContent.id) ? { ...prev2, [countField]: newCount } : prev2
+                );
+              });
+            }
+            return updatedItem;
+          }
+          return content;
+        });
+      };
+
+      queryClient.setQueriesData({ queryKey: ['daily-content-list'] }, patcher);
+      queryClient.setQueriesData({ queryKey: ['daily-content-today'] }, patcher);
+    };
+
+    patchCommentCount();
+
+    // If offline, enqueue to PendingActionsService directly
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
-      toast.info('Posting comments requires an internet connection.');
+      await PendingActionsService.enqueue(
+        'add_comment',
+        '/api/interactions/comment',
+        'POST',
+        {
+          contentId: activeContent.id,
+          type: activeContent.type,
+          comment: commentText,
+          clientMutationId,
+        },
+        {
+          userId: (session?.user as any)?.id,
+          clientMutationId,
+          entityTempId: tempCommentId,
+          entityType: 'comment',
+        }
+      );
       return;
     }
-    if (!newComment.trim() || !activeContent) return;
+
     setSubmittingComment(true);
     try {
       const res = await fetch('/api/interactions/comment', {
@@ -277,40 +362,69 @@ export default function HomeView() {
         body: JSON.stringify({
           contentId: activeContent.id,
           type: activeContent.type,
-          comment: newComment
+          comment: commentText,
+          clientMutationId,
         })
       });
 
       if (res.ok) {
-        setNewComment('');
+        const json = await res.json();
+        if (json.commentCount !== undefined) {
+          patchCommentCount(json.commentCount);
+        }
         fetchComments(activeContent.id, activeContent.type);
-
-        // Patch helper — increments the comment count for matching content
-        const patchCommentCount = (prev: any[] | undefined) => {
-          if (!prev) return prev;
-          return prev.map(content => {
-            if (content._id === activeContent.id) {
-              const countField = activeContent.type === 'daily-verse' ? 'verseCommentCount' : 'devotionCommentCount';
-              const updatedItem = {
-                ...content,
-                [countField]: (content[countField] || 0) + 1
-              };
-              // Keep per-date slices in sync as well
-              queryClient.setQueryData(['daily-verse', content.date, preferredVersion], updatedItem);
-              queryClient.setQueryData(['daily-devotion', content.date, preferredVersion], updatedItem);
-              return updatedItem;
+      } else {
+        // Enqueue if offline or connection dropped
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          await PendingActionsService.enqueue(
+            'add_comment',
+            '/api/interactions/comment',
+            'POST',
+            {
+              contentId: activeContent.id,
+              type: activeContent.type,
+              comment: commentText,
+              clientMutationId,
+            },
+            {
+              userId: (session?.user as any)?.id,
+              clientMutationId,
+              entityTempId: tempCommentId,
+              entityType: 'comment',
             }
-            return content;
-          });
-        };
-
-        // Update BOTH list caches so the count is consistent regardless of
-        // which query is currently active (today-only vs full 7-day history)
-        queryClient.setQueryData(['daily-content-list', preferredVersion, todayStr], patchCommentCount);
-        queryClient.setQueryData(['daily-content-today', preferredVersion, todayStr], patchCommentCount);
+          );
+        } else {
+          toast.error('Failed to post comment. Please try again.');
+          // Revert comment
+          setComments(prev => prev.filter(c => (c as any)._id !== tempCommentId));
+          patchCommentCount(); // We can fetch fresh
+          fetchComments(activeContent.id, activeContent.type);
+        }
       }
     } catch (error) {
       console.error('Add comment error:', error);
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await PendingActionsService.enqueue(
+          'add_comment',
+          '/api/interactions/comment',
+          'POST',
+          {
+            contentId: activeContent.id,
+            type: activeContent.type,
+            comment: commentText,
+            clientMutationId,
+          },
+          {
+            userId: (session?.user as any)?.id,
+            clientMutationId,
+            entityTempId: tempCommentId,
+            entityType: 'comment',
+          }
+        );
+      } else {
+        toast.error('Error posting comment');
+        setComments(prev => prev.filter(c => (c as any)._id !== tempCommentId));
+      }
     } finally {
       setSubmittingComment(false);
     }

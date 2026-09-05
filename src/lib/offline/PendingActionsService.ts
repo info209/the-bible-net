@@ -51,6 +51,7 @@ export class PendingActionsService {
 
   /**
    * Enqueue a pending write action.
+   * Handles coalescing for like/unlike flips and create-then-delete chains.
    * Returns the generated action ID.
    */
   static async enqueue(
@@ -58,7 +59,85 @@ export class PendingActionsService {
     endpoint: string,
     method: PendingAction['method'],
     payload: Record<string, unknown>,
+    options?: {
+      userId?: string;
+      clientMutationId?: string;
+      entityTempId?: string;
+      entityType?: PendingAction['entityType'];
+    },
   ): Promise<string> {
+    const db = await getOfflineDB();
+
+    // 1. Coalesce Like / Unlike actions for the same content
+    if (type === 'like_content' || type === 'unlike_content') {
+      const contentId = payload.contentId;
+      const contentType = payload.type;
+      const all = await db.getAll('pending_actions');
+      const existingLikeAction = all.find(
+        (a) =>
+          (a.type === 'like_content' || a.type === 'unlike_content') &&
+          a.payload.contentId === contentId &&
+          a.payload.type === contentType &&
+          (!options?.userId || a.userId === options.userId),
+      );
+
+      if (existingLikeAction) {
+        // Update existing action to the latest desired state
+        const updated: PendingAction = {
+          ...existingLikeAction,
+          type,
+          method,
+          payload: { ...existingLikeAction.payload, ...payload },
+          createdAt: new Date().toISOString(),
+          retryCount: 0,
+          clientMutationId: options?.clientMutationId || existingLikeAction.clientMutationId,
+        };
+        await db.put('pending_actions', updated);
+        const newCount = await db.count('pending_actions');
+        emitCount(newCount);
+        return updated.id;
+      }
+    }
+
+    // 2. Coalesce offline create -> edit -> delete for temporary local entities
+    if (options?.entityTempId) {
+      const tempId = options.entityTempId;
+      const all = await db.getAll('pending_actions');
+
+      if (type.startsWith('delete_')) {
+        // Check if there is a pending 'add_' for this temp ID
+        const pendingCreate = all.find(
+          (a) => a.entityTempId === tempId && a.type.startsWith('add_'),
+        );
+        if (pendingCreate) {
+          // Entity was created offline and deleted offline before ever reaching server!
+          // Remove all pending actions for this tempId (create, edits, etc.)
+          const matching = all.filter((a) => a.entityTempId === tempId || a.endpoint.includes(tempId));
+          const tx = db.transaction('pending_actions', 'readwrite');
+          await Promise.all([...matching.map((m) => tx.store.delete(m.id)), tx.done]);
+          const newCount = await db.count('pending_actions');
+          emitCount(newCount);
+          return '';
+        }
+      } else if (type.startsWith('edit_') || type.startsWith('toggle_')) {
+        // If there's an offline create, merge the edit into the create action
+        const pendingCreate = all.find(
+          (a) => a.entityTempId === tempId && a.type.startsWith('add_'),
+        );
+        if (pendingCreate) {
+          const mergedAction: PendingAction = {
+            ...pendingCreate,
+            payload: { ...pendingCreate.payload, ...payload },
+            createdAt: new Date().toISOString(),
+          };
+          await db.put('pending_actions', mergedAction);
+          const newCount = await db.count('pending_actions');
+          emitCount(newCount);
+          return mergedAction.id;
+        }
+      }
+    }
+
     const action: PendingAction = {
       id: generateId(),
       type,
@@ -67,10 +146,13 @@ export class PendingActionsService {
       payload,
       createdAt: new Date().toISOString(),
       retryCount: 0,
+      userId: options?.userId,
+      clientMutationId: options?.clientMutationId || generateId(),
+      entityTempId: options?.entityTempId,
+      entityType: options?.entityType,
     };
 
     try {
-      const db = await getOfflineDB();
       await db.put('pending_actions', action);
       const newCount = await db.count('pending_actions');
       emitCount(newCount);
@@ -82,13 +164,16 @@ export class PendingActionsService {
   }
 
   /**
-   * Get all pending actions, ordered by creation time (oldest first).
+   * Get all pending actions, optionally filtered by user, ordered by creation time.
    */
-  static async getAll(): Promise<PendingAction[]> {
+  static async getAll(userId?: string): Promise<PendingAction[]> {
     try {
       const db = await getOfflineDB();
       const actions = await db.getAllFromIndex('pending_actions', 'by_created_at');
-      return actions.sort(
+      const filtered = userId
+        ? actions.filter((a) => !a.userId || a.userId === userId)
+        : actions;
+      return filtered.sort(
         (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
       );
     } catch {
@@ -97,12 +182,61 @@ export class PendingActionsService {
   }
 
   /**
-   * Get the count of pending actions.
+   * Replace a temporary client ID with the real server ID in all dependent queued actions.
    */
-  static async getCount(): Promise<number> {
+  static async remapEntityId(tempId: string, realServerId: string): Promise<void> {
     try {
       const db = await getOfflineDB();
-      return await db.count('pending_actions');
+      const all = await db.getAll('pending_actions');
+      const tx = db.transaction('pending_actions', 'readwrite');
+
+      for (const action of all) {
+        let changed = false;
+        let endpoint = action.endpoint;
+        let payload = { ...action.payload };
+
+        if (endpoint.includes(tempId)) {
+          endpoint = endpoint.replace(tempId, realServerId);
+          changed = true;
+        }
+
+        if (action.entityTempId === tempId) {
+          action.entityTempId = undefined;
+          changed = true;
+        }
+
+        if (payload._id === tempId || payload.id === tempId) {
+          if (payload._id === tempId) payload._id = realServerId;
+          if (payload.id === tempId) payload.id = realServerId;
+          changed = true;
+        }
+
+        if (changed) {
+          await tx.store.put({
+            ...action,
+            endpoint,
+            payload,
+          });
+        }
+      }
+
+      await tx.done;
+    } catch (err) {
+      console.warn('[PendingActionsService] remapEntityId failed:', err);
+    }
+  }
+
+  /**
+   * Get the count of pending actions, optionally filtered by userId.
+   */
+  static async getCount(userId?: string): Promise<number> {
+    try {
+      const db = await getOfflineDB();
+      if (!userId) {
+        return await db.count('pending_actions');
+      }
+      const actions = await this.getAll(userId);
+      return actions.length;
     } catch {
       return 0;
     }
@@ -134,7 +268,9 @@ export class PendingActionsService {
 
       if (action.retryCount >= MAX_RETRY_COUNT) {
         console.warn(
-          `[PendingActionsService] Abandoning action ${id} after ${MAX_RETRY_COUNT} attempts`,
+          `[PendingActionsService] Abandoning action ${id} after ${MAX_RETRY_COUNT} attempts:`,
+          action.type,
+          error,
         );
         await db.delete('pending_actions', id);
         const newCount = await db.count('pending_actions');

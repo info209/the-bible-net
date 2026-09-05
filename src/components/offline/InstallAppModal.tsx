@@ -12,12 +12,21 @@ import { Download, Share, PlusSquare, CheckCircle2, Smartphone, Monitor } from '
 import { usePWA } from './PWAProvider';
 
 interface InstallAppModalProps {
-  isOpen: boolean;
-  onClose: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
-export default function InstallAppModal({ isOpen, onClose }: InstallAppModalProps) {
-  const { isInstallable, promptInstall, isInstalled } = usePWA();
+export default function InstallAppModal({ isOpen, onClose }: InstallAppModalProps = {}) {
+  const {
+    isInstallable,
+    promptInstall,
+    isInstalled,
+    isInstallModalOpen,
+    closeInstallModal,
+  } = usePWA();
+
+  const effectiveIsOpen = isOpen !== undefined ? isOpen : isInstallModalOpen;
+  const handleClose = onClose || closeInstallModal;
 
   const isIOS =
     typeof window !== 'undefined' &&
@@ -27,12 +36,12 @@ export default function InstallAppModal({ isOpen, onClose }: InstallAppModalProp
   const handleInstallClick = async () => {
     if (isInstallable) {
       await promptInstall();
-      onClose();
+      handleClose();
     }
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+    <Dialog open={effectiveIsOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="max-w-md p-6 rounded-2xl bg-white dark:bg-[#1c1c1e] border-none shadow-2xl">
         <DialogHeader className="text-center sm:text-left">
           <div className="mx-auto sm:mx-0 w-12 h-12 rounded-2xl bg-teal-50 dark:bg-teal-950/50 flex items-center justify-center text-[var(--color-primary-teal)] mb-3">

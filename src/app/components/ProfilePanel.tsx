@@ -6,7 +6,6 @@ import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 import { useAuth } from '@/context/AuthContext';
 import { usePWA } from '@/components/offline/PWAProvider';
-import InstallAppModal from '@/components/offline/InstallAppModal';
 import {
   LogOut,
   Camera,
@@ -124,11 +123,10 @@ const COMING_SOON_VIEWS: ProfileView[] = ['streaks', 'share', 'support'];
 export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: ProfilePanelProps) {
   const router = useRouter();
   const { signOutWithOfflineCleanup, updateSession } = useAuth();
-  const { isInstalled } = usePWA();
+  const { isInstalled, openInstallModal } = usePWA();
   const user = session?.user;
   const [activeView, setActiveView] = useState<ProfileView>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
 
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -339,7 +337,7 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
                 <div className="bg-gray-50 dark:bg-[#1c1c1e] rounded-2xl p-2 space-y-1">
                   <button
                     type="button"
-                    onClick={() => setIsInstallModalOpen(true)}
+                    onClick={() => openInstallModal()}
                     className="w-full flex items-center justify-between p-3 rounded-xl hover:bg-white dark:hover:bg-[#2c2c2e] transition-all text-left group cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
@@ -489,28 +487,6 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
                   </div>
                 </div>
 
-                {/* Install App row if not installed */}
-                {!isInstalled && (
-                  <button
-                    type="button"
-                    onClick={() => setIsInstallModalOpen(true)}
-                    className="w-full flex items-center justify-between p-3 rounded-xl bg-teal-50/80 hover:bg-teal-100/80 dark:bg-teal-950/30 dark:hover:bg-teal-950/50 border border-teal-200/60 dark:border-teal-800/40 transition-all active:scale-[0.98] cursor-pointer text-left"
-                  >
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-8 h-8 rounded-lg bg-[var(--color-primary-teal)] text-white flex items-center justify-center shrink-0">
-                        <Download className="w-4 h-4" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-gray-900 dark:text-white">Install App</p>
-                        <p className="text-[11px] text-gray-500 dark:text-gray-400">Fast launch & offline Bible reading</p>
-                      </div>
-                    </div>
-                    <span className="text-xs font-semibold text-[var(--color-primary-teal)] px-2.5 py-1 rounded-md bg-white dark:bg-zinc-800 shadow-xs">
-                      Install
-                    </span>
-                  </button>
-                )}
-
                 {/* Settings & Language row */}
                 <div className="grid grid-cols-2 gap-3">
                   <button
@@ -546,11 +522,6 @@ export default function ProfilePanel({ isOpen, onClose, session, onMenuOpen }: P
           </div>
         )}
       </SheetContent>
-
-      <InstallAppModal
-        isOpen={isInstallModalOpen}
-        onClose={() => setIsInstallModalOpen(false)}
-      />
     </Sheet>
   );
 }

@@ -23,6 +23,9 @@ interface PWAContextValue {
   promptInstall: () => Promise<void>;
   isInstalled: boolean;
   swRegistration: ServiceWorkerRegistration | null;
+  isInstallModalOpen: boolean;
+  openInstallModal: () => void;
+  closeInstallModal: () => void;
 }
 
 const PWAContext = createContext<PWAContextValue>({
@@ -30,6 +33,9 @@ const PWAContext = createContext<PWAContextValue>({
   promptInstall: async () => {},
   isInstalled: false,
   swRegistration: null,
+  isInstallModalOpen: false,
+  openInstallModal: () => {},
+  closeInstallModal: () => {},
 });
 
 export function PWAProvider({ children }: { children: ReactNode }) {
@@ -117,14 +123,29 @@ export function PWAProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
+
+  const openInstallModal = useCallback(() => {
+    setIsInstallModalOpen(true);
+  }, []);
+
+  const closeInstallModal = useCallback(() => {
+    setIsInstallModalOpen(false);
+  }, []);
+
   const promptInstall = useCallback(async () => {
     if (!deferredPrompt) return;
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setIsInstallable(false);
+    try {
+      await deferredPrompt.prompt();
+      const choice = await deferredPrompt.userChoice;
+      if (choice && choice.outcome === 'accepted') {
+        setIsInstallable(false);
+      }
+    } catch (err) {
+      console.warn('[PWA] promptInstall failed:', err);
+    } finally {
+      setDeferredPrompt(null);
     }
-    setDeferredPrompt(null);
   }, [deferredPrompt]);
 
   return (
@@ -134,6 +155,9 @@ export function PWAProvider({ children }: { children: ReactNode }) {
         promptInstall,
         isInstalled,
         swRegistration,
+        isInstallModalOpen,
+        openInstallModal,
+        closeInstallModal,
       }}
     >
       {children}

@@ -169,7 +169,15 @@ export type PendingActionType =
   | 'delete_note'
   | 'save_reading_progress'
   | 'add_journal'
+  | 'edit_journal'
+  | 'delete_journal'
+  | 'toggle_journal_pin'
+  | 'toggle_journal_bookmark'
   | 'add_prayer'
+  | 'edit_prayer'
+  | 'delete_prayer'
+  | 'toggle_prayer_pin'
+  | 'toggle_prayer_bookmark'
   | 'intercede_prayer'
   | 'save_item'
   | 'delete_item'
@@ -177,7 +185,9 @@ export type PendingActionType =
   | 'complete_plan_item'
   | 'rate_plan'
   | 'like_content'
-  | 'unlike_content';
+  | 'unlike_content'
+  | 'add_comment'
+  | 'delete_comment';
 
 export interface PendingAction {
   id: string;
@@ -189,6 +199,10 @@ export interface PendingAction {
   retryCount: number;
   lastAttemptAt?: string;
   lastError?: string;
+  userId?: string;
+  clientMutationId?: string;
+  entityTempId?: string;
+  entityType?: 'journal' | 'prayer' | 'comment' | 'like' | 'verse' | 'note' | 'highlight' | 'item' | 'plan';
 }
 
 // ---------------------------------------------------------------------------

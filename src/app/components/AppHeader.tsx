@@ -9,7 +9,6 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import ProfilePanel from './ProfilePanel';
-import InstallAppModal from '@/components/offline/InstallAppModal';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -27,9 +26,8 @@ interface AppHeaderProps {
 export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
   const { session } = useAuth();
   const { isOnline } = useNetworkStatusContext();
-  const { isInstalled } = usePWA();
+  const { isInstalled, openInstallModal } = usePWA();
   const [isProfilePanelOpen, setIsProfilePanelOpen] = useState(false);
-  const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -150,7 +148,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
                     {!isInstalled && (
                       <>
                         <DropdownMenuSeparator className="my-1 bg-gray-100" />
-                        <DropdownMenuItem onClick={() => setIsInstallModalOpen(true)} className="px-4 py-3 gap-3 cursor-pointer">
+                        <DropdownMenuItem onClick={() => openInstallModal()} className="px-4 py-3 gap-3 cursor-pointer">
                           <Download className="w-4 h-4 text-primary-teal" />
                           <span>Install app</span>
                         </DropdownMenuItem>
@@ -172,11 +170,6 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
           />
         )}
       </header>
-
-      <InstallAppModal
-        isOpen={isInstallModalOpen}
-        onClose={() => setIsInstallModalOpen(false)}
-      />
     </>
   );
 }

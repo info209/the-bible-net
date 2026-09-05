@@ -67,6 +67,7 @@ export interface BibleNetOfflineDB extends DBSchema {
     indexes: {
       by_created_at: string;
       by_type: string;
+      by_user_id: string;
     };
   };
   user_preferences: {
@@ -76,7 +77,7 @@ export interface BibleNetOfflineDB extends DBSchema {
 }
 
 const DB_NAME = 'bible-net-offline';
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 let dbPromise: Promise<IDBPDatabase<BibleNetOfflineDB>> | null = null;
 
@@ -114,6 +115,7 @@ export function getOfflineDB(): Promise<IDBPDatabase<BibleNetOfflineDB>> {
           const actionsStore = db.createObjectStore('pending_actions', { keyPath: 'id' });
           actionsStore.createIndex('by_created_at', 'createdAt', { unique: false });
           actionsStore.createIndex('by_type', 'type', { unique: false });
+          actionsStore.createIndex('by_user_id', 'userId', { unique: false });
 
           db.createObjectStore('user_preferences', { keyPath: 'key' });
         }
@@ -126,6 +128,15 @@ export function getOfflineDB(): Promise<IDBPDatabase<BibleNetOfflineDB>> {
           const dsStore = db.createObjectStore('download_status', { keyPath: 'id' });
           dsStore.createIndex('by_version', 'versionId', { unique: false });
           dsStore.createIndex('by_target_type', 'targetType', { unique: false });
+        }
+
+        if (oldVersion < 3) {
+          if (db.objectStoreNames.contains('pending_actions')) {
+            const actionsStore = transaction.objectStore('pending_actions');
+            if (!actionsStore.indexNames.contains('by_user_id')) {
+              actionsStore.createIndex('by_user_id', 'userId', { unique: false });
+            }
+          }
         }
       },
 
