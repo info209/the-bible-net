@@ -357,14 +357,14 @@ function ChapterContent({
                   } : undefined}
                 >
                   {verse.text}
-                  {hasNote && (
+                  {hasNote && showFootnotes && (
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         onOpenVerseNotes?.(verse.number, verseNotes);
                       }}
-                      className="inline-flex items-center justify-center p-0.5 ml-1.5 align-middle rounded hover:scale-110 active:scale-95 transition-all text-[var(--color-accent-rose)] focus:outline-none cursor-pointer"
+                      className="inline-flex items-center justify-center p-0.5 ml-1.5 align-middle rounded hover:scale-110 active:scale-95 transition-all text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 focus:outline-none cursor-pointer"
                       title={`View notes for ${book} ${chapter}:${verse.number}`}
                       aria-label={`View notes for ${book} ${chapter}:${verse.number}`}
                     >

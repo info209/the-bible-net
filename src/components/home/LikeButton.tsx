@@ -58,7 +58,7 @@ export function LikeButton({
         <motion.div animate={iconControls} className="flex items-center justify-center">
           <Heart
             className={`size-5 transition-colors duration-200 ${
-              isLiked ? 'fill-black text-black' : 'text-black/80'
+              isLiked ? 'fill-[var(--color-primary-teal)] text-[var(--color-primary-teal)]' : 'text-[var(--color-primary-teal)]'
             }`}
           />
         </motion.div>
@@ -79,7 +79,7 @@ export function LikeButton({
         <motion.div animate={iconControls} className="flex items-center justify-center">
           <Heart
             className={`size-4 transition-colors duration-200 ${
-              isLiked ? 'fill-black text-black' : 'text-black'
+              isLiked ? 'fill-[var(--color-primary-teal)] text-[var(--color-primary-teal)]' : 'text-[var(--color-primary-teal)]'
             }`}
           />
         </motion.div>

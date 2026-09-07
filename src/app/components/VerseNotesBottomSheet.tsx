@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence, PanInfo, useDragControls } from 'framer-motion';
 import {
-  X, ChevronLeft, Plus, Edit2, Trash2, Share2, Copy, FileText, Check, Clock
+  X, ChevronLeft, Plus, Edit2, Trash2, Copy, FileText, Check, Clock
 } from 'lucide-react';
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 import { LabelTag } from '@/components/ui/LabelTag';
@@ -385,29 +385,6 @@ export default function VerseNotesBottomSheet({
     }
   };
 
-  // Handle Share Note
-  const handleShareNote = async (note: NoteItem) => {
-    const text = note.noteText || note.metadata?.content || '';
-    const vList =
-      note.metadata?.verses ||
-      note.verses?.[0]?.verses ||
-      (typeof note.metadata?.verse === 'number' ? [note.metadata.verse] : [verseNumber]);
-    const refStr = formatVersesHeader(bookName, chapter, vList);
-
-    const shareContent = `${refStr}\n\n"${text}"\n\n— The Bible App`;
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: refStr, text: shareContent });
-      } catch (_) {}
-    } else {
-      try {
-        await navigator.clipboard.writeText(shareContent);
-        toast.success('Note copied to clipboard');
-      } catch (_) {
-        toast.error('Could not copy to clipboard');
-      }
-    }
-  };
 
   // Handle Copy Note text
   const handleCopyNote = async (note: NoteItem) => {
@@ -438,7 +415,7 @@ export default function VerseNotesBottomSheet({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.2 }}
             onClick={onClose}
-            className="fixed inset-0 z-[1115]"
+            className="fixed inset-0 z-[1300]"
             style={{
               backgroundColor: dm ? 'rgba(0,0,0,0.7)' : 'rgba(0,0,0,0.35)',
               backdropFilter: 'blur(3px)',
@@ -458,7 +435,7 @@ export default function VerseNotesBottomSheet({
             dragConstraints={{ top: 0 }}
             dragElastic={0.18}
             onDragEnd={handleDragEnd}
-            className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] z-[1120] overflow-hidden flex flex-col"
+            className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-[500px] z-[1310] overflow-hidden flex flex-col"
             style={{
               backgroundColor: sheetBg,
               borderRadius: '28px 28px 0 0',
@@ -466,7 +443,6 @@ export default function VerseNotesBottomSheet({
               paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
               maxHeight: '85vh',
             }}
-            data-bottom-sheet="true"
           >
             {/* Drag Handle */}
             <div
@@ -654,16 +630,6 @@ export default function VerseNotesBottomSheet({
                               aria-label="Copy note"
                             >
                               <Copy className="size-4" />
-                            </button>
-
-                            <button
-                              onClick={() => handleShareNote(note)}
-                              className="p-1.5 rounded-lg active:scale-95 transition-colors hover:bg-black/5 dark:hover:bg-white/5"
-                              style={{ color: subText }}
-                              title="Share note"
-                              aria-label="Share note"
-                            >
-                              <Share2 className="size-4" />
                             </button>
 
                             <button

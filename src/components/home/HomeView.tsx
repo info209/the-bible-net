@@ -701,14 +701,14 @@ export default function HomeView() {
         </Avatar>
         {userName ? (
           <div className="flex flex-col min-w-0">
-            <span className="text-gray-500 text-[15px] font-normal leading-tight">{greeting},</span>
+            <span className="text-gray-700 dark:text-gray-300 text-[15px] font-normal leading-tight">{greeting},</span>
             <span className="truncate block max-w-full text-gray-900 text-[21px] font-bold leading-tight">
               {userName}
             </span>
           </div>
         ) : (
           <div className="flex flex-col min-w-0">
-            <span className="truncate block max-w-full text-gray-900 text-[21px] font-bold leading-tight">
+            <span className="truncate block max-w-full text-gray-700 dark:text-gray-300 text-[21px] font-bold leading-tight">
               {greeting}
             </span>
           </div>
@@ -850,7 +850,7 @@ export default function HomeView() {
                         className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                       >
                         <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                          <MessageCircle className="size-4 text-black" />
+                          <MessageCircle className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.verseCommentCount || 'Comment'}</span>
                       </button>
@@ -860,7 +860,7 @@ export default function HomeView() {
                         disabled={sharingStates.has(`${content._id}-daily-verse`)}
                       >
                         <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                          <RiShareForwardLine className="size-4 text-black" />
+                          <RiShareForwardLine className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.verseShareCount > 0 ? content.verseShareCount : 'Share'}</span>
                       </button>
@@ -875,7 +875,7 @@ export default function HomeView() {
                           className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                         >
                           <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                            <MoreVertical className="size-4 text-black" />
+                            <MoreVertical className="size-4 text-[var(--color-primary-teal)]" />
                           </div>
                           <span className="text-xs">More</span>
                         </button>
@@ -1042,7 +1042,7 @@ export default function HomeView() {
                         className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                       >
                         <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                          <MessageCircle className="size-4 text-black" />
+                          <MessageCircle className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.devotionCommentCount || 'Comment'}</span>
                       </button>
@@ -1052,7 +1052,7 @@ export default function HomeView() {
                         disabled={sharingStates.has(`${content._id}-daily-devotion`)}
                       >
                         <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                          <RiShareForwardLine className="size-4 text-black" />
+                          <RiShareForwardLine className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.devotionShareCount > 0 ? content.devotionShareCount : 'Share'}</span>
                       </button>
@@ -1067,7 +1067,7 @@ export default function HomeView() {
                           className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                         >
                           <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                            <MoreVertical className="size-4 text-black" />
+                            <MoreVertical className="size-4 text-[var(--color-primary-teal)]" />
                           </div>
                           <span className="text-xs">More</span>
                         </button>

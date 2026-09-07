@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw, RotateCw, Repeat, Gauge, Timer, Volume2, X } from 'lucide-react';
 import ProgressRing from './ui/ProgressRing';
 
@@ -361,12 +362,13 @@ export default function AudioControlPanel({
               {/* V- */}
               <button
                 onClick={() => (onVerseStep ?? onVerseChange)(Math.max(1, selectedVerse - 1))}
-                className="size-8 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+                style={{ backgroundColor: btnBg }}
                 aria-label="Previous verse"
               >
                 <div className="relative flex items-center justify-center">
                   <RotateCcw className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-                  <span className="absolute text-[7px] font-bold text-[var(--color-primary-teal)] mt-0.5">V-</span>
+                  <span className="absolute text-[7.5px] font-bold text-[var(--color-primary-teal)] mt-0.5 select-none">V-</span>
                 </div>
               </button>
 
@@ -386,23 +388,44 @@ export default function AudioControlPanel({
                     hover:scale-105 active:scale-95 transition-transform"
                   aria-label={audioPlaying ? "Pause" : "Play"}
                 >
-                  {audioPlaying ? (
-                    <Pause className="size-4 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)]" strokeWidth={0} />
-                  ) : (
-                    <Play className="size-4 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)] ml-0.5" strokeWidth={0} />
-                  )}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {audioPlaying ? (
+                      <motion.div
+                        key="panel-pause"
+                        initial={{ scale: 0.7, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.7, opacity: 0 }}
+                        transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
+                        className="flex items-center justify-center"
+                      >
+                        <Pause className="size-4 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)]" strokeWidth={0} />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="panel-play"
+                        initial={{ scale: 0.7, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.7, opacity: 0 }}
+                        transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
+                        className="flex items-center justify-center"
+                      >
+                        <Play className="size-4 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)] ml-0.5" strokeWidth={0} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </button>
               </ProgressRing>
 
               {/* V+ */}
               <button
                 onClick={() => (onVerseStep ?? onVerseChange)(Math.min(totalVerses, selectedVerse + 1))}
-                className="size-8 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform cursor-pointer"
+                style={{ backgroundColor: btnBg }}
                 aria-label="Next verse"
               >
                 <div className="relative flex items-center justify-center">
                   <RotateCw className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-                  <span className="absolute text-[7px] font-bold text-[var(--color-primary-teal)] mt-0.5">V+</span>
+                  <span className="absolute text-[7.5px] font-bold text-[var(--color-primary-teal)] mt-0.5 select-none">V+</span>
                 </div>
               </button>
             </div>
