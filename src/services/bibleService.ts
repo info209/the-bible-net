@@ -426,6 +426,105 @@ export class BibleService {
     }
 
     /**
+     * Update Bible Version metadata
+     * @param versionId - Version document ID
+     * @param data - Metadata fields to update
+     */
+    static async updateVersion(
+        versionId: string,
+        data: {
+            name?: string;
+            abbreviation?: string;
+            language?: string;
+            copyright?: string;
+            licenseType?: 'public-domain' | 'licensed' | 'proprietary' | 'unknown';
+            status?: 'active' | 'inactive' | 'importing' | 'failed';
+            isActive?: boolean;
+        }
+    ): Promise<(IBibleVersion & { _id: any }) | null> {
+        await connectDB();
+
+        const existingVersion = await BibleVersion.findById(versionId);
+        if (!existingVersion) {
+            throw new Error('Bible version not found');
+        }
+
+        const updates: any = {};
+
+        if (data.name !== undefined) {
+            const name = data.name.trim();
+            if (!name) throw new Error('Version name cannot be empty');
+            if (name.length > 100) throw new Error('Version name cannot exceed 100 characters');
+            updates.name = name;
+        }
+
+        if (data.abbreviation !== undefined) {
+            const abbr = data.abbreviation.trim().toUpperCase();
+            if (!abbr) throw new Error('Abbreviation cannot be empty');
+            if (abbr.length > 10) throw new Error('Abbreviation cannot exceed 10 characters');
+            if (!/^[A-Z0-9]+$/.test(abbr)) throw new Error('Abbreviation must be alphanumeric');
+
+            if (abbr !== existingVersion.abbreviation) {
+                const duplicate = await BibleVersion.findOne({
+                    abbreviation: abbr,
+                    _id: { $ne: versionId }
+                });
+                if (duplicate) {
+                    throw new Error(`A version with abbreviation "${abbr}" already exists`);
+                }
+                updates.abbreviation = abbr;
+            }
+        }
+
+        if (data.language !== undefined) {
+            const lang = data.language.trim().toLowerCase();
+            if (!/^[a-z]{2,3}$/.test(lang)) {
+                throw new Error('Language must be a 2 or 3 letter ISO code (e.g. en, te, hi)');
+            }
+            updates.language = lang;
+        }
+
+        if (data.copyright !== undefined) {
+            updates.copyright = data.copyright.trim();
+        }
+
+        if (data.licenseType !== undefined) {
+            updates.licenseType = data.licenseType;
+        }
+
+        if (data.status !== undefined) {
+            updates.status = data.status;
+            updates.isActive = data.status === 'active';
+        } else if (data.isActive !== undefined) {
+            updates.isActive = data.isActive;
+            if (data.isActive && existingVersion.status === 'inactive') {
+                updates.status = 'active';
+            } else if (!data.isActive && existingVersion.status === 'active') {
+                updates.status = 'inactive';
+            }
+        }
+
+        const updatedVersion = await BibleVersion.findByIdAndUpdate(
+            versionId,
+            { $set: updates },
+            { new: true, runValidators: true }
+        ).lean() as any;
+
+        // If abbreviation changed, update denormalized versionCode on verses
+        if (updates.abbreviation && updates.abbreviation !== existingVersion.abbreviation) {
+            await Verse.updateMany(
+                { version: versionId },
+                { $set: { versionCode: updates.abbreviation } }
+            ).catch(err => console.warn('Denormalized versionCode update error:', err));
+        }
+
+        // Invalidate Redis/memory caches
+        await CacheService.invalidatePattern('tbnet:bible:*');
+
+        return updatedVersion;
+    }
+
+    /**
      * Delete a Bible Version and all its associated data
      */
     static async deleteVersion(versionId: string): Promise<boolean> {

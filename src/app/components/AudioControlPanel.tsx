@@ -378,7 +378,7 @@ export default function AudioControlPanel({
                 size={64}
                 strokeWidth={3}
                 trackColor={sliderTrackBg}
-                color="var(--color-accent-rose)"
+                color="var(--color-primary-teal)"
               >
                 <button
                   onClick={onPlayPauseToggle}

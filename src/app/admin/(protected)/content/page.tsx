@@ -43,9 +43,9 @@ export default async function AdminContentPage() {
                         href="/admin/content/articles"
                     />
                     <ContentCard
-                        title="Media Gallery"
-                        description="Manage images and audio files"
-                        icon="🖼️"
+                        title="Ambient Music"
+                        description="Manage background ambient audio tracks and artwork"
+                        icon="🎵"
                         href="/admin/content/media"
                     />
                 </div>
