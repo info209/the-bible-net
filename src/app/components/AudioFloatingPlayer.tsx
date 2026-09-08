@@ -218,7 +218,7 @@ export default function AudioFloatingPlayer({
                         WebkitUserSelect: "none",
                       }}
                     >
-                      <Play className="size-[18px] fill-[#31C4BE] text-[#31C4BE] ml-0.5" strokeWidth={0} />
+                      <Play className="size-[22px] fill-[#31C4BE] text-[#31C4BE] ml-0.5" strokeWidth={0} />
                     </motion.button>
                   </motion.div>
                 ) : (
@@ -287,7 +287,7 @@ export default function AudioFloatingPlayer({
                                 transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
                                 className="flex items-center justify-center"
                               >
-                                <Pause className="size-[18px] fill-[#31C4BE] text-[#31C4BE]" strokeWidth={0} />
+                                <Pause className="size-[22px] fill-[#31C4BE] text-[#31C4BE]" strokeWidth={0} />
                               </motion.div>
                             ) : (
                               <motion.div
@@ -298,7 +298,7 @@ export default function AudioFloatingPlayer({
                                 transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
                                 className="flex items-center justify-center"
                               >
-                                <Play className="size-[18px] fill-[#31C4BE] text-[#31C4BE] ml-0.5" strokeWidth={0} />
+                                <Play className="size-[22px] fill-[#31C4BE] text-[#31C4BE] ml-0.5" strokeWidth={0} />
                               </motion.div>
                             )}
                           </AnimatePresence>
