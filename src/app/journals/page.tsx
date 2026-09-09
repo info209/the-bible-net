@@ -35,6 +35,7 @@ import { VerseLink } from '@/app/components/VerseLink';
 import { VerseBlock } from '@/app/components/VerseBlock';
 import BibleVerseSearchSelector from '@/app/components/BibleVerseSearchSelector';
 import { LabelTag } from '@/components/ui/LabelTag';
+import DocumentViewMenu from '@/app/components/journals/DocumentViewMenu';
 
 type Tab = 'All' | 'Journals' | 'Prayers';
 type ItemType = 'journal' | 'prayer';
@@ -191,6 +192,13 @@ function JournalsContent() {
   const [editChecklistItems, setEditChecklistItems] = useState<any[]>([]);
   const [editIsPinned, setEditIsPinned] = useState(false);
   const [editIsBookmarked, setEditIsBookmarked] = useState(false);
+
+  const activeViewItem = useMemo(() => {
+    if (!editorId) return null;
+    return editorType === 'journal'
+      ? journals.find(j => j._id === editorId)
+      : prayers.find(p => p._id === editorId);
+  }, [editorId, editorType, journals, prayers]);
 
   // Rich Text Editor â€” Tiptap instance
   // (replaces the old contentEditable ref + execCommand approach)
@@ -595,6 +603,11 @@ function JournalsContent() {
   const handleTogglePin = async (id: string, type: ItemType, currentPin: boolean, e?: React.MouseEvent) => {
     if (e) e.stopPropagation();
     
+    // Sync editor state if toggling the currently viewed/edited item
+    if (editorId === id || id === 'temp') {
+      setEditIsPinned(!currentPin);
+    }
+
     // Optimistic Update & local IndexedDB cache update
     if (type === 'journal') {
       const updated = journals.map(j => j._id === id ? { ...j, isPinned: !currentPin, updatedAt: new Date().toISOString() } : j);
@@ -605,6 +618,8 @@ function JournalsContent() {
       setPrayers(updated);
       ModuleOfflineService.saveCache('prayers_personal', updated).catch(() => {});
     }
+
+    showToast(!currentPin ? 'Pinned to top' : 'Unpinned');
 
     const endpoint = type === 'journal' ? `/api/journals/${id}` : `/api/prayers/${id}`;
     const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
@@ -2378,28 +2393,42 @@ function JournalsContent() {
 
               <div className="flex items-center space-x-2.5">
                 {/* Header Actions */}
-                <button
-                  onClick={() => handleTogglePin(editorId || 'temp', editorType, editIsPinned)}
-                  className={`w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06] ${editIsPinned ? 'text-[#0B7A81]' : 'text-gray-400'}`}
-                  title="Pin"
-                >
-                  <Pin className={`w-[17px] h-[17px] ${editIsPinned ? 'fill-[#0B7A81]' : ''}`} />
-                </button>
-                
                 {editorMode === 'view' ? (
-                  <button
-                    onClick={() => setEditorMode('edit')}
-                    className="h-9 px-5 bg-[#0B7A81] hover:bg-[#086369] text-white rounded-xl text-sm font-semibold active:scale-95 transition-all shadow-sm"
-                  >
-                    Edit
-                  </button>
+                  <DocumentViewMenu
+                    documentData={{
+                      title: editTitle,
+                      type: editorType,
+                      contentHtml: editContent,
+                      labels: editLabels,
+                      verses: editVerses,
+                      createdAt: activeViewItem?.createdAt,
+                      updatedAt: activeViewItem?.updatedAt,
+                      status: activeViewItem?.status,
+                      isPinned: editIsPinned,
+                    }}
+                    isPinned={editIsPinned}
+                    onEdit={() => setEditorMode('edit')}
+                    onTogglePin={() => handleTogglePin(editorId || 'temp', editorType, editIsPinned)}
+                  />
                 ) : (
-                  <button
-                    onClick={() => saveOrUpdateEditor(false)}
-                    className="h-9 px-5 bg-[#0B7A81] hover:bg-[#086369] text-white rounded-xl text-sm font-semibold active:scale-95 transition-all shadow-sm"
-                  >
-                    Save
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleTogglePin(editorId || 'temp', editorType, editIsPinned)}
+                      className={`w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06] cursor-pointer ${editIsPinned ? 'text-[#0B7A81]' : 'text-gray-400'}`}
+                      title="Pin"
+                    >
+                      <Pin className={`w-[17px] h-[17px] ${editIsPinned ? 'fill-[#0B7A81]' : ''}`} />
+                    </button>
+                    
+                    <button
+                      type="button"
+                      onClick={() => saveOrUpdateEditor(false)}
+                      className="h-9 px-5 bg-[#0B7A81] hover:bg-[#086369] text-white rounded-xl text-sm font-semibold active:scale-95 transition-all shadow-sm cursor-pointer"
+                    >
+                      Save
+                    </button>
+                  </>
                 )}
               </div>
             </header>
