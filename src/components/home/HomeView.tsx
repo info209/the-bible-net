@@ -1354,7 +1354,7 @@ export default function HomeView() {
         </div>
 
         {/* Legal Links (Terms of Service & Privacy Policy) */}
-        <div className="flex items-center justify-center gap-3 text-xs text-gray-400 font-medium">
+        <div className="flex items-center justify-center gap-3 text-sm text-gray-500 font-normal">
           <button
             type="button"
             onClick={() => setLegalModal({ isOpen: true, type: 'terms' })}

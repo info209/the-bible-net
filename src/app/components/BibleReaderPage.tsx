@@ -2447,7 +2447,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                                       }
                                     }}
                                     disabled={!isOnline || isDeletingThis}
-                                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-teal-50 text-[var(--color-primary-teal)] hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
+                                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg text-[var(--color-primary-teal)] md:hover:bg-teal-50/80 dark:md:hover:bg-teal-950/30 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                                     title={!isOnline ? 'Internet connection required to download' : `Download ${versionAbbr} for offline use`}
                                   >
                                     <Download className="size-3.5" />

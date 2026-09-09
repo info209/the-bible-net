@@ -200,7 +200,7 @@ export default function AudioFloatingPlayer({
                 }}
                 aria-label="Previous chapter"
               >
-                <ChevronLeft className="size-[18px]" style={{ color: iconColor }} strokeWidth={2.5} />
+                <ChevronLeft className="size-[18px] text-[#31C4BE]" strokeWidth={2.5} />
               </motion.button>
             ) : (
               <div className="size-10 pointer-events-none" aria-hidden="true" />
@@ -352,7 +352,7 @@ export default function AudioFloatingPlayer({
                 }}
                 aria-label="Next chapter"
               >
-                <ChevronRight className="size-[18px]" style={{ color: iconColor }} strokeWidth={2.5} />
+                <ChevronRight className="size-[18px] text-[#31C4BE]" strokeWidth={2.5} />
               </motion.button>
             ) : (
               <div className="size-10 pointer-events-none" aria-hidden="true" />

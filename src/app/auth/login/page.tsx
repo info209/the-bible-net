@@ -211,7 +211,7 @@ export default function LoginPage() {
                 </p>
             </div>
 
-            <div className="flex items-start gap-3 px-1">
+            <div className="text-center pt-2">
                 <label htmlFor="tnc" className="text-sm text-slate-600 font-medium cursor-pointer leading-relaxed">
                     <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'terms' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Terms of Service</button> | <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Privacy Policy</button>.
                 </label>
