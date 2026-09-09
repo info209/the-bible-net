@@ -6,9 +6,10 @@ import Link from 'next/link';
 import {
   BookmarkPlus, FileText, Plus, X, ChevronLeft, ChevronDown, ChevronUp,
   CheckCircle2, MinusCircle, ArrowRightLeft,
-  Share2, Bookmark, Lock, Trash2, BookmarkCheck
+  Share2, Bookmark, Lock, Trash2, BookmarkCheck, Copy
 } from 'lucide-react';
 import { RiShareForwardLine } from 'react-icons/ri';
+import { toast } from '@/context/ToastContext';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 const MAX_LABEL_LENGTH = 40;
@@ -56,6 +57,7 @@ export interface VerseActionMenuProps {
   onNote: (note: string, labels: string[]) => void | Promise<void>;
   onCompare?: () => void;
   onShare?: () => void;
+  onCopy?: () => void;
   existingHighlightColor?: string | null;
   /** Labels the verses are already saved under */
   existingSaveLabels?: string[] | null;
@@ -137,6 +139,7 @@ export default function VerseActionMenu({
   onNote,
   onCompare,
   onShare,
+  onCopy,
   existingHighlightColor = null,
   existingSaveLabels = null,
   existingSaveNote = null,
@@ -153,7 +156,9 @@ export default function VerseActionMenu({
   const [view, setView] = useState<'main' | 'save' | 'note'>('main');
   const dragControls = useDragControls();
   const [paletteExpanded, setPaletteExpanded] = useState(false);
-  const [selectedColor, setSelectedColor] = useState<string>(existingHighlightColor || 'yellow');
+  const [selectedColor, setSelectedColor] = useState<string | null>(
+    existingHighlightColor && existingHighlightColor !== 'none' ? existingHighlightColor : null
+  );
 
   const [labelInput, setLabelInput] = useState('');
   const [selectedLabels, setSelectedLabels] = useState<string[]>([]);
@@ -172,7 +177,9 @@ export default function VerseActionMenu({
     if (isOpen) {
       setView('main');
       setPaletteExpanded(false);
-      setSelectedColor(existingHighlightColor || 'yellow');
+      setSelectedColor(
+        existingHighlightColor && existingHighlightColor !== 'none' ? existingHighlightColor : null
+      );
       setSelectedLabels(existingSaveLabels ?? []);
       setNoteInput(existingSaveNote ?? '');
       setIsPrivate(existingSaveIsPrivate ?? false);
@@ -403,10 +410,9 @@ export default function VerseActionMenu({
               boxShadow: '0 -10px 40px rgba(0,0,0,0.18)',
               paddingBottom: 'env(safe-area-inset-bottom)',
               height: 'auto',
-              maxHeight: paletteExpanded ? '85vh' : '50vh',
+              maxHeight: view !== 'main' ? '85vh' : '50vh',
               display: 'flex',
               flexDirection: 'column',
-              transition: 'max-height 0.25s ease-out',
             }}
             data-bottom-sheet="true"
           >
@@ -455,7 +461,7 @@ export default function VerseActionMenu({
                           <BookmarkPlus className="w-[18px] h-[18px] text-[#31C4BE]" />
                         </div>
                         <h3 className="text-[13px] font-bold mb-0.5" style={{ color: labelText }}>
-                          Log in to save & highlight
+                          Sign in to save & highlight
                         </h3>
                         <p className="text-[10px] mb-3 leading-relaxed" style={{ color: subText }}>
                           Sign in to save verses, highlight, and take personal notes.
@@ -463,9 +469,15 @@ export default function VerseActionMenu({
                         <div className="flex w-full">
                           <Link
                             href="/auth/login"
+                            onClick={(e) => {
+                              if (typeof navigator !== 'undefined' && !navigator.onLine) {
+                                e.preventDefault();
+                                toast.info('Sign in requires an internet connection.');
+                              }
+                            }}
                             className="flex-1 py-2 bg-[#31C4BE] text-white text-[12px] font-bold rounded-[12px] shadow-[0_4px_15px_rgba(49,196,190,0.22)] active:scale-95 transition-all text-center"
                           >
-                            Log in
+                            Sign in
                           </Link>
                         </div>
                       </div>
@@ -473,94 +485,99 @@ export default function VerseActionMenu({
                   ) : (
                     <>
                       {/* ── Single Action Row (Highlight Palette + Action Icons) ── */}
-                      <div className="flex items-center gap-2 w-full shrink-0">
-                        {/* ── Highlight Palette Container (Wider Width) ──────────── */}
+                      <div className="flex items-center gap-1.5 sm:gap-2 w-full overflow-x-auto scrollbar-none flex-nowrap py-1 scroll-smooth [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                        {/* ── Highlight Palette Container ──────────── */}
                         <motion.div
                           layout
-                          transition={{ duration: 0.2, ease: 'easeOut' }}
-                          className="flex-1 flex flex-wrap items-center justify-between gap-1 sm:gap-1.5 p-2 rounded-[16px] min-h-[58px]"
+                          transition={{ type: 'spring', damping: 26, stiffness: 320 }}
+                          className="shrink-0 flex items-center justify-between gap-1 sm:gap-1.5 px-2 rounded-[16px] h-[58px] min-h-[58px] max-h-[58px]"
                           style={{
                             backgroundColor: actionBg,
                             border: actionBorder,
                           }}
                         >
-                          <motion.div
+                          <div className="flex items-center gap-1 sm:gap-1.5 flex-nowrap">
+                            <AnimatePresence initial={false} mode="popLayout">
+                              {paletteList.map((c, index) => {
+                                const isApplied = isHighlighted && appliedColorObj && (c.id === appliedColorObj.id || c.color.toLowerCase() === appliedColorObj.color.toLowerCase());
+                                const isFirstItemWithRemove = isApplied && index === 0;
+
+                                return (
+                                  <motion.button
+                                    key={c.id}
+                                    layout
+                                    initial={{ opacity: 0, scale: 0.8 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.8 }}
+                                    transition={{ duration: 0.15 }}
+                                    onClick={() => {
+                                      if (isFirstItemWithRemove) {
+                                        onHighlight('none');
+                                        onClose();
+                                      } else {
+                                        setSelectedColor(c.id);
+                                        onHighlight(c.id);
+                                        onClose();
+                                      }
+                                    }}
+                                    title={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
+                                    aria-label={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
+                                    className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
+                                    style={{ backgroundColor: c.color }}
+                                  >
+                                    {/* Active selection ring */}
+                                    {isApplied && (
+                                      <span
+                                        className="absolute rounded-full pointer-events-none"
+                                        style={{
+                                          inset: -2.5,
+                                          border: '1.5px solid #31C4BE',
+                                          boxShadow: '0 0 5px rgba(49,196,190,0.35)',
+                                        }}
+                                      />
+                                    )}
+
+                                    {/* Remove "×" icon overlay on the first item if highlighted */}
+                                    {isFirstItemWithRemove && (
+                                      <span className="w-4 h-4 rounded-full bg-black/65 backdrop-blur-sm flex items-center justify-center text-white shadow-sm border border-white/30">
+                                        <X className="w-2.5 h-2.5 stroke-[2.5]" />
+                                      </span>
+                                    )}
+                                  </motion.button>
+                                );
+                              })}
+                            </AnimatePresence>
+                          </div>
+
+                          {/* Overlapping Double-Circle Expand / Collapse Button */}
+                          <motion.button
                             layout
-                            className="flex flex-wrap items-center justify-between gap-1.5 w-full"
+                            onClick={() => setPaletteExpanded((prev) => !prev)}
+                            title={paletteExpanded ? "Collapse colors" : "More colors"}
+                            aria-label={paletteExpanded ? "Collapse colors" : "More colors"}
+                            className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm overflow-hidden ml-0.5"
+                            style={{
+                              backgroundColor: dm ? '#2C2C2E' : '#E5E7EB',
+                              border: actionBorder,
+                            }}
                           >
-                            {paletteList.map((c, index) => {
-                              const isApplied = isHighlighted && appliedColorObj && (c.id === appliedColorObj.id || c.color.toLowerCase() === appliedColorObj.color.toLowerCase());
-                              const isFirstItemWithRemove = isApplied && index === 0;
-
-                              return (
-                                <button
-                                  key={c.id}
-                                  onClick={() => {
-                                    if (isFirstItemWithRemove) {
-                                      onHighlight('none');
-                                      onClose();
-                                    } else {
-                                      setSelectedColor(c.id);
-                                      onHighlight(c.id);
-                                      onClose();
-                                    }
-                                  }}
-                                  title={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
-                                  aria-label={isFirstItemWithRemove ? `Remove ${c.label} highlight` : `Highlight ${c.label}`}
-                                  className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm"
-                                  style={{ backgroundColor: c.color }}
-                                >
-                                  {/* Active selection ring */}
-                                  {isApplied && (
-                                    <span
-                                      className="absolute rounded-full pointer-events-none"
-                                      style={{
-                                        inset: -2.5,
-                                        border: '1.5px solid #31C4BE',
-                                        boxShadow: '0 0 5px rgba(49,196,190,0.35)',
-                                      }}
-                                    />
-                                  )}
-
-                                  {/* Remove "×" icon overlay on the first item if highlighted */}
-                                  {isFirstItemWithRemove && (
-                                    <span className="w-4 h-4 rounded-full bg-black/65 backdrop-blur-sm flex items-center justify-center text-white shadow-sm border border-white/30">
-                                      <X className="w-2.5 h-2.5 stroke-[2.5]" />
-                                    </span>
-                                  )}
-                                </button>
-                              );
-                            })}
-
-                            {/* Overlapping Double-Circle Expand / Collapse Button */}
-                            <button
-                              onClick={() => setPaletteExpanded((prev) => !prev)}
-                              title={paletteExpanded ? "Collapse colors" : "More colors"}
-                              aria-label={paletteExpanded ? "Collapse colors" : "More colors"}
-                              className="relative w-7 h-7 sm:w-8 sm:h-8 rounded-full flex items-center justify-center shrink-0 transition-transform active:scale-90 cursor-pointer shadow-sm overflow-hidden"
-                              style={{
-                                backgroundColor: dm ? '#2C2C2E' : '#E5E7EB',
-                                border: actionBorder,
-                              }}
-                            >
-                              {paletteExpanded ? (
-                                <ChevronUp className="w-4 h-4" style={{ color: labelText }} />
-                              ) : (
-                                <div className="relative w-full h-full flex items-center justify-center">
-                                  {/* Purple circle (underneath / right) */}
-                                  <span
-                                    className="absolute right-[2px] top-[4px] w-4 h-4 rounded-full border border-white dark:border-[#1c1c1e] shadow-sm"
-                                    style={{ backgroundColor: '#A66CFF' }}
-                                  />
-                                  {/* Pink circle (on top / left) */}
-                                  <span
-                                    className="absolute left-[2px] top-[4px] w-4 h-4 rounded-full border border-white dark:border-[#1c1c1e] shadow-sm"
-                                    style={{ backgroundColor: '#FF6B9D' }}
-                                  />
-                                </div>
-                              )}
-                            </button>
-                          </motion.div>
+                            {paletteExpanded ? (
+                              <ChevronLeft className="w-4 h-4" style={{ color: labelText }} />
+                            ) : (
+                              <div className="relative w-full h-full flex items-center justify-center">
+                                {/* Purple circle (underneath / right) */}
+                                <span
+                                  className="absolute right-[2px] top-[4px] w-4 h-4 rounded-full border border-white dark:border-[#1c1c1e] shadow-sm"
+                                  style={{ backgroundColor: '#A66CFF' }}
+                                />
+                                {/* Pink circle (on top / left) */}
+                                <span
+                                  className="absolute left-[2px] top-[4px] w-4 h-4 rounded-full border border-white dark:border-[#1c1c1e] shadow-sm"
+                                  style={{ backgroundColor: '#FF6B9D' }}
+                                />
+                              </div>
+                            )}
+                          </motion.button>
                         </motion.div>
 
                         {/* ── Save Button ──────────────────────────── */}
@@ -572,7 +589,7 @@ export default function VerseActionMenu({
                           }}
                           id="verse-action-save"
                           aria-label="Save verse"
-                          className="flex flex-col items-center justify-center gap-0.5 w-[50px] sm:w-[54px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[42px] sm:w-[48px] md:w-[52px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{
                             backgroundColor: isSavedVerse ? 'rgba(49,196,190,0.16)' : actionBg,
                             border: isSavedVerse ? '1px solid rgba(49,196,190,0.24)' : actionBorder,
@@ -597,11 +614,23 @@ export default function VerseActionMenu({
                           }}
                           id="verse-action-note"
                           aria-label="Add note"
-                          className="flex flex-col items-center justify-center gap-0.5 w-[50px] sm:w-[54px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[42px] sm:w-[48px] md:w-[52px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
                           <FileText className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
                           <span className="text-[10px] font-bold" style={{ color: iconColor }}>Note</span>
+                        </button>
+
+                        {/* ── Copy Button ──────────────────────────── */}
+                        <button
+                          onClick={() => onCopy?.()}
+                          id="verse-action-copy"
+                          aria-label="Copy verse"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[42px] sm:w-[48px] md:w-[52px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          style={{ backgroundColor: actionBg, border: actionBorder }}
+                        >
+                          <Copy className="w-[18px] h-[18px]" strokeWidth={2} style={{ color: iconColor }} />
+                          <span className="text-[10px] font-bold" style={{ color: iconColor }}>Copy</span>
                         </button>
 
                         {/* ── Share Button ──────────────────────────── */}
@@ -609,7 +638,7 @@ export default function VerseActionMenu({
                           onClick={() => onShare?.()}
                           id="verse-action-share"
                           aria-label="Share verse"
-                          className="flex flex-col items-center justify-center gap-0.5 w-[50px] sm:w-[54px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
+                          className="flex flex-col items-center justify-center gap-0.5 w-[42px] sm:w-[48px] md:w-[52px] h-[58px] rounded-[16px] shrink-0 transition-all active:scale-95"
                           style={{ backgroundColor: actionBg, border: actionBorder }}
                         >
                           <RiShareForwardLine className="w-[18px] h-[18px]" style={{ color: iconColor }} />
@@ -720,21 +749,22 @@ export default function VerseActionMenu({
                                 key={label}
                                 onClick={() => toggleLabel(label)}
                                 aria-selected={isSelected}
-                                className="flex items-center gap-1.5 transition-all active:scale-95"
+                                className={`flex items-center gap-1.5 transition-all active:scale-95 ${
+                                  isSelected ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400' : ''
+                                }`}
                                 style={{
                                   height: 28,
                                   borderRadius: 999,
                                   padding: '0 10px',
                                   fontSize: 11,
-                                  fontWeight: 500,
-                                  backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
-                                  border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
-                                  color: isSelected ? '#31C4BE' : labelText,
+                                  fontWeight: 600,
+                                  backgroundColor: isSelected ? (isDark ? 'rgba(11,122,129,0.20)' : '#E6F4F5') : chipBg,
+                                  border: isSelected ? (isDark ? '1px solid rgba(11,122,129,0.40)' : '1px solid rgba(11,122,129,0.20)') : chipBorder,
+                                  color: isSelected ? (isDark ? '#14B8A6' : '#0B7A81') : labelText,
                                 }}
                               >
-                                {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
                                 <span>{label}</span>
-                                {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
+                                {isSelected && <X className="w-3 h-3 shrink-0 ml-auto opacity-70 hover:opacity-100" />}
                               </button>
                             );
                           })}
@@ -755,21 +785,22 @@ export default function VerseActionMenu({
                               key={label}
                               onClick={() => toggleLabel(label)}
                               aria-selected={isSelected}
-                              className="flex items-center gap-1.5 transition-all active:scale-95"
+                              className={`flex items-center gap-1.5 transition-all active:scale-95 ${
+                                isSelected ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400' : ''
+                              }`}
                               style={{
                                 height: 28,
                                 borderRadius: 999,
-                                  padding: '0 10px',
-                                  fontSize: 11,
-                                  fontWeight: 500,
-                                  backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
-                                  border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
-                                  color: isSelected ? '#31C4BE' : labelText,
+                                padding: '0 10px',
+                                fontSize: 11,
+                                fontWeight: 600,
+                                backgroundColor: isSelected ? (isDark ? 'rgba(11,122,129,0.20)' : '#E6F4F5') : chipBg,
+                                border: isSelected ? (isDark ? '1px solid rgba(11,122,129,0.40)' : '1px solid rgba(11,122,129,0.20)') : chipBorder,
+                                color: isSelected ? (isDark ? '#14B8A6' : '#0B7A81') : labelText,
                               }}
                             >
-                              {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
                               <span>{label}</span>
-                              {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
+                              {isSelected && <X className="w-3 h-3 shrink-0 ml-auto opacity-70 hover:opacity-100" />}
                             </button>
                           );
                         })}
@@ -926,21 +957,22 @@ export default function VerseActionMenu({
                                 key={label}
                                 onClick={() => toggleLabel(label)}
                                 aria-selected={isSelected}
-                                className="flex items-center gap-1.5 transition-all active:scale-95"
+                                className={`flex items-center gap-1.5 transition-all active:scale-95 ${
+                                  isSelected ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400' : ''
+                                }`}
                                 style={{
                                   height: 28,
                                   borderRadius: 999,
                                   padding: '0 10px',
                                   fontSize: 11,
-                                  fontWeight: 500,
-                                  backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
-                                  border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
-                                  color: isSelected ? '#31C4BE' : labelText,
+                                  fontWeight: 600,
+                                  backgroundColor: isSelected ? (isDark ? 'rgba(11,122,129,0.20)' : '#E6F4F5') : chipBg,
+                                  border: isSelected ? (isDark ? '1px solid rgba(11,122,129,0.40)' : '1px solid rgba(11,122,129,0.20)') : chipBorder,
+                                  color: isSelected ? (isDark ? '#14B8A6' : '#0B7A81') : labelText,
                                 }}
                               >
-                                {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
                                 <span>{label}</span>
-                                {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
+                                {isSelected && <X className="w-3 h-3 shrink-0 ml-auto opacity-70 hover:opacity-100" />}
                               </button>
                             );
                           })}
@@ -961,21 +993,22 @@ export default function VerseActionMenu({
                               key={label}
                               onClick={() => toggleLabel(label)}
                               aria-selected={isSelected}
-                              className="flex items-center gap-1.5 transition-all active:scale-95"
+                              className={`flex items-center gap-1.5 transition-all active:scale-95 ${
+                                isSelected ? 'hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-900/30 dark:hover:text-red-400' : ''
+                              }`}
                               style={{
                                 height: 28,
                                 borderRadius: 999,
                                 padding: '0 10px',
                                 fontSize: 11,
-                                fontWeight: 500,
-                                backgroundColor: isSelected ? 'rgba(49,196,190,0.16)' : chipBg,
-                                border: isSelected ? '1px solid rgba(49,196,190,0.28)' : chipBorder,
-                                color: isSelected ? '#31C4BE' : labelText,
+                                fontWeight: 600,
+                                backgroundColor: isSelected ? (isDark ? 'rgba(11,122,129,0.20)' : '#E6F4F5') : chipBg,
+                                border: isSelected ? (isDark ? '1px solid rgba(11,122,129,0.40)' : '1px solid rgba(11,122,129,0.20)') : chipBorder,
+                                color: isSelected ? (isDark ? '#14B8A6' : '#0B7A81') : labelText,
                               }}
                             >
-                              {isSelected && <CheckCircle2 className="w-3 h-3 shrink-0" />}
                               <span>{label}</span>
-                              {isSelected && <MinusCircle className="w-3 h-3 shrink-0 ml-auto" />}
+                              {isSelected && <X className="w-3 h-3 shrink-0 ml-auto opacity-70 hover:opacity-100" />}
                             </button>
                           );
                         })}

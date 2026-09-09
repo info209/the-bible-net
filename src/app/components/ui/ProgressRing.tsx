@@ -27,8 +27,18 @@ export default function ProgressRing({
   const strokeDashoffset = circumference - clampedProgress * circumference;
 
   return (
-    <div className={`relative inline-flex ${className}`} style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90 origin-center">
+    <div className={`relative inline-flex items-center justify-center shrink-0 ${className}`} style={{ width: size, height: size }}>
+      {children ? (
+        <div className="absolute inset-0 flex items-center justify-center z-0">
+          {children}
+        </div>
+      ) : null}
+      <svg
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+        className="absolute inset-0 -rotate-90 origin-center pointer-events-none z-10 overflow-visible"
+      >
         {/* Track */}
         <circle
           cx={center}
@@ -53,11 +63,6 @@ export default function ProgressRing({
           transition={{ duration: 0.1, ease: 'linear' }}
         />
       </svg>
-      {children ? (
-        <div className="absolute inset-0 flex items-center justify-center">
-          {children}
-        </div>
-      ) : null}
     </div>
   );
 }

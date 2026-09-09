@@ -309,7 +309,7 @@ export default function MediaGalleryPage() {
                 <div>
                     <h1 className="text-3xl font-bold text-white flex items-center gap-2">
                         <Music className="size-8 text-blue-500" />
-                        Ambient Music Gallery
+                        Ambient Music
                     </h1>
                     <p className="text-gray-400 mt-1">Manage immersive background music for the Bible Reading page</p>
                 </div>

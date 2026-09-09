@@ -15,7 +15,10 @@ import type { NetworkStatus } from './types';
 
 function getSlowConnection(): boolean {
   if (typeof navigator === 'undefined') return false;
-  const conn = (navigator as any).connection ?? (navigator as any).mozConnection ?? (navigator as any).webkitConnection;
+  const conn =
+    (navigator as any).connection ??
+    (navigator as any).mozConnection ??
+    (navigator as any).webkitConnection;
   if (!conn) return false;
   const slowTypes = new Set(['slow-2g', '2g']);
   return slowTypes.has(conn.effectiveType);
@@ -37,19 +40,16 @@ export function useNetworkStatus(): NetworkStatus & { triggerSync: () => void } 
   }, []);
 
   useEffect(() => {
-    // Import SyncService lazily to avoid SSR issues
     const handleOnline = async () => {
       setIsOnline(true);
       if (wasOfflineRef.current) {
         setWasOffline(true);
-        // Trigger background sync
         try {
           const { SyncService } = await import('./SyncService');
           SyncService.syncAll().catch(console.error);
         } catch {
           // Non-critical
         }
-        // Reset wasOffline after a short delay to allow consumers to react
         setTimeout(() => setWasOffline(false), 5000);
       }
       wasOfflineRef.current = false;
@@ -68,7 +68,10 @@ export function useNetworkStatus(): NetworkStatus & { triggerSync: () => void } 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    const conn = (navigator as any).connection ?? (navigator as any).mozConnection ?? (navigator as any).webkitConnection;
+    const conn =
+      (navigator as any).connection ??
+      (navigator as any).mozConnection ??
+      (navigator as any).webkitConnection;
     if (conn) {
       conn.addEventListener('change', handleConnectionChange);
     }
@@ -79,6 +82,19 @@ export function useNetworkStatus(): NetworkStatus & { triggerSync: () => void } 
         SyncService.syncAll().catch(console.error);
       });
     };
+
+    // Check if there are pending actions on mount while online
+    if (navigator.onLine) {
+      import('./PendingActionsService').then(({ PendingActionsService }) => {
+        PendingActionsService.getCount().then((count) => {
+          if (count > 0) {
+            import('./SyncService').then(({ SyncService }) => {
+              SyncService.syncAll().catch(console.error);
+            });
+          }
+        });
+      });
+    }
 
     return () => {
       window.removeEventListener('online', handleOnline);

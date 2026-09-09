@@ -108,4 +108,18 @@ export class LikeRepository {
         const like = await Like.findOne(query);
         return !!like;
     }
+
+    static async getLikeCount(contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion'): Promise<number> {
+        await connectDB();
+        if (contentType === 'daily-verse') {
+            const doc = await DailyContent.findById(contentId).select('verseLikeCount');
+            return doc?.verseLikeCount || 0;
+        } else if (contentType === 'daily-devotion') {
+            const doc = await DailyContent.findById(contentId).select('devotionLikeCount');
+            return doc?.devotionLikeCount || 0;
+        } else {
+            const doc = await Content.findById(contentId).select('likeCount');
+            return doc?.likeCount || 0;
+        }
+    }
 }

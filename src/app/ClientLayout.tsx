@@ -82,7 +82,19 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
       {/* Standard BottomNav for all app pages */}
       {showBottomNav && <BottomNav isVisible={!hideBottomNav} onNavigate={handleNavigate} />}
 
-      <main className={isPublicAppPage ? (isBiblePage ? "hidden" : isProfileSubPage ? "w-full" : isJournalsPage ? "max-w-3xl mx-auto" : "max-w-3xl mx-auto px-4 pb-24 pt-20") : ""}>
+      <main
+        className={`transition-[padding-top] duration-250 ease-out ${
+          isPublicAppPage
+            ? isBiblePage
+              ? "hidden"
+              : isProfileSubPage
+              ? "w-full pt-[var(--offline-banner-total-height,0px)]"
+              : isJournalsPage
+              ? "max-w-3xl mx-auto pt-[var(--offline-banner-total-height,0px)]"
+              : "max-w-3xl mx-auto px-4 pb-24 pt-[calc(5rem+var(--offline-banner-total-height,0px))]"
+            : ""
+        }`}
+      >
         {children}
       </main>
     </>

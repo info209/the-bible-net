@@ -9,7 +9,7 @@
 
 import { getOfflineDB, buildChapterKey } from './db';
 import { BibleOfflineService } from './BibleOfflineService';
-import type { OfflineChapterData, ChapterAccessLog } from './types';
+import type { OfflineChapterData, OfflineChapterFootnote, ChapterAccessLog } from './types';
 
 /** Maximum number of LRU-cached chapters (non-downloaded) kept in storage */
 const MAX_CACHED_CHAPTERS = 100;
@@ -28,6 +28,7 @@ export class ChapterCacheService {
     chapterNumber: number,
     testament: 'OT' | 'NT',
     verses: Array<{ number: number; text: string }>,
+    footnotes?: OfflineChapterFootnote[],
   ): Promise<void> {
     const key = buildChapterKey(versionId, bookId, chapterNumber);
 
@@ -40,6 +41,7 @@ export class ChapterCacheService {
       chapterNumber,
       testament,
       verses,
+      footnotes,
       cachedAt: new Date().toISOString(),
       isDownloaded: false,
     };

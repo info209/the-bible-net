@@ -12,6 +12,8 @@ import {
 import { useSavedVerses, SavedVerseClient } from '@/lib/useSavedVerses';
 import { useSavedItems, SavedItemClient } from '@/lib/useSavedItems';
 import { toast } from '@/context/ToastContext';
+import { shareVerse } from '@/utils/verseFormatter';
+import { LabelTag } from '@/components/ui/LabelTag';
 
 type FilterTab = 'All' | 'Bible' | 'Reading plans';
 
@@ -156,23 +158,17 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
   const handleShare = async () => {
     if (!selectedItemForMenu) return;
     setMenuOpenId(null);
-    const shareText = `"${selectedItemForMenu.verseText || ''}" - ${selectedItemForMenu.verseRangeText || ''} (${selectedItemForMenu.version || 'NKJV'})`;
-    
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Shared Saved Verse',
-          text: shareText,
-        });
-      } catch (err) {
-        // Fallback copy
-        navigator.clipboard.writeText(shareText);
-        showToast('Copied to clipboard!');
-      }
-    } else {
-      navigator.clipboard.writeText(shareText);
-      showToast('Copied to clipboard!');
-    }
+    const item = selectedItemForMenu;
+    const displayRef = item.verseRangeText || `${item.bookName || item.bookId || ''} ${item.chapter || 1}:${Array.isArray(item.verses) ? item.verses.join(', ') : ''}`;
+
+    await shareVerse({
+      verseText: item.verseText,
+      reference: displayRef,
+      version: item.version || 'NKJV',
+      book: item.bookId || item.bookName,
+      chapter: item.chapter,
+      verses: item.verses,
+    });
   };
 
   const handleDelete = async () => {
@@ -406,20 +402,13 @@ export default function SavedPage({ onBack, onClose }: SavedPageProps = {}) {
                   </label>
                   
                   {/* Current Labels List */}
-                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                     {tempLabels.map(l => (
-                      <span
+                      <LabelTag
                         key={l}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#0B7A81]/10 text-[#0B7A81] rounded-full text-xs font-semibold"
-                      >
-                        {l}
-                        <button
-                          onClick={() => handleRemoveLabel(l)}
-                          className="hover:text-red-500 font-bold ml-0.5"
-                        >
-                          &times;
-                        </button>
-                      </span>
+                        label={l}
+                        onRemove={() => handleRemoveLabel(l)}
+                      />
                     ))}
                     {tempLabels.length === 0 && (
                       <span className="text-[12px] text-gray-400 italic">No labels added yet.</span>

@@ -11,6 +11,7 @@ import { useLikeContext } from '@/context/LikeContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchWithOfflineCache } from '@/lib/offline';
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
+import { shareVerse } from '@/utils/verseFormatter';
 
 type FilterTab = 'All' | 'Verses' | 'Devotionals';
 const TABS: FilterTab[] = ['All', 'Verses', 'Devotionals'];
@@ -122,26 +123,45 @@ export default function LikesPage({ onBack }: LikesPageProps = {}) {
   };
 
   const handleShare = async (item: LikedItem) => {
-    let shareText = '';
     if (item.contentType === 'daily-verse' || item.contentType === 'verse') {
-      shareText = `"${item.text || ''}" - ${item.reference || ''} ${item.version ? `(${item.version})` : ''}`;
-    } else {
-      shareText = `Daily Devotional: "${item.title || ''}"\n${item.text || ''} ${item.verseRef ? `\nVerse: ${item.verseRef}` : ''}`;
-    }
+      let book: string | undefined;
+      let chapter: number | undefined;
+      let verse: number | undefined;
 
-    if (navigator.share) {
-      try {
-        await navigator.share({
-          title: 'Shared from The Bible Net',
-          text: shareText,
-        });
-      } catch (err) {
+      if (item.reference) {
+        const match = item.reference.match(/^(.+?)\s+(\d+):(\d+)/);
+        if (match) {
+          book = match[1].trim();
+          chapter = parseInt(match[2], 10);
+          verse = parseInt(match[3], 10);
+        }
+      }
+
+      await shareVerse({
+        verseText: item.text,
+        reference: item.reference,
+        version: item.version,
+        book,
+        chapter,
+        verse,
+      });
+    } else {
+      const shareText = `Daily Devotional: "${item.title || ''}"\n${item.text || ''} ${item.verseRef ? `\nVerse: ${item.verseRef}` : ''}`;
+
+      if (navigator.share) {
+        try {
+          await navigator.share({
+            title: 'Shared from The Bible Net',
+            text: shareText,
+          });
+        } catch (err) {
+          navigator.clipboard.writeText(shareText);
+          showToast('Copied to clipboard!');
+        }
+      } else {
         navigator.clipboard.writeText(shareText);
         showToast('Copied to clipboard!');
       }
-    } else {
-      navigator.clipboard.writeText(shareText);
-      showToast('Copied to clipboard!');
     }
   };
 

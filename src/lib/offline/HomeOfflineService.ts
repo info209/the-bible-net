@@ -58,6 +58,64 @@ export class HomeOfflineService {
     }
   }
 
+  /**
+   * Retrieve daily content list specifically, with fallback across keys and format normalization.
+   */
+  static async getDailyContentList(): Promise<any[] | undefined> {
+    const primary = await this.getHomeCache('daily_content_list');
+    if (primary?.data && Array.isArray(primary.data) && primary.data.length > 0) {
+      return primary.data;
+    }
+    const fallback = await this.getHomeCache('daily_verse');
+    if (fallback?.data) {
+      if (Array.isArray(fallback.data) && fallback.data.length > 0) {
+        return fallback.data;
+      } else if (typeof fallback.data === 'object' && fallback.data !== null) {
+        return [fallback.data];
+      }
+    }
+    return undefined;
+  }
+
+  /**
+   * Update like status in cached daily content list so offline app restarts preserve like state.
+   */
+  static async updateLikeInDailyCache(
+    contentId: string,
+    contentType: string,
+    liked: boolean,
+    likeCount: number,
+  ): Promise<void> {
+    try {
+      const db = await getOfflineDB();
+      const isVerse = contentType === 'daily-verse' || contentType === 'verse';
+      const likeCountField = isVerse ? 'verseLikeCount' : 'devotionLikeCount';
+      const isLikedField = isVerse ? 'isVerseLiked' : 'isDevotionLiked';
+
+      const updateKey = async (key: string) => {
+        const entry = await db.get('home_cache', key);
+        if (entry?.data && Array.isArray(entry.data)) {
+          const updated = entry.data.map((item: any) => {
+            if (String(item._id) === String(contentId) || String(item.id) === String(contentId)) {
+              return {
+                ...item,
+                [likeCountField]: likeCount,
+                [isLikedField]: liked,
+              };
+            }
+            return item;
+          });
+          await db.put('home_cache', { ...entry, data: updated, syncedAt: new Date().toISOString() });
+        }
+      };
+
+      await updateKey('daily_content_list');
+      await updateKey('daily_verse');
+    } catch (err) {
+      console.warn('[HomeOfflineService] updateLikeInDailyCache failed:', err);
+    }
+  }
+
   // -------------------------------------------------------------------------
   // User Preferences
   // -------------------------------------------------------------------------

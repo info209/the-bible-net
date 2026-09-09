@@ -4,7 +4,20 @@ import { DailyContent } from '@/models/DailyContent';
 import mongoose from 'mongoose';
 
 export class CommentRepository {
-    static async addComment(contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion', userId: string, commentText: string): Promise<IComment> {
+    static async addComment(
+        contentId: string,
+        contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion',
+        userId: string,
+        commentText: string,
+        clientMutationId?: string
+    ): Promise<IComment> {
+        if (clientMutationId) {
+            const existing = await Comment.findOne({ userId, clientMutationId }).populate('userId', 'firstName lastName image');
+            if (existing) {
+                return existing;
+            }
+        }
+
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
@@ -12,20 +25,37 @@ export class CommentRepository {
                 contentId,
                 contentType,
                 userId,
-                commentText
+                commentText,
+                clientMutationId,
             });
             const savedComment = await comment.save({ session });
 
+            let commentCount = 0;
             if (contentType === 'daily-verse') {
-                await DailyContent.findByIdAndUpdate(contentId, { $inc: { verseCommentCount: 1 } }, { session });
+                const doc = await DailyContent.findByIdAndUpdate(
+                    contentId,
+                    { $inc: { verseCommentCount: 1 } },
+                    { session, new: true }
+                ).select('verseCommentCount');
+                commentCount = doc?.verseCommentCount || 0;
             } else if (contentType === 'daily-devotion') {
-                await DailyContent.findByIdAndUpdate(contentId, { $inc: { devotionCommentCount: 1 } }, { session });
+                const doc = await DailyContent.findByIdAndUpdate(
+                    contentId,
+                    { $inc: { devotionCommentCount: 1 } },
+                    { session, new: true }
+                ).select('devotionCommentCount');
+                commentCount = doc?.devotionCommentCount || 0;
             } else {
-                await Content.findByIdAndUpdate(contentId, { $inc: { commentCount: 1 } }, { session });
+                const doc = await Content.findByIdAndUpdate(
+                    contentId,
+                    { $inc: { commentCount: 1 } },
+                    { session, new: true }
+                ).select('commentCount');
+                commentCount = doc?.commentCount || 0;
             }
 
             await session.commitTransaction();
-            return savedComment;
+            return { ...savedComment.toObject(), commentCount } as any;
         } catch (error) {
             await session.abortTransaction();
             throw error;
@@ -40,14 +70,14 @@ export class CommentRepository {
             .sort({ createdAt: -1 });
     }
 
-    static async deleteComment(commentId: string, userId: string): Promise<boolean> {
+    static async deleteComment(commentId: string, userId: string): Promise<{ success: boolean; contentId?: string; contentType?: string }> {
         const session = await mongoose.startSession();
         session.startTransaction();
         try {
             const comment = await Comment.findOne({ _id: commentId, userId });
             if (!comment) {
                 await session.abortTransaction();
-                return false;
+                return { success: false };
             }
 
             await Comment.deleteOne({ _id: commentId }, { session });
@@ -61,7 +91,11 @@ export class CommentRepository {
             }
 
             await session.commitTransaction();
-            return true;
+            return {
+                success: true,
+                contentId: String(comment.contentId),
+                contentType: comment.contentType,
+            };
         } catch (error) {
             await session.abortTransaction();
             throw error;

@@ -39,6 +39,28 @@ export default function OfflineBanner({ className = '' }: OfflineBannerProps) {
 
   const isVisible = !isOnline || syncStatus.state === 'syncing' || showOnlineBrief;
 
+  // Dynamically update CSS variables on document root so all sticky/fixed headers align smoothly
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isVisible) {
+        document.documentElement.style.setProperty('--offline-banner-height', '32px');
+        document.documentElement.style.setProperty(
+          '--offline-banner-total-height',
+          'calc(env(safe-area-inset-top, 0px) + 32px)'
+        );
+      } else {
+        document.documentElement.style.setProperty('--offline-banner-height', '0px');
+        document.documentElement.style.setProperty('--offline-banner-total-height', '0px');
+      }
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.documentElement.style.setProperty('--offline-banner-height', '0px');
+        document.documentElement.style.setProperty('--offline-banner-total-height', '0px');
+      }
+    };
+  }, [isVisible]);
+
   const getContent = () => {
     if (showOnlineBrief && isOnline) {
       return {
@@ -88,14 +110,14 @@ export default function OfflineBanner({ className = '' }: OfflineBannerProps) {
       {isVisible && (
         <motion.div
           key="offline-banner"
-          initial={{ y: -40, opacity: 0 }}
+          initial={{ y: -50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          exit={{ y: -40, opacity: 0 }}
-          transition={{ duration: 0.25, ease: 'easeOut' }}
-          className={`w-full z-50 ${className}`}
+          exit={{ y: -50, opacity: 0 }}
+          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+          className={`fixed top-0 left-0 right-0 z-[60] pt-[env(safe-area-inset-top,0px)] ${className}`}
         >
           <div
-            className={`flex items-center justify-center gap-2 px-4 py-1.5 text-xs font-medium ${content.bg} ${content.textColor}`}
+            className={`flex items-center justify-center gap-2 px-4 py-1.5 text-xs font-medium ${content.bg} ${content.textColor} shadow-md`}
           >
             {content.icon}
             <span>{content.text}</span>

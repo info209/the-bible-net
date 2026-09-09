@@ -1,10 +1,10 @@
 "use client";
 
-import { Play, MessageCircle, Pause, X, Send, MoreVertical, Check, Bookmark, BookOpen, Copy } from 'lucide-react';
+import { Play, MessageCircle, Pause, X, Send, MoreVertical, Check, Bookmark, BookOpen, Copy, User } from 'lucide-react';
 import { RiShareForwardLine } from 'react-icons/ri';
 import { LuNotebookPen } from 'react-icons/lu';
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from '@/context/ToastContext';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -15,7 +15,8 @@ import { useReadingProgress } from '@/lib/useReadingProgress';
 import { useSavedVerses, buildVerseRangeText } from '@/lib/useSavedVerses';
 import { getRelativeTime } from '@/utils/time';
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
-import { formatCopyVerseText } from '@/utils/verseFormatter';
+import { formatCopyVerseText, shareVerse } from '@/utils/verseFormatter';
+import { getUserInitials } from '@/utils/userInitials';
 import HomeSkeleton from '@/app/components/HomeSkeleton';
 import { CarouselCardSkeleton, PrayerSkeleton } from '@/app/components/HomeSkeleton';
 import { DailyDetailModal } from './DailyDetailModal';
@@ -26,15 +27,17 @@ import verseTexture from '../../../assets/textures/verse-texture.svg';
 import devotionalTexture from '../../../assets/textures/devotional-texture.svg';
 import { HomeOfflineService } from '@/lib/offline/HomeOfflineService';
 import { fetchWithOfflineCache } from '@/lib/offline';
+import { PendingActionsService } from '@/lib/offline/PendingActionsService';
+import { LegalModal } from '@/components/LegalModal';
 
 const getGreetingByHour = (hour: number): string => {
-  if (hour >= 5 && hour < 12) return 'Good morning';
-  if (hour >= 12 && hour < 17) return 'Good afternoon';
-  return 'Good evening';
+  if (hour >= 5 && hour < 12) return 'Good Morning,';
+  if (hour >= 12 && hour < 17) return 'Good Afternoon,';
+  return 'Good Evening,';
 };
 
 export default function HomeView() {
-  const { data: session } = useSession();
+  const { session } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoading: progressLoading } = useReadingProgress();
@@ -62,47 +65,28 @@ export default function HomeView() {
   // it after the Radix Dialog closes (body-lock can otherwise jump the page)
   const savedScrollY = useRef<number>(0);
 
-  const [greeting, setGreeting] = useState('Shalom');
+  const [greeting, setGreeting] = useState('Good Morning,');
 
   // Modal states
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [initialModalIndex, setInitialModalIndex] = useState(0);
   const [initialModalSection, setInitialModalSection] = useState<'verse' | 'devotional' | 'prayer' | undefined>();
-  const [modalContents, setModalContents] = useState<any[]>([]);
+  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'terms' | 'privacy' }>({
+    isOpen: false,
+    type: 'terms',
+  });
 
   // Local cache of devotional progress by date — updated optimistically when modal fires onProgressChange
   const [devotionalProgressCache, setDevotionalProgressCache] = useState<Record<string, 'INCOMPLETE' | 'IN_PROGRESS' | 'COMPLETED'>>({});
 
   const userName = useMemo(() => {
-    return (session?.user as any)?.firstName || session?.user?.name || 'Believer';
+    const rawName = (session?.user as any)?.firstName || session?.user?.name;
+    return rawName ? rawName.trim() : '';
   }, [session]);
 
   const initials = useMemo(() => {
-    if (!session?.user) return 'G';
-    const u = session.user as any;
-
-    // First, try firstName/lastName
-    const first = u.firstName || '';
-    const last = u.lastName || '';
-    if (first || last) {
-      const fChar = first.trim()?.[0] || '';
-      const lChar = last.trim()?.[0] || '';
-      return `${fChar}${lChar}`.toUpperCase();
-    }
-
-    // Fallback to name
-    const name = u.name || '';
-    if (name) {
-      const parts = name.trim().split(/\s+/);
-      if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
-      return parts[0][0].toUpperCase();
-    }
-
-    // Fallback to email
-    const email = u.email || '';
-    if (email) return email[0].toUpperCase();
-
-    return 'G';
+    if (!session?.user) return '';
+    return getUserInitials(session.user);
   }, [session]);
 
   useEffect(() => {
@@ -169,27 +153,51 @@ export default function HomeView() {
           queryClient.setQueryData(['daily-devotion', item.date, preferredVersion], item);
         });
         // Save to offline cache (fire-and-forget)
+        HomeOfflineService.saveHomeCache('daily_content_list', items).catch(() => {});
         HomeOfflineService.saveHomeCache('daily_verse', items).catch(() => {});
         return items;
       } catch (err) {
-        // Offline fallback: serve from IndexedDB
-        const cached = await HomeOfflineService.getHomeCache('daily_verse');
-        if (cached?.data) return cached.data as any[];
+        // Offline fallback: serve from persistent IndexedDB storage
+        const cachedList = await HomeOfflineService.getDailyContentList();
+        if (cachedList && Array.isArray(cachedList) && cachedList.length > 0) {
+          return cachedList;
+        }
         throw err;
       }
     },
-    staleTime: 5 * 60 * 1000,
+    staleTime: 60 * 1000,
     gcTime: 24 * 60 * 60 * 1000,
     networkMode: 'offlineFirst',
   });
 
+  // Listen for sync completion to refresh daily content and prayers from server
+  useEffect(() => {
+    const handleSyncCompleted = () => {
+      queryClient.invalidateQueries({ queryKey: ['daily-content-list'] });
+      queryClient.invalidateQueries({ queryKey: ['prayers', 'home'] });
+    };
+    window.addEventListener('bible-sync-completed', handleSyncCompleted);
+    return () => window.removeEventListener('bible-sync-completed', handleSyncCompleted);
+  }, [queryClient]);
+
   const dailyVerses = useMemo(() => {
-    return (dailyContentData || []).filter((item: any) => item.verseBook && item.verseBook !== 'Unknown');
+    const list = Array.isArray(dailyContentData) ? dailyContentData : [];
+    return list.filter((item: any) => item && item.verseBook && item.verseBook !== 'Unknown');
   }, [dailyContentData]);
 
   const dailyDevotions = useMemo(() => {
-    return (dailyContentData || []).filter((item: any) => item.devotionalTitle && item.devotionalContent);
+    const list = Array.isArray(dailyContentData) ? dailyContentData : [];
+    return list.filter((item: any) => item && item.devotionalTitle && item.devotionalContent);
   }, [dailyContentData]);
+
+  const modalContents = useMemo(() => {
+    if (initialModalSection === 'verse') {
+      return dailyVerses;
+    } else if (initialModalSection === 'devotional') {
+      return dailyDevotions;
+    }
+    return [];
+  }, [initialModalSection, dailyVerses, dailyDevotions]);
 
   const { data: prayers = [], isLoading: prayersLoading } = useQuery({
     queryKey: ['prayers', 'home'],
@@ -224,11 +232,6 @@ export default function HomeView() {
   const openDetailModal = (index: number, section: 'verse' | 'devotional' | 'prayer') => {
     setOpenVerseKebabIndex(null);
     setOpenDevotionKebabIndex(null);
-    if (section === 'verse') {
-      setModalContents(dailyVerses);
-    } else {
-      setModalContents(dailyDevotions);
-    }
     setInitialModalIndex(index);
     setInitialModalSection(section);
     setIsDetailModalOpen(true);
@@ -286,6 +289,91 @@ export default function HomeView() {
 
   const handleAddComment = async () => {
     if (!newComment.trim() || !activeContent) return;
+    const commentText = newComment.trim();
+    const clientMutationId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+    const tempCommentId = `temp_${clientMutationId}`;
+
+    const optimisticComment = {
+      _id: tempCommentId,
+      contentId: activeContent.id,
+      contentType: activeContent.type,
+      commentText,
+      createdAt: new Date().toISOString(),
+      userId: {
+        _id: (session?.user as any)?.id || 'current_user',
+        firstName: (session?.user as any)?.firstName || session?.user?.name?.split(' ')[0] || 'You',
+        lastName: (session?.user as any)?.lastName || session?.user?.name?.split(' ').slice(1).join(' ') || '',
+        image: session?.user?.image,
+      }
+    };
+
+    // Optimistically update comments list
+    setComments(prev => [optimisticComment as any, ...prev]);
+    setNewComment('');
+
+    // Patch comment count in all query caches immediately
+    const patchCommentCount = (countOverride?: number) => {
+      const patcher = (prev: any[] | undefined) => {
+        if (!Array.isArray(prev)) return prev;
+        return prev.map(content => {
+          if (String(content._id) === String(activeContent.id)) {
+            const countField = activeContent.type === 'daily-verse' ? 'verseCommentCount' : 'devotionCommentCount';
+            const newCount = countOverride !== undefined
+              ? countOverride
+              : (content[countField] || 0) + 1;
+            const updatedItem = {
+              ...content,
+              [countField]: newCount,
+            };
+            // Keep per-date queries in sync
+            if (content.date) {
+              const allKeys = queryClient.getQueriesData({ queryKey: ['daily-verse', content.date] });
+              allKeys.forEach(([key]) => {
+                queryClient.setQueryData(key, (prev2: any) =>
+                  prev2 && String(prev2._id) === String(activeContent.id) ? { ...prev2, [countField]: newCount } : prev2
+                );
+              });
+              const allKeys2 = queryClient.getQueriesData({ queryKey: ['daily-devotion', content.date] });
+              allKeys2.forEach(([key]) => {
+                queryClient.setQueryData(key, (prev2: any) =>
+                  prev2 && String(prev2._id) === String(activeContent.id) ? { ...prev2, [countField]: newCount } : prev2
+                );
+              });
+            }
+            return updatedItem;
+          }
+          return content;
+        });
+      };
+
+      queryClient.setQueriesData({ queryKey: ['daily-content-list'] }, patcher);
+      queryClient.setQueriesData({ queryKey: ['daily-content-today'] }, patcher);
+    };
+
+    patchCommentCount();
+
+    // If offline, enqueue to PendingActionsService directly
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await PendingActionsService.enqueue(
+        'add_comment',
+        '/api/interactions/comment',
+        'POST',
+        {
+          contentId: activeContent.id,
+          type: activeContent.type,
+          comment: commentText,
+          clientMutationId,
+        },
+        {
+          userId: (session?.user as any)?.id,
+          clientMutationId,
+          entityTempId: tempCommentId,
+          entityType: 'comment',
+        }
+      );
+      return;
+    }
+
     setSubmittingComment(true);
     try {
       const res = await fetch('/api/interactions/comment', {
@@ -294,40 +382,69 @@ export default function HomeView() {
         body: JSON.stringify({
           contentId: activeContent.id,
           type: activeContent.type,
-          comment: newComment
+          comment: commentText,
+          clientMutationId,
         })
       });
 
       if (res.ok) {
-        setNewComment('');
+        const json = await res.json();
+        if (json.commentCount !== undefined) {
+          patchCommentCount(json.commentCount);
+        }
         fetchComments(activeContent.id, activeContent.type);
-
-        // Patch helper — increments the comment count for matching content
-        const patchCommentCount = (prev: any[] | undefined) => {
-          if (!prev) return prev;
-          return prev.map(content => {
-            if (content._id === activeContent.id) {
-              const countField = activeContent.type === 'daily-verse' ? 'verseCommentCount' : 'devotionCommentCount';
-              const updatedItem = {
-                ...content,
-                [countField]: (content[countField] || 0) + 1
-              };
-              // Keep per-date slices in sync as well
-              queryClient.setQueryData(['daily-verse', content.date, preferredVersion], updatedItem);
-              queryClient.setQueryData(['daily-devotion', content.date, preferredVersion], updatedItem);
-              return updatedItem;
+      } else {
+        // Enqueue if offline or connection dropped
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          await PendingActionsService.enqueue(
+            'add_comment',
+            '/api/interactions/comment',
+            'POST',
+            {
+              contentId: activeContent.id,
+              type: activeContent.type,
+              comment: commentText,
+              clientMutationId,
+            },
+            {
+              userId: (session?.user as any)?.id,
+              clientMutationId,
+              entityTempId: tempCommentId,
+              entityType: 'comment',
             }
-            return content;
-          });
-        };
-
-        // Update BOTH list caches so the count is consistent regardless of
-        // which query is currently active (today-only vs full 7-day history)
-        queryClient.setQueryData(['daily-content-list', preferredVersion, todayStr], patchCommentCount);
-        queryClient.setQueryData(['daily-content-today', preferredVersion, todayStr], patchCommentCount);
+          );
+        } else {
+          toast.error('Failed to post comment. Please try again.');
+          // Revert comment
+          setComments(prev => prev.filter(c => (c as any)._id !== tempCommentId));
+          patchCommentCount(); // We can fetch fresh
+          fetchComments(activeContent.id, activeContent.type);
+        }
       }
     } catch (error) {
       console.error('Add comment error:', error);
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await PendingActionsService.enqueue(
+          'add_comment',
+          '/api/interactions/comment',
+          'POST',
+          {
+            contentId: activeContent.id,
+            type: activeContent.type,
+            comment: commentText,
+            clientMutationId,
+          },
+          {
+            userId: (session?.user as any)?.id,
+            clientMutationId,
+            entityTempId: tempCommentId,
+            entityType: 'comment',
+          }
+        );
+      } else {
+        toast.error('Error posting comment');
+        setComments(prev => prev.filter(c => (c as any)._id !== tempCommentId));
+      }
     } finally {
       setSubmittingComment(false);
     }
@@ -337,39 +454,37 @@ export default function HomeView() {
     const shareKey = `${content._id}-${type}`;
     if (sharingStates.has(shareKey)) return;
 
-    let url: string;
-    let text: string;
+    let sharedSuccessfully = false;
 
     if (type === 'daily-verse') {
-      const params = new URLSearchParams();
       const versionVal = content.version || preferredVersion;
-      if (versionVal) params.set('version', versionVal);
-      if (content.verseBook) params.set('book', content.verseBook);
-      if (content.verseChapter) params.set('chapter', String(content.verseChapter));
-      if (content.verseNumber) params.set('verse', String(content.verseNumber));
-      url = `${window.location.origin}/bible?${params.toString()}`;
-      text = `"${content.verse}"\n - ${content.verseReference}`;
+      sharedSuccessfully = await shareVerse({
+        ...content,
+        version: versionVal,
+      });
     } else {
       const params = new URLSearchParams();
       if (content.date) params.set('devotionDate', content.date);
       if (content._id) params.set('devotionId', content._id);
-      url = `${window.location.origin}/home?${params.toString()}`;
-      text = `"${content.devotionalTitle || 'Daily Devotional'}"`;
-    }
+      const url = `${window.location.origin}/home?${params.toString()}`;
+      const text = `"${content.devotionalTitle || 'Daily Devotional'}"`;
 
-    let sharedSuccessfully = false;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'The Bible Net', text, url });
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'The Bible Net', text, url });
+          sharedSuccessfully = true;
+        } catch (error: any) {
+          if (error?.name !== 'AbortError') {
+            navigator.clipboard.writeText(`${text} ${url}`);
+            toast.success('Link copied to clipboard!');
+            sharedSuccessfully = true;
+          }
+        }
+      } else {
+        navigator.clipboard.writeText(`${text} ${url}`);
+        toast.success('Link copied to clipboard!');
         sharedSuccessfully = true;
-      } catch (error) {
-        console.log('Share failed', error);
       }
-    } else {
-      navigator.clipboard.writeText(`${text} ${url}`);
-      toast.success('Link copied to clipboard!');
-      sharedSuccessfully = true;
     }
 
     if (sharedSuccessfully) {
@@ -430,6 +545,10 @@ export default function HomeView() {
   };
 
   const handleIntercede = async (prayerId: string) => {
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      toast.info('Interceding prayers requires an internet connection.');
+      return;
+    }
     if (!session) {
       router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`);
       return;
@@ -573,20 +692,32 @@ export default function HomeView() {
           {session?.user?.image && (
             <AvatarImage
               src={session.user.image}
-              alt={userName}
+              alt={userName || 'User'}
               className="object-cover"
             />
           )}
           <AvatarFallback className="bg-[#53b1b9] text-white font-bold text-lg select-none">
-            {initials}
+            {session?.user ? (
+              initials || <User className="size-6 text-white" />
+            ) : (
+              <User className="size-6 text-white" />
+            )}
           </AvatarFallback>
         </Avatar>
-        <div className="flex flex-col min-w-0">
-          <span className="text-gray-500 text-[15px] font-normal leading-tight">{greeting},</span>
-          <span className="truncate block max-w-full text-gray-900 text-[21px] font-bold leading-tight">
-            {userName}
-          </span>
-        </div>
+        {userName ? (
+          <div className="flex flex-col min-w-0">
+            <span className="text-gray-700 dark:text-gray-300 text-[15px] font-normal leading-tight">{greeting}</span>
+            <span className="truncate block max-w-full text-gray-900 text-[21px] font-bold leading-tight">
+              {userName}
+            </span>
+          </div>
+        ) : (
+          <div className="flex flex-col min-w-0">
+            <span className="truncate block max-w-full text-gray-700 dark:text-gray-300 text-[21px] font-bold leading-tight">
+              {greeting}
+            </span>
+          </div>
+        )}
       </div>
 
       {/*Profile Setup Banner (Preserved)
@@ -723,8 +854,8 @@ export default function HomeView() {
                         onClick={(e) => { e.stopPropagation(); handleCommentClick(content._id, 'daily-verse'); }}
                         className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                       >
-                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                          <MessageCircle className="size-4 text-black" />
+                        <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
+                          <MessageCircle className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.verseCommentCount || 'Comment'}</span>
                       </button>
@@ -733,8 +864,8 @@ export default function HomeView() {
                         className={`flex flex-col items-center space-y-1 text-black transition-all ${sharingStates.has(`${content._id}-daily-verse`) ? 'opacity-50 cursor-not-allowed' : 'md:hover:scale-110 active:scale-95'}`}
                         disabled={sharingStates.has(`${content._id}-daily-verse`)}
                       >
-                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                          <RiShareForwardLine className="size-4 text-black" />
+                        <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
+                          <RiShareForwardLine className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.verseShareCount > 0 ? content.verseShareCount : 'Share'}</span>
                       </button>
@@ -748,8 +879,8 @@ export default function HomeView() {
                           }}
                           className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                         >
-                          <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                            <MoreVertical className="size-4 text-black" />
+                          <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
+                            <MoreVertical className="size-4 text-[var(--color-primary-teal)]" />
                           </div>
                           <span className="text-xs">More</span>
                         </button>
@@ -915,8 +1046,8 @@ export default function HomeView() {
                         onClick={(e) => { e.stopPropagation(); handleCommentClick(content._id, 'daily-devotion'); }}
                         className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                       >
-                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                          <MessageCircle className="size-4 text-black" />
+                        <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
+                          <MessageCircle className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.devotionCommentCount || 'Comment'}</span>
                       </button>
@@ -925,8 +1056,8 @@ export default function HomeView() {
                         className={`flex flex-col items-center space-y-1 text-black transition-all ${sharingStates.has(`${content._id}-daily-devotion`) ? 'opacity-50 cursor-not-allowed' : 'md:hover:scale-110 active:scale-95'}`}
                         disabled={sharingStates.has(`${content._id}-daily-devotion`)}
                       >
-                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                          <RiShareForwardLine className="size-4 text-black" />
+                        <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
+                          <RiShareForwardLine className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.devotionShareCount > 0 ? content.devotionShareCount : 'Share'}</span>
                       </button>
@@ -940,8 +1071,8 @@ export default function HomeView() {
                           }}
                           className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                         >
-                          <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
-                            <MoreVertical className="size-4 text-black" />
+                          <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
+                            <MoreVertical className="size-4 text-[var(--color-primary-teal)]" />
                           </div>
                           <span className="text-xs">More</span>
                         </button>
@@ -1192,9 +1323,15 @@ export default function HomeView() {
         </div> */}
 
         {/* Social Icons */}
-        <div className="flex items-center justify-center gap-8 mb-4">
+        <div className="flex items-center justify-center gap-8 mb-5">
           {/* Instagram */}
-          <a href="#" className="text-gray-900 hover:text-gray-600 hover:scale-110 transition-all duration-200" aria-label="Instagram">
+          <a
+            href="https://www.instagram.com/thebiblenetplatform/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-900 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+            aria-label="Instagram"
+          >
             <svg className="size-6 stroke-current fill-none" viewBox="0 0 24 24" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
               <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
@@ -1203,11 +1340,36 @@ export default function HomeView() {
           </a>
 
           {/* Facebook */}
-          <a href="#" className="text-gray-900 hover:text-gray-600 hover:scale-110 transition-all duration-200" aria-label="Facebook">
+          <a
+            href="https://www.facebook.com/profile.php?id=61594009027001"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-900 hover:text-gray-600 hover:scale-110 transition-all duration-200"
+            aria-label="Facebook"
+          >
             <svg className="size-6 fill-current" viewBox="0 0 24 24">
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
             </svg>
           </a>
+        </div>
+
+        {/* Legal Links (Terms of Service & Privacy Policy) */}
+        <div className="flex items-center justify-center gap-3 text-sm text-gray-500 font-normal">
+          <button
+            type="button"
+            onClick={() => setLegalModal({ isOpen: true, type: 'terms' })}
+            className="hover:text-gray-600 transition-colors bg-transparent border-none p-0 cursor-pointer"
+          >
+            Terms of Service
+          </button>
+          <span className="text-gray-300 select-none">|</span>
+          <button
+            type="button"
+            onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })}
+            className="hover:text-gray-600 transition-colors bg-transparent border-none p-0 cursor-pointer"
+          >
+            Privacy Policy
+          </button>
         </div>
       </footer>
 
@@ -1276,7 +1438,7 @@ export default function HomeView() {
                         <img src={comment.userId.image} alt={comment.userId?.firstName || 'User'} className="w-full h-full object-cover" />
                       ) : (
                         <div className="size-full bg-teal-100 flex items-center justify-center text-teal-700 font-bold text-xs uppercase">
-                          {comment.userId?.firstName?.[0] || 'U'}
+                          {getUserInitials(comment.userId) || 'U'}
                         </div>
                       )}
                     </div>
@@ -1322,6 +1484,12 @@ export default function HomeView() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <LegalModal
+        isOpen={legalModal.isOpen}
+        onClose={() => setLegalModal({ ...legalModal, isOpen: false })}
+        type={legalModal.type}
+      />
     </motion.div>
   );
 }

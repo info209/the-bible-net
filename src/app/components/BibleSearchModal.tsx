@@ -5,6 +5,7 @@ import { FiSearch } from 'react-icons/fi';
 import { X, Clock, Trash2, BookOpen, ChevronRight, Heart, Loader2 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { BibleOfflineService } from '@/lib/offline/BibleOfflineService';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -513,21 +514,31 @@ export default function BibleSearchModal({
     const { data: searchResultsData, isFetching: isRefreshing, isLoading } = useQuery({
         queryKey: ['bible-search', debouncedQuery, activeVersionCode],
         queryFn: async ({ signal }) => {
-            const params = new URLSearchParams({ q: debouncedQuery, limit: '50' });
-            if (activeVersionCode) params.set('versionCode', activeVersionCode);
-
-            const res = await fetch(`/api/v1/bible/search?${params}`, { signal });
-            const json = await res.json();
-            if (!json.success || !json.data) {
-                if (json.error) {
-                    const isCompleteReference = /^[1-3]?\s*[a-zA-Z\s]+?\s+\d+\s*:\s*\d+(?:\s*-\s*\d+)?$/.test(debouncedQuery);
-                    if (isCompleteReference) {
-                        toast.error(json.error);
-                    }
-                }
-                return null;
+            const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+            if (!isOnline) {
+                return await BibleOfflineService.searchOffline(debouncedQuery, activeVersionCode);
             }
-            return json.data;
+
+            try {
+                const params = new URLSearchParams({ q: debouncedQuery, limit: '50' });
+                if (activeVersionCode) params.set('versionCode', activeVersionCode);
+
+                const res = await fetch(`/api/v1/bible/search?${params}`, { signal });
+                const json = await res.json();
+                if (!json.success || !json.data) {
+                    if (json.error) {
+                        const isCompleteReference = /^[1-3]?\s*[a-zA-Z\s]+?\s+\d+\s*:\s*\d+(?:\s*-\s*\d+)?$/.test(debouncedQuery);
+                        if (isCompleteReference) {
+                            toast.error(json.error);
+                        }
+                    }
+                    return await BibleOfflineService.searchOffline(debouncedQuery, activeVersionCode);
+                }
+                return json.data;
+            } catch (err: any) {
+                if (err?.name === 'AbortError') throw err;
+                return await BibleOfflineService.searchOffline(debouncedQuery, activeVersionCode);
+            }
         },
         enabled: debouncedQuery.length >= 2,
         staleTime: 5 * 60 * 1000, // 5 minutes cache

@@ -20,14 +20,36 @@ export class StorageManager {
    */
   static async getUsageBreakdown(): Promise<StorageUsageBreakdown> {
     const allStatuses = await BibleOfflineService.getAllDownloadStatuses();
+    const byVersion: Record<string, number> = {};
     const byBook: Record<string, number> = {};
 
     for (const status of allStatuses) {
-      if (status.status === 'downloaded' && status.targetType === 'book' && status.bookId) {
-        const bytes =
-          status.estimatedBytes ??
-          (await BibleOfflineService.estimateBookSize(status.versionId, status.bookId));
-        byBook[status.id] = bytes;
+      if (status.status === 'downloaded') {
+        const isVersion =
+          status.targetType === 'version' ||
+          (!status.targetType && !status.bookId && !status.chapterNumber);
+
+        if (isVersion) {
+          const hasChapters =
+            (status.downloadedChapters !== undefined && status.downloadedChapters > 0) ||
+            (status.progressPercent !== undefined && status.progressPercent === 100);
+
+          if (hasChapters) {
+            const bytes =
+              status.estimatedBytes ??
+              (await BibleOfflineService.estimateVersionSize(status.versionId));
+            if (bytes > 0) {
+              byVersion[status.versionId] = bytes;
+            }
+          }
+        } else if (status.targetType === 'book' && status.bookId) {
+          const bytes =
+            status.estimatedBytes ??
+            (await BibleOfflineService.estimateBookSize(status.versionId, status.bookId));
+          if (bytes > 0) {
+            byBook[status.id] = bytes;
+          }
+        }
       }
     }
 
@@ -35,12 +57,14 @@ export class StorageManager {
     const chapterCacheBytes = cacheStats.unprotectedCount * 2048; // ~2KB per cached chapter
     const homeCacheBytes = 50 * 1024; // ~50KB for home data
 
-    const totalVersionBytes = Object.values(byBook).reduce((a, b) => a + b, 0);
-    const totalBytes = totalVersionBytes + chapterCacheBytes + homeCacheBytes;
+    const totalVersionBytes = Object.values(byVersion).reduce((a, b) => a + b, 0);
+    const totalBookBytes = Object.values(byBook).reduce((a, b) => a + b, 0);
+    const totalBytes = totalVersionBytes + totalBookBytes + chapterCacheBytes + homeCacheBytes;
 
     return {
       totalBytes,
       maxCapBytes: MAX_STORAGE_BYTES,
+      byVersion,
       byBook,
       chapterCacheBytes,
       homeCacheBytes,
@@ -49,11 +73,30 @@ export class StorageManager {
   }
 
   /**
-   * Check if adding `additionalBytes` will fit under the 100 MB limit.
+   * Check if adding `additionalBytes` will fit under the 100 MB limit and browser storage quota.
    */
   static async canFit(additionalBytes: number): Promise<boolean> {
     const breakdown = await this.getUsageBreakdown();
-    return breakdown.totalBytes + additionalBytes <= MAX_STORAGE_BYTES;
+    if (breakdown.totalBytes + additionalBytes > MAX_STORAGE_BYTES) {
+      return false;
+    }
+
+    // Check browser storage quota if available
+    try {
+      if (typeof window !== 'undefined' && 'storage' in navigator && 'estimate' in navigator.storage) {
+        const estimate = await navigator.storage.estimate();
+        if (estimate.quota !== undefined && estimate.usage !== undefined) {
+          const remainingQuota = estimate.quota - estimate.usage;
+          if (remainingQuota < additionalBytes) {
+            return false;
+          }
+        }
+      }
+    } catch {
+      // Non-critical if browser quota estimation fails
+    }
+
+    return true;
   }
 
   /**

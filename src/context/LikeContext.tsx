@@ -3,6 +3,9 @@
 import React, { createContext, useContext, useState, useCallback, useRef, useEffect } from 'react';
 import { toast } from '@/context/ToastContext';
 import { useQueryClient, QueryClient } from '@tanstack/react-query';
+import { PendingActionsService } from '@/lib/offline/PendingActionsService';
+import { HomeOfflineService } from '@/lib/offline/HomeOfflineService';
+import { useAuth } from '@/context/AuthContext';
 
 export type LikeStatus = 'liked' | 'unliked';
 
@@ -68,6 +71,8 @@ function updateLikeInCache(
 
 export function LikeProvider({ children }: { children: React.ReactNode }) {
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const userId = user?.id;
   const [likes, setLikes] = useState<Record<string, LikeState>>({});
   
   // Keep mutable references for the sync loop to read latest state without re-creating functions
@@ -76,6 +81,16 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
     likesRef.current = likes;
   }, [likes]);
 
+  // Listen for global sync completion to refresh server-authoritative state
+  useEffect(() => {
+    const handleSyncCompleted = () => {
+      queryClient.invalidateQueries({ queryKey: ['likes'] });
+      queryClient.invalidateQueries({ queryKey: ['daily-content-list'] });
+    };
+    window.addEventListener('bible-sync-completed', handleSyncCompleted);
+    return () => window.removeEventListener('bible-sync-completed', handleSyncCompleted);
+  }, [queryClient]);
+
   const registerItem = useCallback((contentId: string, contentType: string, initialLiked: boolean, initialCount: number) => {
     const key = `${contentId}_${contentType}`;
     const initialVal: LikeStatus = initialLiked ? 'liked' : 'unliked';
@@ -83,14 +98,23 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
     setLikes(prev => {
       const existing = prev[key];
       if (existing) {
-        // If there's an in-flight request or a pending mutation state, preserve it.
+        // If user has an active in-flight mutation or pending change, preserve their desired state
         if (existing.inFlight || existing.desiredState !== existing.serverState) {
           return prev;
         }
-        // If no changes, avoid unnecessary state updates
-        if (existing.serverState === initialVal && existing.confirmedCount === initialCount) {
-          return prev;
+        // If server authoritative state updated, reconcile smoothly
+        if (existing.serverState !== initialVal || existing.confirmedCount !== initialCount) {
+          return {
+            ...prev,
+            [key]: {
+              ...existing,
+              desiredState: initialVal,
+              serverState: initialVal,
+              confirmedCount: initialCount,
+            }
+          };
         }
+        return prev;
       }
 
       return {
@@ -141,6 +165,9 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
       return; // Already in sync
     }
 
+    const targetAction = state.desiredState === 'liked' ? 'like' : 'unlike';
+    const clientMutationId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
+
     // Mark as in-flight
     setLikes(prev => {
       const current = prev[key];
@@ -155,11 +182,11 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
       const res = await fetch('/api/interactions/like', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contentId, type: contentType }),
+        body: JSON.stringify({ contentId, type: contentType, action: targetAction, clientMutationId }),
       });
 
       if (!res.ok) {
-        throw new Error('API Request Failed');
+        throw new Error(`API Request Failed with status ${res.status}`);
       }
 
       const data = await res.json();
@@ -209,7 +236,35 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('Error syncing like state:', error);
 
-      // Revert desired state to the confirmed server state
+      // If network is offline or connection dropped, do not revert optimistic state.
+      // Enqueue to PendingActionsService so it syncs when connection returns.
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        HomeOfflineService.updateLikeInDailyCache(
+          contentId,
+          contentType,
+          state.desiredState === 'liked',
+          Math.max(0, state.confirmedCount + (state.desiredState === 'liked' ? 1 : 0) - (state.serverState === 'liked' ? 1 : 0)),
+        ).catch(() => {});
+
+        await PendingActionsService.enqueue(
+          targetAction === 'like' ? 'like_content' : 'unlike_content',
+          '/api/interactions/like',
+          'POST',
+          { contentId, type: contentType, action: targetAction, clientMutationId },
+          { userId, clientMutationId }
+        );
+        setLikes(prev => {
+          const current = prev[key];
+          if (!current) return prev;
+          return {
+            ...prev,
+            [key]: { ...current, inFlight: false }
+          };
+        });
+        return;
+      }
+
+      // Revert desired state to the confirmed server state on genuine server failure
       setLikes(prev => {
         const current = prev[key];
         if (!current) return prev;
@@ -226,35 +281,61 @@ export function LikeProvider({ children }: { children: React.ReactNode }) {
         };
       });
     }
-  }, []);
+  }, [queryClient, userId]);
 
   const toggleLike = useCallback(async (contentId: string, contentType: 'verse' | 'devotion' | 'daily-verse' | 'daily-devotion') => {
     const key = `${contentId}_${contentType}`;
-    
-    setLikes(prev => {
-      const current = prev[key];
-      if (!current) return prev;
+    const current = likesRef.current[key];
+    if (!current) return;
 
-      const newDesired: LikeStatus = current.desiredState === 'liked' ? 'unliked' : 'liked';
+    const newDesired: LikeStatus = current.desiredState === 'liked' ? 'unliked' : 'liked';
+    const targetAction = newDesired === 'liked' ? 'like' : 'unlike';
+    const clientMutationId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : String(Date.now());
 
-      const newState = {
-        ...prev,
-        [key]: {
-          ...current,
-          desiredState: newDesired
-        }
-      };
+    // Calculate optimistic count
+    const optimisticCount = Math.max(
+      0,
+      current.confirmedCount + (newDesired === 'liked' ? 1 : 0) - (current.serverState === 'liked' ? 1 : 0)
+    );
 
-      // Keep ref perfectly in sync for the immediately following setTimeout
-      likesRef.current = newState;
-      return newState;
-    });
+    const newState = {
+      ...likesRef.current,
+      [key]: {
+        ...current,
+        desiredState: newDesired
+      }
+    };
+    likesRef.current = newState;
+    setLikes(newState);
+
+    // Optimistically update React Query cache so carousel and modal sync immediately
+    updateLikeInCache(queryClient, contentId, contentType, optimisticCount, newDesired === 'liked');
+
+    // Also persist optimistic like to persistent IndexedDB storage (home_cache)
+    HomeOfflineService.updateLikeInDailyCache(
+      contentId,
+      contentType,
+      newDesired === 'liked',
+      optimisticCount,
+    ).catch(() => {});
+
+    // If offline, enqueue to PendingActionsService directly
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await PendingActionsService.enqueue(
+        targetAction === 'like' ? 'like_content' : 'unlike_content',
+        '/api/interactions/like',
+        'POST',
+        { contentId, type: contentType, action: targetAction, clientMutationId },
+        { userId, clientMutationId }
+      );
+      return;
+    }
 
     // Run the synchronization loop in the background
     setTimeout(() => {
       runSync(contentId, contentType);
     }, 0);
-  }, [runSync]);
+  }, [queryClient, runSync, userId]);
 
   return (
     <LikeContext.Provider value={{ likes, registerItem, toggleLike, setLikedStateDirectly }}>

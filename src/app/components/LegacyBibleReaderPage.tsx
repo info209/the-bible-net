@@ -26,6 +26,7 @@ import CompareVersionsModal from './CompareVersionsModal';
 import CompareMenu from './CompareMenu';
 import CompareView from './CompareView';
 import { toast } from '@/context/ToastContext';
+import { shareVerse, formatCopyVerseText } from '@/utils/verseFormatter';
 
 import { useMediaStore } from '@/lib/mediaStore';
 import ChapterContent from './ChapterContent';
@@ -259,13 +260,77 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
     setSelectedVerses([]);
   };
 
-  const onVerseMenuShare = () => {
-    const shareText = `Check out these verses from ${displayBookName} ${selectedChapter}`;
-    if (navigator.share) {
-      navigator.share({ title: 'Bible Verses', text: shareText }).catch(console.error);
-    } else {
-      toast.info(shareText);
+  const onVerseMenuShare = async () => {
+    if (selectedVerses.length === 0) return;
+    const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
+
+    const selectedObjs = sortedVerses.map(vNum => {
+      const vObj = currentChapterVerses.find((v: any) => (v.number === vNum || v.verse === vNum));
+      return {
+        number: vNum,
+        text: vObj?.text || ''
+      };
+    });
+
+    let verseText = '';
+    if (selectedObjs.length > 1) {
+      verseText = selectedObjs.map(v => `${v.number} ${v.text}`).join(' ');
+    } else if (selectedObjs.length === 1) {
+      verseText = selectedObjs[0].text;
     }
+
+    const reference = `${displayBookName || ''} ${selectedChapter || 1}:${sortedVerses.join(', ')}`;
+    const version = displayVersionName || selectedVersionId || 'KJV';
+
+    await shareVerse({
+      verseText,
+      reference,
+      version,
+      book: selectedBookId || displayBookName,
+      chapter: selectedChapter,
+      verses: sortedVerses,
+    });
+
+    setSelectedVerses([]);
+  };
+
+  const onVerseMenuCopy = () => {
+    if (selectedVerses.length === 0) return;
+    const sortedVerses = [...selectedVerses].sort((a, b) => a - b);
+
+    const selectedObjs = sortedVerses.map(vNum => {
+      const vObj = currentChapterVerses.find((v: any) => (v.number === vNum || v.verse === vNum));
+      return {
+        number: vNum,
+        text: vObj?.text || ''
+      };
+    });
+
+    let verseText = '';
+    if (selectedObjs.length > 1) {
+      verseText = selectedObjs.map(v => `${v.number} ${v.text}`).join(' ');
+    } else if (selectedObjs.length === 1) {
+      verseText = selectedObjs[0].text;
+    }
+
+    const reference = `${displayBookName || ''} ${selectedChapter || 1}:${sortedVerses.join(', ')}`;
+    const version = displayVersionName || selectedVersionId || 'KJV';
+
+    const textToCopy = formatCopyVerseText({
+      verseText,
+      verseReference: reference,
+      version,
+    });
+
+    if (textToCopy) {
+      navigator.clipboard.writeText(textToCopy)
+        .then(() => toast.success('Verse copied to the clipboard'))
+        .catch((err) => {
+          console.error('Failed to copy text:', err);
+          toast.error('Failed to copy text.');
+        });
+    }
+
     setSelectedVerses([]);
   };
 
@@ -2307,6 +2372,7 @@ export default function BibleReaderPage({ onNavigate }: BibleReaderPageProps) {
           onNote={onVerseMenuNote}
           onCompare={onVerseMenuCompare}
           onShare={onVerseMenuShare}
+          onCopy={onVerseMenuCopy}
           isLoggedIn={!!session?.user}
         />
       )}

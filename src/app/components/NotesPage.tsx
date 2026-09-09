@@ -3,13 +3,15 @@
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  ArrowLeft, MoreVertical, Tag, MessageSquare, Plus, Check, X, FileText, Trash2, Edit2, Bookmark, BookOpen
+  ArrowLeft, MoreVertical, Tag, MessageSquare, Plus, Check, X, FileText, Trash2, Edit2, Bookmark, BookOpen, Share2
 } from 'lucide-react';
 import LibraryPageHeader from './LibraryPageHeader';
 import { toast } from '@/context/ToastContext';
+import { shareVerse } from '@/utils/verseFormatter';
+import { LabelTag } from '@/components/ui/LabelTag';
 
 type FilterTab = 'All' | 'Bible' | 'Reading plans';
 
@@ -28,18 +30,19 @@ const BIBLE_BOOKS = [
   '1 John', '2 John', '3 John', 'Jude', 'Revelation'
 ];
 
+import { useNotes } from '@/hooks/useNotes';
+
 interface NotesPageProps {
   onBack?: () => void;
   onClose?: () => void;
 }
 
 export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
-  const { data: session, status } = useSession();
+  const { session, status } = useAuth();
   const router = useRouter();
 
-  // Notes state
-  const [notes, setNotes] = useState<any[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  // Notes hook
+  const { notes, isLoading, createNote, updateNote, deleteNote } = useNotes();
   const [activeTab, setActiveTab] = useState<FilterTab>('All');
   
   // Menu state
@@ -67,37 +70,6 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
 
   // Toast state
   const menuRef = useRef<HTMLDivElement>(null);
-
-  // Fetch Notes
-  const fetchNotes = async () => {
-    if (!session?.user) return;
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/notes');
-      const json = await res.json();
-      if (json.success) {
-        setNotes(json.data);
-      }
-    } catch (e) {
-      console.error('[NotesPage] fetch error:', e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    if (status === 'unauthenticated') {
-      // Clear any data cached from a previous user session
-      setNotes([]);
-      setIsLoading(false);
-      return;
-    }
-    if (status === 'authenticated' && session?.user?.id) {
-      // Clear stale data before re-fetching for this user
-      setNotes([]);
-      fetchNotes();
-    }
-  }, [status, session?.user?.id]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -181,19 +153,36 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
     setMenuOpenId(null);
   };
 
+  const handleShareNote = async (note: any) => {
+    setMenuOpenId(null);
+    const firstVerse = note?.verses?.[0];
+    if (firstVerse) {
+      const refStr = `${firstVerse.bookName} ${firstVerse.chapter}:${firstVerse.verses?.join(', ')}`;
+      await shareVerse({
+        verseText: firstVerse.verseText,
+        reference: refStr,
+        version: note.version || 'NKJV',
+        book: firstVerse.bookId || firstVerse.bookName,
+        chapter: firstVerse.chapter,
+        verses: firstVerse.verses,
+      });
+    } else if (note?.noteText) {
+      if (navigator.share) {
+        try {
+          await navigator.share({ title: 'Note', text: note.noteText });
+        } catch {}
+      } else {
+        navigator.clipboard.writeText(note.noteText);
+        showToast('Note copied to clipboard!');
+      }
+    }
+  };
+
   const handleDeleteNote = async (id: string) => {
     setMenuOpenId(null);
     try {
-      const res = await fetch(`/api/notes/${id}`, {
-        method: 'DELETE',
-      });
-      const json = await res.json();
-      if (json.success) {
-        setNotes(prev => prev.filter(n => n._id !== id));
-        showToast('Note deleted successfully');
-      } else {
-        showToast('Failed to delete note');
-      }
+      await deleteNote(id);
+      showToast('Note deleted successfully');
     } catch (e) {
       showToast('Error deleting note');
     }
@@ -270,40 +259,21 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
         bookId: v.bookId,
         bookName: v.bookName,
         chapter: v.chapter,
-        verses: v.verses
+        verses: v.verses,
+        verseText: v.verseText
       })),
       version: noteVersion
     };
 
     try {
       if (editingNoteId) {
-        const res = await fetch(`/api/notes/${editingNoteId}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const json = await res.json();
-        if (json.success) {
-          showToast('Note updated');
-          fetchNotes();
-          setIsEditing(false);
-        } else {
-          showToast('Failed to update note');
-        }
+        await updateNote(editingNoteId, payload);
+        showToast('Note updated');
+        setIsEditing(false);
       } else {
-        const res = await fetch('/api/notes', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const json = await res.json();
-        if (json.success) {
-          showToast('Note created');
-          fetchNotes();
-          setIsEditing(false);
-        } else {
-          showToast('Failed to create note');
-        }
+        await createNote(payload);
+        showToast('Note created');
+        setIsEditing(false);
       }
     } catch (e) {
       showToast('Error saving note');
@@ -456,7 +426,7 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
                             <div className="flex items-center gap-1.5 mt-2">
                               <Tag className="w-3.5 h-3.5 text-[#0B7A81]" />
                               <span className="text-[12px] font-[500] text-[#0B7A81]">
-                                Label: {cardLabel}
+                                {cardLabel}
                               </span>
                             </div>
                           </div>
@@ -496,9 +466,6 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
 
                         {/* User's Note Preview Container */}
                         <div className="mt-3 bg-[#F5F5F5] dark:bg-[#202020] rounded-[10px] p-[12px]">
-                          <p className="text-[12px] text-[#777777] dark:text-gray-400 font-[400]">
-                            Encouragement
-                          </p>
                           <p className="text-[16px] font-[500] text-[#222222] dark:text-white mt-1">
                             {note.noteText}
                           </p>
@@ -540,24 +507,23 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
             </header>
 
             {/* Label Chips Section (Horizontal Scrollable) */}
-            <div className="flex gap-2.5 overflow-x-auto scrollbar-none py-2.5">
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-2.5">
               {/* Add Label Chip */}
               <button
+                type="button"
                 onClick={() => setLabelInputOpen(true)}
-                className="h-[36px] px-4 rounded-[999px] border border-[#0B7A81] text-[#0B7A81] bg-white dark:bg-[#151515] text-[13px] font-[500] whitespace-nowrap shrink-0 flex items-center justify-center"
+                className="h-8 px-3.5 rounded-full border border-[#0B7A81] text-[#0B7A81] dark:text-[#14B8A6] bg-white dark:bg-[#111111] text-xs font-semibold whitespace-nowrap shrink-0 flex items-center justify-center transition-all active:scale-95 shadow-2xs"
               >
                 Label +
               </button>
 
               {/* Selected Label Chips */}
               {noteLabels.map(label => (
-                <button
+                <LabelTag
                   key={label}
-                  onClick={() => handleRemoveLabel(label)}
-                  className="h-[36px] px-4 rounded-[999px] bg-[#E8EFF0] text-[#222222] text-[13px] font-[500] whitespace-nowrap shrink-0 flex items-center gap-1.5"
-                >
-                  {label} <span className="text-gray-400">✎</span>
-                </button>
+                  label={label}
+                  onRemove={() => handleRemoveLabel(label)}
+                />
               ))}
             </div>
 
@@ -594,40 +560,24 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
               )}
             </AnimatePresence>
 
-            {/* Note Content Area */}
-            <div className="mt-4 flex flex-col">
-              <div className="flex items-center gap-3">
-                <MessageSquare className="w-5 h-5 text-gray-400" />
-                <span className="text-xs text-gray-400 font-semibold tracking-wide">Write note</span>
-              </div>
-              
-              {/* Primary Large Editor text area */}
-              <textarea
-                value={noteText}
-                onChange={(e) => setNoteText(e.target.value)}
-                placeholder="New note content..."
-                rows={4}
-                className="w-full bg-transparent resize-none border-none focus:outline-none focus:ring-0 mt-4 text-[36px] font-[400] leading-[52px] text-[#333333] dark:text-white placeholder-gray-300"
-              />
-            </div>
-
-            {/* Verse Previews list */}
+            {/* Linked Verses Section (Positioned ABOVE Note Editor) */}
             {noteVerses.length > 0 && (
-              <div className="mt-6 space-y-4 pt-4 border-t border-gray-100 dark:border-white/[0.04]">
-                <p className="text-xs font-semibold text-gray-400 tracking-wide">Linked verses</p>
+              <div className="mt-4 space-y-3">
+                <p className="text-xs font-semibold text-gray-400 tracking-wide uppercase">Linked verses</p>
                 {noteVerses.map((vRef, idx) => {
                   const r = `${vRef.bookName} ${vRef.chapter}:${vRef.verses.join(', ')}`;
                   return (
-                    <div key={idx} className="flex flex-col relative group bg-white dark:bg-[#151515] p-3 rounded-xl border border-gray-100 dark:border-white/[0.08]">
+                    <div key={idx} className="flex flex-col relative group bg-white dark:bg-[#151515] p-3.5 rounded-xl border border-gray-100 dark:border-white/[0.08]">
                       <button
+                        type="button"
                         onClick={() => setNoteVerses(noteVerses.filter((_, i) => i !== idx))}
-                        className="absolute top-2 right-2 text-gray-400 hover:text-red-500"
+                        className="absolute top-2.5 right-2.5 text-gray-400 hover:text-red-500 transition-colors p-1"
                         title="Remove verse link"
                       >
                         <X className="w-4 h-4" />
                       </button>
-                      <span className="text-[20px] font-[500] text-[#0B7A81]">{r}</span>
-                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 italic">
+                      <span className="text-[18px] sm:text-[20px] font-[500] text-[#0B7A81]">{r}</span>
+                      <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 italic leading-relaxed">
                         "{vRef.verseText || 'For he spake of the temple of his body.'}"
                       </p>
                     </div>
@@ -638,11 +588,29 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
 
             {/* Add Verse Button */}
             <button
+              type="button"
               onClick={() => setVersePickerOpen(true)}
-              className="mt-6 flex items-center gap-1.5 text-[16px] font-[400] text-[#666666] dark:text-gray-400 hover:text-[#0B7A81]"
+              className="mt-3 flex items-center gap-1.5 text-[15px] font-[400] text-[#666666] dark:text-gray-400 hover:text-[#0B7A81] transition-colors"
             >
-              <Plus className="w-5 h-5" /> Add verse
+              <Plus className="w-4 h-4" /> Add verse
             </button>
+
+            {/* Note Content Area (Positioned BELOW Linked Verses) */}
+            <div className="mt-5 pt-4 border-t border-gray-100 dark:border-white/[0.06] flex flex-col">
+              <div className="flex items-center gap-2 mb-2">
+                <MessageSquare className="w-4 h-4 text-gray-400" />
+                <span className="text-xs text-gray-400 font-semibold tracking-wide uppercase">Write note</span>
+              </div>
+              
+              {/* Primary Editor text area with natural typography & caret size */}
+              <textarea
+                value={noteText}
+                onChange={(e) => setNoteText(e.target.value)}
+                placeholder="Write your note here..."
+                rows={6}
+                className="w-full bg-transparent resize-none border-none focus:outline-none focus:ring-0 text-[16px] sm:text-[17px] font-[400] leading-relaxed text-[#222222] dark:text-gray-100 placeholder-gray-400 caret-[#0B7A81] dark:caret-[#14B8A6]"
+              />
+            </div>
 
             {/* Dynamic Verse Selection dialog */}
             <AnimatePresence>
@@ -749,6 +717,13 @@ export default function NotesPage({ onBack, onClose }: NotesPageProps = {}) {
               >
                 <span>Edit</span>
                 <Edit2 className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => handleShareNote(selectedNoteForMenu)}
+                className="w-full h-[44px] px-4 flex items-center justify-between text-[14px] font-[500] hover:bg-gray-50 dark:hover:bg-white/[0.04] transition-colors active:bg-gray-100/50 text-gray-800 dark:text-gray-200"
+              >
+                <span>Share</span>
+                <Share2 className="w-4 h-4" />
               </button>
               <button
                 onClick={() => handleDeleteNote(selectedNoteForMenu._id)}

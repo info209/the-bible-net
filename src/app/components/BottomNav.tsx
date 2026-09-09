@@ -76,12 +76,15 @@ export default function BottomNav({ isVisible = true, onNavigate }: BottomNavPro
   return (
     <div 
       data-bottom-nav="true"
+      style={{
+        paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 6px)',
+      }}
       className={`fixed bottom-0 left-0 right-0 z-20 ${themeNavStyle} transition-all duration-700 ease-in-out ${
         isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-full pointer-events-none'
       }`}
     >
       <div className="max-w-3xl mx-auto px-4">
-        <div className="flex items-center justify-around h-16">
+        <div className="flex items-center justify-around pt-1.5 pb-1">
           {navItems.map((item) => {
             const isActive = (pathname as string) === item.path || (item.id === 'bible' && isBiblePage);
             const Icon = item.icon;
@@ -90,12 +93,12 @@ export default function BottomNav({ isVisible = true, onNavigate }: BottomNavPro
               <button
                 key={item.id}
                 onClick={() => onNavigate?.(item.id as any)}
-                className="flex flex-col items-center gap-1 transition-colors min-w-[60px]"
+                className="flex flex-col items-center justify-center gap-0.5 transition-colors min-w-[60px] py-0.5 select-none"
               >
-                <div className={`p-2 rounded-full transition-all ${isActive ? activeBadgeStyle : ''}`}>
-                  <Icon className={`size-6 ${isActive ? activeTextColor : inactiveColor}`} />
+                <div className={`p-1.5 rounded-full transition-all ${isActive ? activeBadgeStyle : ''}`}>
+                  <Icon className={`size-5 sm:size-6 ${isActive ? activeTextColor : inactiveColor}`} />
                 </div>
-                <span className={`text-xs ${isActive ? activeTextColor : inactiveColor}`}>
+                <span className={`text-[11px] leading-tight font-medium ${isActive ? `${activeTextColor} font-semibold` : inactiveColor}`}>
                   {item.label}
                 </span>
               </button>

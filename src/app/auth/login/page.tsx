@@ -9,6 +9,7 @@ import { Mail, Lock, CheckCircle2, AlertCircle, ChevronLeft } from 'lucide-react
 import { PasswordInput } from '@/components/ui/password-input';
 import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
+import { LegalModal } from '@/components/LegalModal';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -18,8 +19,19 @@ export default function LoginPage() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
+    const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'terms' | 'privacy' }>({
+        isOpen: false,
+        type: 'terms',
+    });
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            const offlineMsg = 'Sign in requires an internet connection.';
+            toast.info(offlineMsg);
+            setError(offlineMsg);
+            return;
+        }
         setLoading(true);
         setError('');
 
@@ -91,7 +103,7 @@ export default function LoginPage() {
                     </motion.button>
                     <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-sans px-10">Welcome back</h1>
                 </div>
-                <p className="text-slate-500/80 font-medium">Please sign in to your account</p>
+                <p className="text-slate-500/80 font-medium">Sign in to The Bible Net</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -198,6 +210,18 @@ export default function LoginPage() {
                     </Link>
                 </p>
             </div>
+
+            <div className="text-center pt-2">
+                <label htmlFor="tnc" className="text-sm text-slate-600 font-medium cursor-pointer leading-relaxed">
+                    <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'terms' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Terms of Service</button> | <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Privacy Policy</button>.
+                </label>
+            </div>
+
+            <LegalModal
+                isOpen={legalModal.isOpen}
+                onClose={() => setLegalModal({ ...legalModal, isOpen: false })}
+                type={legalModal.type}
+            />
         </motion.div>
     );
 }

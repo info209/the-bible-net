@@ -296,15 +296,70 @@ export class BibleService {
                     console.warn(`getChapterContent: No verses found for chapter ${chapter._id} (search: "${search || ''}")`);
                 }
 
+                // Defensively collect and normalize chapter and verse footnotes
+                const rawChapterFootnotes = (chapter as any)?.footnotes || [];
+                const normalizedFootnotes: Array<{ id: string; verseNumber: number; text: string; reference?: string; marker?: string }> = [];
+
+                if (Array.isArray(rawChapterFootnotes)) {
+                    rawChapterFootnotes.forEach((fn: any, idx: number) => {
+                        if (!fn) return;
+                        if (typeof fn === 'string' && fn.trim()) {
+                            normalizedFootnotes.push({
+                                id: `fn-${chapter.number}-${idx + 1}`,
+                                verseNumber: 1,
+                                text: fn.trim(),
+                                reference: `${targetBook.name} ${chapter.number}:1`,
+                            });
+                        } else if (typeof fn === 'object') {
+                            const vNum = Number(fn.verseNumber || fn.verse || fn.verse_number || 1);
+                            const text = String(fn.text || fn.note || fn.content || '').trim();
+                            if (text) {
+                                normalizedFootnotes.push({
+                                    id: fn.id ? String(fn.id) : `fn-${chapter.number}-${vNum}-${idx + 1}`,
+                                    verseNumber: isNaN(vNum) ? 1 : vNum,
+                                    text,
+                                    reference: fn.reference || `${targetBook.name} ${chapter.number}:${isNaN(vNum) ? 1 : vNum}`,
+                                    marker: fn.marker,
+                                });
+                            }
+                        }
+                    });
+                }
+
+                verses.forEach((v: any) => {
+                    if (v.footnotes && Array.isArray(v.footnotes)) {
+                        v.footnotes.forEach((fn: any, idx: number) => {
+                            if (!fn) return;
+                            const text = typeof fn === 'string' ? fn.trim() : String(fn.text || fn.note || fn.content || '').trim();
+                            if (text) {
+                                normalizedFootnotes.push({
+                                    id: typeof fn === 'object' && fn.id ? String(fn.id) : `fn-${chapter.number}-${v.number}-${idx + 1}`,
+                                    verseNumber: v.number,
+                                    text,
+                                    reference: typeof fn === 'object' && fn.reference ? fn.reference : `${targetBook.name} ${chapter.number}:${v.number}`,
+                                    marker: typeof fn === 'object' ? fn.marker : undefined,
+                                });
+                            }
+                        });
+                    } else if (v.footnote && typeof v.footnote === 'string' && v.footnote.trim()) {
+                        normalizedFootnotes.push({
+                            id: `fn-${chapter.number}-${v.number}-1`,
+                            verseNumber: v.number,
+                            text: v.footnote.trim(),
+                            reference: `${targetBook.name} ${chapter.number}:${v.number}`,
+                        });
+                    }
+                });
+
                 return {
                     version: {
                         name: version.name,
                         abbreviation: version.abbreviation,
                     },
                     book: {
-                        name: book.name,
-                        abbreviation: book.abbreviation,
-                        testament: book.testament,
+                        name: targetBook.name,
+                        abbreviation: targetBook.abbreviation || book.abbreviation,
+                        testament: targetBook.testament || book.testament,
                     },
                     chapter: {
                         number: chapter.number,
@@ -312,7 +367,9 @@ export class BibleService {
                     verses: verses.map((v) => ({
                         number: v.number,
                         text: v.text,
+                        ...(v.footnotes ? { footnotes: v.footnotes } : {}),
                     })),
+                    footnotes: normalizedFootnotes,
                 };
             }, CACHE_TTL.BIBLE);
         } catch (error: any) {
@@ -366,6 +423,105 @@ export class BibleService {
             console.error('Error in getRandomVerse service:', error);
             throw error;
         }
+    }
+
+    /**
+     * Update Bible Version metadata
+     * @param versionId - Version document ID
+     * @param data - Metadata fields to update
+     */
+    static async updateVersion(
+        versionId: string,
+        data: {
+            name?: string;
+            abbreviation?: string;
+            language?: string;
+            copyright?: string;
+            licenseType?: 'public-domain' | 'licensed' | 'proprietary' | 'unknown';
+            status?: 'active' | 'inactive' | 'importing' | 'failed';
+            isActive?: boolean;
+        }
+    ): Promise<(IBibleVersion & { _id: any }) | null> {
+        await connectDB();
+
+        const existingVersion = await BibleVersion.findById(versionId);
+        if (!existingVersion) {
+            throw new Error('Bible version not found');
+        }
+
+        const updates: any = {};
+
+        if (data.name !== undefined) {
+            const name = data.name.trim();
+            if (!name) throw new Error('Version name cannot be empty');
+            if (name.length > 100) throw new Error('Version name cannot exceed 100 characters');
+            updates.name = name;
+        }
+
+        if (data.abbreviation !== undefined) {
+            const abbr = data.abbreviation.trim().toUpperCase();
+            if (!abbr) throw new Error('Abbreviation cannot be empty');
+            if (abbr.length > 10) throw new Error('Abbreviation cannot exceed 10 characters');
+            if (!/^[A-Z0-9]+$/.test(abbr)) throw new Error('Abbreviation must be alphanumeric');
+
+            if (abbr !== existingVersion.abbreviation) {
+                const duplicate = await BibleVersion.findOne({
+                    abbreviation: abbr,
+                    _id: { $ne: versionId }
+                });
+                if (duplicate) {
+                    throw new Error(`A version with abbreviation "${abbr}" already exists`);
+                }
+                updates.abbreviation = abbr;
+            }
+        }
+
+        if (data.language !== undefined) {
+            const lang = data.language.trim().toLowerCase();
+            if (!/^[a-z]{2,3}$/.test(lang)) {
+                throw new Error('Language must be a 2 or 3 letter ISO code (e.g. en, te, hi)');
+            }
+            updates.language = lang;
+        }
+
+        if (data.copyright !== undefined) {
+            updates.copyright = data.copyright.trim();
+        }
+
+        if (data.licenseType !== undefined) {
+            updates.licenseType = data.licenseType;
+        }
+
+        if (data.status !== undefined) {
+            updates.status = data.status;
+            updates.isActive = data.status === 'active';
+        } else if (data.isActive !== undefined) {
+            updates.isActive = data.isActive;
+            if (data.isActive && existingVersion.status === 'inactive') {
+                updates.status = 'active';
+            } else if (!data.isActive && existingVersion.status === 'active') {
+                updates.status = 'inactive';
+            }
+        }
+
+        const updatedVersion = await BibleVersion.findByIdAndUpdate(
+            versionId,
+            { $set: updates },
+            { new: true, runValidators: true }
+        ).lean() as any;
+
+        // If abbreviation changed, update denormalized versionCode on verses
+        if (updates.abbreviation && updates.abbreviation !== existingVersion.abbreviation) {
+            await Verse.updateMany(
+                { version: versionId },
+                { $set: { versionCode: updates.abbreviation } }
+            ).catch(err => console.warn('Denormalized versionCode update error:', err));
+        }
+
+        // Invalidate Redis/memory caches
+        await CacheService.invalidatePattern('tbnet:bible:*');
+
+        return updatedVersion;
     }
 
     /**
@@ -747,6 +903,180 @@ export class BibleService {
             console.error('[findVersesText] Error fetching verse text:', error);
             return '';
         }
+    }
+
+    /**
+     * Get complete dataset for an entire Bible version for offline download
+     * Returns version metadata, all books, chapters, verses, and footnotes.
+     */
+    static async getVersionFullDownloadData(versionIdentifier: string) {
+        await connectDB();
+
+        // 1. Resolve version
+        let versionDoc: any = null;
+        if (mongoose.Types.ObjectId.isValid(versionIdentifier)) {
+            versionDoc = await BibleVersion.findById(versionIdentifier).lean();
+        }
+        if (!versionDoc) {
+            const escaped = versionIdentifier.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            versionDoc = await BibleVersion.findOne({
+                $or: [
+                    { abbreviation: new RegExp(`^${escaped}$`, 'i') },
+                    { name: new RegExp(`^${escaped}$`, 'i') },
+                ],
+            }).lean();
+        }
+
+        if (!versionDoc) {
+            throw new Error(`Version not found: ${versionIdentifier}`);
+        }
+
+        const versionId = versionDoc._id;
+
+        // 2. Fetch all books, chapters, and verses for this version in parallel
+        const [books, chapters, verses] = await Promise.all([
+            Book.find({ version: versionId }).sort({ order: 1 }).lean(),
+            Chapter.find({ version: versionId }).sort({ number: 1 }).lean(),
+            Verse.find({ version: versionId }).sort({ book: 1, chapter: 1, number: 1 }).lean(),
+        ]);
+
+        // 3. Map chapters by book ID
+        const chaptersByBookId = new Map<string, any[]>();
+        for (const ch of chapters) {
+            const bId = ch.book.toString();
+            if (!chaptersByBookId.has(bId)) {
+                chaptersByBookId.set(bId, []);
+            }
+            chaptersByBookId.get(bId)!.push(ch);
+        }
+
+        // 4. Map verses by chapter ID
+        const versesByChapterId = new Map<string, any[]>();
+        for (const v of verses) {
+            const cId = v.chapter.toString();
+            if (!versesByChapterId.has(cId)) {
+                versesByChapterId.set(cId, []);
+            }
+            versesByChapterId.get(cId)!.push({
+                number: v.number,
+                text: v.text,
+                footnotes: v.footnotes || undefined,
+            });
+        }
+
+        // 5. Format books
+        const formattedBooks = books.map((b) => {
+            const bId = b._id.toString();
+            const bookChapters = chaptersByBookId.get(bId) || [];
+            return {
+                id: bId,
+                versionId: versionId.toString(),
+                name: b.name,
+                abbreviation: b.abbreviation,
+                englishName: b.name,
+                order: b.order,
+                testament: b.testament,
+                chapterCount: bookChapters.length || b.chaptersCount || 0,
+            };
+        });
+
+        // 6. Format chapters with verses & normalized footnotes
+        const formattedChapters: any[] = [];
+        for (const b of books) {
+            const bId = b._id.toString();
+            const bookChapters = chaptersByBookId.get(bId) || [];
+            bookChapters.sort((a, b) => a.number - b.number);
+
+            for (const ch of bookChapters) {
+                const cId = ch._id.toString();
+                const chVerses = versesByChapterId.get(cId) || [];
+                chVerses.sort((a, b) => a.number - b.number);
+
+                // Collect chapter & verse footnotes
+                const rawFootnotes = (ch as any)?.footnotes || [];
+                const normalizedFootnotes: Array<{
+                    id: string;
+                    verseNumber: number;
+                    text: string;
+                    reference?: string;
+                    marker?: string;
+                }> = [];
+
+                if (Array.isArray(rawFootnotes)) {
+                    rawFootnotes.forEach((fn: any, idx: number) => {
+                        if (!fn) return;
+                        if (typeof fn === 'string' && fn.trim()) {
+                            normalizedFootnotes.push({
+                                id: `fn-${ch.number}-${idx + 1}`,
+                                verseNumber: 1,
+                                text: fn.trim(),
+                                reference: `${b.name} ${ch.number}:1`,
+                            });
+                        } else if (typeof fn === 'object') {
+                            const vNum = Number(fn.verseNumber || fn.verse || fn.verse_number || 1);
+                            const text = String(fn.text || fn.note || fn.content || '').trim();
+                            if (text) {
+                                normalizedFootnotes.push({
+                                    id: fn.id ? String(fn.id) : `fn-${ch.number}-${vNum}-${idx + 1}`,
+                                    verseNumber: isNaN(vNum) ? 1 : vNum,
+                                    text,
+                                    reference: fn.reference || `${b.name} ${ch.number}:${isNaN(vNum) ? 1 : vNum}`,
+                                    marker: fn.marker,
+                                });
+                            }
+                        }
+                    });
+                }
+
+                // Check verse-level footnotes
+                chVerses.forEach((v: any) => {
+                    if (v.footnotes && Array.isArray(v.footnotes)) {
+                        v.footnotes.forEach((fn: any, idx: number) => {
+                            if (!fn) return;
+                            const text = typeof fn === 'string' ? fn.trim() : String(fn.text || fn.note || '').trim();
+                            if (text) {
+                                normalizedFootnotes.push({
+                                    id: `fn-v-${ch.number}-${v.number}-${idx + 1}`,
+                                    verseNumber: v.number,
+                                    text,
+                                    reference: `${b.name} ${ch.number}:${v.number}`,
+                                    marker: typeof fn === 'object' ? fn.marker : undefined,
+                                });
+                            }
+                        });
+                    }
+                });
+
+                formattedChapters.push({
+                    id: `${versionId.toString()}::${bId}::${ch.number}`,
+                    versionId: versionId.toString(),
+                    bookId: bId,
+                    bookName: b.name,
+                    bookAbbreviation: b.abbreviation || versionDoc.abbreviation,
+                    chapterNumber: ch.number,
+                    testament: b.testament,
+                    verses: chVerses,
+                    footnotes: normalizedFootnotes.length > 0 ? normalizedFootnotes : undefined,
+                    cachedAt: new Date().toISOString(),
+                    isDownloaded: true,
+                });
+            }
+        }
+
+        return {
+            version: {
+                id: versionId.toString(),
+                abbreviation: versionDoc.abbreviation,
+                name: versionDoc.name,
+                language: versionDoc.language,
+                isActive: versionDoc.isActive,
+                updatedAt: versionDoc.updatedAt
+                    ? new Date(versionDoc.updatedAt).toISOString()
+                    : new Date().toISOString(),
+            },
+            books: formattedBooks,
+            chapters: formattedChapters,
+        };
     }
 }
 

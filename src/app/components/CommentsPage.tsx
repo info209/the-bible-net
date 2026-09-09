@@ -10,6 +10,9 @@ import {
   ArrowLeft, MessageSquare, Trash2, Calendar, Check, BookOpen, Quote
 } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/context/AuthContext';
+import { PendingActionsService } from '@/lib/offline/PendingActionsService';
 
 type FilterTab = 'All' | 'Verses' | 'Devotionals';
 const TABS: FilterTab[] = ['All', 'Verses', 'Devotionals'];
@@ -33,6 +36,8 @@ interface CommentsPageProps {
 }
 
 export default function CommentsPage({ onBack }: CommentsPageProps = {}) {
+  const queryClient = useQueryClient();
+  const { session } = useAuth();
   const router = useRouter();
   const [comments, setComments] = useState<CommentItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,23 +73,92 @@ export default function CommentsPage({ onBack }: CommentsPageProps = {}) {
     }
   };
 
-  const handleDeleteComment = async (commentId: string) => {
-    try {
-      // Optimistic update
-      setComments(prev => prev.filter(c => c._id !== commentId));
-      showToast('Comment deleted');
+  const decrementCacheCommentCount = (contentId?: string, contentType?: string) => {
+    if (!contentId) return;
+    const isVerse = contentType === 'daily-verse' || contentType === 'verse';
+    const countField = isVerse ? 'verseCommentCount' : 'devotionCommentCount';
 
+    const patcher = (prev: any[] | undefined) => {
+      if (!Array.isArray(prev)) return prev;
+      return prev.map(item => {
+        if (String(item._id) === String(contentId)) {
+          const updatedCount = Math.max(0, (item[countField] || 1) - 1);
+          const updatedItem = { ...item, [countField]: updatedCount };
+          if (item.date) {
+            const verseKeys = queryClient.getQueriesData({ queryKey: ['daily-verse', item.date] });
+            verseKeys.forEach(([k]) => queryClient.setQueryData(k, (p: any) => p ? { ...p, [countField]: updatedCount } : p));
+            const devKeys = queryClient.getQueriesData({ queryKey: ['daily-devotion', item.date] });
+            devKeys.forEach(([k]) => queryClient.setQueryData(k, (p: any) => p ? { ...p, [countField]: updatedCount } : p));
+          }
+          return updatedItem;
+        }
+        return item;
+      });
+    };
+
+    queryClient.setQueriesData({ queryKey: ['daily-content-list'] }, patcher);
+    queryClient.setQueriesData({ queryKey: ['daily-content-today'] }, patcher);
+  };
+
+  const handleDeleteComment = async (commentId: string) => {
+    const targetComment = comments.find(c => c._id === commentId);
+    // Optimistic update
+    setComments(prev => prev.filter(c => c._id !== commentId));
+    showToast('Comment deleted');
+    decrementCacheCommentCount(targetComment?.contentId, targetComment?.contentType);
+
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      await PendingActionsService.enqueue(
+        'delete_comment',
+        `/api/interactions/comment/${commentId}`,
+        'DELETE',
+        { commentId, contentId: targetComment?.contentId },
+        {
+          userId: (session?.user as any)?.id,
+          entityType: 'comment',
+        }
+      );
+      return;
+    }
+
+    try {
       const res = await fetch(`/api/interactions/comment/${commentId}`, {
         method: 'DELETE',
       });
 
       if (!res.ok) {
-        fetchComments();
-        showToast('Failed to delete comment. Reverting.');
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          await PendingActionsService.enqueue(
+            'delete_comment',
+            `/api/interactions/comment/${commentId}`,
+            'DELETE',
+            { commentId, contentId: targetComment?.contentId },
+            {
+              userId: (session?.user as any)?.id,
+              entityType: 'comment',
+            }
+          );
+        } else {
+          fetchComments();
+          showToast('Failed to delete comment. Reverting.');
+        }
       }
     } catch (err) {
-      fetchComments();
-      showToast('Error deleting comment. Reverting.');
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        await PendingActionsService.enqueue(
+          'delete_comment',
+          `/api/interactions/comment/${commentId}`,
+          'DELETE',
+          { commentId, contentId: targetComment?.contentId },
+          {
+            userId: (session?.user as any)?.id,
+            entityType: 'comment',
+          }
+        );
+      } else {
+        fetchComments();
+        showToast('Error deleting comment. Reverting.');
+      }
     }
   };
 

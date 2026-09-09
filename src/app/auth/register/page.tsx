@@ -30,6 +30,12 @@ export default function RegisterStep1() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+            const offlineMsg = 'Creating an account requires an internet connection.';
+            toast.info(offlineMsg);
+            setError(offlineMsg);
+            return;
+        }
         setLoading(true);
         setError('');
 
@@ -84,8 +90,9 @@ export default function RegisterStep1() {
                     >
                         <ChevronLeft className="w-5 h-5" />
                     </motion.button>
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-sans px-10">Join The Bible</h1>
+                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-sans px-10">Create your account</h1>
                 </div>
+                <p className="text-slate-500/80 font-medium">Join The Bible Net and grow in God's Word</p>
                 <p className="text-slate-500/80 font-medium">Step 1 of 3: Basic details</p>
             </div>
 
@@ -175,7 +182,7 @@ export default function RegisterStep1() {
                         />
                     </div>
                     <label htmlFor="tnc" className="text-sm text-slate-600 font-medium cursor-pointer leading-relaxed">
-                        I agree to the <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'terms' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Terms & conditions</button>.
+                        I agree to the <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'terms' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Terms of Service</button> and <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Privacy Policy</button>.
                     </label>
 
                 </div>
@@ -204,10 +211,10 @@ export default function RegisterStep1() {
                 </p>
             </div>
 
-            <LegalModal 
-                isOpen={legalModal.isOpen} 
-                onClose={() => setLegalModal({ ...legalModal, isOpen: false })} 
-                type={legalModal.type} 
+            <LegalModal
+                isOpen={legalModal.isOpen}
+                onClose={() => setLegalModal({ ...legalModal, isOpen: false })}
+                type={legalModal.type}
             />
         </motion.div>
 

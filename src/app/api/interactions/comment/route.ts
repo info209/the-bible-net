@@ -75,11 +75,21 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: validatedData.error.issues[0].message }, { status: 400 });
         }
 
-        const { contentId, type, comment: commentText } = validatedData.data;
+        const { contentId, type, comment: commentText, clientMutationId } = validatedData.data;
 
-        const comment = await CommentRepository.addComment(contentId, type, session.user.id as string, commentText);
+        const comment = await CommentRepository.addComment(
+            contentId,
+            type,
+            session.user.id as string,
+            commentText,
+            clientMutationId
+        );
 
-        return NextResponse.json({ success: true, comment });
+        return NextResponse.json({
+            success: true,
+            comment,
+            commentCount: (comment as any).commentCount,
+        });
     } catch (error: any) {
         console.error('Error in comment API:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

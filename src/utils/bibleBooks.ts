@@ -230,5 +230,124 @@ export function getLocalizedBookName(englishName: string, language: string): str
   return englishName;
 }
 
+/**
+ * Resolves any book identifier (order number, English name, abbreviation,
+ * Telugu name, Hindi name, or common transliteration) into its canonical 1-based order (1-66).
+ */
+export function findCanonicalBookOrder(input: string | number | undefined | null): number | null {
+  if (input === undefined || input === null) return null;
+  if (typeof input === 'number') {
+    if (input >= 1 && input <= 66) return input;
+    return null;
+  }
+  const str = String(input).trim();
+  if (!str) return null;
+
+  // Numeric string "1" .. "66"
+  const num = parseInt(str, 10);
+  if (!isNaN(num) && String(num) === str && num >= 1 && num <= 66) {
+    return num;
+  }
+
+  const normalized = str.toLowerCase().replace(/[\s\-_]+/g, '');
+
+  // 1. Direct match on BIBLE_BOOKS name & abbreviation
+  for (const b of BIBLE_BOOKS) {
+    const bName = b.name.toLowerCase().replace(/[\s\-_]+/g, '');
+    const bAbbr = b.abbreviation.toLowerCase().replace(/[\s\-_]+/g, '');
+    if (normalized === bName || normalized === bAbbr) {
+      return b.order;
+    }
+  }
+
+  // 2. Direct match on TELUGU_BOOK_NAMES
+  for (const [engName, telName] of Object.entries(TELUGU_BOOK_NAMES)) {
+    if (str === telName || normalized === telName.toLowerCase().replace(/[\s\-_]+/g, '')) {
+      const b = BIBLE_BOOKS.find(bb => bb.name === engName);
+      if (b) return b.order;
+    }
+  }
+
+  // 3. Direct match on HINDI_BOOK_NAMES
+  for (const [engName, hinName] of Object.entries(HINDI_BOOK_NAMES)) {
+    if (str === hinName || normalized === hinName.toLowerCase().replace(/[\s\-_]+/g, '')) {
+      const b = BIBLE_BOOKS.find(bb => bb.name === engName);
+      if (b) return b.order;
+    }
+  }
+
+  // 4. Common transliterations and alias mappings
+  const TRANSLITERATIONS: Record<string, string> = {
+    'utpatti': 'Genesis',
+    'utpati': 'Genesis',
+    'nirgaman': 'Exodus',
+    'levyavyavastha': 'Leviticus',
+    'ginti': 'Numbers',
+    'ginati': 'Numbers',
+    'vyavasthavivaran': 'Deuteronomy',
+    'yahoshu': 'Joshua',
+    'nyayiyo': 'Judges',
+    'nyayiyon': 'Judges',
+    'ruth': 'Ruth',
+    'shamuel': '1 Samuel',
+    'raja': '1 Kings',
+    'itihas': '1 Chronicles',
+    'bhajan': 'Psalms',
+    'bhajansamhita': 'Psalms',
+    'psalm': 'Psalms',
+    'psalms': 'Psalms',
+    'ps': 'Psalms',
+    'psa': 'Psalms',
+    'neeti': 'Proverbs',
+    'neetivachan': 'Proverbs',
+    'prov': 'Proverbs',
+    'matti': 'Matthew',
+    'mat': 'Matthew',
+    'matt': 'Matthew',
+    'markus': 'Mark',
+    'mrk': 'Mark',
+    'luka': 'Luke',
+    'luk': 'Luke',
+    'yuhanna': 'John',
+    'jhn': 'John',
+    'prerito': 'Acts',
+    'preriton': 'Acts',
+    'romiyo': 'Romans',
+    'romiyon': 'Romans',
+    'rom': 'Romans',
+    'prakashit': 'Revelation',
+    'prakashitvakya': 'Revelation',
+    'rev': 'Revelation',
+    'aadhikaandamu': 'Genesis',
+    'aadhikandamu': 'Genesis',
+    'keerthanalu': 'Psalms',
+    'matthayi': 'Matthew',
+  };
+
+  if (TRANSLITERATIONS[normalized]) {
+    const b = BIBLE_BOOKS.find(bb => bb.name === TRANSLITERATIONS[normalized]);
+    if (b) return b.order;
+  }
+
+  // 5. Prefix/substring match on BIBLE_BOOKS
+  for (const b of BIBLE_BOOKS) {
+    const bName = b.name.toLowerCase().replace(/[\s\-_]+/g, '');
+    if (bName.startsWith(normalized) || (normalized.length >= 3 && normalized.startsWith(bName))) {
+      return b.order;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Given any book identifier, returns the canonical English book name from BIBLE_BOOKS.
+ */
+export function findCanonicalBookName(input: string | number | undefined | null): string | null {
+  const order = findCanonicalBookOrder(input);
+  if (order === null) return null;
+  return BIBLE_BOOKS.find(b => b.order === order)?.name ?? null;
+}
+
 
 

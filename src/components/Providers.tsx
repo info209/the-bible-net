@@ -7,6 +7,10 @@ import { LikeProvider } from "@/context/LikeContext";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { NetworkStatusProvider } from "@/lib/offline/NetworkStatusContext";
 
+import { PWAProvider } from "@/components/offline/PWAProvider";
+import InstallAppModal from "@/components/offline/InstallAppModal";
+import { AuthProvider } from "@/context/AuthContext";
+
 export function Providers({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     
@@ -32,13 +36,23 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
     return (
         <QueryClientProvider client={queryClient}>
-            <NetworkStatusProvider>
-                <SessionProvider basePath={basePath}>
-                    <LikeProvider>
-                        {children}
-                    </LikeProvider>
-                </SessionProvider>
-            </NetworkStatusProvider>
+            <PWAProvider>
+                <NetworkStatusProvider>
+                    <SessionProvider
+                        basePath={basePath}
+                        refetchInterval={0}
+                        refetchOnWindowFocus={false}
+                        refetchWhenOffline={false}
+                    >
+                        <AuthProvider>
+                            <LikeProvider>
+                                {children}
+                            </LikeProvider>
+                        </AuthProvider>
+                    </SessionProvider>
+                </NetworkStatusProvider>
+                <InstallAppModal />
+            </PWAProvider>
         </QueryClientProvider>
     );
 }

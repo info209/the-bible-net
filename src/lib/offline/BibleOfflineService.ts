@@ -67,7 +67,11 @@ export class BibleOfflineService {
   static async getBooks(versionId: string): Promise<OfflineBookData[]> {
     try {
       const db = await getOfflineDB();
-      const books = await db.getAllFromIndex('bible_books', 'by_version', versionId);
+      let books = await db.getAllFromIndex('bible_books', 'by_version', versionId);
+      if (books.length === 0) {
+        const all = await db.getAll('bible_books');
+        books = all.filter((b) => b.versionId === versionId);
+      }
       return books.sort((a, b) => a.order - b.order);
     } catch {
       return [];
@@ -134,6 +138,50 @@ export class BibleOfflineService {
         if (matchInBook && matchInBook.verses && matchInBook.verses.length > 0) return matchInBook;
       } catch {
         // Index lookup fallback
+      }
+
+      // Strategy 2b: Resolve canonical version ID and book ID from IndexedDB records
+      try {
+        let resolvedVerId = versionIdOrAbbr;
+        // Check if versionIdOrAbbr is an abbreviation (e.g. "KJV")
+        const verRecord = await db.getFromIndex('bible_versions', 'by_abbreviation', versionIdOrAbbr);
+        if (verRecord) {
+          resolvedVerId = verRecord.id;
+        }
+
+        let resolvedBookId = bookIdOrName;
+        const allBooks = await db.getAll('bible_books');
+        const targetClean = String(bookIdOrName).toLowerCase().replace(/[-_]/g, ' ').trim();
+        const matchedBook = allBooks.find((b) => {
+          if (b.id === bookIdOrName) return true;
+          const nameClean = (b.name || '').toLowerCase().replace(/[-_]/g, ' ').trim();
+          const engClean = (b.englishName || '').toLowerCase().replace(/[-_]/g, ' ').trim();
+          const abbrClean = (b.abbreviation || '').toLowerCase().replace(/[-_]/g, ' ').trim();
+          return nameClean === targetClean || engClean === targetClean || abbrClean === targetClean;
+        });
+        if (matchedBook) {
+          resolvedBookId = matchedBook.id;
+        }
+
+        if (resolvedVerId !== versionIdOrAbbr || resolvedBookId !== bookIdOrName) {
+          const keyResolved = buildChapterKey(resolvedVerId, resolvedBookId, num);
+          const directResolved = await db.get('bible_chapters', keyResolved);
+          if (directResolved && directResolved.verses && directResolved.verses.length > 0) {
+            return directResolved;
+          }
+
+          const resolvedChapters = await db.getAllFromIndex(
+            'bible_chapters',
+            'by_version_book',
+            [resolvedVerId, resolvedBookId],
+          );
+          const matchResolved = resolvedChapters.find((c) => Number(c.chapterNumber) === num);
+          if (matchResolved && matchResolved.verses && matchResolved.verses.length > 0) {
+            return matchResolved;
+          }
+        }
+      } catch {
+        // Fallback to table scan
       }
 
       // Strategy 3: Comprehensive scan across all stored chapters
@@ -246,6 +294,12 @@ export class BibleOfflineService {
     }
   }
 
+  static async getVersionDownloadStatus(
+    versionId: string,
+  ): Promise<DownloadRecord | undefined> {
+    return this.getDownloadStatus(versionId);
+  }
+
   static async getBookDownloadStatus(
     versionId: string,
     bookId: string,
@@ -297,10 +351,147 @@ export class BibleOfflineService {
   }
 
   // -------------------------------------------------------------------------
-  // Helpers
+  // Helpers & Canonical Resolution
   // -------------------------------------------------------------------------
 
+  static async resolveVersionIdentifiers(
+    versionIdentifier: string,
+    optionalAbbr?: string,
+  ): Promise<{ id: string; abbr?: string; allIdentifiers: string[] }> {
+    const rawCandidates = [versionIdentifier, optionalAbbr].filter(Boolean) as string[];
+    const identsSet = new Set<string>();
+
+    for (const c of rawCandidates) {
+      if (!c) continue;
+      identsSet.add(c);
+      identsSet.add(c.toLowerCase());
+      identsSet.add(c.toUpperCase());
+    }
+
+    let primaryId = versionIdentifier;
+    let primaryAbbr = optionalAbbr || versionIdentifier;
+
+    try {
+      const db = await getOfflineDB();
+
+      // 1. Direct version table lookup
+      const direct = await db.get('bible_versions', versionIdentifier);
+      if (direct) {
+        primaryId = direct.id;
+        primaryAbbr = direct.abbreviation || primaryAbbr;
+        identsSet.add(direct.id);
+        if (direct.abbreviation) {
+          identsSet.add(direct.abbreviation);
+          identsSet.add(direct.abbreviation.toUpperCase());
+          identsSet.add(direct.abbreviation.toLowerCase());
+        }
+        if (direct.name) identsSet.add(direct.name);
+      }
+
+      // 2. Lookup by abbreviation index
+      const byAbbr = await db.getFromIndex('bible_versions', 'by_abbreviation', versionIdentifier);
+      if (byAbbr) {
+        primaryId = byAbbr.id;
+        primaryAbbr = byAbbr.abbreviation || primaryAbbr;
+        identsSet.add(byAbbr.id);
+        if (byAbbr.abbreviation) {
+          identsSet.add(byAbbr.abbreviation);
+          identsSet.add(byAbbr.abbreviation.toUpperCase());
+          identsSet.add(byAbbr.abbreviation.toLowerCase());
+        }
+        if (byAbbr.name) identsSet.add(byAbbr.name);
+      }
+
+      // 3. Scan all versions in case of case differences
+      const allVersions = await db.getAll('bible_versions');
+      for (const v of allVersions) {
+        const matches = rawCandidates.some(
+          (c) =>
+            c.toLowerCase() === v.id.toLowerCase() ||
+            c.toLowerCase() === (v.abbreviation || '').toLowerCase() ||
+            c.toLowerCase() === (v.name || '').toLowerCase(),
+        );
+        if (matches) {
+          primaryId = v.id;
+          primaryAbbr = v.abbreviation || primaryAbbr;
+          identsSet.add(v.id);
+          if (v.abbreviation) {
+            identsSet.add(v.abbreviation);
+            identsSet.add(v.abbreviation.toUpperCase());
+            identsSet.add(v.abbreviation.toLowerCase());
+          }
+          if (v.name) identsSet.add(v.name);
+        }
+      }
+
+      // 4. Lookup from download_status
+      const allStatuses = await db.getAll('download_status');
+      for (const s of allStatuses) {
+        const matches = rawCandidates.some(
+          (c) =>
+            c.toLowerCase() === s.id.toLowerCase() ||
+            c.toLowerCase() === (s.versionId || '').toLowerCase() ||
+            c.toLowerCase() === (s.versionAbbreviation || '').toLowerCase() ||
+            s.id.toLowerCase().startsWith(`${c.toLowerCase()}::`) ||
+            s.id.toLowerCase() === `version_${c.toLowerCase()}`,
+        );
+        if (matches) {
+          if (s.versionId) {
+            identsSet.add(s.versionId);
+            if (!primaryId || primaryId === versionIdentifier) primaryId = s.versionId;
+          }
+          if (s.versionAbbreviation) {
+            identsSet.add(s.versionAbbreviation);
+            identsSet.add(s.versionAbbreviation.toUpperCase());
+            identsSet.add(s.versionAbbreviation.toLowerCase());
+            primaryAbbr = s.versionAbbreviation;
+          }
+          identsSet.add(s.id);
+        }
+      }
+    } catch {
+      // Fallback
+    }
+
+    return {
+      id: primaryId,
+      abbr: primaryAbbr,
+      allIdentifiers: Array.from(identsSet).filter(Boolean),
+    };
+  }
+
+  static async isVersionDownloaded(versionId: string, versionAbbr?: string): Promise<boolean> {
+    const { allIdentifiers } = await this.resolveVersionIdentifiers(versionId, versionAbbr);
+    const identsLower = allIdentifiers.map((i) => i.toLowerCase());
+
+    const allStatuses = await this.getAllDownloadStatuses();
+    const match = allStatuses.find((s) => {
+      const idMatches =
+        identsLower.includes(s.id.toLowerCase()) ||
+        (s.versionId && identsLower.includes(s.versionId.toLowerCase())) ||
+        (s.versionAbbreviation && identsLower.includes(s.versionAbbreviation.toLowerCase())) ||
+        identsLower.some((ident) => s.id.toLowerCase() === `version_${ident}`);
+
+      if (!idMatches) return false;
+
+      // Must be a complete version download, not casual reading or book-level item
+      const isVersionTarget = s.targetType === 'version' || (!s.targetType && !s.bookId && !s.chapterNumber);
+      if (!isVersionTarget) return false;
+
+      const isStatusOk = s.status === 'downloaded';
+      if (!isStatusOk) return false;
+
+      // Ensure it has valid chapter progress or 100% completion
+      const hasChapters = (s.downloadedChapters !== undefined && s.downloadedChapters > 0) || (s.progressPercent !== undefined && s.progressPercent === 100);
+      return hasChapters;
+    });
+
+    return !!match;
+  }
+
   static async isBookDownloaded(versionId: string, bookId: string): Promise<boolean> {
+    // If the entire version is downloaded, book is downloaded
+    if (await this.isVersionDownloaded(versionId)) return true;
     const status = await this.getBookDownloadStatus(versionId, bookId);
     return status?.status === 'downloaded';
   }
@@ -310,6 +501,8 @@ export class BibleOfflineService {
     bookId: string,
     chapterNumber: number,
   ): Promise<boolean> {
+    // If the entire version is downloaded, chapter is downloaded
+    if (await this.isVersionDownloaded(versionId)) return true;
     const status = await this.getChapterDownloadStatus(versionId, bookId, chapterNumber);
     if (status?.status === 'downloaded') return true;
 
@@ -317,11 +510,35 @@ export class BibleOfflineService {
     return this.isBookDownloaded(versionId, bookId);
   }
 
+  static async estimateVersionSize(versionId: string): Promise<number> {
+    try {
+      const chapters = await this.getChaptersByVersion(versionId);
+      // STRICT: Only count chapters that were explicitly downloaded as part of a full download
+      const downloadedChapters = chapters.filter((c) => c.isDownloaded);
+      if (downloadedChapters.length === 0) return 0;
+
+      let totalChars = 0;
+      for (const chapter of downloadedChapters) {
+        if (Array.isArray(chapter.verses)) {
+          for (const verse of chapter.verses) {
+            totalChars += (verse.text || '').length;
+          }
+        }
+      }
+      return Math.round(totalChars * 2.5) || 5 * 1024 * 1024;
+    } catch {
+      return 0;
+    }
+  }
+
   static async estimateBookSize(versionId: string, bookId: string): Promise<number> {
     try {
       const chapters = await this.getChaptersByBook(versionId, bookId);
+      const downloadedChapters = chapters.filter((c) => c.isDownloaded);
+      if (downloadedChapters.length === 0) return 0;
+
       let totalChars = 0;
-      for (const chapter of chapters) {
+      for (const chapter of downloadedChapters) {
         for (const verse of chapter.verses) {
           totalChars += verse.text.length;
         }
@@ -332,9 +549,261 @@ export class BibleOfflineService {
     }
   }
 
+  static async deleteChaptersForVersion(versionId: string): Promise<void> {
+    try {
+      const db = await getOfflineDB();
+      const chapters = await db.getAllFromIndex('bible_chapters', 'by_version', versionId);
+      if (chapters.length > 0) {
+        const tx = db.transaction(['bible_chapters', 'chapter_access_log'], 'readwrite');
+        await Promise.all([
+          ...chapters.map((c) => tx.objectStore('bible_chapters').delete(c.id)),
+          ...chapters.map((c) => tx.objectStore('chapter_access_log').delete(c.id)),
+          tx.done,
+        ]);
+      }
+    } catch (err) {
+      console.error('[BibleOfflineService] deleteChaptersForVersion failed:', err);
+    }
+  }
+
+  static async deleteVersionData(versionIdentifier: string, versionAbbr?: string): Promise<void> {
+    try {
+      const db = await getOfflineDB();
+      const { allIdentifiers } = await this.resolveVersionIdentifiers(versionIdentifier, versionAbbr);
+      const identsLower = allIdentifiers.map((i) => i.toLowerCase());
+
+      // 1. Find and delete all chapters for all matching version identifiers from bible_chapters & chapter_access_log
+      const allChapters = await db.getAll('bible_chapters');
+      const matchingChapters = allChapters.filter((c) => {
+        const cVerLower = (c.versionId || '').toLowerCase();
+        const cIdLower = (c.id || '').toLowerCase();
+        return identsLower.some(
+          (ident) => cVerLower === ident || cIdLower.startsWith(`${ident}::`),
+        );
+      });
+
+      if (matchingChapters.length > 0) {
+        const tx = db.transaction(['bible_chapters', 'chapter_access_log'], 'readwrite');
+        for (const c of matchingChapters) {
+          await tx.objectStore('bible_chapters').delete(c.id);
+          await tx.objectStore('chapter_access_log').delete(c.id);
+        }
+        await tx.done;
+      }
+
+      // Also clean up any lingering chapter_access_log entries for this version
+      const allLogs = await db.getAll('chapter_access_log');
+      const matchingLogs = allLogs.filter((l) => {
+        const lVerLower = (l.versionId || '').toLowerCase();
+        const lKeyLower = (l.cacheKey || '').toLowerCase();
+        return identsLower.some(
+          (ident) => lVerLower === ident || lKeyLower.startsWith(`${ident}::`),
+        );
+      });
+
+      if (matchingLogs.length > 0) {
+        const txLog = db.transaction('chapter_access_log', 'readwrite');
+        for (const l of matchingLogs) {
+          await txLog.store.delete(l.cacheKey);
+        }
+        await txLog.done;
+      }
+
+      // 2. Delete all books matching version identifiers
+      const allBooks = await db.getAll('bible_books');
+      const matchingBooks = allBooks.filter((b) => {
+        const bVerLower = (b.versionId || '').toLowerCase();
+        return identsLower.includes(bVerLower);
+      });
+
+      if (matchingBooks.length > 0) {
+        const txBook = db.transaction('bible_books', 'readwrite');
+        for (const b of matchingBooks) {
+          await txBook.store.delete(b.id);
+        }
+        await txBook.done;
+      }
+
+      // 3. Delete version entries from bible_versions
+      const allStoredVersions = await db.getAll('bible_versions');
+      const matchingStoredVersions = allStoredVersions.filter((v) => {
+        return (
+          identsLower.includes(v.id.toLowerCase()) ||
+          identsLower.includes((v.abbreviation || '').toLowerCase()) ||
+          identsLower.includes((v.name || '').toLowerCase())
+        );
+      });
+      if (matchingStoredVersions.length > 0) {
+        const txVer = db.transaction('bible_versions', 'readwrite');
+        for (const v of matchingStoredVersions) {
+          await txVer.store.delete(v.id);
+        }
+        await txVer.done;
+      }
+      for (const ident of allIdentifiers) {
+        await db.delete('bible_versions', ident).catch(() => {});
+      }
+
+      // 4. Delete all download_status records matching version (version, books, chapters)
+      const allStatuses = await db.getAll('download_status');
+      const matchingStatuses = allStatuses.filter((s) => {
+        const sIdLower = s.id.toLowerCase();
+        const sVerIdLower = (s.versionId || '').toLowerCase();
+        const sVerAbbrLower = (s.versionAbbreviation || '').toLowerCase();
+
+        return identsLower.some(
+          (ident) =>
+            sIdLower === ident ||
+            sVerIdLower === ident ||
+            sVerAbbrLower === ident ||
+            sIdLower.startsWith(`${ident}::`) ||
+            sIdLower === `version_${ident}`,
+        );
+      });
+
+      if (matchingStatuses.length > 0) {
+        const txStatus = db.transaction('download_status', 'readwrite');
+        for (const s of matchingStatuses) {
+          await txStatus.store.delete(s.id);
+        }
+        await txStatus.done;
+      }
+      for (const ident of allIdentifiers) {
+        await db.delete('download_status', ident).catch(() => {});
+        await db.delete('download_status', `version_${ident}`).catch(() => {});
+      }
+
+      // 5. Purge ModuleOfflineService book caches
+      const { ModuleOfflineService } = await import('./ModuleOfflineService');
+      for (const ident of allIdentifiers) {
+        await ModuleOfflineService.deleteCache(`bible_books_${ident}`).catch(() => {});
+      }
+    } catch (err) {
+      console.error('[BibleOfflineService] deleteVersionData failed:', err);
+    }
+  }
+
   static async deleteBookData(versionId: string, bookId: string): Promise<void> {
     const bookKey = buildBookDownloadKey(versionId, bookId);
     await this.deleteChaptersForBook(versionId, bookId);
     await this.deleteDownloadStatus(bookKey);
+  }
+
+  // -------------------------------------------------------------------------
+  // Offline Bible Search
+  // -------------------------------------------------------------------------
+
+  static async searchOffline(query: string, preferredVersion: string = 'NKJV'): Promise<any | null> {
+    const cleanQ = query.trim();
+    if (cleanQ.length < 2) return null;
+
+    try {
+      const db = await getOfflineDB();
+      const allChapters = await db.getAll('bible_chapters');
+      if (allChapters.length === 0) return null;
+
+      // 1. Reference check: e.g. "John 3:16" or "Genesis 1"
+      const refMatch = cleanQ.match(/^([1-3]?\s*[a-zA-Z\s]+?)\s+(\d+)(?::(\d+))?$/);
+      if (refMatch) {
+        const bookRaw = refMatch[1].trim();
+        const chapterNum = parseInt(refMatch[2], 10);
+        const verseNum = refMatch[3] ? parseInt(refMatch[3], 10) : undefined;
+
+        const chapter = await this.getChapter(preferredVersion, bookRaw, chapterNum);
+        if (chapter && Array.isArray(chapter.verses)) {
+          if (verseNum != null) {
+            const verse = chapter.verses.find((v) => Number((v as any).verseNumber || (v as any).number) === verseNum);
+            if (verse) {
+              return {
+                mode: 'exact',
+                reference: `${chapter.bookName || bookRaw} ${chapterNum}:${verseNum}`,
+                book: chapter.bookName || bookRaw,
+                chapter: chapterNum,
+                verse: verseNum,
+                text: verse.text,
+                versionCode: preferredVersion,
+                themes: [],
+                emotions: [],
+                availableVersions: [{ versionCode: preferredVersion, text: verse.text }],
+              };
+            }
+          } else {
+            return {
+              mode: 'book',
+              book: chapter.bookName || bookRaw,
+              displayName: chapter.bookName || bookRaw,
+              abbreviation: chapter.bookAbbreviation || chapter.bookId || bookRaw.substring(0, 3).toUpperCase(),
+              testament: chapter.testament || 'OT',
+              totalChapters: 50,
+              chapters: Array.from({ length: 50 }, (_, i) => i + 1),
+              focusChapter: chapterNum,
+            };
+          }
+        }
+      }
+
+      // 2. Book name search
+      const bookLower = cleanQ.toLowerCase();
+      const matchingBookChapter = allChapters.find((c) => {
+        const name = (c.bookName || '').toLowerCase();
+        const abbr = (c.bookAbbreviation || c.bookId || '').toLowerCase();
+        return name === bookLower || abbr === bookLower || name.startsWith(bookLower);
+      });
+
+      if (matchingBookChapter) {
+        const bookName = matchingBookChapter.bookName || cleanQ;
+        return {
+          mode: 'book',
+          book: bookName,
+          displayName: bookName,
+          abbreviation: matchingBookChapter.bookAbbreviation || matchingBookChapter.bookId || bookName.substring(0, 3).toUpperCase(),
+          testament: matchingBookChapter.testament || 'OT',
+          totalChapters: 50,
+          chapters: Array.from({ length: 50 }, (_, i) => i + 1),
+        };
+      }
+
+      // 3. Keyword / Hybrid search across downloaded chapters
+      const results: any[] = [];
+      const lowerKeyword = cleanQ.toLowerCase();
+
+      for (const chapter of allChapters) {
+        if (!Array.isArray(chapter.verses)) continue;
+        for (const verse of chapter.verses) {
+          if (verse.text && verse.text.toLowerCase().includes(lowerKeyword)) {
+            const verseNo = Number((verse as any).verseNumber || (verse as any).number || 1);
+            results.push({
+              verseId: `${chapter.bookId}_${chapter.chapterNumber}_${verseNo}`,
+              number: verseNo,
+              text: verse.text,
+              book: {
+                name: chapter.bookName || 'Bible',
+                abbreviation: chapter.bookAbbreviation || chapter.bookId || 'BIB',
+                displayName: chapter.bookName || 'Bible',
+              },
+              chapter: { number: Number(chapter.chapterNumber) },
+              version: { abbreviation: preferredVersion, name: preferredVersion },
+              emotions: [],
+              themes: [],
+            });
+            if (results.length >= 30) break;
+          }
+        }
+        if (results.length >= 30) break;
+      }
+
+      if (results.length > 0) {
+        return {
+          mode: 'hybrid',
+          results,
+          total: results.length,
+          query: cleanQ,
+        };
+      }
+
+      return null;
+    } catch {
+      return null;
+    }
   }
 }

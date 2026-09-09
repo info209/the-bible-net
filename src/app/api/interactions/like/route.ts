@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: validatedData.error.issues[0].message }, { status: 400 });
         }
 
-        const { contentId, type } = validatedData.data;
+        const { contentId, type, action: requestedAction } = validatedData.data;
 
         let userId: string | undefined;
         let guestIdentifier: string | undefined;
@@ -98,20 +98,36 @@ export async function POST(req: NextRequest) {
             guestIdentifier = guestId;
         }
 
-        // Check if already liked to toggle
         const hasLiked = await LikeRepository.hasLiked(contentId, type, userId, guestIdentifier);
         
         let likeCount: number;
         let action: 'liked' | 'unliked';
 
-        if (hasLiked) {
-            // Toggle off
-            likeCount = await LikeRepository.removeLike(contentId, type, userId, guestIdentifier);
-            action = 'unliked';
+        if (requestedAction === 'like') {
+            if (hasLiked) {
+                likeCount = await LikeRepository.getLikeCount(contentId, type);
+                action = 'liked';
+            } else {
+                likeCount = await LikeRepository.addLike(contentId, type, userId, guestIdentifier);
+                action = 'liked';
+            }
+        } else if (requestedAction === 'unlike') {
+            if (!hasLiked) {
+                likeCount = await LikeRepository.getLikeCount(contentId, type);
+                action = 'unliked';
+            } else {
+                likeCount = await LikeRepository.removeLike(contentId, type, userId, guestIdentifier);
+                action = 'unliked';
+            }
         } else {
-            // Toggle on
-            likeCount = await LikeRepository.addLike(contentId, type, userId, guestIdentifier);
-            action = 'liked';
+            // Fallback toggle
+            if (hasLiked) {
+                likeCount = await LikeRepository.removeLike(contentId, type, userId, guestIdentifier);
+                action = 'unliked';
+            } else {
+                likeCount = await LikeRepository.addLike(contentId, type, userId, guestIdentifier);
+                action = 'liked';
+            }
         }
 
         return NextResponse.json({ 

@@ -1,10 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw, RotateCw, Repeat, Gauge, Timer, Volume2, X, Download, BookOpen, HardDrive, Trash2, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ChevronLeft, ChevronRight, Play, Pause, RotateCcw, RotateCw, Repeat, Gauge, Timer, Volume2, X } from 'lucide-react';
 import ProgressRing from './ui/ProgressRing';
-import { useDownloadManager } from '@/hooks/useDownloadManager';
-import { useNetworkStatusContext } from '@/lib/offline/NetworkStatusContext';
-import { StorageManager, MAX_STORAGE_MB } from '@/lib/offline/StorageManager';
-import { toast } from '@/context/ToastContext';
 
 interface AudioControlPanelProps {
   isOpen: boolean;
@@ -35,6 +32,8 @@ interface AudioControlPanelProps {
   selectedVersionId?: string;
   onChapterChange?: (chapter: number) => void;
   onBookChange?: (direction: 'prev' | 'next') => void;
+  hasPrevChapter?: boolean;
+  hasNextChapter?: boolean;
   isDark?: boolean;
   selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
 }
@@ -68,8 +67,10 @@ export default function AudioControlPanel({
   selectedVersionId = 'NKJV',
   onChapterChange,
   onBookChange,
+  hasPrevChapter = true,
+  hasNextChapter = true,
   isDark = false,
-  selectedTheme
+  selectedTheme = 'light',
 }: AudioControlPanelProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
@@ -79,19 +80,6 @@ export default function AudioControlPanel({
   // Used to freeze the progress ring and suppress auto-scroll
   const isDraggingSliderRef = useRef(false);
   const [dragVersePreview, setDragVersePreview] = useState<number | null>(null);
-  const [showDownloadModal, setShowDownloadModal] = useState(false);
-
-  const { isOnline } = useNetworkStatusContext();
-  const {
-    storageInfo,
-    getBookStatus,
-    getChapterStatus,
-    downloadBook,
-    downloadChapter,
-    deleteBook,
-    deleteChapter,
-    downloadStates,
-  } = useDownloadManager();
 
   useEffect(() => {
     if (!isOpen) {
@@ -279,13 +267,13 @@ export default function AudioControlPanel({
 
         {/* ── Scrollable content ──────────────────────────────────────────────── */}
         <div
-          className="px-4 pb-2 overflow-y-auto flex-1"
-          style={{ paddingBottom: 'max(10px, env(safe-area-inset-bottom))' }}
+          className="px-5 pt-1 pb-3 overflow-y-auto flex-1"
+          style={{ paddingBottom: 'max(14px, env(safe-area-inset-bottom))' }}
         >
 
           {/* Progress bar */}
-          <div className="mb-2 px-8">
-            <div className="relative h-4 mb-1" style={{ overflow: 'visible' }}>
+          <div className="mb-4 px-4 sm:px-6">
+            <div className="relative h-4 mb-1.5" style={{ overflow: 'visible' }}>
               {/* Background track */}
               <div className="absolute top-[6px] w-full h-[4px] rounded-sm" style={{ backgroundColor: sliderTrackBg }} />
               {/* Progress track — uses preview verse during drag */}
@@ -347,43 +335,47 @@ export default function AudioControlPanel({
               />
             </div>
             {/* Verse counter */}
-            <div className="flex justify-between text-[10px] font-medium" style={{ color: textSecondary }}>
+            <div className="flex justify-between text-[11px] font-medium" style={{ color: textSecondary }}>
               <span>Verse {displayVerse}</span>
               <span>Total {totalVerses}</span>
             </div>
           </div>
 
           {/* ── Main controls ─────────────────────────────────────────────────── */}
-          <div className="max-w-[280px] mx-auto flex items-center justify-between px-2 mb-3">
+          <div className="max-w-[340px] w-full mx-auto flex items-center justify-between px-3 my-4">
 
             {/* ← Chapter / Book back */}
-            <button
-              onClick={() => {
-                if (selectedChapter > 1) {
-                  onChapterChange?.(selectedChapter - 1);
-                } else {
-                  onBookChange?.('prev');
-                }
-              }}
-              className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
-              style={{ backgroundColor: btnBg }}
-              aria-label="Previous chapter"
-            >
-              <ChevronLeft className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-            </button>
+            {hasPrevChapter ? (
+              <button
+                onClick={() => {
+                  if (selectedChapter > 1) {
+                    onChapterChange?.(selectedChapter - 1);
+                  } else {
+                    onBookChange?.('prev');
+                  }
+                }}
+                className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
+                style={{ backgroundColor: btnBg }}
+                aria-label="Previous chapter"
+              >
+                <ChevronLeft className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+              </button>
+            ) : (
+              <div className="size-8 shrink-0 pointer-events-none" aria-hidden="true" />
+            )}
 
             {/* Center group: Verse- / Play / Verse+ */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-5 sm:gap-6">
 
               {/* V- */}
               <button
                 onClick={() => (onVerseStep ?? onVerseChange)(Math.max(1, selectedVerse - 1))}
-                className="size-8 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                className="size-8 rounded-full flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
                 aria-label="Previous verse"
               >
                 <div className="relative flex items-center justify-center">
                   <RotateCcw className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-                  <span className="absolute text-[7px] font-bold text-[var(--color-primary-teal)] mt-0.5">V-</span>
+                  <span className="absolute text-[7.5px] font-bold text-[var(--color-primary-teal)] mt-0.5 select-none">V-</span>
                 </div>
               </button>
 
@@ -393,7 +385,7 @@ export default function AudioControlPanel({
                 size={64}
                 strokeWidth={3}
                 trackColor={sliderTrackBg}
-                color="var(--color-accent-rose)"
+                color="var(--color-primary-teal)"
               >
                 <button
                   onClick={onPlayPauseToggle}
@@ -403,46 +395,70 @@ export default function AudioControlPanel({
                     hover:scale-105 active:scale-95 transition-transform"
                   aria-label={audioPlaying ? "Pause" : "Play"}
                 >
-                  {audioPlaying ? (
-                    <Pause className="size-4 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)]" strokeWidth={0} />
-                  ) : (
-                    <Play className="size-4 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)] ml-0.5" strokeWidth={0} />
-                  )}
+                  <AnimatePresence mode="wait" initial={false}>
+                    {audioPlaying ? (
+                      <motion.div
+                        key="panel-pause"
+                        initial={{ scale: 0.7, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.7, opacity: 0 }}
+                        transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
+                        className="flex items-center justify-center"
+                      >
+                        <Pause className="size-4 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)]" strokeWidth={0} />
+                      </motion.div>
+                    ) : (
+                      <motion.div
+                        key="panel-play"
+                        initial={{ scale: 0.7, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.7, opacity: 0 }}
+                        transition={{ duration: 0.14, ease: [0.4, 0, 0.2, 1] }}
+                        className="flex items-center justify-center"
+                      >
+                        <Play className="size-4 text-[var(--color-primary-teal)] fill-[var(--color-primary-teal)] ml-0.5" strokeWidth={0} />
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </button>
               </ProgressRing>
 
               {/* V+ */}
               <button
                 onClick={() => (onVerseStep ?? onVerseChange)(Math.min(totalVerses, selectedVerse + 1))}
-                className="size-8 flex items-center justify-center hover:scale-110 active:scale-95 transition-transform"
+                className="size-8 rounded-full flex items-center justify-center shrink-0 hover:scale-105 active:scale-95 transition-transform cursor-pointer"
                 aria-label="Next verse"
               >
                 <div className="relative flex items-center justify-center">
                   <RotateCw className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-                  <span className="absolute text-[7px] font-bold text-[var(--color-primary-teal)] mt-0.5">V+</span>
+                  <span className="absolute text-[7.5px] font-bold text-[var(--color-primary-teal)] mt-0.5 select-none">V+</span>
                 </div>
               </button>
             </div>
 
             {/* → Chapter / Book forward */}
-            <button
-              onClick={() => {
-                if (selectedChapter < totalChapters) {
-                  onChapterChange?.(selectedChapter + 1);
-                } else {
-                  onBookChange?.('next');
-                }
-              }}
-              className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
-              style={{ backgroundColor: btnBg }}
-              aria-label="Next chapter"
-            >
-              <ChevronRight className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-            </button>
+            {hasNextChapter ? (
+              <button
+                onClick={() => {
+                  if (selectedChapter < totalChapters) {
+                    onChapterChange?.(selectedChapter + 1);
+                  } else {
+                    onBookChange?.('next');
+                  }
+                }}
+                className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
+                style={{ backgroundColor: btnBg }}
+                aria-label="Next chapter"
+              >
+                <ChevronRight className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+              </button>
+            ) : (
+              <div className="size-8 shrink-0 pointer-events-none" aria-hidden="true" />
+            )}
           </div>
 
           {/* ── Secondary controls row ────────────────────────────────────────── */}
-          <div className="flex items-center justify-center gap-4 rounded-[var(--radius-lg)] py-1.5 px-4 mx-auto w-fit shadow-sm mb-2"
+          <div className="flex items-center justify-center gap-8 sm:gap-10 rounded-[var(--radius-xl)] py-2 px-7 mx-auto w-fit shadow-sm mb-4"
             style={{
               backgroundColor: pillBg,
               border: `1px solid ${pillBorder}`,
@@ -452,7 +468,7 @@ export default function AudioControlPanel({
             {/* Repeat */}
             <button
               onClick={onRepeatModeToggle}
-              className={`relative flex flex-col items-center justify-center gap-0.5
+              className={`relative flex flex-col items-center justify-center gap-1 min-w-[46px]
                 hover:scale-105 active:scale-95 transition-transform
                 ${repeatMode !== 'none' ? 'text-[var(--color-primary-teal)]' : ''}`}
               style={{ color: repeatMode !== 'none' ? undefined : textTertiary }}
@@ -461,7 +477,7 @@ export default function AudioControlPanel({
               <div className="size-5 flex items-center justify-center">
                 <Repeat className="size-4" strokeWidth={2.2} />
               </div>
-              <span className="text-[8px] font-bold whitespace-nowrap leading-none">
+              <span className="text-[9px] font-bold whitespace-nowrap leading-none">
                 {repeatMode}
               </span>
             </button>
@@ -473,7 +489,7 @@ export default function AudioControlPanel({
                 const currentIndex = speeds.indexOf(playbackSpeed);
                 onSpeedChange(speeds[(currentIndex + 1) % speeds.length]);
               }}
-              className="relative flex flex-col items-center justify-center gap-0.5
+              className="relative flex flex-col items-center justify-center gap-1 min-w-[46px]
                 hover:scale-105 active:scale-95 transition-transform"
               style={{ color: textTertiary }}
               aria-label="Change playback speed"
@@ -481,7 +497,7 @@ export default function AudioControlPanel({
               <div className="size-5 flex items-center justify-center">
                 <Gauge className="size-4" strokeWidth={2.2} />
               </div>
-              <span className="text-[8px] font-bold whitespace-nowrap leading-none">
+              <span className="text-[9px] font-bold whitespace-nowrap leading-none">
                 {playbackSpeed}x
               </span>
             </button>
@@ -489,7 +505,7 @@ export default function AudioControlPanel({
             {/* Timer */}
             <button
               onClick={onTimerClick}
-              className="relative flex flex-col items-center justify-center gap-0.5
+              className="relative flex flex-col items-center justify-center gap-1 min-w-[46px]
                 hover:scale-105 active:scale-95 transition-transform"
               style={{ color: textTertiary }}
               aria-label="Set sleep timer"
@@ -497,32 +513,14 @@ export default function AudioControlPanel({
               <div className="size-5 flex items-center justify-center">
                 <Timer className="size-4" strokeWidth={2.2} />
               </div>
-              <span className="text-[8px] font-bold whitespace-nowrap leading-none">
+              <span className="text-[9px] font-bold whitespace-nowrap leading-none">
                 Timer
-              </span>
-            </button>
-
-            {/* Download */}
-            <button
-              id="audio-panel-download-btn"
-              onClick={() => setShowDownloadModal(true)}
-              className="relative flex flex-col items-center justify-center gap-0.5
-                hover:scale-105 active:scale-95 transition-transform"
-              style={{ color: textTertiary }}
-              aria-label="Download book or chapter"
-              title="Download options (100 MB Limit)"
-            >
-              <div className="size-5 flex items-center justify-center">
-                <Download className="size-4" strokeWidth={2.2} />
-              </div>
-              <span className="text-[8px] font-bold whitespace-nowrap leading-none">
-                Download
               </span>
             </button>
           </div>
 
           {/* ── Volume row ───────────────────────────────────────────────────── */}
-          <div className="px-8 flex items-center gap-2.5 mt-1">
+          <div className="max-w-[340px] mx-auto w-full px-3 flex items-center gap-3 mt-3 mb-2">
             <Volume2 className="size-3.5 shrink-0" strokeWidth={2.5} style={{ color: textTertiary }} />
             <input
               type="range"
@@ -543,278 +541,6 @@ export default function AudioControlPanel({
           </div>
         </div>
       </div>
-
-      {/* ── Offline Downloads Modal (Book & Chapter Download + 100 MB Storage Cap) ── */}
-      {showDownloadModal && (
-        <div
-          className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 pointer-events-auto"
-          onClick={() => setShowDownloadModal(false)}
-        >
-          <div
-            className="w-full max-w-md rounded-2xl p-5 shadow-2xl border flex flex-col max-h-[85vh] overflow-hidden"
-            style={{
-              backgroundColor: panelBg,
-              borderColor: panelBorder,
-              color: textPrimary,
-            }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {/* Header */}
-            <div className="flex items-center justify-between pb-3 border-b" style={{ borderColor: panelBorder }}>
-              <div>
-                <h3 className="text-base font-bold flex items-center gap-2">
-                  <Download className="size-4 text-[var(--color-primary-teal)]" />
-                  Offline Downloads
-                </h3>
-                <p className="text-xs opacity-70 mt-0.5" style={{ color: textSecondary }}>
-                  {selectedBook} {selectedChapter} &middot; {selectedVersion}
-                </p>
-              </div>
-              <button
-                onClick={() => setShowDownloadModal(false)}
-                className="size-7 rounded-full flex items-center justify-center hover:opacity-80 transition-colors"
-                style={{ backgroundColor: btnBg }}
-              >
-                <X className="size-4" style={{ color: textSecondary }} />
-              </button>
-            </div>
-
-            <div className="overflow-y-auto flex-1 py-4 space-y-4">
-              {/* 100 MB Storage Meter */}
-              <div className="rounded-xl p-3.5 border" style={{ backgroundColor: btnBg, borderColor: panelBorder }}>
-                <div className="flex items-center justify-between text-xs font-semibold mb-1.5">
-                  <span className="flex items-center gap-1.5" style={{ color: textPrimary }}>
-                    <HardDrive className="size-3.5 text-[var(--color-primary-teal)]" />
-                    Offline Storage Limit
-                  </span>
-                  <span style={{ color: textSecondary }}>
-                    {StorageManager.formatBytes(storageInfo?.totalBytes ?? 0)} / 100 MB
-                  </span>
-                </div>
-                <div className="h-2 w-full rounded-full overflow-hidden" style={{ backgroundColor: sliderTrackBg }}>
-                  <div
-                    className={`h-full rounded-full transition-all duration-500 ${
-                      (storageInfo?.totalBytes ?? 0) > 90 * 1024 * 1024
-                        ? 'bg-rose-500'
-                        : 'bg-[var(--color-primary-teal)]'
-                    }`}
-                    style={{
-                      width: `${Math.min(100, ((storageInfo?.totalBytes ?? 0) / (100 * 1024 * 1024)) * 100)}%`,
-                    }}
-                  />
-                </div>
-                <p className="text-[10px] opacity-60 mt-1" style={{ color: textSecondary }}>
-                  Strict 100 MB limit. Only one book of a version is downloaded at a time.
-                </p>
-              </div>
-
-              {/* Action 1: Download Current Chapter */}
-              <div className="rounded-xl p-3.5 border flex items-center justify-between gap-3" style={{ backgroundColor: pillBg, borderColor: panelBorder }}>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold truncate">
-                    Download Chapter {selectedChapter}
-                  </p>
-                  <p className="text-[11px] opacity-60 truncate">
-                    {selectedBook} {selectedChapter} ({selectedVersion})
-                  </p>
-                </div>
-                {(() => {
-                  const chStatus = getChapterStatus(selectedVersionId, selectedBook, selectedChapter);
-                  const isDone = chStatus?.status === 'downloaded';
-                  const isDownloading = chStatus?.status === 'downloading';
-
-                  if (isDone) {
-                    return (
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded flex items-center gap-1">
-                          <CheckCircle2 className="size-3" /> Saved
-                        </span>
-                        <button
-                          onClick={() => deleteChapter(selectedVersionId, selectedBook, selectedChapter)}
-                          className="p-1 rounded text-zinc-400 hover:text-rose-500 transition-colors"
-                          title="Delete chapter"
-                        >
-                          <Trash2 className="size-3.5" />
-                        </button>
-                      </div>
-                    );
-                  }
-
-                  if (isDownloading) {
-                    return (
-                      <span className="text-xs text-[var(--color-primary-teal)] font-semibold flex items-center gap-1">
-                        <RefreshCw className="size-3.5 animate-spin" /> Saving...
-                      </span>
-                    );
-                  }
-
-                  return (
-                    <button
-                      onClick={async () => {
-                        if (!isOnline) {
-                          toast.error('Connect to internet to download content.');
-                          return;
-                        }
-                        try {
-                          await downloadChapter({
-                            versionId: selectedVersionId,
-                            versionAbbreviation: selectedVersion,
-                            bookId: selectedBook,
-                            bookName: selectedBook,
-                            chapterNumber: selectedChapter,
-                          });
-                          toast.success(`Downloaded ${selectedBook} ${selectedChapter}`);
-                        } catch (err: any) {
-                          toast.error(err.message || 'Download failed');
-                        }
-                      }}
-                      disabled={!isOnline}
-                      className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--color-primary-teal)] text-white hover:opacity-90 active:scale-95 disabled:opacity-40 transition-all shrink-0"
-                    >
-                      Download
-                    </button>
-                  );
-                })()}
-              </div>
-
-              {/* Action 2: Download Full Book */}
-              <div className="rounded-xl p-3.5 border space-y-2" style={{ backgroundColor: pillBg, borderColor: panelBorder }}>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold truncate">
-                      Download Book ({selectedBook})
-                    </p>
-                    <p className="text-[11px] opacity-60">
-                      All {totalChapters} chapters &middot; {selectedVersion}
-                    </p>
-                  </div>
-                  {(() => {
-                    const bStatus = getBookStatus(selectedVersionId, selectedBook);
-                    const isDone = bStatus?.status === 'downloaded';
-                    const isDownloading = bStatus?.status === 'downloading';
-
-                    if (isDone) {
-                      return (
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/30 px-2 py-0.5 rounded flex items-center gap-1">
-                            <CheckCircle2 className="size-3" /> Book Saved
-                          </span>
-                          <button
-                            onClick={() => deleteBook(selectedVersionId, selectedBook)}
-                            className="p-1.5 rounded text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
-                            title="Delete book download"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </button>
-                        </div>
-                      );
-                    }
-
-                    if (isDownloading) {
-                      return (
-                        <div className="flex items-center gap-1.5 text-xs text-[var(--color-primary-teal)] font-semibold">
-                          <RefreshCw className="size-3.5 animate-spin" />
-                          <span>{bStatus?.progressPercent ?? 0}%</span>
-                        </div>
-                      );
-                    }
-
-                    return (
-                      <button
-                        onClick={async () => {
-                          if (!isOnline) {
-                            toast.error('Connect to internet to download content.');
-                            return;
-                          }
-                          try {
-                            await downloadBook({
-                              versionId: selectedVersionId,
-                              versionAbbreviation: selectedVersion,
-                              bookId: selectedBook,
-                              bookName: selectedBook,
-                              chapterCount: totalChapters,
-                            });
-                            toast.success(`Downloaded all ${totalChapters} chapters of ${selectedBook}`);
-                          } catch (err: any) {
-                            toast.error(err.message || 'Download failed');
-                          }
-                        }}
-                        disabled={!isOnline}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-[var(--color-primary-teal)] text-white hover:opacity-90 active:scale-95 disabled:opacity-40 transition-all shrink-0"
-                      >
-                        Download Book
-                      </button>
-                    );
-                  })()}
-                </div>
-
-                {(() => {
-                  const bStatus = getBookStatus(selectedVersionId, selectedBook);
-                  if (bStatus?.status === 'downloading') {
-                    return (
-                      <div className="space-y-1 pt-1">
-                        <div className="h-1.5 w-full rounded-full overflow-hidden" style={{ backgroundColor: sliderTrackBg }}>
-                          <div
-                            className="h-full bg-[var(--color-primary-teal)] rounded-full transition-all duration-300"
-                            style={{ width: `${bStatus.progressPercent}%` }}
-                          />
-                        </div>
-                        <p className="text-[10px] text-right font-medium" style={{ color: textSecondary }}>
-                          {bStatus.downloadedChapters ?? 0} of {totalChapters} chapters
-                        </p>
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-              </div>
-
-              {/* Section 3: List of Downloaded Books */}
-              <div className="space-y-2 pt-2">
-                <h4 className="text-xs font-bold uppercase tracking-wider opacity-60">
-                  Downloaded Books
-                </h4>
-                {(() => {
-                  const downloadedBooks = Object.values(downloadStates).filter(
-                    (s) => s.status === 'downloaded' && s.targetType === 'book',
-                  );
-
-                  if (downloadedBooks.length === 0) {
-                    return (
-                      <p className="text-xs opacity-50 italic text-center py-2">
-                        No books downloaded yet
-                      </p>
-                    );
-                  }
-
-                  return (
-                    <div className="space-y-2 max-h-40 overflow-y-auto pr-1">
-                      {downloadedBooks.map((rec) => (
-                        <div
-                          key={rec.id}
-                          className="flex items-center justify-between px-3 py-2 rounded-lg border text-xs"
-                          style={{ backgroundColor: pillBg, borderColor: panelBorder }}
-                        >
-                          <div>
-                            <span className="font-semibold">{rec.bookName}</span>
-                            <span className="opacity-60 ml-1.5">({rec.versionAbbreviation})</span>
-                          </div>
-                          <button
-                            onClick={() => deleteBook(rec.versionId, rec.bookId!)}
-                            className="text-xs text-rose-500 hover:text-rose-600 font-medium flex items-center gap-1 hover:underline"
-                          >
-                            <Trash2 className="size-3" /> Delete
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

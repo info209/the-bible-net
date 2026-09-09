@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { ChevronDown, Home, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, Loader2 } from 'lucide-react';
+import { ChevronDown, Home, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, Loader2, Trash2, CheckCircle2, RefreshCw, WifiOff, AlertTriangle } from 'lucide-react';
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
 import { MdCompareArrows } from 'react-icons/md';
@@ -20,9 +20,14 @@ import CompareView from './CompareView';
 import BibleSearchModal from './BibleSearchModal';
 import { useAmbientMusicStore } from '@/stores/useAmbientMusicStore';
 import { BookListSkeleton, VersionListSkeleton } from './BibleSkeleton';
+import { useDownloadManager } from '@/hooks/useDownloadManager';
+import { useNetworkStatusContext } from '@/lib/offline/NetworkStatusContext';
+import { StorageManager } from '@/lib/offline/StorageManager';
+import type { DownloadStatus } from '@/lib/offline/types';
 
 import FontsSettingsModal, { ThemeType, TransitionType } from './FontsSettingsModal';
 import AudioFloatingPlayer from './AudioFloatingPlayer';
+import VerseNotesBottomSheet from './VerseNotesBottomSheet';
 import ModalHeader from './ModalHeader';
 import { toast } from '@/context/ToastContext';
 
@@ -55,6 +60,7 @@ interface BibleReaderPageProps {
   verses?: any[];
   chapter?: number;
   version?: string;
+  versionId?: string;
   book?: string;
   onChapterChange?: (chapter: number) => void;
   onBookChange?: (book: string) => void;
@@ -68,6 +74,7 @@ interface BibleReaderPageProps {
   onPauseAudio?: () => void;
   onCompareVerses?: () => void;
   onShareVerses?: () => void;
+  onCopyVerses?: () => void;
   onSaveVerses?: (labels: string[], note: string, isPrivate: boolean) => void;
   onDeleteSavedVerse?: () => void;
   savedVerseIds?: number[];
@@ -90,6 +97,20 @@ interface BibleReaderPageProps {
   existingSaveLabels?: string[] | null;
   existingNoteText?: string | null;
   existingNoteLabels?: string[] | null;
+  showFootnotes?: boolean;
+  onToggleFootnotes?: (show: boolean) => void;
+  onSaveNoteFromSheet?: (payload: {
+    noteId?: string;
+    refId?: string;
+    verses: number[];
+    noteText: string;
+    labels: string[];
+    bookId?: string;
+    bookName?: string;
+    chapter?: number;
+    version?: string;
+  }) => Promise<void> | void;
+  onDeleteNoteFromSheet?: (noteId: string, refId?: string, verses?: number[]) => Promise<void> | void;
   pageTransition?: 'slide' | 'curl' | 'fade' | 'scroll';
   onPageTransitionChange?: (transition: 'slide' | 'curl' | 'fade' | 'scroll') => void;
   scrollToVerse?: number | null;
@@ -108,6 +129,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     },
     chapter = 1,
     version = '',
+    versionId,
     book = '',
     onChapterChange,
     onBookChange,
@@ -121,6 +143,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     onSaveNote,
     onCompareVerses,
     onShareVerses,
+    onCopyVerses,
     onSaveVerses,
     onDeleteSavedVerse,
     onPlayAudio,
@@ -140,6 +163,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     existingSaveLabels = null,
     existingNoteText = null,
     existingNoteLabels = null,
+    showFootnotes: propShowFootnotes,
+    onToggleFootnotes: propOnToggleFootnotes,
+    onSaveNoteFromSheet,
+    onDeleteNoteFromSheet,
     pageTransition: propPageTransition,
     onPageTransitionChange: propOnPageTransitionChange,
     scrollToVerse,
@@ -173,6 +200,19 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     restoreSession: restoreAmbientSession
   } = useAmbientMusicStore();
 
+  const { isOnline } = useNetworkStatusContext();
+  const {
+    downloadStates,
+    downloadVersion,
+    deleteVersion,
+    pauseDownload,
+    resumeDownload,
+    retryDownload,
+    cancelDownload,
+    getVersionStatus,
+    storageInfo,
+  } = useDownloadManager();
+
   useEffect(() => {
     if (showMusicSelector) {
       fetchTracks();
@@ -187,7 +227,27 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [musicLoopMode, setMusicLoopMode] = useState<'shuffle' | 'repeat-all' | 'repeat-one'>('shuffle');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
-  const [hideFootnotes, setHideFootnotes] = useState(false);
+
+  // Footnotes preference (persisted to localStorage)
+  const [deletingVersionId, setDeletingVersionId] = useState<string | null>(null);
+  const [localShowFootnotes, setLocalShowFootnotes] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const cached = localStorage.getItem('bible-reader-show-footnotes');
+      return cached !== 'false';
+    }
+    return true;
+  });
+  const showFootnotes = propShowFootnotes ?? localShowFootnotes;
+  const setShowFootnotes = (val: boolean) => {
+    setLocalShowFootnotes(val);
+    propOnToggleFootnotes?.(val);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('bible-reader-show-footnotes', val ? 'true' : 'false');
+    }
+  };
+
+  // Active verse for personal notes viewing/editing bottom sheet
+  const [activeNotesVerse, setActiveNotesVerse] = useState<number | null>(null);
   const [showAudioControlPanel, setShowAudioControlPanel] = useState(false);
   const [audioPlayerState, setAudioPlayerState] = useState<'default' | 'minimized'>('default');
   const [selectedVerse, setSelectedVerse] = useState<number | null>(1);
@@ -441,15 +501,72 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     return () => { if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null; };
   }, []);
 
-  // Helper: find the best available voice for a BCP-47 lang tag (e.g. 'te-IN')
+  // Helper: find the best available voice for a BCP-47 lang tag (e.g. 'te-IN', 'hi-IN')
   const findVoiceForLang = (langTag: string): SpeechSynthesisVoice | null => {
-    if (!availableVoices.length) return null;
+    const voices = availableVoices.length > 0
+      ? availableVoices
+      : (typeof window !== 'undefined' && window.speechSynthesis ? window.speechSynthesis.getVoices() : []);
+    if (!voices.length) return null;
     const prefix = langTag.split('-')[0].toLowerCase();
     return (
-      availableVoices.find(v => v.lang.toLowerCase() === langTag.toLowerCase()) ??
-      availableVoices.find(v => v.lang.toLowerCase().startsWith(prefix + '-') || v.lang.toLowerCase() === prefix) ??
+      voices.find(v => v.lang.toLowerCase().replace('_', '-') === langTag.toLowerCase()) ??
+      voices.find(v => {
+        const vLang = v.lang.toLowerCase().replace('_', '-');
+        return vLang.startsWith(prefix + '-') || vLang === prefix;
+      }) ??
+      voices.find(v => {
+        const name = v.name.toLowerCase();
+        if (prefix === 'te') return name.includes('telugu') || name.includes('తెలుగు');
+        if (prefix === 'hi') return name.includes('hindi') || name.includes('हिन्दी') || name.includes('lekha');
+        if (prefix === 'ta') return name.includes('tamil') || name.includes('தமிழ்');
+        return false;
+      }) ??
       null
     );
+  };
+
+  // Robust language determination checking version metadata and Unicode script detection
+  const resolveContentLanguage = (sampleText?: string): string => {
+    const currentVersionObj = (apiVersions || []).find(
+      v => (versionId && (v.id === versionId || v._id === versionId)) ||
+           v.name === selectedVersion ||
+           v.id === selectedVersion ||
+           v._id === selectedVersion ||
+           v.abbreviation === selectedVersion
+    );
+    const lang = (currentVersionObj?.language || '').toLowerCase().trim();
+    const name = ((currentVersionObj?.name || '') + ' ' + (selectedVersion || '')).toLowerCase();
+    const abbr = (currentVersionObj?.abbreviation || '').toLowerCase();
+
+    if (lang.startsWith('te') || lang === 'telugu' || name.includes('telugu') || abbr.includes('tel') || abbr === 'tb') {
+      return 'te-IN';
+    }
+    if (lang.startsWith('hi') || lang === 'hindi' || name.includes('hindi') || abbr.includes('hin') || abbr === 'hb') {
+      return 'hi-IN';
+    }
+    if (lang.startsWith('ta') || lang === 'tamil' || name.includes('tamil')) {
+      return 'ta-IN';
+    }
+    if (lang.startsWith('kn') || lang === 'kannada' || name.includes('kannada')) {
+      return 'kn-IN';
+    }
+    if (lang.startsWith('ml') || lang === 'malayalam' || name.includes('malayalam')) {
+      return 'ml-IN';
+    }
+    if (lang.startsWith('es') || name.includes('spanish')) return 'es-ES';
+    if (lang.startsWith('fr') || name.includes('french')) return 'fr-FR';
+
+    // Unicode script detection from sample verse text
+    const textToCheck = sampleText || (verses && verses.length > 0 ? verses[0]?.text : '');
+    if (textToCheck) {
+      if (/[\u0C00-\u0C7F]/.test(textToCheck)) return 'te-IN';
+      if (/[\u0900-\u097F]/.test(textToCheck)) return 'hi-IN';
+      if (/[\u0B80-\u0BFF]/.test(textToCheck)) return 'ta-IN';
+      if (/[\u0C80-\u0CFF]/.test(textToCheck)) return 'kn-IN';
+      if (/[\u0D00-\u0D7F]/.test(textToCheck)) return 'ml-IN';
+    }
+
+    return 'en-US';
   };
 
   // Timer state for time-based narration
@@ -610,6 +727,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   // value — resulting in the same chapter reloading instead of navigating.
 
   const handlePrevious = useCallback(() => {
+    if (isFirstChapterOfBible) return;
     if (!navigatePrev()) return; // locked — ignore
 
     // Instant scroll reset (smooth conflicts with page transition animation)
@@ -630,9 +748,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         setSelectedChapter(bookChapters[prevBook]);
       }
     }, 32);
-  }, [navigatePrev]);
+  }, [navigatePrev, isFirstChapterOfBible]);
 
   const handleNext = useCallback(() => {
+    if (isLastChapterOfBible) return;
     if (!navigateNext()) return; // locked — ignore
 
     // Instant scroll reset
@@ -653,7 +772,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         setSelectedChapter(1);
       }
     }, 32);
-  }, [navigateNext]);
+  }, [navigateNext, isLastChapterOfBible]);
 
   // ─── New gesture system via useGestureNavigation hook ───────────────────
   // Uses native DOM listeners (not React synthetic events) so child elements
@@ -989,26 +1108,19 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       return false;
     }
 
-    // ── Voice availability check ───────────────────────────────────────────────────
-    const currentVersionObj = (apiVersions || []).find(
-      v => v.name === selectedVersion || v.id === selectedVersion
-    );
-    const lang = currentVersionObj?.language;
-    const targetLang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
+    const verses = getBibleContent();
+    console.log('Got verses:', verses.length, 'verses');
+    if (verses.length === 0) return false;
+
+    // ── Voice & Language determination ──────────────────────────────────────────
+    const sampleText = verses[0]?.text || '';
+    const targetLang = resolveContentLanguage(sampleText);
     const isNonEnglish = targetLang !== 'en-US';
 
     if (isNonEnglish) {
       const matchedVoice = findVoiceForLang(targetLang);
-      if (!matchedVoice) {
-        const langLabel = lang === 'Telugu' ? 'Telugu' : lang === 'Hindi' ? 'Hindi' : lang;
-        setTtsVoiceError(
-          `${langLabel} voice is not available on this device/browser. ` +
-          `Please install a ${langLabel} TTS voice or use a mobile browser.`
-        );
-        return false;
-      }
+      console.log(`[TTS Start] Target language: ${targetLang}, Matched voice:`, matchedVoice?.name || 'Default OS engine');
     }
-    // Clear any previous error since the voice is available
     setTtsVoiceError(null);
 
     // Stop any ongoing narration
@@ -1035,10 +1147,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       sleepEndTimeRef.current = null;
     }
 
-    const verses = getBibleContent();
-    console.log('Got verses:', verses.length, 'verses');
-    if (verses.length === 0) return false;
-
     narrationVerseIndexRef.current = fromVerse - 1;
     setNarrationPlaying(true);
     narrationPlayingRef.current = true;
@@ -1058,22 +1166,21 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const readNextVerse = async (verses: any[], index: number) => {
     console.log('readNextVerse called with index:', index, 'of', verses.length, 'verses');
 
-    // Find language tag from active version
-    const currentVersionObj = (apiVersions || []).find(
-      v => v.name === selectedVersion || v.id === selectedVersion
-    );
-    const lang = currentVersionObj?.language;
-    const utteranceLang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
+    const sampleText = (verses && verses[index]?.text) || (verses && verses[0]?.text) || '';
+    const utteranceLang = resolveContentLanguage(sampleText);
 
     // At the beginning of each chapter, announce the book name and chapter number
     if (index === 0 && verses.length > 0) {
-      const chapterAnnouncement = `${selectedBook} Chapter ${selectedChapter}`;
-      console.log('Announcing chapter:', chapterAnnouncement);
+      const chapterAnnouncement = `${selectedBook} ${selectedChapter}`;
+      console.log('Announcing chapter:', chapterAnnouncement, 'lang:', utteranceLang);
 
       const announcementUtterance = new SpeechSynthesisUtterance(chapterAnnouncement);
       announcementUtterance.rate = playbackSpeed;
       announcementUtterance.pitch = 1;
-      announcementUtterance.lang = 'en-US'; // Announcement text is always in English
+      announcementUtterance.lang = utteranceLang;
+      const matchedAnnouncementVoice = findVoiceForLang(utteranceLang);
+      if (matchedAnnouncementVoice) announcementUtterance.voice = matchedAnnouncementVoice;
+
       const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
       announcementUtterance.volume = constrainedVolume;
       console.log('[Volume] Setting announcement volume to:', constrainedVolume);
@@ -1081,13 +1188,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       // After announcement finishes, continue with first verse (skip announcement on next call)
       announcementUtterance.onend = () => {
         console.log('Chapter announcement finished, continuing with first verse');
-        // Start reading from verse 1 by incrementing index in the recursive call
         continueReadingFromFirstVerse(verses);
       };
 
       // Handle errors during announcement
       announcementUtterance.onerror = (event: any) => {
-        // Check if this is a real error or just a cancellation
         if (event.error === 'canceled' || event.error === 'interrupted') {
           console.log('Chapter announcement canceled/interrupted');
           if (!narrationPlayingRef.current) {
@@ -1095,11 +1200,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           }
         }
 
-        // Log actual errors with error type
-        console.error('Chapter announcement error type:', event.error || 'unknown');
-        console.error('Chapter announcement error details:', event);
-
-        // Continue anyway if narration is still supposed to be active
+        console.warn('Chapter announcement ended/errored, continuing to verse 1:', event?.error);
         if (narrationPlayingRef.current) {
           continueReadingFromFirstVerse(verses);
         }
@@ -1110,19 +1211,20 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         const verse = verses[0];
         const verseNumber = verse.number;
         const verseText = verse.text;
+        const verseLang = resolveContentLanguage(verseText);
 
         // Create speech utterance for the verse
         const verseUtterance = new SpeechSynthesisUtterance(verseText);
         verseUtterance.rate = playbackSpeed;
         verseUtterance.pitch = 1;
-        verseUtterance.lang = utteranceLang;
+        verseUtterance.lang = verseLang;
         const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
         verseUtterance.volume = constrainedVolume;
-        console.log('[Volume] Setting verse utterance volume to:', constrainedVolume);
+        console.log('[Volume] Setting verse utterance volume to:', constrainedVolume, 'lang:', verseLang);
 
-        // Auto-select voice for non-English languages
-        if (utteranceLang !== 'en-US') {
-          const autoVoice = findVoiceForLang(utteranceLang);
+        // Auto-select voice for non-English languages if available
+        if (verseLang !== 'en-US') {
+          const autoVoice = findVoiceForLang(verseLang);
           if (autoVoice) verseUtterance.voice = autoVoice;
         }
 
@@ -1169,6 +1271,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         window.speechSynthesis.speak(verseUtterance);
       };
 
+      utteranceRef.current = announcementUtterance;
       window.speechSynthesis.speak(announcementUtterance);
       return; // Exit early, will continue after announcement
     }
@@ -1257,10 +1360,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       // Set flag to indicate this is an auto-advance, not manual navigation
       isAutoAdvancingRef.current = true;
 
-      // Fetch verses for the next chapter using the nextBook/nextChapter variables
-      // (not getBibleContent() which uses state that hasn't updated yet)
       let nextChapterVerses: any[] = [];
-      const versionId = currentVersionObj?.id || selectedVersion;
+      const currentVersionObj = (apiVersions || []).find(
+        v => (versionId && (v.id === versionId || v._id === versionId)) ||
+             v.name === selectedVersion ||
+             v.id === selectedVersion ||
+             v._id === selectedVersion ||
+             v.abbreviation === selectedVersion
+      );
+      const targetVersionId = currentVersionObj?.id || currentVersionObj?._id || versionId || selectedVersion;
 
       // Find book ID
       const allBooksList = [...(books?.['Old Testament'] || []), ...(books?.['New Testament'] || [])];
@@ -1268,7 +1376,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       const nextBookId = currentBookObj?.id || nextBook;
 
       try {
-        const response = await fetch(`/api/v1/bible/${versionId}/${nextBookId}/${nextChapter}`);
+        const response = await fetch(`/api/v1/bible/${targetVersionId}/${nextBookId}/${nextChapter}`);
         const result = await response.json();
         if (result.success && result.data && result.data.verses) {
           nextChapterVerses = result.data.verses;
@@ -1332,15 +1440,16 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     // Create speech utterance
     const utterance = new SpeechSynthesisUtterance(verseText);
     utterance.rate = playbackSpeed;
+    const verseLang = resolveContentLanguage(verseText);
     utterance.pitch = 1;
-    utterance.lang = utteranceLang;
+    utterance.lang = verseLang;
     const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
     utterance.volume = constrainedVolume;
-    console.log('[Volume] Setting reading utterance volume to:', constrainedVolume);
+    console.log('[Volume] Setting reading utterance volume to:', constrainedVolume, 'lang:', verseLang);
 
     // Auto-select voice for non-English languages
-    if (utteranceLang !== 'en-US') {
-      const autoVoice = findVoiceForLang(utteranceLang);
+    if (verseLang !== 'en-US') {
+      const autoVoice = findVoiceForLang(verseLang);
       if (autoVoice) utterance.voice = autoVoice;
     }
 
@@ -1437,23 +1546,16 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       return false;
     }
 
-    const currentVersionObj = (apiVersions || []).find(
-      v => v.name === selectedVersion || v.id === selectedVersion
-    );
-    const lang = currentVersionObj?.language;
-    const targetLang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
+    const verses = getBibleContent();
+    if (verses.length === 0) return false;
+
+    const sampleText = verses[0]?.text || '';
+    const targetLang = resolveContentLanguage(sampleText);
     const isNonEnglish = targetLang !== 'en-US';
 
     if (isNonEnglish) {
       const matchedVoice = findVoiceForLang(targetLang);
-      if (!matchedVoice) {
-        const langLabel = lang === 'Telugu' ? 'Telugu' : lang === 'Hindi' ? 'Hindi' : lang;
-        setTtsVoiceError(
-          `${langLabel} voice is not available on this device/browser. ` +
-          `Please install a ${langLabel} TTS voice or use a mobile browser.`
-        );
-        return false;
-      }
+      console.log(`[TTS Resume] Target language: ${targetLang}, Matched voice:`, matchedVoice?.name || 'Default OS engine');
     }
     setTtsVoiceError(null);
 
@@ -1488,9 +1590,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       setSelectedVerse(1);
     }
     console.log('Resuming from verse:', resumeFrom);
-
-    const verses = getBibleContent();
-    if (verses.length === 0) return false;
 
     // Ensure any lingering speech is cancelled with a brief settling delay before resume
     window.speechSynthesis.cancel();
@@ -1754,8 +1853,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
       {/* Sub Navigation Bar - BECOMES STICKY */}
       <div 
-        className="sticky top-0 left-0 right-0 z-40 border-b border-white/20 shadow-[var(--shadow-xs)] transition-colors duration-300"
-        style={{ backgroundColor: currentTheme.bg, color: currentTheme.text }}
+        className="sticky left-0 right-0 z-40 border-b border-white/20 shadow-[var(--shadow-xs)] transition-[top,background-color,color] duration-250 ease-out"
+        style={{ top: 'var(--offline-banner-total-height, 0px)', backgroundColor: currentTheme.bg, color: currentTheme.text }}
       >
         <div className="max-w-3xl mx-auto px-3 sm:px-8 py-1">
           <div className="flex items-center justify-between">
@@ -1870,35 +1969,40 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="py-2">
+                    <div className="py-1">
                       <button
                         onClick={() => {
                           setShowMoreMenu(false);
                           setShowSettingsMenu(true);
                         }}
-                        className="w-full px-4 py-3 text-left text-sm font-medium transition-colors"
+                        className="w-full px-4 py-3 text-left text-sm font-medium transition-colors hover:bg-black/5 dark:hover:bg-white/5"
                         style={{ borderBottom: `1px solid ${popupThemeConfig[selectedTheme].divider}`, color: currentTheme.text }}
                       >
                         Fonts & Settings
                       </button>
 
-                      {/* <div className="flex items-center justify-between gap-4 px-4 py-3 transition-colors"> */}
-                        {/* <span className="text-sm font-medium" style={{ color: currentTheme.text }}>Hide footnotes</span>
+                      <div className="flex items-center justify-between gap-4 px-4 py-3 transition-colors">
+                        <span className="text-sm font-medium" style={{ color: currentTheme.text }}>Footnotes</span>
                         <button
+                          type="button"
+                          role="switch"
+                          aria-checked={showFootnotes}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setHideFootnotes(!hideFootnotes);
+                            setShowFootnotes(!showFootnotes);
                           }}
-                          className={`relative h-6 w-11 rounded-full transition-colors ${hideFootnotes ? 'bg-[var(--color-primary-teal)]' : 'bg-gray-300'
-                            }`}
-                          aria-pressed={hideFootnotes}
+                          className={`relative h-6 w-11 rounded-full transition-colors focus:outline-none cursor-pointer ${
+                            showFootnotes ? 'bg-[var(--color-primary-teal)]' : 'bg-gray-300 dark:bg-gray-600'
+                          }`}
+                          aria-label="Toggle Footnotes"
                         >
                           <div
-                            className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-white transition-transform ${hideFootnotes ? 'translate-x-5' : 'translate-x-0'
-                              }`}
+                            className={`absolute left-0.5 top-0.5 size-5 rounded-full bg-white transition-transform ${
+                              showFootnotes ? 'translate-x-5' : 'translate-x-0'
+                            }`}
                           />
-                        </button> */}
-                      {/* </div> */}
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2246,30 +2350,317 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
 
                     return Object.entries(versionsByLang).map(([lang, vGroup]) => (
                       <div key={lang} className="space-y-2">
-                        <p className="text-sm mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>{lang}</p>
-                        {vGroup.map((version: any) => {
-                          const targetVal = version.name || version.id;
-                          const isSelected = selectedVersion === version.name || selectedVersion === version.id || selectedVersion === version.fullName;
+                        <p className="text-xs font-bold uppercase tracking-wider mb-2 opacity-60" style={{ color: popupThemeConfig[selectedTheme].text }}>
+                          {lang}
+                        </p>
+                        {vGroup.map((versionItem: any) => {
+                          const versionId = versionItem.id || versionItem._id || versionItem.name;
+                          const versionAbbr = versionItem.name || versionItem.abbreviation || versionItem.id;
+                          const versionFullName = versionItem.fullName || versionItem.name;
+                          const targetVal = versionItem.name || versionItem.id;
+                          const isSelected = selectedVersion === versionItem.name || selectedVersion === versionItem.id || selectedVersion === versionItem.fullName;
+                          
+                          const isDeletingThis = deletingVersionId === versionId || deletingVersionId === versionAbbr;
+                          const record = getVersionStatus(versionId) || getVersionStatus(versionAbbr);
+                          const status: DownloadStatus = isDeletingThis ? 'not_downloaded' : (record?.status ?? 'not_downloaded');
+                          const isDownloaded = status === 'downloaded';
+                          const isDownloading = status === 'downloading';
+                          const isPaused = status === 'paused';
+                          const isFailed = status === 'failed';
+                          const isUpdateAvailable = status === 'update_available';
+                          const progressPercent = record?.progressPercent ?? 0;
+                          const sizeLabel = record?.estimatedBytes ? StorageManager.formatBytes(record.estimatedBytes) : null;
+
                           return (
-                            <button
-                              key={version.id || version.name}
-                              onClick={() => {
-                                setSelectedVersion(targetVal);
-                                onVersionChange?.(targetVal);
-                                setShowVersionSelector(false);
-                              }}
-                              className="w-full text-left px-4 py-2.5 rounded transition-colors"
+                            <div
+                              key={versionId}
+                              className="w-full flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-xl transition-all duration-200 border"
                               style={{
                                 backgroundColor: isSelected
                                   ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.15)' : 'rgba(226, 55, 68, 0.1)')
                                   : popupThemeConfig[selectedTheme].selectedBg,
+                                borderColor: isSelected
+                                  ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.3)' : 'rgba(226, 55, 68, 0.25)')
+                                  : 'transparent',
                                 color: isSelected
                                   ? currentTheme.verseNumber
                                   : currentTheme.text,
                               }}
                             >
-                              <div className="text-base font-medium">{version.fullName || version.name} ({version.name})</div>
-                            </button>
+                              {/* Left: Version Info Clickable */}
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!isOnline && !isDownloaded) {
+                                    toast.info(`${versionFullName} is not downloaded for offline reading. Please select a downloaded version or connect to the internet.`);
+                                    return;
+                                  }
+                                  setSelectedVersion(targetVal);
+                                  onVersionChange?.(targetVal);
+                                  setShowVersionSelector(false);
+                                }}
+                                className="flex-1 text-left min-w-0 flex flex-col justify-center cursor-pointer group"
+                              >
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-semibold truncate group-hover:opacity-80 transition-opacity">
+                                    {versionFullName} ({versionAbbr})
+                                  </span>
+                                  {isDownloaded && (
+                                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center gap-1 shrink-0">
+                                      <CheckCircle2 className="size-2.5" /> Offline
+                                    </span>
+                                  )}
+                                  {!isOnline && !isDownloaded && (
+                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-500 flex items-center gap-1 shrink-0">
+                                      <WifiOff className="size-2.5" /> Online only
+                                    </span>
+                                  )}
+                                </div>
+                                {sizeLabel && isDownloaded && (
+                                  <span className="text-[11px] opacity-60 mt-0.5">{sizeLabel}</span>
+                                )}
+                              </button>
+
+                              {/* Right: Download Action / Status */}
+                              <div className="flex items-center gap-1.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+                                {/* Not Downloaded */}
+                                {status === 'not_downloaded' && (
+                                  <button
+                                    type="button"
+                                    id={`download-version-${versionAbbr}`}
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      if (!isOnline) {
+                                        toast.error('Connect to internet to download Bible version.');
+                                        return;
+                                      }
+                                      try {
+                                        await downloadVersion({
+                                          versionId,
+                                          versionAbbreviation: versionAbbr,
+                                          versionName: versionFullName,
+                                          language: versionItem.language,
+                                        });
+                                        toast.success(`Downloaded ${versionFullName} for offline use.`);
+                                      } catch (err: any) {
+                                        toast.error(err?.message || 'Download failed');
+                                      }
+                                    }}
+                                    disabled={!isOnline || isDeletingThis}
+                                    className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg text-[var(--color-primary-teal)] md:hover:bg-teal-50/80 dark:md:hover:bg-teal-950/30 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                                    title={!isOnline ? 'Internet connection required to download' : `Download ${versionAbbr} for offline use`}
+                                  >
+                                    <Download className="size-3.5" />
+                                    <span className="hidden sm:inline">Download</span>
+                                  </button>
+                                )}
+
+                                {/* Downloading */}
+                                {isDownloading && (
+                                  <div className="flex items-center gap-1.5 bg-teal-50 dark:bg-teal-950/40 border border-teal-200 dark:border-teal-800/50 rounded-lg px-2 py-1">
+                                    <Loader2 className="size-3.5 animate-spin text-[var(--color-primary-teal)]" />
+                                    <span className="text-xs font-bold text-[var(--color-primary-teal)] min-w-[32px] text-right">
+                                      {progressPercent}%
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        pauseDownload(versionId);
+                                      }}
+                                      className="p-1 rounded hover:bg-teal-100 dark:hover:bg-teal-900/50 text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 transition-colors"
+                                      title="Pause download"
+                                    >
+                                      <Pause className="size-3.5" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        cancelDownload(versionId, versionAbbr);
+                                      }}
+                                      className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-900/40 text-zinc-400 hover:text-rose-500 transition-colors"
+                                      title="Cancel download"
+                                    >
+                                      <X className="size-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Paused */}
+                                {isPaused && (
+                                  <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 rounded-lg px-2 py-1">
+                                    <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 mr-1">
+                                      {progressPercent}% Paused
+                                    </span>
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!isOnline) {
+                                          toast.error('Connect to internet to resume download.');
+                                          return;
+                                        }
+                                        try {
+                                          await resumeDownload({
+                                            versionId,
+                                            versionAbbreviation: versionAbbr,
+                                            versionName: versionFullName,
+                                            language: versionItem.language,
+                                          });
+                                        } catch (err: any) {
+                                          toast.error(err?.message || 'Download failed');
+                                        }
+                                      }}
+                                      className="p-1 rounded bg-[var(--color-primary-teal)] text-white hover:opacity-90 transition-opacity"
+                                      title="Resume download"
+                                    >
+                                      <Play className="size-3" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        cancelDownload(versionId, versionAbbr);
+                                      }}
+                                      className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-900/40 text-zinc-400 hover:text-rose-500 transition-colors"
+                                      title="Cancel download"
+                                    >
+                                      <X className="size-3.5" />
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Downloaded */}
+                                {isDownloaded && (
+                                  <div className="flex items-center gap-1">
+                                    <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mr-1" />
+                                    <button
+                                      type="button"
+                                      disabled={isDeletingThis}
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        setDeletingVersionId(versionId);
+                                        try {
+                                          await deleteVersion(versionId, versionAbbr);
+                                          toast.success(`Removed ${versionFullName} from offline storage.`);
+                                        } catch {
+                                          toast.error('Failed to remove version from offline storage.');
+                                        } finally {
+                                          setDeletingVersionId(null);
+                                        }
+                                      }}
+                                      className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:border-rose-300 dark:hover:border-rose-800 transition-all disabled:opacity-50"
+                                      title={`Delete ${versionAbbr} offline download`}
+                                    >
+                                      {isDeletingThis ? (
+                                        <Loader2 className="size-3.5 animate-spin text-rose-500" />
+                                      ) : (
+                                        <Trash2 className="size-3.5" />
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Failed */}
+                                {isFailed && (
+                                  <div className="flex items-center gap-1.5 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/50 rounded-lg px-2 py-1">
+                                    <AlertTriangle className="size-3.5 text-rose-500 shrink-0" />
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!isOnline) {
+                                          toast.error('Connect to internet to retry download.');
+                                          return;
+                                        }
+                                        try {
+                                          await retryDownload({
+                                            versionId,
+                                            versionAbbreviation: versionAbbr,
+                                            versionName: versionFullName,
+                                            language: versionItem.language,
+                                          });
+                                        } catch (err: any) {
+                                          toast.error(err?.message || 'Download failed');
+                                        }
+                                      }}
+                                      className="flex items-center gap-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:underline"
+                                      title={record?.errorMessage || 'Retry download'}
+                                    >
+                                      <RefreshCw className="size-3" /> Retry
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        cancelDownload(versionId, versionAbbr);
+                                      }}
+                                      className="p-0.5 rounded text-zinc-400 hover:text-rose-500 transition-colors"
+                                      title="Dismiss"
+                                    >
+                                      <X className="size-3" />
+                                    </button>
+                                  </div>
+                                )}
+
+                                {/* Update Available */}
+                                {isUpdateAvailable && (
+                                  <div className="flex items-center gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        if (!isOnline) {
+                                          toast.error('Connect to internet to update Bible version.');
+                                          return;
+                                        }
+                                        try {
+                                          await downloadVersion({
+                                            versionId,
+                                            versionAbbreviation: versionAbbr,
+                                            versionName: versionFullName,
+                                            language: versionItem.language,
+                                          });
+                                          toast.success(`Updated ${versionFullName}.`);
+                                        } catch (err: any) {
+                                          toast.error(err?.message || 'Update failed');
+                                        }
+                                      }}
+                                      disabled={!isOnline || isDeletingThis}
+                                      className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg bg-amber-500 text-white hover:opacity-90 active:scale-95 transition-all shadow-sm disabled:opacity-40"
+                                      title="Update available"
+                                    >
+                                      <RefreshCw className="size-3" /> Update
+                                    </button>
+                                    <button
+                                      type="button"
+                                      disabled={isDeletingThis}
+                                      onClick={async (e) => {
+                                        e.stopPropagation();
+                                        setDeletingVersionId(versionId);
+                                        try {
+                                          await deleteVersion(versionId, versionAbbr);
+                                          toast.success(`Removed ${versionFullName} from offline storage.`);
+                                        } catch {
+                                          toast.error('Failed to remove version from offline storage.');
+                                        } finally {
+                                          setDeletingVersionId(null);
+                                        }
+                                      }}
+                                      className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all disabled:opacity-50"
+                                      title={`Delete ${versionAbbr} offline download`}
+                                    >
+                                      {isDeletingThis ? (
+                                        <Loader2 className="size-3.5 animate-spin text-rose-500" />
+                                      ) : (
+                                        <Trash2 className="size-3.5" />
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
@@ -2277,6 +2668,22 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                   })()}
                 </div>
               )}
+            </div>
+
+            {/* Storage Meter Footer */}
+            <div
+              className="px-4 py-3 border-t flex items-center justify-between text-xs shrink-0"
+              style={{
+                borderColor: selectedTheme === 'dark' ? 'rgba(255, 255, 255, 0.08)' : selectedTheme === 'sepia' || selectedTheme === 'cream' ? 'rgba(92, 74, 58, 0.15)' : 'rgba(0,0,0,0.1)',
+                backgroundColor: selectedTheme === 'dark' ? 'rgba(0,0,0,0.2)' : 'rgba(0,0,0,0.03)',
+              }}
+            >
+              <span className="opacity-70 font-medium" style={{ color: popupThemeConfig[selectedTheme].text }}>
+                Offline Storage: {StorageManager.formatBytes(storageInfo?.totalBytes ?? 0)} / 100 MB
+              </span>
+              <span className="text-[11px] font-semibold text-[var(--color-primary-teal)]">
+                {StorageManager.formatBytes(storageInfo?.availableCapBytes ?? (100 * 1024 * 1024))} available
+              </span>
             </div>
           </div>
         </div>
@@ -2495,6 +2902,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         selectedBook={selectedBook}
         selectedVersion={selectedVersion}
         selectedVersionId={selectedVersion}
+        hasPrevChapter={!isFirstChapterOfBible}
+        hasNextChapter={!isLastChapterOfBible}
         onChapterChange={(chapter: number) => {
           const dir = chapter > selectedChapter ? 'next' : 'prev';
           if (dir === 'next') navigateNext(); else navigatePrev();
@@ -2616,8 +3025,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               font={selectedFont}
               fontSize={fontSize}
               version={selectedVersion}
+              versionId={versionId || apiVersions?.find((v: any) => v.name === selectedVersion || v.id === selectedVersion)?.id}
               theme={currentTheme}
               savedVerseIds={savedVerseIds}
+              showFootnotes={showFootnotes}
               isSliderDragging={false}
             />
           ) : undefined}
@@ -2628,8 +3039,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               font={selectedFont}
               fontSize={fontSize}
               version={selectedVersion}
+              versionId={versionId || apiVersions?.find((v: any) => v.name === selectedVersion || v.id === selectedVersion)?.id}
               theme={currentTheme}
               savedVerseIds={savedVerseIds}
+              showFootnotes={showFootnotes}
               isSliderDragging={false}
             />
           ) : undefined}
@@ -2652,6 +3065,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               font={selectedFont}
               fontSize={fontSize}
               version={selectedVersion}
+              versionId={versionId || apiVersions?.find((v: any) => v.name === selectedVersion || v.id === selectedVersion)?.id}
               scrollToVerse={selectedVerse}
               readingVerse={currentReadingVerse}
               theme={currentTheme}
@@ -2659,8 +3073,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               savedVerseIds={savedVerseIds}
               onVerseDoubleTap={onVerseDoubleTap}
               onVerseTap={onVerseTap}
+              onOpenVerseNotes={(vNum) => setActiveNotesVerse(vNum)}
               highlights={userHighlights}
               notes={userNotes}
+              showFootnotes={showFootnotes}
               isSliderDragging={isSliderDragging}
               swipeActiveRef={isSwipingRef}
             />
@@ -2713,6 +3129,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           onPlayPause={handleNarrationPlayPause}
           onNext={handleNext}
           onPrev={handlePrevious}
+          hasPrev={!isFirstChapterOfBible}
+          hasNext={!isLastChapterOfBible}
           title={`${selectedBook} ${selectedChapter}:${(narrationActive ? currentReadingVerse : selectedVerse) ?? 1}`}
           subtitle={selectedVersion}
           onOpenPanel={() => setShowAudioControlPanel(true)}
@@ -2809,7 +3227,18 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             chapter={selectedChapter}
             selectedVerses={selectedVerses}
             onClose={() => onVerseTap?.(0)} // container handles clearing
-            existingHighlightColor={userHighlights.find(h => h.metadata?.verse === selectedVerses[0])?.metadata?.color}
+            existingHighlightColor={
+              userHighlights.find(
+                (h) =>
+                  h.type === 'highlight' &&
+                  Number(h.metadata?.verse) === Number(selectedVerses[0]) &&
+                  Number(h.metadata?.chapter) === Number(selectedChapter) &&
+                  (h.metadata?.bookId === selectedBook ||
+                    h.metadata?.bookName === selectedBook ||
+                    h.metadata?.bookId === book ||
+                    h.metadata?.bookName === book)
+              )?.metadata?.color || null
+            }
             existingSaveLabels={existingSaveLabels}
             existingSaveNote={existingSaveNote}
             existingSaveIsPrivate={existingSaveIsPrivate}
@@ -2823,12 +3252,41 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             onDelete={onDeleteSavedVerse}
             onNote={(note, labels) => onSaveNote?.(selectedVerses, note, labels)}
             onShare={() => onShareVerses?.()}
+            onCopy={() => onCopyVerses?.()}
             onCompare={onCompareVerses}
             isLoggedIn={isLoggedIn}
             selectedTheme={selectedTheme}
           />
         )}
       </AnimatePresence>
+
+      {/* Verse Notes Bottom Sheet (for viewing/editing/deleting notes on a verse) */}
+      <VerseNotesBottomSheet
+        isOpen={activeNotesVerse !== null}
+        onClose={() => setActiveNotesVerse(null)}
+        bookName={selectedBook}
+        chapter={selectedChapter}
+        verseNumber={activeNotesVerse || 1}
+        notes={userNotes || []}
+        onSaveNote={async (payload) => {
+          if (onSaveNoteFromSheet) {
+            await onSaveNoteFromSheet(payload);
+          } else if (onSaveNote) {
+            onSaveNote(payload.verses, payload.noteText, payload.labels);
+          }
+        }}
+        onDeleteNote={async (noteId, refId, verses) => {
+          if (onDeleteNoteFromSheet) {
+            await onDeleteNoteFromSheet(noteId, refId, verses);
+          }
+        }}
+        userLabels={userLabels}
+        onAddUserLabel={onAddUserLabel}
+        selectedTheme={selectedTheme}
+        isDark={selectedTheme === 'dark'}
+        isLoggedIn={isLoggedIn}
+        version={selectedVersion}
+      />
     </div>
   );
 }
