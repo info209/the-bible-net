@@ -92,8 +92,8 @@ export default function OfflineManagementPage() {
   }, [loadStorageInfo, downloadStates]);
 
   const handleDeleteVersion = useCallback(
-    async (versionId: string) => {
-      await deleteVersion(versionId);
+    async (versionId: string, versionAbbr?: string) => {
+      await deleteVersion(versionId, versionAbbr);
       toast.success('Version deleted from offline storage.');
       loadStorageInfo();
     },
@@ -127,7 +127,15 @@ export default function OfflineManagementPage() {
   }, [refreshStates, loadStorageInfo]);
 
   const downloadedVersions = Object.values(downloadStates).filter(
-    (s) => s.status === 'downloaded' && (s.targetType === 'version' || !s.targetType),
+    (s, idx, arr) =>
+      s.status === 'downloaded' &&
+      (s.targetType === 'version' || (!s.targetType && !s.bookId && !s.chapterNumber)) &&
+      arr.findIndex(
+        (other) =>
+          other.versionId === s.versionId ||
+          (other.versionAbbreviation && other.versionAbbreviation === s.versionAbbreviation) ||
+          other.id === s.id,
+      ) === idx,
   );
 
   const usagePercent =
@@ -282,7 +290,7 @@ export default function OfflineManagementPage() {
                     </div>
 
                     <button
-                      onClick={() => handleDeleteVersion(rec.versionId)}
+                      onClick={() => handleDeleteVersion(rec.versionId, rec.versionAbbreviation)}
                       className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-500 hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
                     >
                       <Trash2 className="size-3.5" />

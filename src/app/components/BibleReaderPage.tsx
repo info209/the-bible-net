@@ -229,6 +229,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
   // Footnotes preference (persisted to localStorage)
+  const [deletingVersionId, setDeletingVersionId] = useState<string | null>(null);
   const [localShowFootnotes, setLocalShowFootnotes] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
       const cached = localStorage.getItem('bible-reader-show-footnotes');
@@ -2357,8 +2358,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                           const targetVal = versionItem.name || versionItem.id;
                           const isSelected = selectedVersion === versionItem.name || selectedVersion === versionItem.id || selectedVersion === versionItem.fullName;
                           
+                          const isDeletingThis = deletingVersionId === versionId || deletingVersionId === versionAbbr;
                           const record = getVersionStatus(versionId) || getVersionStatus(versionAbbr);
-                          const status: DownloadStatus = record?.status ?? 'not_downloaded';
+                          const status: DownloadStatus = isDeletingThis ? 'not_downloaded' : (record?.status ?? 'not_downloaded');
                           const isDownloaded = status === 'downloaded';
                           const isDownloading = status === 'downloading';
                           const isPaused = status === 'paused';
@@ -2442,7 +2444,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                                         toast.error(err?.message || 'Download failed');
                                       }
                                     }}
-                                    disabled={!isOnline}
+                                    disabled={!isOnline || isDeletingThis}
                                     className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-teal-50 text-[var(--color-primary-teal)] hover:opacity-90 active:scale-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-sm"
                                     title={!isOnline ? 'Internet connection required to download' : `Download ${versionAbbr} for offline use`}
                                   >
@@ -2473,7 +2475,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        cancelDownload(versionId);
+                                        cancelDownload(versionId, versionAbbr);
                                       }}
                                       className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-900/40 text-zinc-400 hover:text-rose-500 transition-colors"
                                       title="Cancel download"
@@ -2517,7 +2519,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        cancelDownload(versionId);
+                                        cancelDownload(versionId, versionAbbr);
                                       }}
                                       className="p-1 rounded hover:bg-rose-100 dark:hover:bg-rose-900/40 text-zinc-400 hover:text-rose-500 transition-colors"
                                       title="Cancel download"
@@ -2533,15 +2535,27 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                                     <CheckCircle2 className="size-4 text-emerald-500 shrink-0 mr-1" />
                                     <button
                                       type="button"
+                                      disabled={isDeletingThis}
                                       onClick={async (e) => {
                                         e.stopPropagation();
-                                        await deleteVersion(versionId);
-                                        toast.success(`Removed ${versionFullName} from offline storage.`);
+                                        setDeletingVersionId(versionId);
+                                        try {
+                                          await deleteVersion(versionId, versionAbbr);
+                                          toast.success(`Removed ${versionFullName} from offline storage.`);
+                                        } catch {
+                                          toast.error('Failed to remove version from offline storage.');
+                                        } finally {
+                                          setDeletingVersionId(null);
+                                        }
                                       }}
-                                      className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:border-rose-300 dark:hover:border-rose-800 transition-all"
+                                      className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 hover:border-rose-300 dark:hover:border-rose-800 transition-all disabled:opacity-50"
                                       title={`Delete ${versionAbbr} offline download`}
                                     >
-                                      <Trash2 className="size-3.5" />
+                                      {isDeletingThis ? (
+                                        <Loader2 className="size-3.5 animate-spin text-rose-500" />
+                                      ) : (
+                                        <Trash2 className="size-3.5" />
+                                      )}
                                     </button>
                                   </div>
                                 )}
@@ -2578,7 +2592,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                                       type="button"
                                       onClick={(e) => {
                                         e.stopPropagation();
-                                        cancelDownload(versionId);
+                                        cancelDownload(versionId, versionAbbr);
                                       }}
                                       className="p-0.5 rounded text-zinc-400 hover:text-rose-500 transition-colors"
                                       title="Dismiss"
@@ -2611,23 +2625,35 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                                           toast.error(err?.message || 'Update failed');
                                         }
                                       }}
-                                      disabled={!isOnline}
-                                      className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg bg-amber-500 text-white hover:opacity-90 active:scale-95 transition-all shadow-sm"
+                                      disabled={!isOnline || isDeletingThis}
+                                      className="flex items-center gap-1 text-xs font-semibold px-2 py-1 rounded-lg bg-amber-500 text-white hover:opacity-90 active:scale-95 transition-all shadow-sm disabled:opacity-40"
                                       title="Update available"
                                     >
                                       <RefreshCw className="size-3" /> Update
                                     </button>
                                     <button
                                       type="button"
+                                      disabled={isDeletingThis}
                                       onClick={async (e) => {
                                         e.stopPropagation();
-                                        await deleteVersion(versionId);
-                                        toast.success(`Removed ${versionFullName} from offline storage.`);
+                                        setDeletingVersionId(versionId);
+                                        try {
+                                          await deleteVersion(versionId, versionAbbr);
+                                          toast.success(`Removed ${versionFullName} from offline storage.`);
+                                        } catch {
+                                          toast.error('Failed to remove version from offline storage.');
+                                        } finally {
+                                          setDeletingVersionId(null);
+                                        }
                                       }}
-                                      className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all"
+                                      className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 text-zinc-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-all disabled:opacity-50"
                                       title={`Delete ${versionAbbr} offline download`}
                                     >
-                                      <Trash2 className="size-3.5" />
+                                      {isDeletingThis ? (
+                                        <Loader2 className="size-3.5 animate-spin text-rose-500" />
+                                      ) : (
+                                        <Trash2 className="size-3.5" />
+                                      )}
                                     </button>
                                   </div>
                                 )}

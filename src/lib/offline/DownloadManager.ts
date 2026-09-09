@@ -238,12 +238,18 @@ export class DownloadManager {
   /**
    * Delete an entire downloaded Bible version from offline storage.
    */
-  static async deleteVersion(versionId: string): Promise<void> {
+  static async deleteVersion(versionId: string, versionAbbreviation?: string): Promise<void> {
     const recordId = buildVersionDownloadKey(versionId);
     this.cancelAbort(recordId);
-    await BibleOfflineService.deleteVersionData(versionId);
+    if (versionAbbreviation) {
+      this.cancelAbort(buildVersionDownloadKey(versionAbbreviation));
+    }
+    await BibleOfflineService.deleteVersionData(versionId, versionAbbreviation);
     // Also remove from ModuleOfflineService cache
     ModuleOfflineService.saveCache(`bible_books_${versionId}`, null).catch(() => {});
+    if (versionAbbreviation) {
+      ModuleOfflineService.saveCache(`bible_books_${versionAbbreviation}`, null).catch(() => {});
+    }
   }
 
   /**
@@ -290,12 +296,15 @@ export class DownloadManager {
   /**
    * Cancel an active download and revert/clean up state.
    */
-  static async cancelDownload(versionId: string): Promise<void> {
+  static async cancelDownload(versionId: string, versionAbbreviation?: string): Promise<void> {
     const recordId = buildVersionDownloadKey(versionId);
     this.cancelAbort(recordId);
+    if (versionAbbreviation) {
+      this.cancelAbort(buildVersionDownloadKey(versionAbbreviation));
+    }
     const previous = await BibleOfflineService.getVersionDownloadStatus(recordId);
     if (previous?.status !== 'downloaded') {
-      await BibleOfflineService.deleteVersionData(versionId);
+      await BibleOfflineService.deleteVersionData(versionId, versionAbbreviation);
     }
   }
 

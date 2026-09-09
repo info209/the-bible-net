@@ -34,10 +34,29 @@ export function useDownloadManager() {
 
       const map: DownloadStateMap = {};
       for (const s of statuses) {
+        // Only map version-level download records
+        const isVersionTarget =
+          s.targetType === 'version' || (!s.targetType && !s.bookId && !s.chapterNumber);
+        if (!isVersionTarget) continue;
+
+        // Verify that downloaded records are genuinely complete
+        if (s.status === 'downloaded') {
+          const hasChapters =
+            (s.downloadedChapters !== undefined && s.downloadedChapters > 0) ||
+            (s.progressPercent !== undefined && s.progressPercent === 100);
+          if (!hasChapters) {
+            // Invalid / empty corrupted download record — do not treat as downloaded
+            continue;
+          }
+        }
+
         map[s.id] = s;
-        // Also map by versionId and abbreviation for fast lookup
         if (s.versionId) map[s.versionId] = s;
-        if (s.versionAbbreviation) map[s.versionAbbreviation] = s;
+        if (s.versionAbbreviation) {
+          map[s.versionAbbreviation] = s;
+          map[s.versionAbbreviation.toUpperCase()] = s;
+          map[s.versionAbbreviation.toLowerCase()] = s;
+        }
       }
       setDownloadStates(map);
       setStorageInfo(breakdown);
@@ -61,7 +80,11 @@ export function useDownloadManager() {
       const updated = { ...(prev[id] ?? {}), ...patch, id } as DownloadRecord;
       const next = { ...prev, [id]: updated };
       if (updated.versionId) next[updated.versionId] = updated;
-      if (updated.versionAbbreviation) next[updated.versionAbbreviation] = updated;
+      if (updated.versionAbbreviation) {
+        next[updated.versionAbbreviation] = updated;
+        next[updated.versionAbbreviation.toUpperCase()] = updated;
+        next[updated.versionAbbreviation.toLowerCase()] = updated;
+      }
       return next;
     });
   }, []);
@@ -126,9 +149,46 @@ export function useDownloadManager() {
   );
 
   const deleteVersion = useCallback(
-    async (versionId: string) => {
-      await DownloadManager.deleteVersion(versionId);
-      await loadAllData();
+    async (versionId: string, versionAbbr?: string) => {
+      // 1. Optimistic removal from React state for instantaneous UI feedback
+      const keysToRemove = new Set<string>();
+      const candidates = [
+        versionId,
+        versionAbbr,
+        `version_${versionId}`,
+        versionAbbr ? `version_${versionAbbr}` : '',
+      ].filter(Boolean) as string[];
+
+      for (const c of candidates) {
+        keysToRemove.add(c);
+        keysToRemove.add(c.toLowerCase());
+        keysToRemove.add(c.toUpperCase());
+      }
+
+      setDownloadStates((prev) => {
+        const next = { ...prev };
+        for (const k of Object.keys(next)) {
+          const rec = next[k];
+          if (
+            keysToRemove.has(k) ||
+            (rec &&
+              (keysToRemove.has(rec.id) ||
+                keysToRemove.has(rec.versionId) ||
+                (rec.versionAbbreviation && keysToRemove.has(rec.versionAbbreviation))))
+          ) {
+            delete next[k];
+          }
+        }
+        return next;
+      });
+
+      try {
+        // 2. Perform DB deletion across all stores
+        await DownloadManager.deleteVersion(versionId, versionAbbr);
+      } finally {
+        // 3. Reload everything to maintain single source of truth
+        await loadAllData();
+      }
     },
     [loadAllData],
   );
@@ -168,8 +228,8 @@ export function useDownloadManager() {
   );
 
   const cancelDownload = useCallback(
-    async (versionId: string) => {
-      await DownloadManager.cancelDownload(versionId);
+    async (versionId: string, versionAbbr?: string) => {
+      await DownloadManager.cancelDownload(versionId, versionAbbr);
       await loadAllData();
     },
     [loadAllData],
@@ -178,7 +238,21 @@ export function useDownloadManager() {
   const getVersionStatus = useCallback(
     (versionIdOrAbbr: string): DownloadRecord | undefined => {
       if (!versionIdOrAbbr) return undefined;
-      return downloadStates[versionIdOrAbbr];
+      const direct =
+        downloadStates[versionIdOrAbbr] ||
+        downloadStates[versionIdOrAbbr.toUpperCase()] ||
+        downloadStates[versionIdOrAbbr.toLowerCase()];
+      if (direct) return direct;
+
+      const target = versionIdOrAbbr.toLowerCase();
+      return Object.values(downloadStates).find((s) => {
+        if (!s) return false;
+        return (
+          s.id.toLowerCase() === target ||
+          s.versionId.toLowerCase() === target ||
+          (s.versionAbbreviation && s.versionAbbreviation.toLowerCase() === target)
+        );
+      });
     },
     [downloadStates],
   );

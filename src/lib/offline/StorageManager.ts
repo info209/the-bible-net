@@ -25,16 +25,30 @@ export class StorageManager {
 
     for (const status of allStatuses) {
       if (status.status === 'downloaded') {
-        if (status.targetType === 'version' || !status.targetType) {
-          const bytes =
-            status.estimatedBytes ??
-            (await BibleOfflineService.estimateVersionSize(status.versionId));
-          byVersion[status.versionId] = bytes;
+        const isVersion =
+          status.targetType === 'version' ||
+          (!status.targetType && !status.bookId && !status.chapterNumber);
+
+        if (isVersion) {
+          const hasChapters =
+            (status.downloadedChapters !== undefined && status.downloadedChapters > 0) ||
+            (status.progressPercent !== undefined && status.progressPercent === 100);
+
+          if (hasChapters) {
+            const bytes =
+              status.estimatedBytes ??
+              (await BibleOfflineService.estimateVersionSize(status.versionId));
+            if (bytes > 0) {
+              byVersion[status.versionId] = bytes;
+            }
+          }
         } else if (status.targetType === 'book' && status.bookId) {
           const bytes =
             status.estimatedBytes ??
             (await BibleOfflineService.estimateBookSize(status.versionId, status.bookId));
-          byBook[status.id] = bytes;
+          if (bytes > 0) {
+            byBook[status.id] = bytes;
+          }
         }
       }
     }

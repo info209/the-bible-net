@@ -354,52 +354,138 @@ export class BibleOfflineService {
   // Helpers & Canonical Resolution
   // -------------------------------------------------------------------------
 
-  static async resolveVersionIdentifiers(versionIdentifier: string): Promise<{ id: string; abbr?: string }> {
+  static async resolveVersionIdentifiers(
+    versionIdentifier: string,
+    optionalAbbr?: string,
+  ): Promise<{ id: string; abbr?: string; allIdentifiers: string[] }> {
+    const rawCandidates = [versionIdentifier, optionalAbbr].filter(Boolean) as string[];
+    const identsSet = new Set<string>();
+
+    for (const c of rawCandidates) {
+      if (!c) continue;
+      identsSet.add(c);
+      identsSet.add(c.toLowerCase());
+      identsSet.add(c.toUpperCase());
+    }
+
+    let primaryId = versionIdentifier;
+    let primaryAbbr = optionalAbbr || versionIdentifier;
+
     try {
       const db = await getOfflineDB();
+
       // 1. Direct version table lookup
       const direct = await db.get('bible_versions', versionIdentifier);
       if (direct) {
-        return { id: direct.id, abbr: direct.abbreviation };
+        primaryId = direct.id;
+        primaryAbbr = direct.abbreviation || primaryAbbr;
+        identsSet.add(direct.id);
+        if (direct.abbreviation) {
+          identsSet.add(direct.abbreviation);
+          identsSet.add(direct.abbreviation.toUpperCase());
+          identsSet.add(direct.abbreviation.toLowerCase());
+        }
+        if (direct.name) identsSet.add(direct.name);
       }
+
       // 2. Lookup by abbreviation index
       const byAbbr = await db.getFromIndex('bible_versions', 'by_abbreviation', versionIdentifier);
       if (byAbbr) {
-        return { id: byAbbr.id, abbr: byAbbr.abbreviation };
+        primaryId = byAbbr.id;
+        primaryAbbr = byAbbr.abbreviation || primaryAbbr;
+        identsSet.add(byAbbr.id);
+        if (byAbbr.abbreviation) {
+          identsSet.add(byAbbr.abbreviation);
+          identsSet.add(byAbbr.abbreviation.toUpperCase());
+          identsSet.add(byAbbr.abbreviation.toLowerCase());
+        }
+        if (byAbbr.name) identsSet.add(byAbbr.name);
       }
-      // 3. Lookup from download_status
+
+      // 3. Scan all versions in case of case differences
+      const allVersions = await db.getAll('bible_versions');
+      for (const v of allVersions) {
+        const matches = rawCandidates.some(
+          (c) =>
+            c.toLowerCase() === v.id.toLowerCase() ||
+            c.toLowerCase() === (v.abbreviation || '').toLowerCase() ||
+            c.toLowerCase() === (v.name || '').toLowerCase(),
+        );
+        if (matches) {
+          primaryId = v.id;
+          primaryAbbr = v.abbreviation || primaryAbbr;
+          identsSet.add(v.id);
+          if (v.abbreviation) {
+            identsSet.add(v.abbreviation);
+            identsSet.add(v.abbreviation.toUpperCase());
+            identsSet.add(v.abbreviation.toLowerCase());
+          }
+          if (v.name) identsSet.add(v.name);
+        }
+      }
+
+      // 4. Lookup from download_status
       const allStatuses = await db.getAll('download_status');
-      const statusMatch = allStatuses.find(
-        (s) =>
-          s.versionId === versionIdentifier ||
-          s.versionAbbreviation?.toLowerCase() === versionIdentifier.toLowerCase() ||
-          s.id === versionIdentifier,
-      );
-      if (statusMatch) {
-        return { id: statusMatch.versionId, abbr: statusMatch.versionAbbreviation };
+      for (const s of allStatuses) {
+        const matches = rawCandidates.some(
+          (c) =>
+            c.toLowerCase() === s.id.toLowerCase() ||
+            c.toLowerCase() === (s.versionId || '').toLowerCase() ||
+            c.toLowerCase() === (s.versionAbbreviation || '').toLowerCase() ||
+            s.id.toLowerCase().startsWith(`${c.toLowerCase()}::`) ||
+            s.id.toLowerCase() === `version_${c.toLowerCase()}`,
+        );
+        if (matches) {
+          if (s.versionId) {
+            identsSet.add(s.versionId);
+            if (!primaryId || primaryId === versionIdentifier) primaryId = s.versionId;
+          }
+          if (s.versionAbbreviation) {
+            identsSet.add(s.versionAbbreviation);
+            identsSet.add(s.versionAbbreviation.toUpperCase());
+            identsSet.add(s.versionAbbreviation.toLowerCase());
+            primaryAbbr = s.versionAbbreviation;
+          }
+          identsSet.add(s.id);
+        }
       }
     } catch {
       // Fallback
     }
-    return { id: versionIdentifier, abbr: versionIdentifier };
+
+    return {
+      id: primaryId,
+      abbr: primaryAbbr,
+      allIdentifiers: Array.from(identsSet).filter(Boolean),
+    };
   }
 
-  static async isVersionDownloaded(versionId: string): Promise<boolean> {
-    const { id: verId, abbr: verAbbr } = await this.resolveVersionIdentifiers(versionId);
-    const identifiers = Array.from(new Set([versionId, verId, verAbbr].filter(Boolean) as string[]));
+  static async isVersionDownloaded(versionId: string, versionAbbr?: string): Promise<boolean> {
+    const { allIdentifiers } = await this.resolveVersionIdentifiers(versionId, versionAbbr);
+    const identsLower = allIdentifiers.map((i) => i.toLowerCase());
 
     const allStatuses = await this.getAllDownloadStatuses();
-    const match = allStatuses.find(
-      (s) =>
-        identifiers.some(
-          (ident) =>
-            s.id === ident ||
-            s.versionId === ident ||
-            s.versionAbbreviation?.toLowerCase() === ident.toLowerCase(),
-        ) &&
-        s.status === 'downloaded' &&
-        (s.targetType === 'version' || !s.targetType),
-    );
+    const match = allStatuses.find((s) => {
+      const idMatches =
+        identsLower.includes(s.id.toLowerCase()) ||
+        (s.versionId && identsLower.includes(s.versionId.toLowerCase())) ||
+        (s.versionAbbreviation && identsLower.includes(s.versionAbbreviation.toLowerCase())) ||
+        identsLower.some((ident) => s.id.toLowerCase() === `version_${ident}`);
+
+      if (!idMatches) return false;
+
+      // Must be a complete version download, not casual reading or book-level item
+      const isVersionTarget = s.targetType === 'version' || (!s.targetType && !s.bookId && !s.chapterNumber);
+      if (!isVersionTarget) return false;
+
+      const isStatusOk = s.status === 'downloaded';
+      if (!isStatusOk) return false;
+
+      // Ensure it has valid chapter progress or 100% completion
+      const hasChapters = (s.downloadedChapters !== undefined && s.downloadedChapters > 0) || (s.progressPercent !== undefined && s.progressPercent === 100);
+      return hasChapters;
+    });
+
     return !!match;
   }
 
@@ -427,8 +513,12 @@ export class BibleOfflineService {
   static async estimateVersionSize(versionId: string): Promise<number> {
     try {
       const chapters = await this.getChaptersByVersion(versionId);
+      // STRICT: Only count chapters that were explicitly downloaded as part of a full download
+      const downloadedChapters = chapters.filter((c) => c.isDownloaded);
+      if (downloadedChapters.length === 0) return 0;
+
       let totalChars = 0;
-      for (const chapter of chapters) {
+      for (const chapter of downloadedChapters) {
         if (Array.isArray(chapter.verses)) {
           for (const verse of chapter.verses) {
             totalChars += (verse.text || '').length;
@@ -444,8 +534,11 @@ export class BibleOfflineService {
   static async estimateBookSize(versionId: string, bookId: string): Promise<number> {
     try {
       const chapters = await this.getChaptersByBook(versionId, bookId);
+      const downloadedChapters = chapters.filter((c) => c.isDownloaded);
+      if (downloadedChapters.length === 0) return 0;
+
       let totalChars = 0;
-      for (const chapter of chapters) {
+      for (const chapter of downloadedChapters) {
         for (const verse of chapter.verses) {
           totalChars += verse.text.length;
         }
@@ -473,19 +566,22 @@ export class BibleOfflineService {
     }
   }
 
-  static async deleteVersionData(versionIdentifier: string): Promise<void> {
+  static async deleteVersionData(versionIdentifier: string, versionAbbr?: string): Promise<void> {
     try {
       const db = await getOfflineDB();
-      const { id: verId, abbr: verAbbr } = await this.resolveVersionIdentifiers(versionIdentifier);
-      const identifiers = Array.from(
-        new Set([versionIdentifier, verId, verAbbr].filter(Boolean) as string[]),
-      );
+      const { allIdentifiers } = await this.resolveVersionIdentifiers(versionIdentifier, versionAbbr);
+      const identsLower = allIdentifiers.map((i) => i.toLowerCase());
 
       // 1. Find and delete all chapters for all matching version identifiers from bible_chapters & chapter_access_log
       const allChapters = await db.getAll('bible_chapters');
-      const matchingChapters = allChapters.filter((c) =>
-        identifiers.some((ident) => c.versionId === ident || c.id.startsWith(`${ident}::`)),
-      );
+      const matchingChapters = allChapters.filter((c) => {
+        const cVerLower = (c.versionId || '').toLowerCase();
+        const cIdLower = (c.id || '').toLowerCase();
+        return identsLower.some(
+          (ident) => cVerLower === ident || cIdLower.startsWith(`${ident}::`),
+        );
+      });
+
       if (matchingChapters.length > 0) {
         const tx = db.transaction(['bible_chapters', 'chapter_access_log'], 'readwrite');
         for (const c of matchingChapters) {
@@ -497,9 +593,14 @@ export class BibleOfflineService {
 
       // Also clean up any lingering chapter_access_log entries for this version
       const allLogs = await db.getAll('chapter_access_log');
-      const matchingLogs = allLogs.filter((l) =>
-        identifiers.some((ident) => l.versionId === ident || l.cacheKey.startsWith(`${ident}::`)),
-      );
+      const matchingLogs = allLogs.filter((l) => {
+        const lVerLower = (l.versionId || '').toLowerCase();
+        const lKeyLower = (l.cacheKey || '').toLowerCase();
+        return identsLower.some(
+          (ident) => lVerLower === ident || lKeyLower.startsWith(`${ident}::`),
+        );
+      });
+
       if (matchingLogs.length > 0) {
         const txLog = db.transaction('chapter_access_log', 'readwrite');
         for (const l of matchingLogs) {
@@ -510,7 +611,11 @@ export class BibleOfflineService {
 
       // 2. Delete all books matching version identifiers
       const allBooks = await db.getAll('bible_books');
-      const matchingBooks = allBooks.filter((b) => identifiers.includes(b.versionId));
+      const matchingBooks = allBooks.filter((b) => {
+        const bVerLower = (b.versionId || '').toLowerCase();
+        return identsLower.includes(bVerLower);
+      });
+
       if (matchingBooks.length > 0) {
         const txBook = db.transaction('bible_books', 'readwrite');
         for (const b of matchingBooks) {
@@ -520,21 +625,42 @@ export class BibleOfflineService {
       }
 
       // 3. Delete version entries from bible_versions
-      for (const ident of identifiers) {
-        await db.delete('bible_versions', ident);
+      const allStoredVersions = await db.getAll('bible_versions');
+      const matchingStoredVersions = allStoredVersions.filter((v) => {
+        return (
+          identsLower.includes(v.id.toLowerCase()) ||
+          identsLower.includes((v.abbreviation || '').toLowerCase()) ||
+          identsLower.includes((v.name || '').toLowerCase())
+        );
+      });
+      if (matchingStoredVersions.length > 0) {
+        const txVer = db.transaction('bible_versions', 'readwrite');
+        for (const v of matchingStoredVersions) {
+          await txVer.store.delete(v.id);
+        }
+        await txVer.done;
+      }
+      for (const ident of allIdentifiers) {
+        await db.delete('bible_versions', ident).catch(() => {});
       }
 
       // 4. Delete all download_status records matching version (version, books, chapters)
       const allStatuses = await db.getAll('download_status');
-      const matchingStatuses = allStatuses.filter((s) =>
-        identifiers.some(
+      const matchingStatuses = allStatuses.filter((s) => {
+        const sIdLower = s.id.toLowerCase();
+        const sVerIdLower = (s.versionId || '').toLowerCase();
+        const sVerAbbrLower = (s.versionAbbreviation || '').toLowerCase();
+
+        return identsLower.some(
           (ident) =>
-            s.id === ident ||
-            s.versionId === ident ||
-            s.versionAbbreviation === ident ||
-            s.id.startsWith(`${ident}::`),
-        ),
-      );
+            sIdLower === ident ||
+            sVerIdLower === ident ||
+            sVerAbbrLower === ident ||
+            sIdLower.startsWith(`${ident}::`) ||
+            sIdLower === `version_${ident}`,
+        );
+      });
+
       if (matchingStatuses.length > 0) {
         const txStatus = db.transaction('download_status', 'readwrite');
         for (const s of matchingStatuses) {
@@ -542,10 +668,14 @@ export class BibleOfflineService {
         }
         await txStatus.done;
       }
+      for (const ident of allIdentifiers) {
+        await db.delete('download_status', ident).catch(() => {});
+        await db.delete('download_status', `version_${ident}`).catch(() => {});
+      }
 
       // 5. Purge ModuleOfflineService book caches
       const { ModuleOfflineService } = await import('./ModuleOfflineService');
-      for (const ident of identifiers) {
+      for (const ident of allIdentifiers) {
         await ModuleOfflineService.deleteCache(`bible_books_${ident}`).catch(() => {});
       }
     } catch (err) {
