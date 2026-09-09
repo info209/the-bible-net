@@ -117,19 +117,29 @@ export default function AudioFloatingPlayer({
   // Theme color tokens
   const theme = selectedTheme || (isDark ? 'dark' : 'light');
 
+  const isDarkTheme = theme === 'dark';
+
   const btnBg = {
-    light: 'rgba(255, 255, 255, 0.82)',
-    sepia: 'rgba(247, 239, 237, 0.85)',
-    cream: 'rgba(254, 246, 235, 0.85)',
-    dark: 'rgba(28, 28, 30, 0.82)'
+    light: 'rgba(255, 255, 255, 0.70)',
+    sepia: 'rgba(247, 239, 237, 0.74)',
+    cream: 'rgba(254, 246, 235, 0.74)',
+    dark: 'rgba(28, 28, 30, 0.70)'
   }[theme];
 
   const btnBorder = {
-    light: 'rgba(0, 0, 0, 0.08)',
-    sepia: 'rgba(92, 74, 58, 0.16)',
-    cream: 'rgba(74, 63, 42, 0.16)',
+    light: 'rgba(255, 255, 255, 0.65)',
+    sepia: 'rgba(92, 74, 58, 0.14)',
+    cream: 'rgba(74, 63, 42, 0.14)',
     dark: 'rgba(255, 255, 255, 0.12)'
   }[theme];
+
+  const btnShadow = isDarkTheme
+    ? '0 6px 20px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.12)'
+    : '0 6px 20px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.85)';
+
+  const pillShadow = isDarkTheme
+    ? '0 8px 28px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.14)'
+    : '0 8px 28px rgba(0, 0, 0, 0.1), 0 2px 6px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.9)';
 
   const iconColor = {
     light: '#31393a',
@@ -173,14 +183,15 @@ export default function AudioFloatingPlayer({
             <motion.button
               onClick={onPrev}
               whileTap={{ scale: 0.86 }}
-              className="pointer-events-auto size-10 rounded-full flex items-center justify-center backdrop-blur-md shadow-[0_2px_12px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)] transition-colors"
+              className="pointer-events-auto size-10 rounded-full flex items-center justify-center transition-colors"
               style={{
                 backgroundColor: btnBg,
                 borderColor: btnBorder,
                 borderWidth: '1px',
                 borderStyle: 'solid',
-                backdropFilter: 'blur(12px) saturate(160%)',
-                WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+                boxShadow: btnShadow,
+                backdropFilter: 'blur(20px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(20px) saturate(180%)',
               }}
               aria-label="Previous chapter"
             >
@@ -204,7 +215,6 @@ export default function AudioFloatingPlayer({
                       onClick={(e) => { e.stopPropagation(); onPlayPause(); }}
                       whileTap={{ scale: 0.9 }}
                       className="size-11 rounded-full flex items-center justify-center
-                        backdrop-blur-md shadow-[0_4px_16px_rgba(0,0,0,0.08)]
                         select-none active:scale-95 transition-all"
                       aria-label="Play narration"
                       style={{
@@ -212,8 +222,9 @@ export default function AudioFloatingPlayer({
                         borderColor: btnBorder,
                         borderWidth: '1px',
                         borderStyle: 'solid',
-                        backdropFilter: 'blur(12px) saturate(160%)',
-                        WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+                        boxShadow: btnShadow,
+                        backdropFilter: 'blur(20px) saturate(180%)',
+                        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
                         userSelect: "none",
                         WebkitUserSelect: "none",
                       }}
@@ -229,14 +240,15 @@ export default function AudioFloatingPlayer({
                     animate={{ scale: 1, opacity: 1 }}
                     exit={{ scale: 0.88, opacity: 0 }}
                     transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
-                    className="relative flex items-center h-[46px] px-1.5 gap-0.5 rounded-full backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.1)]"
+                    className="relative flex items-center h-[46px] px-1.5 gap-0.5 rounded-full"
                     style={{
                       backgroundColor: btnBg,
                       borderColor: btnBorder,
                       borderWidth: '1px',
                       borderStyle: 'solid',
-                      backdropFilter: 'blur(12px) saturate(160%)',
-                      WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+                      boxShadow: pillShadow,
+                      backdropFilter: 'blur(20px) saturate(180%)',
+                      WebkitBackdropFilter: 'blur(20px) saturate(180%)',
                     }}
                   >
                     {/* Left: Audio Controls Settings */}
@@ -263,16 +275,10 @@ export default function AudioFloatingPlayer({
                           onClick={(e) => { e.stopPropagation(); onPlayPause(); }}
                           whileTap={{ scale: 0.9 }}
                           className="size-11 rounded-full flex items-center justify-center
-                            backdrop-blur-md shadow-[0_2px_8px_rgba(0,0,0,0.06)]
                             select-none transition-all"
                           aria-label={isPlaying ? "Pause" : "Play"}
                           style={{
-                            backgroundColor: btnBg,
-                            borderColor: btnBorder,
-                            borderWidth: '1px',
-                            borderStyle: 'solid',
-                            backdropFilter: 'blur(12px) saturate(160%)',
-                            WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+                            backgroundColor: 'transparent',
                             userSelect: "none",
                             WebkitUserSelect: "none",
                           }}
@@ -325,14 +331,15 @@ export default function AudioFloatingPlayer({
             <motion.button
               onClick={onNext}
               whileTap={{ scale: 0.86 }}
-              className="pointer-events-auto size-10 rounded-full flex items-center justify-center backdrop-blur-md shadow-[0_2px_12px_rgba(0,0,0,0.08),0_1px_3px_rgba(0,0,0,0.04)] transition-colors"
+              className="pointer-events-auto size-10 rounded-full flex items-center justify-center transition-colors"
               style={{
                 backgroundColor: btnBg,
                 borderColor: btnBorder,
                 borderWidth: '1px',
                 borderStyle: 'solid',
-                backdropFilter: 'blur(12px) saturate(160%)',
-                WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+                boxShadow: btnShadow,
+                backdropFilter: 'blur(20px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(20px) saturate(180%)',
               }}
               aria-label="Next chapter"
             >
@@ -357,14 +364,15 @@ export default function AudioFloatingPlayer({
           onClick={onOpenPanel}
         >
           <div
-            className="shadow-lg rounded-full px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:shadow-xl transition-shadow backdrop-blur-md"
+            className="rounded-full px-4 py-2.5 flex items-center gap-3 cursor-pointer hover:shadow-xl transition-shadow"
             style={{
               backgroundColor: btnBg,
               borderColor: btnBorder,
               borderWidth: '1px',
               borderStyle: 'solid',
-              backdropFilter: 'blur(12px) saturate(160%)',
-              WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+              boxShadow: pillShadow,
+              backdropFilter: 'blur(20px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(20px) saturate(180%)',
             }}
           >
             {/* Progress ring + play */}
@@ -377,15 +385,10 @@ export default function AudioFloatingPlayer({
             >
               <button
                 onClick={(e) => { e.stopPropagation(); onPlayPause(); }}
-                className="size-7 rounded-full flex items-center justify-center shadow-sm backdrop-blur-md"
+                className="size-7 rounded-full flex items-center justify-center shadow-sm"
                 aria-label={isPlaying ? "Pause" : "Play"}
                 style={{
-                  backgroundColor: btnBg,
-                  borderColor: btnBorder,
-                  borderWidth: '1px',
-                  borderStyle: 'solid',
-                  backdropFilter: 'blur(12px) saturate(160%)',
-                  WebkitBackdropFilter: 'blur(12px) saturate(160%)',
+                  backgroundColor: 'transparent',
                 }}
               >
                 <AnimatePresence mode="wait" initial={false}>

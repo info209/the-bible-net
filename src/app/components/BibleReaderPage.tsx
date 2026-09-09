@@ -500,15 +500,72 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     return () => { if (window.speechSynthesis) window.speechSynthesis.onvoiceschanged = null; };
   }, []);
 
-  // Helper: find the best available voice for a BCP-47 lang tag (e.g. 'te-IN')
+  // Helper: find the best available voice for a BCP-47 lang tag (e.g. 'te-IN', 'hi-IN')
   const findVoiceForLang = (langTag: string): SpeechSynthesisVoice | null => {
-    if (!availableVoices.length) return null;
+    const voices = availableVoices.length > 0
+      ? availableVoices
+      : (typeof window !== 'undefined' && window.speechSynthesis ? window.speechSynthesis.getVoices() : []);
+    if (!voices.length) return null;
     const prefix = langTag.split('-')[0].toLowerCase();
     return (
-      availableVoices.find(v => v.lang.toLowerCase() === langTag.toLowerCase()) ??
-      availableVoices.find(v => v.lang.toLowerCase().startsWith(prefix + '-') || v.lang.toLowerCase() === prefix) ??
+      voices.find(v => v.lang.toLowerCase().replace('_', '-') === langTag.toLowerCase()) ??
+      voices.find(v => {
+        const vLang = v.lang.toLowerCase().replace('_', '-');
+        return vLang.startsWith(prefix + '-') || vLang === prefix;
+      }) ??
+      voices.find(v => {
+        const name = v.name.toLowerCase();
+        if (prefix === 'te') return name.includes('telugu') || name.includes('తెలుగు');
+        if (prefix === 'hi') return name.includes('hindi') || name.includes('हिन्दी') || name.includes('lekha');
+        if (prefix === 'ta') return name.includes('tamil') || name.includes('தமிழ்');
+        return false;
+      }) ??
       null
     );
+  };
+
+  // Robust language determination checking version metadata and Unicode script detection
+  const resolveContentLanguage = (sampleText?: string): string => {
+    const currentVersionObj = (apiVersions || []).find(
+      v => (versionId && (v.id === versionId || v._id === versionId)) ||
+           v.name === selectedVersion ||
+           v.id === selectedVersion ||
+           v._id === selectedVersion ||
+           v.abbreviation === selectedVersion
+    );
+    const lang = (currentVersionObj?.language || '').toLowerCase().trim();
+    const name = ((currentVersionObj?.name || '') + ' ' + (selectedVersion || '')).toLowerCase();
+    const abbr = (currentVersionObj?.abbreviation || '').toLowerCase();
+
+    if (lang.startsWith('te') || lang === 'telugu' || name.includes('telugu') || abbr.includes('tel') || abbr === 'tb') {
+      return 'te-IN';
+    }
+    if (lang.startsWith('hi') || lang === 'hindi' || name.includes('hindi') || abbr.includes('hin') || abbr === 'hb') {
+      return 'hi-IN';
+    }
+    if (lang.startsWith('ta') || lang === 'tamil' || name.includes('tamil')) {
+      return 'ta-IN';
+    }
+    if (lang.startsWith('kn') || lang === 'kannada' || name.includes('kannada')) {
+      return 'kn-IN';
+    }
+    if (lang.startsWith('ml') || lang === 'malayalam' || name.includes('malayalam')) {
+      return 'ml-IN';
+    }
+    if (lang.startsWith('es') || name.includes('spanish')) return 'es-ES';
+    if (lang.startsWith('fr') || name.includes('french')) return 'fr-FR';
+
+    // Unicode script detection from sample verse text
+    const textToCheck = sampleText || (verses && verses.length > 0 ? verses[0]?.text : '');
+    if (textToCheck) {
+      if (/[\u0C00-\u0C7F]/.test(textToCheck)) return 'te-IN';
+      if (/[\u0900-\u097F]/.test(textToCheck)) return 'hi-IN';
+      if (/[\u0B80-\u0BFF]/.test(textToCheck)) return 'ta-IN';
+      if (/[\u0C80-\u0CFF]/.test(textToCheck)) return 'kn-IN';
+      if (/[\u0D00-\u0D7F]/.test(textToCheck)) return 'ml-IN';
+    }
+
+    return 'en-US';
   };
 
   // Timer state for time-based narration
@@ -1048,26 +1105,19 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       return false;
     }
 
-    // ── Voice availability check ───────────────────────────────────────────────────
-    const currentVersionObj = (apiVersions || []).find(
-      v => v.name === selectedVersion || v.id === selectedVersion
-    );
-    const lang = currentVersionObj?.language;
-    const targetLang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
+    const verses = getBibleContent();
+    console.log('Got verses:', verses.length, 'verses');
+    if (verses.length === 0) return false;
+
+    // ── Voice & Language determination ──────────────────────────────────────────
+    const sampleText = verses[0]?.text || '';
+    const targetLang = resolveContentLanguage(sampleText);
     const isNonEnglish = targetLang !== 'en-US';
 
     if (isNonEnglish) {
       const matchedVoice = findVoiceForLang(targetLang);
-      if (!matchedVoice) {
-        const langLabel = lang === 'Telugu' ? 'Telugu' : lang === 'Hindi' ? 'Hindi' : lang;
-        setTtsVoiceError(
-          `${langLabel} voice is not available on this device/browser. ` +
-          `Please install a ${langLabel} TTS voice or use a mobile browser.`
-        );
-        return false;
-      }
+      console.log(`[TTS Start] Target language: ${targetLang}, Matched voice:`, matchedVoice?.name || 'Default OS engine');
     }
-    // Clear any previous error since the voice is available
     setTtsVoiceError(null);
 
     // Stop any ongoing narration
@@ -1094,10 +1144,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       sleepEndTimeRef.current = null;
     }
 
-    const verses = getBibleContent();
-    console.log('Got verses:', verses.length, 'verses');
-    if (verses.length === 0) return false;
-
     narrationVerseIndexRef.current = fromVerse - 1;
     setNarrationPlaying(true);
     narrationPlayingRef.current = true;
@@ -1117,22 +1163,21 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const readNextVerse = async (verses: any[], index: number) => {
     console.log('readNextVerse called with index:', index, 'of', verses.length, 'verses');
 
-    // Find language tag from active version
-    const currentVersionObj = (apiVersions || []).find(
-      v => v.name === selectedVersion || v.id === selectedVersion
-    );
-    const lang = currentVersionObj?.language;
-    const utteranceLang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
+    const sampleText = (verses && verses[index]?.text) || (verses && verses[0]?.text) || '';
+    const utteranceLang = resolveContentLanguage(sampleText);
 
     // At the beginning of each chapter, announce the book name and chapter number
     if (index === 0 && verses.length > 0) {
-      const chapterAnnouncement = `${selectedBook} Chapter ${selectedChapter}`;
-      console.log('Announcing chapter:', chapterAnnouncement);
+      const chapterAnnouncement = `${selectedBook} ${selectedChapter}`;
+      console.log('Announcing chapter:', chapterAnnouncement, 'lang:', utteranceLang);
 
       const announcementUtterance = new SpeechSynthesisUtterance(chapterAnnouncement);
       announcementUtterance.rate = playbackSpeed;
       announcementUtterance.pitch = 1;
-      announcementUtterance.lang = 'en-US'; // Announcement text is always in English
+      announcementUtterance.lang = utteranceLang;
+      const matchedAnnouncementVoice = findVoiceForLang(utteranceLang);
+      if (matchedAnnouncementVoice) announcementUtterance.voice = matchedAnnouncementVoice;
+
       const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
       announcementUtterance.volume = constrainedVolume;
       console.log('[Volume] Setting announcement volume to:', constrainedVolume);
@@ -1140,13 +1185,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       // After announcement finishes, continue with first verse (skip announcement on next call)
       announcementUtterance.onend = () => {
         console.log('Chapter announcement finished, continuing with first verse');
-        // Start reading from verse 1 by incrementing index in the recursive call
         continueReadingFromFirstVerse(verses);
       };
 
       // Handle errors during announcement
       announcementUtterance.onerror = (event: any) => {
-        // Check if this is a real error or just a cancellation
         if (event.error === 'canceled' || event.error === 'interrupted') {
           console.log('Chapter announcement canceled/interrupted');
           if (!narrationPlayingRef.current) {
@@ -1154,11 +1197,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           }
         }
 
-        // Log actual errors with error type
-        console.error('Chapter announcement error type:', event.error || 'unknown');
-        console.error('Chapter announcement error details:', event);
-
-        // Continue anyway if narration is still supposed to be active
+        console.warn('Chapter announcement ended/errored, continuing to verse 1:', event?.error);
         if (narrationPlayingRef.current) {
           continueReadingFromFirstVerse(verses);
         }
@@ -1169,19 +1208,20 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         const verse = verses[0];
         const verseNumber = verse.number;
         const verseText = verse.text;
+        const verseLang = resolveContentLanguage(verseText);
 
         // Create speech utterance for the verse
         const verseUtterance = new SpeechSynthesisUtterance(verseText);
         verseUtterance.rate = playbackSpeed;
         verseUtterance.pitch = 1;
-        verseUtterance.lang = utteranceLang;
+        verseUtterance.lang = verseLang;
         const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
         verseUtterance.volume = constrainedVolume;
-        console.log('[Volume] Setting verse utterance volume to:', constrainedVolume);
+        console.log('[Volume] Setting verse utterance volume to:', constrainedVolume, 'lang:', verseLang);
 
-        // Auto-select voice for non-English languages
-        if (utteranceLang !== 'en-US') {
-          const autoVoice = findVoiceForLang(utteranceLang);
+        // Auto-select voice for non-English languages if available
+        if (verseLang !== 'en-US') {
+          const autoVoice = findVoiceForLang(verseLang);
           if (autoVoice) verseUtterance.voice = autoVoice;
         }
 
@@ -1228,6 +1268,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         window.speechSynthesis.speak(verseUtterance);
       };
 
+      utteranceRef.current = announcementUtterance;
       window.speechSynthesis.speak(announcementUtterance);
       return; // Exit early, will continue after announcement
     }
@@ -1316,10 +1357,15 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       // Set flag to indicate this is an auto-advance, not manual navigation
       isAutoAdvancingRef.current = true;
 
-      // Fetch verses for the next chapter using the nextBook/nextChapter variables
-      // (not getBibleContent() which uses state that hasn't updated yet)
       let nextChapterVerses: any[] = [];
-      const versionId = currentVersionObj?.id || selectedVersion;
+      const currentVersionObj = (apiVersions || []).find(
+        v => (versionId && (v.id === versionId || v._id === versionId)) ||
+             v.name === selectedVersion ||
+             v.id === selectedVersion ||
+             v._id === selectedVersion ||
+             v.abbreviation === selectedVersion
+      );
+      const targetVersionId = currentVersionObj?.id || currentVersionObj?._id || versionId || selectedVersion;
 
       // Find book ID
       const allBooksList = [...(books?.['Old Testament'] || []), ...(books?.['New Testament'] || [])];
@@ -1327,7 +1373,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       const nextBookId = currentBookObj?.id || nextBook;
 
       try {
-        const response = await fetch(`/api/v1/bible/${versionId}/${nextBookId}/${nextChapter}`);
+        const response = await fetch(`/api/v1/bible/${targetVersionId}/${nextBookId}/${nextChapter}`);
         const result = await response.json();
         if (result.success && result.data && result.data.verses) {
           nextChapterVerses = result.data.verses;
@@ -1391,15 +1437,16 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     // Create speech utterance
     const utterance = new SpeechSynthesisUtterance(verseText);
     utterance.rate = playbackSpeed;
+    const verseLang = resolveContentLanguage(verseText);
     utterance.pitch = 1;
-    utterance.lang = utteranceLang;
+    utterance.lang = verseLang;
     const constrainedVolume = Math.max(0, Math.min(1, ttsVolume));
     utterance.volume = constrainedVolume;
-    console.log('[Volume] Setting reading utterance volume to:', constrainedVolume);
+    console.log('[Volume] Setting reading utterance volume to:', constrainedVolume, 'lang:', verseLang);
 
     // Auto-select voice for non-English languages
-    if (utteranceLang !== 'en-US') {
-      const autoVoice = findVoiceForLang(utteranceLang);
+    if (verseLang !== 'en-US') {
+      const autoVoice = findVoiceForLang(verseLang);
       if (autoVoice) utterance.voice = autoVoice;
     }
 
@@ -1496,23 +1543,16 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       return false;
     }
 
-    const currentVersionObj = (apiVersions || []).find(
-      v => v.name === selectedVersion || v.id === selectedVersion
-    );
-    const lang = currentVersionObj?.language;
-    const targetLang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
+    const verses = getBibleContent();
+    if (verses.length === 0) return false;
+
+    const sampleText = verses[0]?.text || '';
+    const targetLang = resolveContentLanguage(sampleText);
     const isNonEnglish = targetLang !== 'en-US';
 
     if (isNonEnglish) {
       const matchedVoice = findVoiceForLang(targetLang);
-      if (!matchedVoice) {
-        const langLabel = lang === 'Telugu' ? 'Telugu' : lang === 'Hindi' ? 'Hindi' : lang;
-        setTtsVoiceError(
-          `${langLabel} voice is not available on this device/browser. ` +
-          `Please install a ${langLabel} TTS voice or use a mobile browser.`
-        );
-        return false;
-      }
+      console.log(`[TTS Resume] Target language: ${targetLang}, Matched voice:`, matchedVoice?.name || 'Default OS engine');
     }
     setTtsVoiceError(null);
 
@@ -1547,9 +1587,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       setSelectedVerse(1);
     }
     console.log('Resuming from verse:', resumeFrom);
-
-    const verses = getBibleContent();
-    if (verses.length === 0) return false;
 
     // Ensure any lingering speech is cancelled with a brief settling delay before resume
     window.speechSynthesis.cancel();

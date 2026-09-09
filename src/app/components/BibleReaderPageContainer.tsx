@@ -1156,13 +1156,27 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   // or null if none is installed. We intentionally do NOT fall back to a different language
   // voice so that missing-voice failures surface cleanly.
   const findVoiceForLang = useCallback((langTag: string): SpeechSynthesisVoice | null => {
-    if (!availableVoices.length) return null;
+    const voices = availableVoices.length > 0
+      ? availableVoices
+      : (typeof window !== 'undefined' && window.speechSynthesis ? window.speechSynthesis.getVoices() : []);
+    if (!voices.length) return null;
     const prefix = langTag.split('-')[0].toLowerCase(); // e.g. 'te', 'hi', 'en'
     return (
       // Exact match first
-      availableVoices.find(v => v.lang.toLowerCase() === langTag.toLowerCase()) ??
+      voices.find(v => v.lang.toLowerCase().replace('_', '-') === langTag.toLowerCase()) ??
       // Then prefix match (e.g. 'te-IN' matches voice with lang 'te')
-      availableVoices.find(v => v.lang.toLowerCase().startsWith(prefix + '-') || v.lang.toLowerCase() === prefix) ??
+      voices.find(v => {
+        const vLang = v.lang.toLowerCase().replace('_', '-');
+        return vLang.startsWith(prefix + '-') || vLang === prefix;
+      }) ??
+      // Name match
+      voices.find(v => {
+        const name = v.name.toLowerCase();
+        if (prefix === 'te') return name.includes('telugu') || name.includes('తెలుగు');
+        if (prefix === 'hi') return name.includes('hindi') || name.includes('हिन्दी') || name.includes('lekha');
+        if (prefix === 'ta') return name.includes('tamil') || name.includes('தமிழ்');
+        return false;
+      }) ??
       null
     );
   }, [availableVoices]);
@@ -1189,35 +1203,29 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       return;
     }
 
-    // ── Voice availability check ────────────────────────────────────────────────
-    // Determine the required language for this version
-    const lang = bibleVersions?.find((v: any) => v.id === selectedVersionId)?.language;
-    const targetLang = lang === 'Telugu' ? 'te-IN' : lang === 'Hindi' ? 'hi-IN' : 'en-US';
-    const isNonEnglish = targetLang !== 'en-US';
+    const verse = currentChapterVerses[index];
 
-    // If the user hasn't manually chosen a voice AND the version is non-English,
-    // verify that the browser has a voice for the target language.
-    // We skip this check for English because virtually all browsers have English voices.
-    if (isNonEnglish && !ttsVoice) {
-      const matchedVoice = findVoiceForLang(targetLang);
-      if (!matchedVoice) {
-        // No voice installed — abort playback and show a clear message
-        ttsPlayingRef.current = false;
-        setTtsPlaying(false);
-        setTtsPaused(false);
-        setCurrentVerse(null);
-        const langLabel = lang === 'Telugu' ? 'Telugu' : lang === 'Hindi' ? 'Hindi' : lang;
-        setTtsVoiceError(
-          `${langLabel} voice is not available on this device/browser. ` +
-          `Please install a ${langLabel} TTS voice or use a mobile browser.`
-        );
-        return;
-      }
+    // ── Language resolution ────────────────────────────────────────────────
+    const currentVersion = bibleVersions?.find((v: any) => v.id === selectedVersionId || v._id === selectedVersionId);
+    const lang = (currentVersion?.language || '').toLowerCase().trim();
+    const name = (currentVersion?.name || '').toLowerCase();
+    const abbr = ((currentVersion as any)?.abbreviation || '').toLowerCase();
+
+    let targetLang = 'en-US';
+    if (lang.startsWith('te') || lang === 'telugu' || name.includes('telugu') || abbr.includes('tel') || abbr === 'tb') {
+      targetLang = 'te-IN';
+    } else if (lang.startsWith('hi') || lang === 'hindi' || name.includes('hindi') || abbr.includes('hin') || abbr === 'hb') {
+      targetLang = 'hi-IN';
+    } else if (verse?.text && /[\u0C00-\u0C7F]/.test(verse.text)) {
+      targetLang = 'te-IN';
+    } else if (verse?.text && /[\u0900-\u097F]/.test(verse.text)) {
+      targetLang = 'hi-IN';
     }
+
+    const isNonEnglish = targetLang !== 'en-US';
 
     window.speechSynthesis.cancel(); // cancel any lingering utterance
 
-    const verse = currentChapterVerses[index];
     const utterance = new SpeechSynthesisUtterance(verse.text);
 
     // Set language
@@ -1231,7 +1239,6 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
     if (ttsVoice) {
       utterance.voice = ttsVoice;
     } else if (isNonEnglish) {
-      // We already confirmed a voice exists above
       const autoVoice = findVoiceForLang(targetLang);
       if (autoVoice) utterance.voice = autoVoice;
     }
