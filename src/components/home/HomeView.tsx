@@ -28,11 +28,12 @@ import devotionalTexture from '../../../assets/textures/devotional-texture.svg';
 import { HomeOfflineService } from '@/lib/offline/HomeOfflineService';
 import { fetchWithOfflineCache } from '@/lib/offline';
 import { PendingActionsService } from '@/lib/offline/PendingActionsService';
+import { LegalModal } from '@/components/LegalModal';
 
 const getGreetingByHour = (hour: number): string => {
-  if (hour >= 5 && hour < 12) return 'Good Morning';
-  if (hour >= 12 && hour < 17) return 'Good Afternoon';
-  return 'Good Evening';
+  if (hour >= 5 && hour < 12) return 'Good Morning,';
+  if (hour >= 12 && hour < 17) return 'Good Afternoon,';
+  return 'Good Evening,';
 };
 
 export default function HomeView() {
@@ -64,12 +65,16 @@ export default function HomeView() {
   // it after the Radix Dialog closes (body-lock can otherwise jump the page)
   const savedScrollY = useRef<number>(0);
 
-  const [greeting, setGreeting] = useState('Good Morning');
+  const [greeting, setGreeting] = useState('Good Morning,');
 
   // Modal states
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [initialModalIndex, setInitialModalIndex] = useState(0);
   const [initialModalSection, setInitialModalSection] = useState<'verse' | 'devotional' | 'prayer' | undefined>();
+  const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'terms' | 'privacy' }>({
+    isOpen: false,
+    type: 'terms',
+  });
 
   // Local cache of devotional progress by date — updated optimistically when modal fires onProgressChange
   const [devotionalProgressCache, setDevotionalProgressCache] = useState<Record<string, 'INCOMPLETE' | 'IN_PROGRESS' | 'COMPLETED'>>({});
@@ -701,7 +706,7 @@ export default function HomeView() {
         </Avatar>
         {userName ? (
           <div className="flex flex-col min-w-0">
-            <span className="text-gray-700 dark:text-gray-300 text-[15px] font-normal leading-tight">{greeting},</span>
+            <span className="text-gray-700 dark:text-gray-300 text-[15px] font-normal leading-tight">{greeting}</span>
             <span className="truncate block max-w-full text-gray-900 text-[21px] font-bold leading-tight">
               {userName}
             </span>
@@ -849,7 +854,7 @@ export default function HomeView() {
                         onClick={(e) => { e.stopPropagation(); handleCommentClick(content._id, 'daily-verse'); }}
                         className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                       >
-                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                        <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
                           <MessageCircle className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.verseCommentCount || 'Comment'}</span>
@@ -859,7 +864,7 @@ export default function HomeView() {
                         className={`flex flex-col items-center space-y-1 text-black transition-all ${sharingStates.has(`${content._id}-daily-verse`) ? 'opacity-50 cursor-not-allowed' : 'md:hover:scale-110 active:scale-95'}`}
                         disabled={sharingStates.has(`${content._id}-daily-verse`)}
                       >
-                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                        <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
                           <RiShareForwardLine className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.verseShareCount > 0 ? content.verseShareCount : 'Share'}</span>
@@ -874,7 +879,7 @@ export default function HomeView() {
                           }}
                           className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                         >
-                          <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                          <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
                             <MoreVertical className="size-4 text-[var(--color-primary-teal)]" />
                           </div>
                           <span className="text-xs">More</span>
@@ -1041,7 +1046,7 @@ export default function HomeView() {
                         onClick={(e) => { e.stopPropagation(); handleCommentClick(content._id, 'daily-devotion'); }}
                         className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                       >
-                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                        <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
                           <MessageCircle className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.devotionCommentCount || 'Comment'}</span>
@@ -1051,7 +1056,7 @@ export default function HomeView() {
                         className={`flex flex-col items-center space-y-1 text-black transition-all ${sharingStates.has(`${content._id}-daily-devotion`) ? 'opacity-50 cursor-not-allowed' : 'md:hover:scale-110 active:scale-95'}`}
                         disabled={sharingStates.has(`${content._id}-daily-devotion`)}
                       >
-                        <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                        <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
                           <RiShareForwardLine className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{content.devotionShareCount > 0 ? content.devotionShareCount : 'Share'}</span>
@@ -1066,7 +1071,7 @@ export default function HomeView() {
                           }}
                           className="flex flex-col items-center space-y-1 text-black md:hover:scale-110 active:scale-95 transition-all"
                         >
-                          <div className="bg-black/15 backdrop-blur-sm p-2 rounded-full">
+                          <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
                             <MoreVertical className="size-4 text-[var(--color-primary-teal)]" />
                           </div>
                           <span className="text-xs">More</span>
@@ -1318,7 +1323,7 @@ export default function HomeView() {
         </div> */}
 
         {/* Social Icons */}
-        <div className="flex items-center justify-center gap-8 mb-4">
+        <div className="flex items-center justify-center gap-8 mb-5">
           {/* Instagram */}
           <a
             href="https://www.instagram.com/thebiblenetplatform/"
@@ -1346,6 +1351,25 @@ export default function HomeView() {
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
             </svg>
           </a>
+        </div>
+
+        {/* Legal Links (Terms of Service & Privacy Policy) */}
+        <div className="flex items-center justify-center gap-3 text-xs text-gray-400 font-medium">
+          <button
+            type="button"
+            onClick={() => setLegalModal({ isOpen: true, type: 'terms' })}
+            className="hover:text-gray-600 transition-colors bg-transparent border-none p-0 cursor-pointer"
+          >
+            Terms of Service
+          </button>
+          <span className="text-gray-300 select-none">|</span>
+          <button
+            type="button"
+            onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })}
+            className="hover:text-gray-600 transition-colors bg-transparent border-none p-0 cursor-pointer"
+          >
+            Privacy Policy
+          </button>
         </div>
       </footer>
 
@@ -1460,6 +1484,12 @@ export default function HomeView() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <LegalModal
+        isOpen={legalModal.isOpen}
+        onClose={() => setLegalModal({ ...legalModal, isOpen: false })}
+        type={legalModal.type}
+      />
     </motion.div>
   );
 }

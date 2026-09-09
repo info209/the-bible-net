@@ -727,6 +727,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   // value — resulting in the same chapter reloading instead of navigating.
 
   const handlePrevious = useCallback(() => {
+    if (isFirstChapterOfBible) return;
     if (!navigatePrev()) return; // locked — ignore
 
     // Instant scroll reset (smooth conflicts with page transition animation)
@@ -747,9 +748,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         setSelectedChapter(bookChapters[prevBook]);
       }
     }, 32);
-  }, [navigatePrev]);
+  }, [navigatePrev, isFirstChapterOfBible]);
 
   const handleNext = useCallback(() => {
+    if (isLastChapterOfBible) return;
     if (!navigateNext()) return; // locked — ignore
 
     // Instant scroll reset
@@ -770,7 +772,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         setSelectedChapter(1);
       }
     }, 32);
-  }, [navigateNext]);
+  }, [navigateNext, isLastChapterOfBible]);
 
   // ─── New gesture system via useGestureNavigation hook ───────────────────
   // Uses native DOM listeners (not React synthetic events) so child elements
@@ -2900,6 +2902,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
         selectedBook={selectedBook}
         selectedVersion={selectedVersion}
         selectedVersionId={selectedVersion}
+        hasPrevChapter={!isFirstChapterOfBible}
+        hasNextChapter={!isLastChapterOfBible}
         onChapterChange={(chapter: number) => {
           const dir = chapter > selectedChapter ? 'next' : 'prev';
           if (dir === 'next') navigateNext(); else navigatePrev();
@@ -3125,6 +3129,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
           onPlayPause={handleNarrationPlayPause}
           onNext={handleNext}
           onPrev={handlePrevious}
+          hasPrev={!isFirstChapterOfBible}
+          hasNext={!isLastChapterOfBible}
           title={`${selectedBook} ${selectedChapter}:${(narrationActive ? currentReadingVerse : selectedVerse) ?? 1}`}
           subtitle={selectedVersion}
           onOpenPanel={() => setShowAudioControlPanel(true)}

@@ -308,7 +308,7 @@ export class BibleService {
                                 id: `fn-${chapter.number}-${idx + 1}`,
                                 verseNumber: 1,
                                 text: fn.trim(),
-                                reference: `${book.name} ${chapter.number}:1`,
+                                reference: `${targetBook.name} ${chapter.number}:1`,
                             });
                         } else if (typeof fn === 'object') {
                             const vNum = Number(fn.verseNumber || fn.verse || fn.verse_number || 1);
@@ -318,7 +318,7 @@ export class BibleService {
                                     id: fn.id ? String(fn.id) : `fn-${chapter.number}-${vNum}-${idx + 1}`,
                                     verseNumber: isNaN(vNum) ? 1 : vNum,
                                     text,
-                                    reference: fn.reference || `${book.name} ${chapter.number}:${isNaN(vNum) ? 1 : vNum}`,
+                                    reference: fn.reference || `${targetBook.name} ${chapter.number}:${isNaN(vNum) ? 1 : vNum}`,
                                     marker: fn.marker,
                                 });
                             }
@@ -336,7 +336,7 @@ export class BibleService {
                                     id: typeof fn === 'object' && fn.id ? String(fn.id) : `fn-${chapter.number}-${v.number}-${idx + 1}`,
                                     verseNumber: v.number,
                                     text,
-                                    reference: typeof fn === 'object' && fn.reference ? fn.reference : `${book.name} ${chapter.number}:${v.number}`,
+                                    reference: typeof fn === 'object' && fn.reference ? fn.reference : `${targetBook.name} ${chapter.number}:${v.number}`,
                                     marker: typeof fn === 'object' ? fn.marker : undefined,
                                 });
                             }
@@ -346,7 +346,7 @@ export class BibleService {
                             id: `fn-${chapter.number}-${v.number}-1`,
                             verseNumber: v.number,
                             text: v.footnote.trim(),
-                            reference: `${book.name} ${chapter.number}:${v.number}`,
+                            reference: `${targetBook.name} ${chapter.number}:${v.number}`,
                         });
                     }
                 });
@@ -357,9 +357,9 @@ export class BibleService {
                         abbreviation: version.abbreviation,
                     },
                     book: {
-                        name: book.name,
-                        abbreviation: book.abbreviation,
-                        testament: book.testament,
+                        name: targetBook.name,
+                        abbreviation: targetBook.abbreviation || book.abbreviation,
+                        testament: targetBook.testament || book.testament,
                     },
                     chapter: {
                         number: chapter.number,

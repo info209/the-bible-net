@@ -574,7 +574,7 @@ export function DailyDetailModal({
                         onClick={() => onCommentClick?.(content._id || '', contentType)}
                         className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
                     >
-                        <div className="bg-black/20 backdrop-blur-sm p-2 rounded-full">
+                        <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
                             <MessageCircle className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">{commentCount || 'Comment'}</span>
@@ -583,7 +583,7 @@ export function DailyDetailModal({
                         onClick={() => onShareClick?.(content, contentType)}
                         className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
                     >
-                        <div className="bg-black/20 backdrop-blur-sm p-2 rounded-full">
+                        <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
                             <RiShareForwardLine className="size-4 text-[var(--color-primary-teal)]" />
                         </div>
                         <span className="text-xs">
@@ -598,7 +598,7 @@ export function DailyDetailModal({
                                 onClick={(e) => openKebabMenu(e, 'verse')}
                                 className="flex flex-col items-center space-y-1 text-black hover:scale-110 active:scale-95 transition-all"
                             >
-                                <div className="bg-black/20 backdrop-blur-sm p-2 rounded-full">
+                                <div className="bg-[#41adb0]/15 backdrop-blur-sm p-2 rounded-full">
                                     <MoreVertical className="size-4 text-[var(--color-primary-teal)]" />
                                 </div>
                                 <span className="text-xs">More</span>

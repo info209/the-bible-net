@@ -32,6 +32,8 @@ interface AudioControlPanelProps {
   selectedVersionId?: string;
   onChapterChange?: (chapter: number) => void;
   onBookChange?: (direction: 'prev' | 'next') => void;
+  hasPrevChapter?: boolean;
+  hasNextChapter?: boolean;
   isDark?: boolean;
   selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
 }
@@ -65,8 +67,10 @@ export default function AudioControlPanel({
   selectedVersionId = 'NKJV',
   onChapterChange,
   onBookChange,
+  hasPrevChapter = true,
+  hasNextChapter = true,
   isDark = false,
-  selectedTheme
+  selectedTheme = 'light',
 }: AudioControlPanelProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [startY, setStartY] = useState(0);
@@ -341,20 +345,24 @@ export default function AudioControlPanel({
           <div className="max-w-[280px] mx-auto flex items-center justify-between px-2 mb-3">
 
             {/* ← Chapter / Book back */}
-            <button
-              onClick={() => {
-                if (selectedChapter > 1) {
-                  onChapterChange?.(selectedChapter - 1);
-                } else {
-                  onBookChange?.('prev');
-                }
-              }}
-              className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
-              style={{ backgroundColor: btnBg }}
-              aria-label="Previous chapter"
-            >
-              <ChevronLeft className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-            </button>
+            {hasPrevChapter ? (
+              <button
+                onClick={() => {
+                  if (selectedChapter > 1) {
+                    onChapterChange?.(selectedChapter - 1);
+                  } else {
+                    onBookChange?.('prev');
+                  }
+                }}
+                className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
+                style={{ backgroundColor: btnBg }}
+                aria-label="Previous chapter"
+              >
+                <ChevronLeft className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+              </button>
+            ) : (
+              <div className="size-8 shrink-0 pointer-events-none" aria-hidden="true" />
+            )}
 
             {/* Center group: Verse- / Play / Verse+ */}
             <div className="flex items-center gap-3">
@@ -431,20 +439,24 @@ export default function AudioControlPanel({
             </div>
 
             {/* → Chapter / Book forward */}
-            <button
-              onClick={() => {
-                if (selectedChapter < totalChapters) {
-                  onChapterChange?.(selectedChapter + 1);
-                } else {
-                  onBookChange?.('next');
-                }
-              }}
-              className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
-              style={{ backgroundColor: btnBg }}
-              aria-label="Next chapter"
-            >
-              <ChevronRight className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
-            </button>
+            {hasNextChapter ? (
+              <button
+                onClick={() => {
+                  if (selectedChapter < totalChapters) {
+                    onChapterChange?.(selectedChapter + 1);
+                  } else {
+                    onBookChange?.('next');
+                  }
+                }}
+                className="size-8 rounded-full flex items-center justify-center shrink-0 shadow-[var(--shadow-sm)] hover:scale-105 active:scale-95 transition-transform"
+                style={{ backgroundColor: btnBg }}
+                aria-label="Next chapter"
+              >
+                <ChevronRight className="size-[18px] text-[var(--color-primary-teal)]" strokeWidth={2.5} />
+              </button>
+            ) : (
+              <div className="size-8 shrink-0 pointer-events-none" aria-hidden="true" />
+            )}
           </div>
 
           {/* ── Secondary controls row ────────────────────────────────────────── */}

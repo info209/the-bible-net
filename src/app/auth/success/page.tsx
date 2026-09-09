@@ -29,7 +29,7 @@ function SuccessPageContent() {
         },
         password: {
             title: 'Password updated successfully',
-            message: 'Your password has been changed. You can now login with your new credentials.',
+            message: 'Your password has been changed. You can now sign in with your new credentials.',
             icon: <ShieldCheck className="w-12 h-12 text-white" />,
             buttonText: 'Go to log in',
             buttonAction: () => router.push('/auth/login'),

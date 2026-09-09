@@ -1074,7 +1074,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
 
   const handlePrevious = () => {
-    if (isTransitioningRef.current || typeof selectedChapter !== 'number') return;
+    if (isFirstChapterOfBible || isTransitioningRef.current || typeof selectedChapter !== 'number') return;
     isTransitioningRef.current = true;
     const lockDuration = pageTransition === 'curl' ? 900 : pageTransition === 'slide' ? 550 : pageTransition === 'fade' ? 450 : 650;
     setTimeout(() => { isTransitioningRef.current = false; }, lockDuration);
@@ -1099,7 +1099,7 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   };
 
   const handleNext = () => {
-    if (isTransitioningRef.current || typeof selectedChapter !== 'number') return;
+    if (isLastChapterOfBible || isTransitioningRef.current || typeof selectedChapter !== 'number') return;
     isTransitioningRef.current = true;
     const lockDuration = pageTransition === 'curl' ? 900 : pageTransition === 'slide' ? 550 : pageTransition === 'fade' ? 450 : 650;
     setTimeout(() => { isTransitioningRef.current = false; }, lockDuration);

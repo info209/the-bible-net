@@ -326,7 +326,7 @@ function ChapterContent({
             // Determine background: reading > highlight > transparent
             let bgColor: string;
             if (isReading) {
-              bgColor = 'rgba(49, 196, 190, 0.5)';
+              bgColor = 'rgba(49, 196, 190, 0.1)';
             } else if (highlight?.metadata?.color && highlight.metadata.color !== 'none') {
               bgColor = (HIGHLIGHT_COLOR_MAP[highlight.metadata.color] ?? highlight.metadata.color) + '55';
             } else {

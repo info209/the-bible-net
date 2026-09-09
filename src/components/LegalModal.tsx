@@ -49,8 +49,8 @@ export function LegalModal({ isOpen, onClose, type }: LegalModalProps) {
     return (
         <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="max-w-[700px] w-[95vw] max-h-[85vh] p-0 overflow-hidden bg-white rounded-3xl border-none shadow-2xl">
-                <DialogHeader className="p-6 border-b border-gray-100 flex flex-row items-center justify-between sticky top-0 bg-white z-10">
-                    <DialogTitle className="text-2xl font-bold text-slate-900">
+                <DialogHeader className="p-4 border-b border-gray-100 flex flex-row items-center justify-between sticky top-0 bg-white z-10">
+                    <DialogTitle className="text-2xl font-bold text-slate-900 m-0 my-0">
                         {type === 'terms' ? 'Terms & conditions' : 'Privacy policy'}
                     </DialogTitle>
                     <DialogClose asChild>

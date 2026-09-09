@@ -194,7 +194,7 @@ export function formatCopyVerseText(content: any): string {
   const version = content?.version || content?.versionId || content?.versionName || 'KJV';
 
   if (reference) {
-    return `"${verseText}"\n\n${reference} - ${version}`;
+    return `"${verseText}"\n - ${reference} ${version}`;
   }
   return `"${verseText}"`;
 }

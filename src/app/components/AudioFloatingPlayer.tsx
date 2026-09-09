@@ -24,6 +24,8 @@ interface Props {
   onStop?: () => void;
   selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
   isDark?: boolean;
+  hasPrev?: boolean;
+  hasNext?: boolean;
 }
 
 export default function AudioFloatingPlayer({
@@ -41,6 +43,8 @@ export default function AudioFloatingPlayer({
   onStop,
   selectedTheme,
   isDark = false,
+  hasPrev = true,
+  hasNext = true,
 }: Props) {
   const [sheetOffset, setSheetOffset] = useState(0);
 
@@ -180,23 +184,27 @@ export default function AudioFloatingPlayer({
           <div className="max-w-3xl mx-auto px-5 flex items-center justify-between pointer-events-none">
 
             {/* ← Prev Chapter */}
-            <motion.button
-              onClick={onPrev}
-              whileTap={{ scale: 0.86 }}
-              className="pointer-events-auto size-10 rounded-full flex items-center justify-center transition-colors"
-              style={{
-                backgroundColor: btnBg,
-                borderColor: btnBorder,
-                borderWidth: '1px',
-                borderStyle: 'solid',
-                boxShadow: btnShadow,
-                backdropFilter: 'blur(20px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-              }}
-              aria-label="Previous chapter"
-            >
-              <ChevronLeft className="size-[18px]" style={{ color: iconColor }} strokeWidth={2.5} />
-            </motion.button>
+            {hasPrev ? (
+              <motion.button
+                onClick={onPrev}
+                whileTap={{ scale: 0.86 }}
+                className="pointer-events-auto size-10 rounded-full flex items-center justify-center transition-colors"
+                style={{
+                  backgroundColor: btnBg,
+                  borderColor: btnBorder,
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  boxShadow: btnShadow,
+                  backdropFilter: 'blur(20px) saturate(180%)',
+                  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                }}
+                aria-label="Previous chapter"
+              >
+                <ChevronLeft className="size-[18px]" style={{ color: iconColor }} strokeWidth={2.5} />
+              </motion.button>
+            ) : (
+              <div className="size-10 pointer-events-none" aria-hidden="true" />
+            )}
 
             {/* Center Controls (Single Play button or Expanded 3-Control Pill) */}
             <div className="flex items-center justify-center pointer-events-auto">
@@ -328,23 +336,27 @@ export default function AudioFloatingPlayer({
             </div>
 
             {/* → Next Chapter */}
-            <motion.button
-              onClick={onNext}
-              whileTap={{ scale: 0.86 }}
-              className="pointer-events-auto size-10 rounded-full flex items-center justify-center transition-colors"
-              style={{
-                backgroundColor: btnBg,
-                borderColor: btnBorder,
-                borderWidth: '1px',
-                borderStyle: 'solid',
-                boxShadow: btnShadow,
-                backdropFilter: 'blur(20px) saturate(180%)',
-                WebkitBackdropFilter: 'blur(20px) saturate(180%)',
-              }}
-              aria-label="Next chapter"
-            >
-              <ChevronRight className="size-[18px]" style={{ color: iconColor }} strokeWidth={2.5} />
-            </motion.button>
+            {hasNext ? (
+              <motion.button
+                onClick={onNext}
+                whileTap={{ scale: 0.86 }}
+                className="pointer-events-auto size-10 rounded-full flex items-center justify-center transition-colors"
+                style={{
+                  backgroundColor: btnBg,
+                  borderColor: btnBorder,
+                  borderWidth: '1px',
+                  borderStyle: 'solid',
+                  boxShadow: btnShadow,
+                  backdropFilter: 'blur(20px) saturate(180%)',
+                  WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+                }}
+                aria-label="Next chapter"
+              >
+                <ChevronRight className="size-[18px]" style={{ color: iconColor }} strokeWidth={2.5} />
+              </motion.button>
+            ) : (
+              <div className="size-10 pointer-events-none" aria-hidden="true" />
+            )}
 
           </div>
         </motion.div>
