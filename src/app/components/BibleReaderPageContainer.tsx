@@ -35,7 +35,7 @@ import ComparisonContent from './ComparisonContent';
 import VerseActionMenu from './VerseActionMenu';
 import AudioControlPanel from './AudioControlPanel';
 import { useReadingProgress } from '@/lib/useReadingProgress';
-import { BIBLE_BOOKS, TELUGU_BOOK_NAMES, HINDI_BOOK_NAMES, findCanonicalBookOrder, findCanonicalBookName } from '@/utils/bibleBooks';
+import { BIBLE_BOOKS, TELUGU_BOOK_NAMES, HINDI_BOOK_NAMES, findCanonicalBookOrder, findCanonicalBookName, resolveEnglishBookName } from '@/utils/bibleBooks';
 import {
   Dialog,
   DialogContent,
@@ -643,15 +643,22 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
           const books = result.data;
           const selectedVerObj = bibleVersions?.find((v: any) => v.id === selectedVersionId);
-          const isTeluguVersion = selectedVerObj?.language === 'Telugu';
+          const versionLanguage = (selectedVerObj?.language || '').trim();
 
+          /**
+           * Returns the localised display name for a book.
+           * Looks up by canonical order (not stored name) so that DB book names
+           * stored in any language still resolve to the correct translated label.
+           */
           const resolveDisplayName = (b: any): string => {
-            if (!isTeluguVersion) return b.name;
             const canonical = BIBLE_BOOKS.find(bb => bb.order === b.order);
-            if (canonical && TELUGU_BOOK_NAMES[canonical.name]) {
-              return TELUGU_BOOK_NAMES[canonical.name];
+            const canonicalName = canonical?.name ?? b.name;
+            if (versionLanguage === 'Telugu') {
+              return TELUGU_BOOK_NAMES[canonicalName] ?? b.name;
             }
-            if (TELUGU_BOOK_NAMES[b.name]) return TELUGU_BOOK_NAMES[b.name];
+            if (versionLanguage === 'Hindi') {
+              return HINDI_BOOK_NAMES[canonicalName] ?? b.name;
+            }
             return b.name;
           };
 
@@ -815,7 +822,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       } catch (err) {
         // Offline fallback
       }
-      return bookChapters[displayBookName || ''] || 50;
+      // Resolve canonical English name so this lookup works for Hindi/Telugu display names too
+      return bookChapters[resolveEnglishBookName(displayBookName || '')] || 50;
     },
     enabled: isBiblePage && !!selectedVersionId && !!selectedBookId,
     staleTime: Infinity,
@@ -990,7 +998,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const ntBooks = bibleBooksState?.['New Testament'] || [];
   const allBooks = [...otBooks, ...ntBooks];
   const currentBookIndex = allBooks.findIndex(b => b.id === selectedBookId || b.name === displayBookName);
-  const totalChapters = currentBookChapters || (displayBookName ? (bookChapters[displayBookName] || 50) : 50);
+  // resolveEnglishBookName converts translated display names → canonical English keys for bookChapters
+  const totalChapters = currentBookChapters || (displayBookName ? (bookChapters[resolveEnglishBookName(displayBookName)] || 50) : 50);
   const isFirstChapterOfBible = allBooks.length > 0 && selectedBookId === allBooks[0]?.id && selectedChapter === 1;
   const isLastChapterOfBible = allBooks.length > 0 && selectedBookId === allBooks[allBooks.length - 1]?.id && selectedChapter === totalChapters;
 
@@ -1011,7 +1020,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
       return { book: displayBookName, chapter: selectedChapter - 1 };
     } else if (currentBookIndex > 0) {
       const prevBook = allBooks[currentBookIndex - 1];
-      return { book: prevBook.name, chapter: bookChapters[prevBook.name] || 50 };
+      // Pass the full book object so resolveEnglishBookName can use englishName/order
+      return { book: prevBook.name, chapter: bookChapters[resolveEnglishBookName(prevBook)] || 50 };
     }
     return { book: displayBookName, chapter: selectedChapter };
   };
@@ -1020,7 +1030,9 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
 
   const getNextNextChapter = (next: { book: string; chapter: number }) => {
     const nextBookIndex = allBooks.findIndex(b => b.name === next.book);
-    const nextBookChapters = bookChapters[next.book] || 50;
+    // next.book is a display name; look up the full book object for resolveEnglishBookName
+    const nextBookObj = allBooks.find(b => b.name === next.book);
+    const nextBookChapters = bookChapters[resolveEnglishBookName(nextBookObj ?? next.book)] || 50;
     if (next.chapter < nextBookChapters) {
       return { book: next.book, chapter: next.chapter + 1 };
     } else if (nextBookIndex < allBooks.length - 1) {
@@ -1093,7 +1105,8 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
         const prevBook = allBooks[currentBookIndex - 1];
         setSelectedBookId(prevBook.id);
         setDisplayBookName(prevBook.name);
-        setSelectedChapter(bookChapters[prevBook.name] || 50);
+        // Pass the full book object so resolveEnglishBookName can use englishName/order
+        setSelectedChapter(bookChapters[resolveEnglishBookName(prevBook)] || 50);
       }
     }, 350);
   };
