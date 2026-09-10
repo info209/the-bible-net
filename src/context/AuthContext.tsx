@@ -27,6 +27,8 @@ export interface SafeUser {
   role?: string;
   firstName?: string;
   lastName?: string;
+  /** Whether the user has completed their onboarding/profile setup. Used by the post-login route guard. */
+  onboardingCompleted?: boolean;
   [key: string]: any;
 }
 
@@ -84,6 +86,9 @@ function writeSafeSessionToStorage(session: Session | SafeSession | null): void 
           role: (session.user as any).role,
           firstName: (session.user as any).firstName,
           lastName: (session.user as any).lastName,
+          // Persist onboardingCompleted so the profile-setup route guard
+          // can correctly route returning users even in offline/cached sessions.
+          onboardingCompleted: (session.user as any).onboardingCompleted ?? false,
         },
         expires: session.expires,
         savedAt: Date.now(),
@@ -150,24 +155,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Determine normalized auth status
   const effectiveStatus: AppAuthStatus = useMemo(() => {
+    // PHASE 1 — Auth is still initializing (session check not yet complete).
+    // This happens on every page load, and especially during OAuth callbacks where
+    // a full-page redirect has just occurred. During this window:
+    //   - navigator.onLine can briefly be false (online event not fired yet)
+    //   - The JWT cookie is present but not yet read by the SessionProvider
+    // We MUST NOT classify this window as offline — doing so causes the offline
+    // UI to flash during every OAuth login. Always show 'loading' until resolved.
     if (nextAuthStatus === 'loading') {
-      // If we are offline and have a cached session, don't wait indefinitely in loading
-      if (!isOnline && cachedSession) {
-        return 'auth-status-unavailable-because-offline';
-      }
       return 'loading';
     }
 
+    // PHASE 2 — Session resolved as authenticated: live online session confirmed.
     if (nextAuthStatus === 'authenticated' && nextAuthSession?.user) {
       return 'authenticated';
     }
 
-    // When offline or network failed: preserve authenticated UI if we have a safe cached session
-    if (!isOnline && cachedSession?.user) {
-      return 'auth-status-unavailable-because-offline';
+    // PHASE 3 — Session resolved as unauthenticated. Only NOW can we safely check
+    // whether we're offline with a cached session. At this point the session check
+    // has completed, so !isOnline reflects real network state, not a transient
+    // OAuth redirect artifact.
+    if (nextAuthStatus === 'unauthenticated') {
+      if (!isOnline && cachedSession?.user) {
+        return 'auth-status-unavailable-because-offline';
+      }
+      return 'unauthenticated';
     }
 
-    // If genuinely unauthenticated
+    // Fallback
     return 'unauthenticated';
   }, [nextAuthStatus, nextAuthSession, isOnline, cachedSession]);
 

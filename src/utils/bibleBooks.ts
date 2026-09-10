@@ -349,5 +349,45 @@ export function findCanonicalBookName(input: string | number | undefined | null)
   return BIBLE_BOOKS.find(b => b.order === order)?.name ?? null;
 }
 
+/**
+ * Resolves the canonical English book name for use as a lookup key in
+ * English-name-keyed tables (e.g. the static `bookChapters` map).
+ *
+ * Accepts either:
+ *  - A book object with optional `englishName` and/or `order` fields (preferred), or
+ *  - Any string/number identifier — including translated names (Telugu/Hindi),
+ *    abbreviations, or numeric order values.
+ *
+ * Priority: object.englishName → BIBLE_BOOKS[object.order].name → findCanonicalBookName(name)
+ *
+ * Returns the English name if resolved, otherwise the original string (never undefined/null).
+ */
+export function resolveEnglishBookName(
+  input:
+    | { name: string; englishName?: string; order?: number }
+    | string
+    | number
+    | null
+    | undefined
+): string {
+  if (input === null || input === undefined) return '';
+
+  if (typeof input === 'object') {
+    // 1. Prefer the explicit englishName field set during data mapping
+    if (input.englishName) return input.englishName;
+    // 2. Resolve via canonical order (immune to translated/stored names)
+    if (typeof input.order === 'number' && input.order >= 1 && input.order <= 66) {
+      const b = BIBLE_BOOKS.find(bb => bb.order === input.order);
+      if (b) return b.name;
+    }
+    // 3. Fall back: try canonical lookup on the stored name (handles translated DB names)
+    return findCanonicalBookName(input.name) ?? input.name;
+  }
+
+  // String / number path: findCanonicalBookName handles English names, abbreviations,
+  // Telugu names, Hindi names, numeric strings, and transliterations.
+  return findCanonicalBookName(input) ?? String(input);
+}
+
 
 

@@ -105,6 +105,19 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
+  // CRITICAL: Never intercept auth/OAuth-related requests with offline fallback.
+  // These paths must always reach the network directly:
+  //   - /api/auth/* — NextAuth session, CSRF, OAuth callback, sign-in/sign-out
+  //   - /auth/*     — Auth pages (login, register, profile-setup, OAuth redirect landing)
+  //   - /api/v1/user/* — User profile API (checked during post-login routing)
+  // If these fail due to a real network error, the browser should surface the error
+  // naturally, not silently serve a cached shell or the offline HTML page.
+  const NETWORK_ONLY_PREFIXES = ['/api/auth/', '/auth/', '/api/v1/user/'];
+  if (NETWORK_ONLY_PREFIXES.some((prefix) => url.pathname.startsWith(prefix))) {
+    // Pass through to network — do not intercept.
+    return;
+  }
+
   // 1. Navigation requests (HTML pages)
   // Ensures zero-network navigations, reloads, and route changes boot the App Shell
   if (request.mode === 'navigate' || request.destination === 'document') {

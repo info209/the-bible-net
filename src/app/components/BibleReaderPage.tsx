@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { resolveEnglishBookName } from '@/utils/bibleBooks';
 import { ChevronDown, Home, Compass, Play, Pause, Music, MoreVertical, X, ChevronLeft, ChevronRight, Check, Repeat, Repeat1, Shuffle, List, BarChart3, ArrowRightLeft, FileText, Zap, ScrollText, Volume2, SkipBack, SkipForward, RotateCcw, RotateCw, Download, Gauge, Timer, Circle, Activity, Loader2, Trash2, CheckCircle2, RefreshCw, WifiOff, AlertTriangle } from 'lucide-react';
 import { RiSortDesc, RiSortAlphabetAsc, RiEqualizer3Fill } from 'react-icons/ri';
 import { FiSearch } from 'react-icons/fi';
@@ -592,9 +593,11 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   const ntBooks = books?.['New Testament'] || [];
   const allBooks = [...otBooks, ...ntBooks].map(b => typeof b === 'string' ? b : b.name);
   const currentBookIndex = allBooks.indexOf(selectedBook);
-  const totalChapters = bookChapters[selectedBook] || 50;
+  // resolveEnglishBookName converts translated display names → canonical English keys
+  // (selectedBook is a display name for Hindi/Telugu; English names are returned unchanged)
+  const totalChapters = bookChapters[resolveEnglishBookName(selectedBook)] || 50;
   const isFirstChapterOfBible = allBooks.length > 0 && selectedBook === allBooks[0] && selectedChapter === 1;
-  const isLastChapterOfBible = allBooks.length > 0 && selectedBook === allBooks[allBooks.length - 1] && selectedChapter === (bookChapters[selectedBook] || totalChapters);
+  const isLastChapterOfBible = allBooks.length > 0 && selectedBook === allBooks[allBooks.length - 1] && selectedChapter === (bookChapters[resolveEnglishBookName(selectedBook)] || totalChapters);
 
   // ─── Stable navigation refs ────────────────────────────────────────────────
   // handleNext/handlePrevious read from these refs so they never suffer from
@@ -629,7 +632,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       return { book: selectedBook, chapter: selectedChapter - 1 };
     } else if (currentBookIndex > 0) {
       const prevBook = allBooks[currentBookIndex - 1];
-      return { book: prevBook, chapter: bookChapters[prevBook] || 50 };
+      // prevBook is a display name string; resolve via canonical English for bookChapters lookup
+      return { book: prevBook, chapter: bookChapters[resolveEnglishBookName(prevBook)] || 50 };
     }
     return { book: selectedBook, chapter: selectedChapter };
   };
@@ -745,7 +749,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       } else if (bi > 0) {
         const prevBook = books[bi - 1];
         setSelectedBook(prevBook);
-        setSelectedChapter(bookChapters[prevBook]);
+        // prevBook is a display name string; resolve canonical English for bookChapters lookup
+        setSelectedChapter(bookChapters[resolveEnglishBookName(prevBook)] || 1);
       }
     }, 32);
   }, [navigatePrev, isFirstChapterOfBible]);
@@ -1324,7 +1329,8 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
       }
 
       // For 'stop' (default) or time-based timers (10-mins, 15-mins, 30-mins, 1-hr, 2-hrs), continue to next chapter
-      const totalChapters = bookChapters[selectedBook] || 50;
+      // resolveEnglishBookName converts translated display names → canonical English keys
+      const totalChapters = bookChapters[resolveEnglishBookName(selectedBook)] || 50;
       const currentBookIndex = allBooks.indexOf(selectedBook);
 
       let nextBook = selectedBook;
