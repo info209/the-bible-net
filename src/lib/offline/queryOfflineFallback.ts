@@ -20,6 +20,18 @@ export async function fetchWithOfflineCache<T>(
   cacheKey: string,
   fetcherFn: () => Promise<T>,
 ): Promise<T> {
+  const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  if (isOffline) {
+    try {
+      const cached = await ModuleOfflineService.getCache<T>(cacheKey);
+      if (cached !== undefined && cached !== null) {
+        return cached;
+      }
+    } catch {
+      // Ignore cache lookup error, fall through to fetcherFn
+    }
+  }
+
   try {
     const data = await fetcherFn();
     if (data !== undefined && data !== null) {

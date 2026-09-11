@@ -8,7 +8,7 @@
  * 4. Automatic cache version cleanup on activation
  */
 
-const CACHE_VERSION = 'bible-net-v1.2.0';
+const CACHE_VERSION = 'bible-net-v1.2.1';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const SHELL_CACHE = `shell-${CACHE_VERSION}`;
 
@@ -16,6 +16,7 @@ const PRECACHE_ASSETS = [
   '/',
   '/home',
   '/bible',
+  '/journals',
   '/manifest.json',
   '/logo.svg',
   '/banner_bible.jpg',
@@ -41,7 +42,7 @@ self.addEventListener('install', (event) => {
           try {
             const response = await fetch(url, { cache: 'no-cache' });
             if (response.ok) {
-              if (url === '/' || url === '/home' || url === '/bible') {
+              if (url === '/' || url === '/home' || url === '/bible' || url === '/journals') {
                 await shellCache.put(url, response.clone());
               } else {
                 await staticCache.put(url, response.clone());
@@ -142,6 +143,8 @@ self.addEventListener('fetch', (event) => {
 
             if (url.pathname === '/bible' || url.pathname.startsWith('/bible/')) {
               shellCache.put('/bible', networkResponse.clone());
+            } else if (url.pathname === '/journals' || url.pathname.startsWith('/journals/')) {
+              shellCache.put('/journals', networkResponse.clone());
             } else if (url.pathname === '/home' || url.pathname === '/') {
               shellCache.put('/home', networkResponse.clone());
               shellCache.put('/', networkResponse.clone());
@@ -166,16 +169,20 @@ self.addEventListener('fetch', (event) => {
         const pathnameMatch = await shellCache.match(url.pathname);
         if (pathnameMatch) return pathnameMatch;
 
-        // Tier 4: Bible route fallback (use cached /bible shell)
+        // Tier 4: Specific route fallback (use cached route shell)
         if (url.pathname === '/bible' || url.pathname.startsWith('/bible/')) {
           const bibleShell = await shellCache.match('/bible');
           if (bibleShell) return bibleShell;
+        } else if (url.pathname === '/journals' || url.pathname.startsWith('/journals/')) {
+          const journalsShell = await shellCache.match('/journals');
+          if (journalsShell) return journalsShell;
         }
 
-        // Tier 5: General App Shell fallback (/home, /, or /bible)
+        // Tier 5: General App Shell fallback (/journals, /home, /, or /bible)
         const defaultShell =
           (await shellCache.match('/home')) ||
           (await shellCache.match('/')) ||
+          (await shellCache.match('/journals')) ||
           (await shellCache.match('/bible'));
         if (defaultShell) {
           return defaultShell;
@@ -249,6 +256,9 @@ self.addEventListener('fetch', (event) => {
         if (url.pathname === '/bible' || url.pathname.startsWith('/bible/')) {
           const bibleShell = await shellCache.match('/bible');
           if (bibleShell) return bibleShell;
+        } else if (url.pathname === '/journals' || url.pathname.startsWith('/journals/')) {
+          const journalsShell = await shellCache.match('/journals');
+          if (journalsShell) return journalsShell;
         }
 
         return new Response('', { status: 200, headers: { 'Content-Type': 'text/x-component' } });

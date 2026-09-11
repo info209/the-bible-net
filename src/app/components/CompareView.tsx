@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { X, AlertTriangle, BookOpen } from 'lucide-react';
 import { ComparisonSkeleton } from './BibleSkeleton';
+import { BibleOfflineService } from '@/lib/offline/BibleOfflineService';
+import { ChapterCacheService } from '@/lib/offline/ChapterCacheService';
 
 interface CompareViewProps {
   book: string;
@@ -84,29 +86,84 @@ export default function CompareView({
       setIsLoading(true);
       setError(null);
       try {
-        const fetchPromises = resolvedVersions.map(v => 
-          fetch(`/api/v1/bible/${v.id}/${book}/${chapter}`).then(res => res.json())
-        );
-        
-        const results = await Promise.all(fetchPromises);
-        
-        if (isMounted) {
-          const successResults = results
-            .map((r, index) => {
-              if (r.success) {
+        const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+        const results = await Promise.all(
+          resolvedVersions.map(async (v) => {
+            // 1. Resolve from IndexedDB first (Local valid data wins over network failure)
+            try {
+              // Try ID
+              let offlineChapter = await BibleOfflineService.getChapter(v.id, book, chapter);
+              // If not found, try shortName / abbreviation
+              if (!offlineChapter || !offlineChapter.verses || offlineChapter.verses.length === 0) {
+                offlineChapter = await BibleOfflineService.getChapter(v.shortName, book, chapter);
+              }
+
+              if (offlineChapter && offlineChapter.verses && offlineChapter.verses.length > 0) {
                 return {
-                  ...r.data,
-                  versionId: resolvedVersions[index].id
+                  versionId: v.id,
+                  shortName: v.shortName,
+                  fullName: v.fullName,
+                  book: { id: offlineChapter.bookId, name: offlineChapter.bookName },
+                  chapter: { number: offlineChapter.chapterNumber },
+                  verses: offlineChapter.verses,
+                  _isOfflineData: true,
                 };
               }
-              return null;
-            })
-            .filter(Boolean);
+            } catch (offlineErr) {
+              console.warn('[CompareView] Offline chapter lookup error:', offlineErr);
+            }
+
+            // 2. If not found in IndexedDB and device is online, fetch from network
+            if (!isOffline) {
+              try {
+                const res = await fetch(`/api/v1/bible/${encodeURIComponent(v.id)}/${encodeURIComponent(book)}/${chapter}`);
+                const r = await res.json();
+                if (r.success && r.data?.verses) {
+                  // Silently cache for future offline access (fire-and-forget)
+                  ChapterCacheService.cacheChapter(
+                    v.id,
+                    book,
+                    r.data.book?.name || book,
+                    r.data.book?.abbreviation || r.data.book?.name || book,
+                    chapter,
+                    r.data.book?.testament === 'NT' ? 'NT' : 'OT',
+                    r.data.verses,
+                    r.data.footnotes,
+                  ).catch(() => {});
+
+                  return {
+                    ...r.data,
+                    versionId: v.id,
+                    shortName: v.shortName,
+                    fullName: v.fullName,
+                  };
+                }
+              } catch (netErr) {
+                console.warn('[CompareView] Network fetch error for version:', v.id, netErr);
+              }
+            }
+
+            return null;
+          })
+        );
+        
+        if (isMounted) {
+          const successResults = (results.filter(Boolean) as any[]);
           
-          if (successResults.length > 0) {
+          if (successResults.length >= 2) {
             setContents(successResults);
+            setError(null);
+          } else if (successResults.length === 1) {
+            setContents(successResults);
+            if (isOffline) {
+              setError(`Comparison requires at least two downloaded Bible versions for this chapter. Only "${successResults[0].shortName || successResults[0].fullName}" is currently available offline.`);
+            } else {
+              setError('Comparison requires at least two versions. Please select additional versions.');
+            }
           } else {
-            setError('Failed to fetch version contents');
+            setContents([]);
+            setError(isOffline ? 'The selected Bible versions are not downloaded for this chapter offline.' : 'Failed to fetch version contents');
           }
         }
       } catch (err) {
@@ -146,14 +203,14 @@ export default function CompareView({
     );
   }
 
-  if (error) {
+  if (error && contents.length < 2) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] px-6 text-center w-full" style={{ backgroundColor: currentTheme.bg }}>
-        <div className="size-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
-          <X className="size-8 text-red-500" />
+        <div className="size-16 rounded-full flex items-center justify-center mb-4" style={{ backgroundColor: selectedTheme === 'dark' ? 'rgba(239, 68, 68, 0.15)' : 'rgba(239, 68, 68, 0.08)' }}>
+          <AlertTriangle className="size-8 text-amber-500" />
         </div>
-        <h3 className="text-lg font-bold text-gray-900 mb-2">Comparison Failed</h3>
-        <p className="text-gray-500 max-w-xs">{error}</p>
+        <h3 className="text-lg font-bold mb-2" style={{ color: currentTheme.text }}>Comparison Unavailable</h3>
+        <p className="text-sm max-w-sm leading-relaxed" style={{ color: currentTheme.text, opacity: 0.75 }}>{error}</p>
       </div>
     );
   }

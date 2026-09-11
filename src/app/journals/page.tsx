@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useRef, useCallback, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useSession } from 'next-auth/react';
+import { useAuth } from '@/context/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ArrowLeft, Search, SlidersHorizontal, Plus, MoreVertical,
@@ -56,7 +56,7 @@ const BIBLE_BOOKS = [
 ];
 
 function JournalsContent() {
-  const { data: session, status } = useSession();
+  const { data: session, user, status, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const navigationSource = searchParams.get('source'); // 'profile' | null
@@ -474,13 +474,50 @@ function JournalsContent() {
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
-  // Mount checklist
+  // Immediate hydration from IndexedDB on mount / re-entry
   useEffect(() => {
     setMounted(true);
-    if (status === 'authenticated') {
+    let isSubscribed = true;
+
+    const hydrateFromLocal = async () => {
+      try {
+        const [cachedJ, cachedP] = await Promise.all([
+          ModuleOfflineService.getCache<any>('journals_user'),
+          ModuleOfflineService.getCache<any>('prayers_personal'),
+        ]);
+        if (!isSubscribed) return;
+
+        const resolvedJ = cachedJ?.data && Array.isArray(cachedJ.data) ? cachedJ.data : Array.isArray(cachedJ) ? cachedJ : null;
+        const resolvedP = cachedP?.data && Array.isArray(cachedP.data) ? cachedP.data : Array.isArray(cachedP) ? cachedP : null;
+
+        if (resolvedJ && resolvedJ.length > 0) {
+          setJournals(resolvedJ);
+          setLoading(false);
+        }
+        if (resolvedP && resolvedP.length > 0) {
+          setPrayers(resolvedP);
+          setLoading(false);
+        }
+      } catch (err) {
+        console.warn('Hydration from local cache error:', err);
+      }
+    };
+
+    hydrateFromLocal();
+
+    return () => {
+      isSubscribed = false;
+    };
+  }, []);
+
+  // When auth state is confirmed, refresh data
+  useEffect(() => {
+    if (isAuthenticated) {
       fetchData();
+    } else if (status !== 'loading') {
+      setLoading(false);
     }
-  }, [status]);
+  }, [isAuthenticated, status]);
 
   // Toast trigger helper
   const showToast = (msg: string) => {
@@ -494,33 +531,54 @@ function JournalsContent() {
     }
   };
 
-  // Main Fetcher with Offline Fallback
+  // Main Fetcher with Offline-First Resolution
   const fetchData = async () => {
-    setLoading(true);
+    // 1. If journals/prayers are empty, try hydrating from cache immediately
     try {
-      const [jData, pData] = await Promise.all([
-        fetchWithOfflineCache('journals_user', async () => {
-          const res = await fetch('/api/journals');
-          if (!res.ok) throw new Error('Failed to fetch journals');
-          return res.json();
-        }),
-        fetchWithOfflineCache('prayers_personal', async () => {
-          const res = await fetch('/api/prayers?personal=true');
-          if (!res.ok) throw new Error('Failed to fetch prayers');
-          return res.json();
-        }),
+      const [cachedJ, cachedP] = await Promise.all([
+        ModuleOfflineService.getCache<any>('journals_user'),
+        ModuleOfflineService.getCache<any>('prayers_personal'),
+      ]);
+      const resolvedJ = cachedJ?.data && Array.isArray(cachedJ.data) ? cachedJ.data : Array.isArray(cachedJ) ? cachedJ : null;
+      const resolvedP = cachedP?.data && Array.isArray(cachedP.data) ? cachedP.data : Array.isArray(cachedP) ? cachedP : null;
+      if (resolvedJ && resolvedJ.length > 0) setJournals(prev => prev.length === 0 ? resolvedJ : prev);
+      if (resolvedP && resolvedP.length > 0) setPrayers(prev => prev.length === 0 ? resolvedP : prev);
+      if (resolvedJ || resolvedP) setLoading(false);
+    } catch (e) {
+      console.warn('Error reading offline cache:', e);
+    }
+
+    // 2. If offline, do not attempt network fetch
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setLoading(false);
+      return;
+    }
+
+    // 3. Network fetch when online
+    try {
+      const [jRes, pRes] = await Promise.all([
+        fetch('/api/journals').then(async r => (r.ok ? r.json() : null)).catch(() => null),
+        fetch('/api/prayers?personal=true').then(async r => (r.ok ? r.json() : null)).catch(() => null),
       ]);
 
-      if (jData?.success && Array.isArray(jData.data)) setJournals(jData.data);
-      else if (Array.isArray(jData)) setJournals(jData);
+      if (jRes?.success && Array.isArray(jRes.data)) {
+        setJournals(jRes.data);
+        await ModuleOfflineService.saveCache('journals_user', jRes.data);
+      } else if (Array.isArray(jRes)) {
+        setJournals(jRes);
+        await ModuleOfflineService.saveCache('journals_user', jRes);
+      }
 
-      if (pData?.success && Array.isArray(pData.data)) setPrayers(pData.data);
-      else if (Array.isArray(pData)) setPrayers(pData);
+      if (pRes?.success && Array.isArray(pRes.data)) {
+        setPrayers(pRes.data);
+        await ModuleOfflineService.saveCache('prayers_personal', pRes.data);
+      } else if (Array.isArray(pRes)) {
+        setPrayers(pRes);
+        await ModuleOfflineService.saveCache('prayers_personal', pRes);
+      }
     } catch (err) {
       console.error('Error fetching data:', err);
-      if (typeof navigator !== 'undefined' && navigator.onLine) {
-        showToast('Error loading records');
-      }
+      // Valid local data must win: do not overwrite local state with empty on error
     } finally {
       setLoading(false);
     }
@@ -1806,8 +1864,12 @@ function JournalsContent() {
 
   const isActivePrayerPrayed = activeKebabType === 'prayer' && activeKebabItem?.status === 'prayed';
 
+  const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+  const hasLocalData = journals.length > 0 || prayers.length > 0;
+  const effectiveUser = user || session?.user;
+
   // Loading Skeleton
-  if (!mounted || status === 'loading' || (loading && status === 'authenticated')) {
+  if (!mounted || status === 'loading' || (loading && !hasLocalData && status === 'authenticated')) {
     return (
       <div className="min-h-screen bg-white dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5]">
         <header className="h-[64px] px-4 flex items-center border-b border-gray-100 dark:border-white/[0.08] justify-between">
@@ -1834,8 +1896,28 @@ function JournalsContent() {
     );
   }
 
-  // Not logged in redirect visual
-  if (!session?.user) {
+  // Not logged in redirect visual: Only block if genuinely unauthenticated online with zero local data
+  if (!effectiveUser && !isAuthenticated && !hasLocalData) {
+    if (isOffline) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-white dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5]">
+          <div className="w-16 h-16 bg-[#0B7A81]/10 rounded-full flex items-center justify-center mb-4">
+            <BookOpen className="w-8 h-8 text-[#0B7A81]" />
+          </div>
+          <h2 className="text-lg font-bold mb-1">Journals &amp; Prayers (Offline)</h2>
+          <p className="text-sm text-gray-500 mb-6 max-w-xs">
+            You are currently offline. Connect to the internet to sign in and view your cloud journals, or create a new entry locally.
+          </p>
+          <button
+            onClick={() => handleOpenEditor(null, 'journal')}
+            className="px-6 py-2.5 bg-[#0B7A81] text-white rounded-xl text-sm font-semibold shadow-md active:opacity-90"
+          >
+            Create Journal Offline
+          </button>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-6 text-center bg-white dark:bg-[#000000] text-gray-900 dark:text-[#F5F5F5]">
         <div className="w-16 h-16 bg-[#0B7A81]/10 rounded-full flex items-center justify-center mb-4">

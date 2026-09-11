@@ -12,6 +12,7 @@ interface CompareVersionsModalProps {
   onToggleVersion: (versionName: string) => void;
   onStartCompare: () => void;
   activeVersionId?: string | null;
+  downloadStates?: Record<string, any>;
   isDark?: boolean;
   selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
 }
@@ -29,9 +30,18 @@ export default function CompareVersionsModal({
   onToggleVersion,
   onStartCompare,
   activeVersionId,
+  downloadStates,
   isDark = false,
   selectedTheme,
 }: CompareVersionsModalProps) {
+  const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+  const isVersionDownloaded = (v: { id: string; name: string; fullName?: string }) => {
+    if (!downloadStates) return false;
+    const s = downloadStates[v.id] || downloadStates[v.name] || downloadStates[v.name?.toUpperCase()] || downloadStates[v.name?.toLowerCase()];
+    return s?.status === 'downloaded';
+  };
+
   // Find active version object matching activeVersionId or selectedVersions[0]
   const activeVersionObj = versions.find(v => activeVersionId ? matchesVersion(v, activeVersionId) : false)
     || versions.find(v => selectedVersions.some(s => matchesVersion(v, s)))
@@ -48,7 +58,10 @@ export default function CompareVersionsModal({
 
   // Calculate count of additional versions selected beyond active version
   const additionalCount = effectiveSelectedVersions.filter(s => !matchesVersion(activeVersionObj || { id: activeVersionCode, name: activeVersionDisplay }, s)).length;
-  const canCompare = additionalCount >= 1 && effectiveSelectedVersions.length <= 4;
+  
+  const downloadedVersions = versions.filter(v => isVersionDownloaded(v));
+  const hasEnoughDownloaded = downloadedVersions.length >= 2;
+  const canCompare = additionalCount >= 1 && effectiveSelectedVersions.length <= 4 && (!isOffline || hasEnoughDownloaded);
 
   // Premium Themes Styling Variables
   const theme = selectedTheme || (isDark ? 'dark' : 'light');
@@ -131,7 +144,19 @@ export default function CompareVersionsModal({
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-6 py-4">
             {/* Validation / Helper Notice */}
-            {!canCompare ? (
+            {isOffline && !hasEnoughDownloaded ? (
+              <div
+                className="mb-4 p-3 rounded-lg text-xs font-medium flex items-center gap-2.5 border"
+                style={{
+                  backgroundColor: theme === 'dark' ? 'rgba(245, 158, 11, 0.12)' : 'rgba(245, 158, 11, 0.08)',
+                  borderColor: theme === 'dark' ? 'rgba(245, 158, 11, 0.3)' : 'rgba(245, 158, 11, 0.25)',
+                  color: theme === 'dark' ? '#fbbf24' : '#b45309'
+                }}
+              >
+                <Info className="size-4 shrink-0" />
+                <span>At least one more downloaded Bible version is required for offline comparison. Please download additional versions in the Offline manager.</span>
+              </div>
+            ) : !canCompare ? (
               <div
                 className="mb-4 p-3 rounded-lg text-xs font-medium flex items-center gap-2.5 border"
                 style={{
@@ -175,7 +200,9 @@ export default function CompareVersionsModal({
                         {languageVersions.map((version) => {
                           const isActiveVersion = activeVersionObj ? matchesVersion(version, activeVersionObj.id) || matchesVersion(version, activeVersionObj.name) : false;
                           const isSelected = effectiveSelectedVersions.some(s => matchesVersion(version, s));
-                          const isDisabled = !isSelected && effectiveSelectedVersions.length >= 4;
+                          const isDownloaded = isVersionDownloaded(version);
+                          const isUnavailableOffline = isOffline && !isDownloaded;
+                          const isDisabled = (!isSelected && effectiveSelectedVersions.length >= 4) || isUnavailableOffline;
 
                           // Dynamic colors for buttons
                           let btnBg = '';
@@ -224,13 +251,26 @@ export default function CompareVersionsModal({
                                 backgroundColor: btnBg,
                                 color: btnText,
                                 borderColor: btnBorder,
-                                cursor: isActiveVersion ? 'default' : (isDisabled ? 'not-allowed' : 'pointer')
+                                cursor: isActiveVersion ? 'default' : (isDisabled ? 'not-allowed' : 'pointer'),
+                                opacity: isUnavailableOffline ? 0.6 : 1
                               }}
-                              title={isActiveVersion ? "Active reading version (required base version)" : undefined}
+                              title={isActiveVersion ? "Active reading version (required base version)" : (isUnavailableOffline ? "Not downloaded for offline use" : undefined)}
                             >
-                              <div className="flex items-center gap-2 min-w-0">
+                              <div className="flex items-center gap-2 min-w-0 flex-1">
                                 <span className="text-sm font-semibold truncate">{version.fullName} ({version.name})</span>
                               </div>
+                              {isUnavailableOffline && (
+                                <span
+                                  className="text-[10px] font-semibold px-2 py-0.5 rounded opacity-75 shrink-0 ml-2 border"
+                                  style={{
+                                    backgroundColor: theme === 'dark' ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                                    borderColor: theme === 'dark' ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                                    color: subTextCol
+                                  }}
+                                >
+                                  Not downloaded
+                                </span>
+                              )}
                             </button>
                           );
                         })}

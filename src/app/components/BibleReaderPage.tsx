@@ -193,6 +193,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     isPlaying: ambientPlaying,
     tracks: ambientTracks,
     loading: loadingAmbient,
+    offlinePlayableTrackIds,
     fetchTracks,
     play: playAmbient,
     pause: pauseAmbient,
@@ -2799,53 +2800,70 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                     <Music className="size-8 opacity-40" style={{ color: currentTheme.text }} />
                   </div>
                   <div className="space-y-1">
-                    <p className="text-base font-semibold text-center" style={{ color: currentTheme.text }}>No ambient music available right now.</p>
-                    <p className="text-sm opacity-65 text-center" style={{ color: currentTheme.text }}>Please check back later.</p>
+                    <p className="text-base font-semibold text-center" style={{ color: currentTheme.text }}>
+                      {!isOnline ? "No ambient music cached offline." : "No ambient music available right now."}
+                    </p>
+                    <p className="text-sm opacity-65 text-center" style={{ color: currentTheme.text }}>
+                      {!isOnline ? "Connect to the internet to browse and stream tracks." : "Please check back later."}
+                    </p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {ambientTracks.map((track) => (
-                    <button
-                      key={track.id}
-                      onClick={() => toggleAmbientPlay(track)}
-                      className="w-full flex items-center justify-between p-3.5 rounded-xl transition-all hover:bg-black/5"
-                      style={{
-                        backgroundColor: currentTrack?.id === track.id
-                          ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.12)' : 'rgba(226, 55, 68, 0.08)')
-                          : 'transparent',
-                      }}
-                    >
-                      {/* Left side: Thumbnail + Label */}
-                      <div className="flex items-center space-x-3.5 min-w-0">
-                        {/* Thumbnail */}
-                        <div className="relative size-10 rounded-lg overflow-hidden flex-shrink-0 bg-black/5 flex items-center justify-center border border-black/5">
-                          {track.thumbnail_url ? (
-                            <img src={track.thumbnail_url} alt={track.label} className="w-full h-full object-cover" />
-                          ) : (
-                            <Music className="size-4 opacity-45" style={{ color: currentTheme.text }} />
-                          )}
+                  {ambientTracks.map((track) => {
+                    const isTrackOfflinePlayable = offlinePlayableTrackIds?.includes(track.id);
+                    const isDimmed = !isOnline && !isTrackOfflinePlayable;
+
+                    return (
+                      <button
+                        key={track.id}
+                        onClick={() => toggleAmbientPlay(track)}
+                        className="w-full flex items-center justify-between p-3.5 rounded-xl transition-all hover:bg-black/5"
+                        style={{
+                          backgroundColor: currentTrack?.id === track.id
+                            ? (selectedTheme === 'dark' ? 'rgba(255, 71, 87, 0.12)' : 'rgba(226, 55, 68, 0.08)')
+                            : 'transparent',
+                          opacity: isDimmed ? 0.6 : 1,
+                        }}
+                      >
+                        {/* Left side: Thumbnail + Label */}
+                        <div className="flex items-center space-x-3.5 min-w-0 flex-1">
+                          {/* Thumbnail */}
+                          <div className="relative size-10 rounded-lg overflow-hidden flex-shrink-0 bg-black/5 flex items-center justify-center border border-black/5">
+                            {track.thumbnail_url ? (
+                              <img src={track.thumbnail_url} alt={track.label} className="w-full h-full object-cover" />
+                            ) : (
+                              <Music className="size-4 opacity-45" style={{ color: currentTheme.text }} />
+                            )}
+                          </div>
+
+                          <div className="flex flex-col text-left min-w-0">
+                            <span
+                              className="text-base truncate max-w-[160px]"
+                              style={{ 
+                                color: currentTrack?.id === track.id ? currentTheme.verseNumber : currentTheme.text,
+                                fontWeight: currentTrack?.id === track.id ? 600 : 400 
+                              }}
+                            >
+                              {track.label}
+                            </span>
+                            {!isOnline && (
+                              <span className="text-[10px] font-medium mt-0.5" style={{ color: isTrackOfflinePlayable ? '#10b981' : '#9ca3af' }}>
+                                {isTrackOfflinePlayable ? 'Available offline' : 'Online only'}
+                              </span>
+                            )}
+                          </div>
                         </div>
 
-                        <span
-                          className="text-base text-left truncate max-w-[160px]"
-                          style={{ 
-                            color: currentTrack?.id === track.id ? currentTheme.verseNumber : currentTheme.text,
-                            fontWeight: currentTrack?.id === track.id ? 600 : 400 
-                          }}
-                        >
-                          {track.label}
-                        </span>
-                      </div>
-
-                      {/* Right side: Equalizer indicator */}
-                      <div className="flex items-center space-x-2">
-                        {currentTrack?.id === track.id && ambientPlaying && (
-                          <EqualizerIcon className="h-4 text-rose-500" />
-                        )}
-                      </div>
-                    </button>
-                  ))}
+                        {/* Right side: Equalizer indicator */}
+                        <div className="flex items-center space-x-2 shrink-0">
+                          {currentTrack?.id === track.id && ambientPlaying && (
+                            <EqualizerIcon className="h-4 text-rose-500" />
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -3203,6 +3221,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             onToggleVersion={handleToggleCompareVersion}
             onStartCompare={handleStartCompare}
             activeVersionId={selectedVersion}
+            downloadStates={downloadStates}
             selectedTheme={selectedTheme}
           />
         )}
@@ -3220,6 +3239,7 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
             onRemoveVersion={handleRemoveCompareVersion}
             onAddVersion={handleAddCompareVersion}
             onExitCompare={handleExitCompare}
+            downloadStates={downloadStates}
             selectedTheme={selectedTheme}
           />
         )}

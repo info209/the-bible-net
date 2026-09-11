@@ -9,6 +9,7 @@ interface CompareMenuProps {
   onRemoveVersion: (versionName: string) => void;
   onAddVersion: (versionName: string) => void;
   onExitCompare: () => void;
+  downloadStates?: Record<string, any>;
   isDark?: boolean;
   selectedTheme?: 'light' | 'sepia' | 'cream' | 'dark';
 }
@@ -21,9 +22,17 @@ export default function CompareMenu({
   onRemoveVersion,
   onAddVersion,
   onExitCompare,
+  downloadStates,
   isDark = false,
   selectedTheme,
 }: CompareMenuProps) {
+  const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+  const isVersionDownloaded = (v: { id: string; name: string; fullName?: string }) => {
+    if (!downloadStates) return false;
+    const s = downloadStates[v.id] || downloadStates[v.name] || downloadStates[v.name?.toUpperCase()] || downloadStates[v.name?.toLowerCase()];
+    return s?.status === 'downloaded';
+  };
 
   const availableVersions = versions.filter(v => !selectedVersions.includes(v.id));
   const canAddMore = selectedVersions.length < 4;
@@ -204,31 +213,55 @@ export default function CompareMenu({
                   </span>
                 </h3>
                 <div className="space-y-2">
-                  {availableVersions.map((version) => (
-                    <button
-                      key={version.id}
-                      onClick={() => {
-                        onAddVersion(version.id);
-                      }}
-                      className="w-full flex items-center justify-between py-3 px-4 rounded-xl border transition-all text-left group"
-                      style={{
-                        backgroundColor: availableBtnBg,
-                        borderColor: availableBtnBorder,
-                      }}
-                    >
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold group-hover:text-[var(--color-primary-teal)] leading-tight transition-colors" style={{ color: textCol }}>
-                          {version.name}
-                        </span>
-                        <span className="text-[11px] group-hover:text-[var(--color-primary-teal)]/70 tracking-wider mt-0.5 transition-colors" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>
-                          {version.fullName}
-                        </span>
-                      </div>
-                      <div className="p-1.5 rounded-full transition-colors" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb' }}>
-                        <Plus className="size-4 text-gray-400 group-hover:text-[var(--color-primary-teal)] transition-colors" strokeWidth={2.5} />
-                      </div>
-                    </button>
-                  ))}
+                  {availableVersions.map((version) => {
+                    const isDownloaded = isVersionDownloaded(version);
+                    const isUnavailableOffline = isOffline && !isDownloaded;
+
+                    return (
+                      <button
+                        key={version.id}
+                        onClick={() => {
+                          if (!isUnavailableOffline) {
+                            onAddVersion(version.id);
+                          }
+                        }}
+                        disabled={isUnavailableOffline}
+                        className="w-full flex items-center justify-between py-3 px-4 rounded-xl border transition-all text-left group"
+                        style={{
+                          backgroundColor: availableBtnBg,
+                          borderColor: availableBtnBorder,
+                          opacity: isUnavailableOffline ? 0.6 : 1,
+                          cursor: isUnavailableOffline ? 'not-allowed' : 'pointer',
+                        }}
+                        title={isUnavailableOffline ? "Not downloaded for offline use" : undefined}
+                      >
+                        <div className="flex flex-col flex-1 min-w-0 pr-2">
+                          <span className="text-sm font-bold group-hover:text-[var(--color-primary-teal)] leading-tight transition-colors truncate" style={{ color: textCol }}>
+                            {version.name}
+                          </span>
+                          <span className="text-[11px] group-hover:text-[var(--color-primary-teal)]/70 tracking-wider mt-0.5 transition-colors truncate" style={{ color: isDark ? 'rgba(255,255,255,0.5)' : '#6b7280' }}>
+                            {version.fullName}
+                          </span>
+                        </div>
+                        {isUnavailableOffline ? (
+                          <span
+                            className="text-[10px] font-semibold px-2 py-0.5 rounded opacity-75 shrink-0 border"
+                            style={{
+                              backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)',
+                              borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+                              color: subTextCol,
+                            }}
+                          >
+                            Not downloaded
+                          </span>
+                        ) : (
+                          <div className="p-1.5 rounded-full transition-colors shrink-0" style={{ backgroundColor: isDark ? 'rgba(255,255,255,0.04)' : '#f9fafb' }}>
+                            <Plus className="size-4 text-gray-400 group-hover:text-[var(--color-primary-teal)] transition-colors" strokeWidth={2.5} />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
               </>
             )}
