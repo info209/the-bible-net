@@ -43,17 +43,6 @@ type PrayerStatusFilter = 'All' | 'Active' | 'Prayed';
 
 const DEFAULT_PRESET_LABELS = ['Faith', 'Gratitude', 'Hope', 'Worship', 'Personal', 'Family', 'Work', 'Study'];
 
-const BIBLE_BOOKS = [
-  'Genesis', 'Exodus', 'Leviticus', 'Numbers', 'Deuteronomy', 'Joshua', 'Judges', 'Ruth',
-  '1 Samuel', '2 Samuel', '1 Kings', '2 Kings', '1 Chronicles', '2 Chronicles', 'Ezra',
-  'Nehemiah', 'Esther', 'Job', 'Psalms', 'Proverbs', 'Ecclesiastes', 'Song of Solomon',
-  'Isaiah', 'Jeremiah', 'Lamentations', 'Ezekiel', 'Daniel', 'Hosea', 'Joel', 'Amos',
-  'Obadiah', 'Jonah', 'Micah', 'Nahum', 'Habakkuk', 'Zephaniah', 'Haggai', 'Zechariah', 'Malachi',
-  'Matthew', 'Mark', 'Luke', 'John', 'Acts', 'Romans', '1 Corinthians', '2 Corinthians',
-  'Galatians', 'Ephesians', 'Philippians', 'Colossians', '1 Thessalonians', '2 Thessalonians',
-  '1 Timothy', '2 Timothy', 'Titus', 'Philemon', 'Hebrews', 'James', '1 Peter', '2 Peter',
-  '1 John', '2 John', '3 John', 'Jude', 'Revelation'
-];
 
 function JournalsContent() {
   const { data: session, user, status, isAuthenticated } = useAuth();
@@ -207,12 +196,6 @@ function JournalsContent() {
   const [labelInputOpen, setLabelInputOpen] = useState(false);
   const [newLabelText, setNewLabelText] = useState('');
 
-  // Add Verse options
-  const [versePickerOpen, setVersePickerOpen] = useState(false);
-  const [pickerBook, setPickerBook] = useState('John');
-  const [pickerChapter, setPickerChapter] = useState(3);
-  const [pickerVerseStart, setPickerVerseStart] = useState(16);
-  const [pickerVerseEnd, setPickerVerseEnd] = useState(16);
 
   // New inline verse selection states
   const [atTriggerPosition, setAtTriggerPosition] = useState<number | null>(null);
@@ -966,30 +949,6 @@ function JournalsContent() {
     setEditLabels(editLabels.filter(l => l !== label));
   };
 
-  // Add Verse picker linked action
-  const handleAddVerse = () => {
-    const versesArr: number[] = [];
-    const start = Number(pickerVerseStart);
-    const end = Number(pickerVerseEnd);
-    
-    if (start <= end) {
-      for (let i = start; i <= end; i++) {
-        versesArr.push(i);
-      }
-    } else {
-      versesArr.push(start);
-    }
-
-    const newVerseRef = {
-      bookName: pickerBook,
-      chapter: Number(pickerChapter),
-      verses: versesArr
-    };
-
-    setEditVerses([...editVerses, newVerseRef]);
-    setVersePickerOpen(false);
-    showToast(`Linked verse ${pickerBook} ${pickerChapter}:${start}-${end}`);
-  };
 
   const handleRemoveVerse = (idx: number) => {
     setEditVerses(editVerses.filter((_, i) => i !== idx));
@@ -3086,102 +3045,6 @@ function JournalsContent() {
                 </div>
               )}
 
-              {/* Add Verse Trigger Button */}
-              {editorMode !== 'view' && (
-                <button
-                  type="button"
-                  onClick={() => setVersePickerOpen(true)}
-                  className="w-fit text-sm font-semibold text-[#0B7A81] flex items-center gap-1.5 active:scale-95 py-1"
-                >
-                  <Plus className="w-4 h-4" /> Add verse
-                </button>
-              )}
-
-              {/* Dynamic Scripture Reference selection Dialog */}
-              <AnimatePresence>
-                {versePickerOpen && (
-                  <div className="fixed inset-0 bg-black/45 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-                    <motion.div
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                      className="bg-white dark:bg-[#111111] border border-gray-100 dark:border-white/[0.08] rounded-xl w-full max-w-sm p-5 shadow-2xl select-none"
-                    >
-                      <h3 className="font-bold text-base text-gray-800 dark:text-[#F5F5F5]">Link Bible scripture</h3>
-                      <div className="mt-4 space-y-3.5">
-                        {/* Book Selector */}
-                        <div>
-                          <label className="text-[10px] font-bold text-gray-400">Bible book</label>
-                          <select
-                            value={pickerBook}
-                            onChange={(e) => setPickerBook(e.target.value)}
-                            className="w-full h-10 mt-1 rounded-xl border border-gray-300 dark:border-white/[0.08] px-2 text-[16px] md:text-sm focus:outline-none focus:border-[#0B7A81] bg-transparent"
-                          >
-                            {BIBLE_BOOKS.map(b => (
-                              <option key={b} value={b}>{b}</option>
-                            ))}
-                          </select>
-                        </div>
-
-                        {/* Chapter / Verse inputs */}
-                        <div className="grid grid-cols-3 gap-2">
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-400">Chapter</label>
-                            <input
-                              type="number"
-                              min={1}
-                              value={pickerChapter}
-                              onChange={(e) => setPickerChapter(Math.max(1, Number(e.target.value)))}
-                              className="w-full h-10 mt-1 rounded-xl border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-400">Verse start</label>
-                            <input
-                              type="number"
-                              min={1}
-                              value={pickerVerseStart}
-                              onChange={(e) => {
-                                const val = Math.max(1, Number(e.target.value));
-                                setPickerVerseStart(val);
-                                if (pickerVerseEnd < val) setPickerVerseEnd(val);
-                              }}
-                              className="w-full h-10 mt-1 rounded-xl border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
-                            />
-                          </div>
-                          <div>
-                            <label className="text-[10px] font-bold text-gray-400">Verse end</label>
-                            <input
-                              type="number"
-                              min={1}
-                              value={pickerVerseEnd}
-                              onChange={(e) => setPickerVerseEnd(Math.max(pickerVerseStart, Number(e.target.value)))}
-                              className="w-full h-10 mt-1 rounded-xl border border-gray-300 dark:border-white/[0.08] px-3 text-[16px] md:text-sm bg-transparent outline-none focus:border-[#0B7A81]"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex gap-2.5 mt-6">
-                        <button
-                          type="button"
-                          onClick={() => setVersePickerOpen(false)}
-                          className="flex-1 h-10 rounded-xl border border-gray-200 text-sm text-gray-500 font-medium active:scale-95"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleAddVerse}
-                          className="flex-1 h-10 bg-[#0B7A81] text-white rounded-xl text-sm font-semibold active:scale-95"
-                        >
-                          Link verse
-                        </button>
-                      </div>
-                    </motion.div>
-                  </div>
-                )}
-              </AnimatePresence>
 
             </div>
           </motion.div>

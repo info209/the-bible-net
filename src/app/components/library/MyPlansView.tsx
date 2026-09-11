@@ -7,10 +7,12 @@ import { ChevronRight, Play } from 'lucide-react';
 interface MyPlansViewProps {
   progresses: any[];
   isLoading: boolean;
+  isOffline?: boolean;
 }
 
-export default function MyPlansView({ progresses, isLoading }: MyPlansViewProps) {
+export default function MyPlansView({ progresses, isLoading, isOffline }: MyPlansViewProps) {
   const router = useRouter();
+  const offline = isOffline ?? (typeof navigator !== 'undefined' && !navigator.onLine);
 
   if (isLoading) {
     return (
@@ -24,9 +26,11 @@ export default function MyPlansView({ progresses, isLoading }: MyPlansViewProps)
 
   if (!progresses || progresses.length === 0) {
     return (
-      <div className="py-20 text-center">
+      <div className="py-20 text-center px-4 space-y-2">
         <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-          No plans under My plans
+          {offline
+            ? 'You are currently offline. Plans you have enrolled in will appear here once connected or downloaded.'
+            : 'No plans under My plans'}
         </p>
       </div>
     );

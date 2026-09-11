@@ -9,6 +9,7 @@ interface FindPlansViewProps {
   isLoading: boolean;
   onStartPlan: (planId: string, e: React.MouseEvent) => void;
   isStartingPlanId?: string | null;
+  isOffline?: boolean;
 }
 
 export default function FindPlansView({
@@ -16,8 +17,10 @@ export default function FindPlansView({
   isLoading,
   onStartPlan,
   isStartingPlanId,
+  isOffline,
 }: FindPlansViewProps) {
   const router = useRouter();
+  const offline = isOffline ?? (typeof navigator !== 'undefined' && !navigator.onLine);
 
   if (isLoading) {
     return (
@@ -43,9 +46,11 @@ export default function FindPlansView({
 
   if (!plans || plans.length === 0) {
     return (
-      <div className="py-16 text-center">
+      <div className="py-16 text-center px-4 space-y-2">
         <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-          No plans under Find plans
+          {offline
+            ? 'You are currently offline. Connect to the internet to discover new reading plans.'
+            : 'No plans under Find plans'}
         </p>
       </div>
     );

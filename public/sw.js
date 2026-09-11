@@ -8,7 +8,7 @@
  * 4. Automatic cache version cleanup on activation
  */
 
-const CACHE_VERSION = 'bible-net-v1.2.1';
+const CACHE_VERSION = 'bible-net-v1.2.2';
 const STATIC_CACHE = `static-${CACHE_VERSION}`;
 const SHELL_CACHE = `shell-${CACHE_VERSION}`;
 
@@ -17,6 +17,8 @@ const PRECACHE_ASSETS = [
   '/home',
   '/bible',
   '/journals',
+  '/library',
+  '/explore',
   '/manifest.json',
   '/logo.svg',
   '/banner_bible.jpg',
@@ -42,7 +44,14 @@ self.addEventListener('install', (event) => {
           try {
             const response = await fetch(url, { cache: 'no-cache' });
             if (response.ok) {
-              if (url === '/' || url === '/home' || url === '/bible' || url === '/journals') {
+              if (
+                url === '/' ||
+                url === '/home' ||
+                url === '/bible' ||
+                url === '/journals' ||
+                url === '/library' ||
+                url === '/explore'
+              ) {
                 await shellCache.put(url, response.clone());
               } else {
                 await staticCache.put(url, response.clone());
@@ -145,6 +154,10 @@ self.addEventListener('fetch', (event) => {
               shellCache.put('/bible', networkResponse.clone());
             } else if (url.pathname === '/journals' || url.pathname.startsWith('/journals/')) {
               shellCache.put('/journals', networkResponse.clone());
+            } else if (url.pathname === '/library' || url.pathname.startsWith('/library/')) {
+              shellCache.put('/library', networkResponse.clone());
+            } else if (url.pathname === '/explore' || url.pathname.startsWith('/explore/')) {
+              shellCache.put('/explore', networkResponse.clone());
             } else if (url.pathname === '/home' || url.pathname === '/') {
               shellCache.put('/home', networkResponse.clone());
               shellCache.put('/', networkResponse.clone());
@@ -176,12 +189,20 @@ self.addEventListener('fetch', (event) => {
         } else if (url.pathname === '/journals' || url.pathname.startsWith('/journals/')) {
           const journalsShell = await shellCache.match('/journals');
           if (journalsShell) return journalsShell;
+        } else if (url.pathname === '/library' || url.pathname.startsWith('/library/')) {
+          const libraryShell = await shellCache.match('/library');
+          if (libraryShell) return libraryShell;
+        } else if (url.pathname === '/explore' || url.pathname.startsWith('/explore/')) {
+          const exploreShell = await shellCache.match('/explore');
+          if (exploreShell) return exploreShell;
         }
 
-        // Tier 5: General App Shell fallback (/journals, /home, /, or /bible)
+        // Tier 5: General App Shell fallback (/journals, /library, /explore, /home, /, or /bible)
         const defaultShell =
           (await shellCache.match('/home')) ||
           (await shellCache.match('/')) ||
+          (await shellCache.match('/library')) ||
+          (await shellCache.match('/explore')) ||
           (await shellCache.match('/journals')) ||
           (await shellCache.match('/bible'));
         if (defaultShell) {
@@ -252,13 +273,19 @@ self.addEventListener('fetch', (event) => {
           return new Response(null, { status: 204 });
         }
 
-        // For Bible routes, return cached /bible shell or 200 OK so client router doesn't crash
+        // For route fallbacks, return cached route shell so client router doesn't crash
         if (url.pathname === '/bible' || url.pathname.startsWith('/bible/')) {
           const bibleShell = await shellCache.match('/bible');
           if (bibleShell) return bibleShell;
         } else if (url.pathname === '/journals' || url.pathname.startsWith('/journals/')) {
           const journalsShell = await shellCache.match('/journals');
           if (journalsShell) return journalsShell;
+        } else if (url.pathname === '/library' || url.pathname.startsWith('/library/')) {
+          const libraryShell = await shellCache.match('/library');
+          if (libraryShell) return libraryShell;
+        } else if (url.pathname === '/explore' || url.pathname.startsWith('/explore/')) {
+          const exploreShell = await shellCache.match('/explore');
+          if (exploreShell) return exploreShell;
         }
 
         return new Response('', { status: 200, headers: { 'Content-Type': 'text/x-component' } });

@@ -10,19 +10,38 @@ import { Plan, PlanWithProgress, PlanProgress } from '@/types/plan';
 export function useUserLibrary(tab: 'my-plans' | 'find-plans' | 'saved' | 'completed' = 'my-plans') {
   return useQuery({
     queryKey: ['plans', 'library', tab],
-    queryFn: () =>
-      fetchWithOfflineCache(`library_plans_${tab}`, async () => {
-        const res = await fetch(`/api/v1/plans/user/library?tab=${tab}`);
-        if (!res.ok) {
-          if (res.status === 401 && tab !== 'find-plans') {
-            return [];
+    queryFn: async () => {
+      const cacheKey = `library_plans_${tab}`;
+      try {
+        return await fetchWithOfflineCache(cacheKey, async () => {
+          const res = await fetch(`/api/v1/plans/user/library?tab=${tab}`);
+          if (!res.ok) {
+            if (res.status === 401 && tab !== 'find-plans') {
+              return [];
+            }
+            throw new Error('Failed to fetch plans');
           }
-          throw new Error('Failed to fetch plans');
+          const json = await res.json();
+          return json.data || [];
+        });
+      } catch (err) {
+        // Fallback to IndexedDB cache on network error
+        const cached = await ModuleOfflineService.getCache<any[]>(cacheKey);
+        if (cached && Array.isArray(cached)) {
+          return cached;
         }
-        const json = await res.json();
-        return json.data || [];
-      }),
+        // When offline or failed and no cache, return empty array without fatal error
+        return [];
+      }
+    },
     staleTime: 1000 * 60 * 2, // 2 mins
+    networkMode: 'offlineFirst',
+    retry: (failureCount) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return false;
+      return failureCount < 1;
+    },
+    refetchOnMount: typeof navigator !== 'undefined' && !navigator.onLine ? false : true,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -30,20 +49,41 @@ export function useUserLibrary(tab: 'my-plans' | 'find-plans' | 'saved' | 'compl
  * Fetch catalog plans with optional search query & category
  */
 export function useFindPlans(search: string = '', category: string = '') {
+  const cacheKey = `find_plans_${search}_${category}`;
   return useQuery({
     queryKey: ['plans', 'find', search, category],
-    queryFn: () =>
-      fetchWithOfflineCache(`find_plans_${search}_${category}`, async () => {
-        const queryParams = new URLSearchParams();
-        if (search) queryParams.set('category', search); // search or category
-        if (category) queryParams.set('category', category);
+    queryFn: async () => {
+      try {
+        return await fetchWithOfflineCache(cacheKey, async () => {
+          const queryParams = new URLSearchParams();
+          if (search) queryParams.set('search', search);
+          if (category) queryParams.set('category', category);
 
-        const res = await fetch(`/api/v1/plans?${queryParams.toString()}`);
-        if (!res.ok) throw new Error('Failed to fetch discovery plans');
-        const json = await res.json();
-        return (json.data?.plans || json.data || []) as Plan[];
-      }),
+          const res = await fetch(`/api/v1/plans?${queryParams.toString()}`);
+          if (!res.ok) throw new Error('Failed to fetch discovery plans');
+          const json = await res.json();
+          return (json.data?.plans || json.data || []) as Plan[];
+        });
+      } catch (err) {
+        // Fallback to specific search cache
+        const cached = await ModuleOfflineService.getCache<Plan[]>(cacheKey);
+        if (cached && Array.isArray(cached)) return cached;
+        // Fallback to base find_plans__ cache if search was empty
+        if (!search && !category) {
+          const baseCache = await ModuleOfflineService.getCache<Plan[]>('find_plans__');
+          if (baseCache && Array.isArray(baseCache)) return baseCache;
+        }
+        return [];
+      }
+    },
     staleTime: 1000 * 60 * 5,
+    networkMode: 'offlineFirst',
+    retry: (failureCount) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return false;
+      return failureCount < 1;
+    },
+    refetchOnMount: typeof navigator !== 'undefined' && !navigator.onLine ? false : true,
+    refetchOnWindowFocus: false,
   });
 }
 
@@ -53,15 +93,29 @@ export function useFindPlans(search: string = '', category: string = '') {
 export function usePlanDetails(planId: string) {
   return useQuery({
     queryKey: ['plan', planId],
-    queryFn: () =>
-      fetchWithOfflineCache(`plan_details_${planId}`, async () => {
-        const res = await fetch(`/api/v1/plans/${planId}`);
-        if (!res.ok) throw new Error('Failed to fetch plan details');
-        const json = await res.json();
-        return json.data as PlanWithProgress;
-      }),
+    queryFn: async () => {
+      const cacheKey = `plan_details_${planId}`;
+      try {
+        return await fetchWithOfflineCache(cacheKey, async () => {
+          const res = await fetch(`/api/v1/plans/${planId}`);
+          if (!res.ok) throw new Error('Failed to fetch plan details');
+          const json = await res.json();
+          return json.data as PlanWithProgress;
+        });
+      } catch (err) {
+        const cached = await ModuleOfflineService.getCache<PlanWithProgress>(cacheKey);
+        if (cached) return cached;
+        throw err;
+      }
+    },
     enabled: Boolean(planId),
     staleTime: 1000 * 30, // 30 seconds
+    networkMode: 'offlineFirst',
+    retry: (failureCount) => {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return false;
+      return failureCount < 1;
+    },
+    refetchOnMount: typeof navigator !== 'undefined' && !navigator.onLine ? false : true,
   });
 }
 

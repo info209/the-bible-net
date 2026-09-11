@@ -7,10 +7,12 @@ import { Bookmark, ChevronRight } from 'lucide-react';
 interface SavedPlansViewProps {
   progresses: any[];
   isLoading: boolean;
+  isOffline?: boolean;
 }
 
-export default function SavedPlansView({ progresses, isLoading }: SavedPlansViewProps) {
+export default function SavedPlansView({ progresses, isLoading, isOffline }: SavedPlansViewProps) {
   const router = useRouter();
+  const offline = isOffline ?? (typeof navigator !== 'undefined' && !navigator.onLine);
 
   if (isLoading) {
     return (
@@ -24,9 +26,11 @@ export default function SavedPlansView({ progresses, isLoading }: SavedPlansView
 
   if (!progresses || progresses.length === 0) {
     return (
-      <div className="py-20 text-center">
+      <div className="py-20 text-center px-4 space-y-2">
         <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-          No plans under Saved
+          {offline
+            ? 'You are currently offline. Saved plans will appear here once saved or reconnected.'
+            : 'No plans under Saved'}
         </p>
       </div>
     );

@@ -7,10 +7,12 @@ import { CheckCircle2, Star, ChevronRight } from 'lucide-react';
 interface CompletedPlansViewProps {
   progresses: any[];
   isLoading: boolean;
+  isOffline?: boolean;
 }
 
-export default function CompletedPlansView({ progresses, isLoading }: CompletedPlansViewProps) {
+export default function CompletedPlansView({ progresses, isLoading, isOffline }: CompletedPlansViewProps) {
   const router = useRouter();
+  const offline = isOffline ?? (typeof navigator !== 'undefined' && !navigator.onLine);
 
   if (isLoading) {
     return (
@@ -24,9 +26,11 @@ export default function CompletedPlansView({ progresses, isLoading }: CompletedP
 
   if (!progresses || progresses.length === 0) {
     return (
-      <div className="py-20 text-center">
+      <div className="py-20 text-center px-4 space-y-2">
         <p className="text-gray-500 dark:text-gray-400 text-sm font-medium">
-          No plans under Completed
+          {offline
+            ? 'You are currently offline. Completed plans will appear here.'
+            : 'No plans under Completed'}
         </p>
       </div>
     );
