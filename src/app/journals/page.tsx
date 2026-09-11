@@ -12,7 +12,8 @@ import {
   Underline as UnderlineIcon, Tag,
   Heading1, Heading2, Quote,
   AlignLeft, AlignCenter, AlignRight, Loader2,
-  Undo2, Redo2
+  Undo2, Redo2,
+  ArrowDownWideNarrow, ArrowUpNarrowWide
 } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmContext';
@@ -63,7 +64,7 @@ function JournalsContent() {
   const [activeTab, setActiveTab] = useState<Tab>('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const [sortBy, setSortBy] = useState<'pinned_recent' | 'recent'>('pinned_recent');
+  const [sortBy, setSortBy] = useState<'desc' | 'asc'>('desc');
   
   // Prayer-specific status filter (shown when Prayers tab is active)
   const [prayerStatusFilter, setPrayerStatusFilter] = useState<PrayerStatusFilter>('All');
@@ -1802,16 +1803,14 @@ function JournalsContent() {
       });
     }
 
-    // Apply Sorting (Pinned first, then Recent or just Recent)
-    if (sortBy === 'pinned_recent') {
-      return [...list].sort((a, b) => {
-        if (a.isPinned && !b.isPinned) return -1;
-        if (!a.isPinned && b.isPinned) return 1;
-        return new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime();
-      });
-    } else {
-      return [...list].sort((a, b) => new Date(b.updatedAt || b.createdAt).getTime() - new Date(a.updatedAt || a.createdAt).getTime());
-    }
+    // Apply Sorting (Pinned first, then date descending or ascending)
+    return [...list].sort((a, b) => {
+      if (a.isPinned && !b.isPinned) return -1;
+      if (!a.isPinned && b.isPinned) return 1;
+      const dateA = new Date(a.updatedAt || a.createdAt || 0).getTime();
+      const dateB = new Date(b.updatedAt || b.createdAt || 0).getTime();
+      return sortBy === 'asc' ? dateA - dateB : dateB - dateA;
+    });
   }, [journals, prayers, activeTab, debouncedQuery, sortBy, filterType, filterPinned, filterBookmarked, filterDate, prayerStatusFilter]);
 
   const activeKebabItem = useMemo(() => {
@@ -1972,11 +1971,16 @@ function JournalsContent() {
                     </button>
                     {/* Sort Selector Toggle */}
                     <button
-                      onClick={() => setSortBy(sortBy === 'pinned_recent' ? 'recent' : 'pinned_recent')}
-                      className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06] ${sortBy === 'recent' ? 'text-[#0B7A81]' : ''}`}
-                      title={sortBy === 'pinned_recent' ? 'Pinned items prioritized' : 'Recent prioritized'}
+                      onClick={() => setSortBy(sortBy === 'desc' ? 'asc' : 'desc')}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center hover:bg-gray-200/50 dark:hover:bg-white/[0.06] ${sortBy === 'asc' ? 'text-[#0B7A81]' : ''}`}
+                      title={sortBy === 'desc' ? 'Sorted by newest first' : 'Sorted by oldest first'}
+                      aria-label={sortBy === 'desc' ? 'Sort by oldest first' : 'Sort by newest first'}
                     >
-                      <Sliders className="w-[18px] h-[18px]" />
+                      {sortBy === 'desc' ? (
+                        <ArrowDownWideNarrow className="w-[18px] h-[18px]" />
+                      ) : (
+                        <ArrowUpNarrowWide className="w-[18px] h-[18px]" />
+                      )}
                     </button>
                     {/* Filter Sheet trigger */}
                     <button
