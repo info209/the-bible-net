@@ -59,6 +59,7 @@ export const {
                         email: user.email,
                         role: user.role as UserRole,
                         onboardingCompleted: user.onboardingCompleted as boolean,
+                        onboardingStep: (user as any).onboardingStep ?? (user.onboardingCompleted ? 4 : 2),
                         emailVerified: user.emailVerified as any,
                         sessionType: 'USER',
                         firstName: user.firstName,
@@ -106,6 +107,7 @@ export const {
                     user.id = dbUser._id.toString();
                     user.role = dbUser.role as UserRole;
                     user.onboardingCompleted = dbUser.onboardingCompleted as boolean;
+                    user.onboardingStep = dbUser.onboardingStep ?? (dbUser.onboardingCompleted ? 4 : 2);
                     user.emailVerified = dbUser.emailVerified as any;
                     user.sessionType = 'USER';
                     (user as any).firstName = dbUser.firstName;

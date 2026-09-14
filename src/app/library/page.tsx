@@ -17,7 +17,7 @@ function LibraryContent() {
   const router = useRouter();
 
   // Read initial tab from URL query params (default: 'my-plans')
-  const initialTab = (searchParams.get('tab') as LibraryTabId) || 'my-plans';
+  const initialTab = (searchParams.get('tab') as LibraryTabId) || 'find-plans';
   const [activeTab, setActiveTab] = useState<LibraryTabId>(initialTab);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearchOpen, setIsSearchOpen] = useState(false);

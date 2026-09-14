@@ -5,6 +5,7 @@ declare module 'next-auth' {
         id?: string;
         role?: UserRole;
         onboardingCompleted?: boolean;
+        onboardingStep?: number;
         emailVerified?: boolean;
         firstName?: string;
         lastName?: string;
@@ -23,6 +24,7 @@ declare module 'next-auth/jwt' {
         id: string;
         role: UserRole;
         onboardingCompleted: boolean;
+        onboardingStep?: number;
         emailVerified: boolean;
         sessionType: 'ADMIN' | 'USER';
         firstName?: string;

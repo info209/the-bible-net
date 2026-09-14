@@ -13,6 +13,7 @@ export interface IUser extends Document {
     country: string;
     emailVerified: boolean;
     onboardingCompleted: boolean;
+    onboardingStep: number;
     image?: string;
     provider?: string;
     providerAccountId?: string;
@@ -80,6 +81,10 @@ const UserSchema = new Schema<IUser>(
         onboardingCompleted: {
             type: Boolean,
             default: false,
+        },
+        onboardingStep: {
+            type: Number,
+            default: 1,
         },
         failedLoginAttempts: {
             type: Number,

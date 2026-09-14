@@ -7,12 +7,14 @@ import { ShieldCheck, Mail, ArrowRight, RefreshCcw, AlertCircle, ChevronLeft } f
 import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
 import { focusTarget } from '@/hooks/useAutoFocus';
+import { useAuth } from '@/context/AuthContext';
 
 function VerifyOTPContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
     const userId = searchParams.get('userId');
     const email = searchParams.get('email');
+    const { status, user, isAuthenticated } = useAuth();
 
     const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [loading, setLoading] = useState(false);
@@ -21,10 +23,19 @@ function VerifyOTPContent() {
     const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
 
     useEffect(() => {
-        if (!userId) {
+        if (isAuthenticated && user) {
+            if (user.onboardingCompleted) {
+                router.replace('/home');
+            } else {
+                const step = (user.onboardingStep ?? 2) >= 3 ? 3 : 2;
+                router.replace(`/auth/register?step=${step}`);
+            }
+            return;
+        }
+        if (!userId && status !== 'loading') {
             router.push('/auth/register');
         }
-    }, [userId, router]);
+    }, [userId, status, isAuthenticated, user, router]);
 
     // Automatically focus the first empty OTP input on initial mount/landing
     useEffect(() => {
@@ -152,7 +163,7 @@ function VerifyOTPContent() {
                             sessionStorage.removeItem('temp_register_password');
 
                             if (loginRes && !loginRes.error) {
-                                router.push('/home');
+                                router.push('/auth/register?step=2');
                                 router.refresh();
                                 return;
                             }
@@ -161,7 +172,7 @@ function VerifyOTPContent() {
                         }
                     }
                 }
-                router.push('/home');
+                router.push('/auth/register?step=2');
             }
         } catch (err) {
             const friendlyMsg = getFriendlyErrorMessage(err, 'otp');

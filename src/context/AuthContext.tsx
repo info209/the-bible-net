@@ -31,6 +31,8 @@ export interface SafeUser {
   lastName?: string;
   /** Whether the user has completed their onboarding/profile setup. Used by the post-login route guard. */
   onboardingCompleted?: boolean;
+  /** The current onboarding step (1 to 4) */
+  onboardingStep?: number;
   [key: string]: any;
 }
 
@@ -91,6 +93,7 @@ function writeSafeSessionToStorage(session: Session | SafeSession | null): void 
           // Persist onboardingCompleted so the profile-setup route guard
           // can correctly route returning users even in offline/cached sessions.
           onboardingCompleted: (session.user as any).onboardingCompleted ?? false,
+          onboardingStep: (session.user as any).onboardingStep ?? ((session.user as any).onboardingCompleted ? 4 : 2),
         },
         expires: session.expires,
         savedAt: Date.now(),

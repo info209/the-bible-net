@@ -72,8 +72,8 @@ export class UserService {
         const isValid = await OTPUtils.verifyOTP(otp, otpRecord.otpHash);
         if (!isValid) return false;
 
-        // Success: Mark user as verified
-        await UserRepository.update(userId, { emailVerified: true });
+        // Success: Mark user as verified and advance onboardingStep to 2
+        await UserRepository.update(userId, { emailVerified: true, onboardingStep: 2 });
         await OTPRepository.clearAllForUser(userId);
         return true;
     }
@@ -117,6 +117,21 @@ export class UserService {
             ...data,
             emailVerified: true,
             onboardingCompleted: false, // Must complete profile fields later
+            onboardingStep: 2,
+        });
+    }
+
+    /**
+     * Updates partial onboarding progress and advances the step.
+     */
+    static async updateOnboardingStep(
+        userId: string,
+        step: number,
+        fields?: Partial<IUser>
+    ): Promise<IUser | null> {
+        return await UserRepository.update(userId, {
+            ...(fields || {}),
+            onboardingStep: step,
         });
     }
 
@@ -127,6 +142,7 @@ export class UserService {
         return await UserRepository.update(userId, {
             ...fields,
             onboardingCompleted: true,
+            onboardingStep: 4,
         });
     }
 

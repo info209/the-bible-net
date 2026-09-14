@@ -57,23 +57,61 @@ export default async function middleware(req: NextRequest) {
     const isUserLoggedIn = !!userToken;
     const isUserAuthPage = authPageRoutes.some(route => pathname.startsWith(route));
     const isUserProtectedRoute = userProtectedPageRoutes.some(route => pathname.startsWith(route));
+    const isRegistrationFlow = pathname === '/auth/register';
+    const stepParam = nextUrl.searchParams.get('step');
 
-    // Redirect authenticated users away from auth pages (/auth/login, /auth/register, etc.) to /home
-    if (isUserLoggedIn && isUserAuthPage) {
-        return NextResponse.redirect(new URL('/home', nextUrl));
+    if (isUserLoggedIn) {
+        const onboardingCompleted = userToken?.onboardingCompleted === true;
+        const onboardingStep = typeof userToken?.onboardingStep === 'number' ? userToken.onboardingStep : 2;
+        const pendingStep = onboardingStep >= 3 ? 3 : 2;
+        const pendingStepUrl = new URL(`/auth/register?step=${pendingStep}`, nextUrl);
+
+        if (!onboardingCompleted) {
+            // OAuth profile-setup flow is preserved
+            if (pathname.startsWith('/auth/profile-setup')) {
+                return NextResponse.next();
+            }
+
+            // OTP verified user must never be asked for OTP again
+            if (pathname.startsWith('/auth/verify-otp')) {
+                return NextResponse.redirect(pendingStepUrl);
+            }
+
+            // Incomplete onboarding user on registration page
+            if (isRegistrationFlow) {
+                // If on their current pending step, allow
+                if (stepParam === String(pendingStep)) {
+                    return NextResponse.next();
+                }
+                // Otherwise redirect to their current pending step
+                return NextResponse.redirect(pendingStepUrl);
+            }
+
+            // If user attempts to go to login or any other page before completing onboarding,
+            // redirect back to their pending step
+            return NextResponse.redirect(pendingStepUrl);
+        }
+
+        // Onboarding IS completed:
+        // Redirect away from auth pages (/auth/login, /auth/register, etc.) and /auth/profile-setup to /home
+        if (isUserAuthPage || pathname.startsWith('/auth/profile-setup')) {
+            return NextResponse.redirect(new URL('/home', nextUrl));
+        }
+
+        return NextResponse.next();
     }
 
+    // Unauthenticated user:
     // Protect user-only pages
-    if (!isUserLoggedIn && isUserProtectedRoute) {
+    if (isUserProtectedRoute) {
         return NextResponse.redirect(new URL('/auth/login', nextUrl));
     }
 
-    // Onboarding Check (Removed forced redirect to allow voluntary profile setup)
-    // Users can now navigate freely without being forced to complete their profile.
+    // Prevent unauthenticated users from skipping directly to Step 2 or Step 3
+    if (isRegistrationFlow && (stepParam === '2' || stepParam === '3')) {
+        return NextResponse.redirect(new URL('/auth/register', nextUrl));
+    }
 
-    // GUEST FLOW (implicit if no session exists above)
-    // Guests can access public routes but not profile, library, etc.
-    
     return NextResponse.next();
 }
 

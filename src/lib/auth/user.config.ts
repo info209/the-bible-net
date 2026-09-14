@@ -26,6 +26,7 @@ export const userAuthConfig: NextAuthConfig = {
                 token.id = user.id as string;
                 token.role = user.role as UserRole;
                 token.onboardingCompleted = user.onboardingCompleted as boolean || false;
+                token.onboardingStep = (user as any).onboardingStep ?? (user.onboardingCompleted ? 4 : 2);
                 token.emailVerified = user.emailVerified as any || false;
                 token.sessionType = 'USER';
                 token.firstName = (user as any).firstName;
@@ -37,6 +38,7 @@ export const userAuthConfig: NextAuthConfig = {
             }
             if (trigger === 'update' && session?.user) {
                 token.onboardingCompleted = session.user.onboardingCompleted ?? token.onboardingCompleted;
+                token.onboardingStep = session.user.onboardingStep ?? token.onboardingStep;
                 token.role = session.user.role ?? token.role;
                 token.firstName = session.user.firstName ?? token.firstName;
                 token.lastName = session.user.lastName ?? token.lastName;
@@ -52,6 +54,7 @@ export const userAuthConfig: NextAuthConfig = {
                 session.user.id = token.id as string;
                 session.user.role = token.role as UserRole;
                 session.user.onboardingCompleted = token.onboardingCompleted as boolean;
+                session.user.onboardingStep = (token.onboardingStep as number) ?? (token.onboardingCompleted ? 4 : 2);
                 session.user.emailVerified = token.emailVerified as any;
                 session.user.sessionType = 'USER';
                 (session.user as any).firstName = token.firstName as string;
