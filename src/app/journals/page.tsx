@@ -10,7 +10,7 @@ import {
   Bold, Italic, List, ChevronUp, ChevronDown,
   BookOpen, Sliders, ListOrdered, Strikethrough,
   Underline as UnderlineIcon, Tag,
-  Heading1, Heading2, Quote,
+  Heading1, Heading2, Heading3, Quote, Type,
   AlignLeft, AlignCenter, AlignRight, Loader2,
   Undo2, Redo2,
   ArrowDownWideNarrow, ArrowUpNarrowWide
@@ -41,6 +41,7 @@ import DocumentViewMenu from '@/app/components/journals/DocumentViewMenu';
 type Tab = 'All' | 'Journals' | 'Prayers';
 type ItemType = 'journal' | 'prayer';
 type PrayerStatusFilter = 'All' | 'Active' | 'Prayed';
+type TextStyleKey = 'h1' | 'h2' | 'h3' | 'normal' | 'quote';
 
 const DEFAULT_PRESET_LABELS = ['Faith', 'Gratitude', 'Hope', 'Worship', 'Personal', 'Family', 'Work', 'Study'];
 
@@ -127,8 +128,12 @@ function JournalsContent() {
   const [showSearchBar, setShowSearchBar] = useState(false);
   const [showColorMenu, setShowColorMenu] = useState<'text' | 'bg' | null>(null);
   const [colorMenuPos, setColorMenuPos] = useState<{ top: number; left: number } | null>(null);
+  const [showTextStyleMenu, setShowTextStyleMenu] = useState(false);
+  const [textStyleMenuPos, setTextStyleMenuPos] = useState<{ top: number; left: number } | null>(null);
 
   const handleOpenColorMenu = (type: 'text' | 'bg', e: React.MouseEvent<HTMLButtonElement>) => {
+    setShowTextStyleMenu(false);
+    setTextStyleMenuPos(null);
     if (showColorMenu === type) {
       setShowColorMenu(null);
       setColorMenuPos(null);
@@ -141,19 +146,107 @@ function JournalsContent() {
     }
   };
 
+  const handleOpenTextStyleMenu = (e: React.MouseEvent<HTMLButtonElement>) => {
+    setShowColorMenu(null);
+    setColorMenuPos(null);
+    if (showTextStyleMenu) {
+      setShowTextStyleMenu(false);
+      setTextStyleMenuPos(null);
+    } else {
+      const rect = e.currentTarget.getBoundingClientRect();
+      const menuWidth = 175;
+      const left = Math.max(12, Math.min(rect.left, window.innerWidth - menuWidth - 12));
+      setTextStyleMenuPos({ top: rect.bottom + 6, left });
+      setShowTextStyleMenu(true);
+    }
+  };
+
+  const handleSelectTextStyle = (style: 'h1' | 'h2' | 'h3' | 'normal' | 'quote') => {
+    if (!editor) return;
+
+    switch (style) {
+      case 'h1':
+      case 'h2':
+      case 'h3': {
+        const level = (style === 'h1' ? 1 : style === 'h2' ? 2 : 3) as 1 | 2 | 3;
+        if (editor.isActive('blockquote')) {
+          editor.chain().focus().unsetBlockquote().setHeading({ level }).run();
+        } else {
+          editor.chain().focus().setHeading({ level }).run();
+        }
+        break;
+      }
+      case 'normal': {
+        if (editor.isActive('blockquote')) {
+          editor.chain().focus().unsetBlockquote().setParagraph().run();
+        } else {
+          editor.chain().focus().setParagraph().run();
+        }
+        break;
+      }
+      case 'quote': {
+        if (!editor.isActive('blockquote')) {
+          if (editor.isActive('heading')) {
+            editor.chain().focus().setParagraph().toggleBlockquote().run();
+          } else {
+            editor.chain().focus().toggleBlockquote().run();
+          }
+        }
+        break;
+      }
+    }
+    setShowTextStyleMenu(false);
+    setTextStyleMenuPos(null);
+  };
+
+  const textStyleOptions: Array<{
+    key: TextStyleKey;
+    label: string;
+    shortLabel: string;
+    icon: typeof Heading1;
+    previewClass: string;
+  }> = useMemo(() => [
+    { key: 'h1', label: 'Heading 1', shortLabel: 'H1', icon: Heading1, previewClass: 'font-bold' },
+    { key: 'h2', label: 'Heading 2', shortLabel: 'H2', icon: Heading2, previewClass: 'font-semibold' },
+    { key: 'h3', label: 'Heading 3', shortLabel: 'H3', icon: Heading3, previewClass: 'font-medium' },
+    { key: 'normal', label: 'Normal', shortLabel: 'Normal', icon: Type, previewClass: 'font-normal' },
+    { key: 'quote', label: 'Quote', shortLabel: 'Quote', icon: Quote, previewClass: 'italic' },
+  ], []);
+
+  const currentTextStyle = useMemo(() => {
+    if (!editor) return { key: 'normal', label: 'Normal', shortLabel: 'Normal' };
+    if (editor.isActive('heading', { level: 1 })) return { key: 'h1', label: 'Heading 1', shortLabel: 'H1' };
+    if (editor.isActive('heading', { level: 2 })) return { key: 'h2', label: 'Heading 2', shortLabel: 'H2' };
+    if (editor.isActive('heading', { level: 3 })) return { key: 'h3', label: 'Heading 3', shortLabel: 'H3' };
+    if (editor.isActive('blockquote')) return { key: 'quote', label: 'Quote', shortLabel: 'Quote' };
+    return { key: 'normal', label: 'Normal', shortLabel: 'Normal' };
+  }, [editor, editor?.state?.selection]);
+
   useEffect(() => {
-    if (!showColorMenu) return;
+    if (!showColorMenu && !showTextStyleMenu) return;
     const handleScrollOrResize = () => {
       setShowColorMenu(null);
       setColorMenuPos(null);
+      setShowTextStyleMenu(false);
+      setTextStyleMenuPos(null);
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowColorMenu(null);
+        setColorMenuPos(null);
+        setShowTextStyleMenu(false);
+        setTextStyleMenuPos(null);
+      }
     };
     window.addEventListener('scroll', handleScrollOrResize, true);
     window.addEventListener('resize', handleScrollOrResize);
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('scroll', handleScrollOrResize, true);
       window.removeEventListener('resize', handleScrollOrResize);
+      window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [showColorMenu]);
+  }, [showColorMenu, showTextStyleMenu]);
   
   // Editor Fields
   const [editTitle, setEditTitle] = useState('');
@@ -1881,8 +1974,8 @@ function JournalsContent() {
         <div className="w-16 h-16 bg-[#0B7A81]/10 rounded-full flex items-center justify-center mb-4">
           <BookOpen className="w-8 h-8 text-[#0B7A81]" />
         </div>
-        <h2 className="text-lg font-bold mb-1">Access private journals &amp; prayers</h2>
-        <p className="text-sm text-gray-500 mb-6 max-w-xs">Please sign in to view and save your private journals, track audio prayers, and utilize custom labels.</p>
+        <h2 className="text-lg font-bold mb-1">Your journals &amp; prayers</h2>
+        <p className="text-sm text-gray-500 mb-6 max-w-xs">Sign in to view, save and manage your journals &amp; prayers.</p>
         <button
           onClick={() => router.push(`/auth/login?callbackUrl=${encodeURIComponent(window.location.href)}`)}
           className="px-6 py-2.5 bg-[#0B7A81] text-white rounded-xl text-sm font-semibold shadow-md active:opacity-90"
@@ -2432,7 +2525,9 @@ function JournalsContent() {
                 <h2 className="text-[18px] font-bold">
                   {editorMode === 'view'
                     ? (editorType === 'journal' ? 'Journal details' : 'Prayer details')
-                    : (editorMode === 'create' ? `Create ${editorType === 'journal' ? 'journal' : 'prayer'}` : 'Edit')}
+                    : (editorMode === 'create'
+                      ? `Create ${editorType === 'journal' ? 'journal' : 'prayer'}`
+                      : `Edit ${editorType === 'journal' ? 'journal' : 'prayer'}`)}
                 </h2>
               </div>
 
@@ -2469,7 +2564,7 @@ function JournalsContent() {
                     <button
                       type="button"
                       onClick={() => saveOrUpdateEditor(false)}
-                      className="h-9 px-5 bg-[#0B7A81] hover:bg-[#086369] text-white rounded-xl text-sm font-semibold active:scale-95 transition-all shadow-sm cursor-pointer"
+                      className="h-8 px-2.5 rounded-lg transition-all bg-[#0B7A81]/10 hover:bg-[#0B7A81]/20 text-[#0B7A81] dark:bg-[#0B7A81]/20 dark:hover:bg-[#0B7A81]/30 dark:text-[#14B8A6] flex items-center gap-1.5 shrink-0 font-medium active:scale-95 shadow-xs"
                     >
                       Save
                     </button>
@@ -2633,7 +2728,6 @@ function JournalsContent() {
                       title="Add verse"
                       aria-label="Add verse"
                     >
-                      <BookOpen className="w-4 h-4 shrink-0" />
                       <span className="text-xs font-bold whitespace-nowrap">Add verse</span>
                     </button>
                   </div>
@@ -2733,34 +2827,75 @@ function JournalsContent() {
                     {/* Separator */}
                     <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />
 
-                    {/* ── Headings Group ── */}
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 1 }).run(); }}
-                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('heading', { level: 1 }) ? 'tiptap-btn-active' : '' }`}
-                      title="Heading 1"
-                      aria-label="Heading 1"
-                    >
-                      <Heading1 className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleHeading({ level: 2 }).run(); }}
-                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('heading', { level: 2 }) ? 'tiptap-btn-active' : '' }`}
-                      title="Heading 2"
-                      aria-label="Heading 2"
-                    >
-                      <Heading2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      type="button"
-                      onMouseDown={(e) => { e.preventDefault(); editor?.chain().focus().toggleBlockquote().run(); }}
-                      className={`p-1.5 rounded transition-colors hover:bg-gray-200 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-300 shrink-0 ${ editor?.isActive('blockquote') ? 'tiptap-btn-active' : '' }`}
-                      title="Blockquote"
-                      aria-label="Blockquote"
-                    >
-                      <Quote className="w-4 h-4" />
-                    </button>
+                    {/* ── Text Style Dropdown (H1 to H3, Normal, Quote) ── */}
+                    <div className="relative flex items-center shrink-0">
+                      <button
+                        type="button"
+                        onMouseDown={(e) => {
+                          e.preventDefault();
+                          handleOpenTextStyleMenu(e);
+                        }}
+                        className={`h-7 px-2 rounded-md transition-colors flex items-center gap-1 shrink-0 text-xs font-medium cursor-pointer border ${
+                          showTextStyleMenu
+                            ? 'bg-gray-200 dark:bg-white/[0.12] border-gray-300 dark:border-white/[0.2] text-gray-900 dark:text-white'
+                            : currentTextStyle.key !== 'normal'
+                              ? 'bg-[#0B7A81]/10 dark:bg-[#0B7A81]/20 border-[#0B7A81]/30 dark:border-[#0B7A81]/40 text-[#0B7A81] dark:text-[#14B8A6] font-semibold'
+                              : 'hover:bg-gray-200 dark:hover:bg-white/[0.06] border-transparent text-gray-700 dark:text-gray-300'
+                        }`}
+                        title="Text Style"
+                        aria-label="Text Style"
+                        aria-haspopup="listbox"
+                        aria-expanded={showTextStyleMenu}
+                      >
+                        <span className="min-w-[42px] text-left truncate">{currentTextStyle.shortLabel}</span>
+                        <ChevronDown className={`w-3 h-3 text-gray-400 dark:text-gray-500 transition-transform duration-150 ${showTextStyleMenu ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {showTextStyleMenu && textStyleMenuPos && (
+                        <>
+                          <div
+                            className="fixed inset-0 z-[90]"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setShowTextStyleMenu(false);
+                            }}
+                          />
+                          <div
+                            role="listbox"
+                            className="fixed z-[100] bg-white dark:bg-[#1C1C1E] border border-gray-200 dark:border-white/[0.12] p-1 rounded-xl shadow-2xl flex flex-col gap-0.5 min-w-[165px] select-none"
+                            style={{ top: `${textStyleMenuPos.top}px`, left: `${textStyleMenuPos.left}px` }}
+                          >
+                            {textStyleOptions.map((opt) => {
+                              const Icon = opt.icon;
+                              const isSelected = currentTextStyle.key === opt.key;
+                              return (
+                                <button
+                                  key={opt.key}
+                                  type="button"
+                                  role="option"
+                                  aria-selected={isSelected}
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    handleSelectTextStyle(opt.key);
+                                  }}
+                                  className={`w-full px-2.5 py-1.5 rounded-lg text-left flex items-center justify-between transition-colors cursor-pointer text-xs ${
+                                    isSelected
+                                      ? 'bg-[#0B7A81]/10 dark:bg-[#0B7A81]/25 text-[#0B7A81] dark:text-[#14B8A6] font-semibold'
+                                      : 'hover:bg-gray-100 dark:hover:bg-white/[0.06] text-gray-700 dark:text-gray-200'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <Icon className="w-3.5 h-3.5 shrink-0 opacity-70" />
+                                    <span className={`truncate ${opt.previewClass}`}>{opt.label}</span>
+                                  </div>
+                                  {isSelected && <Check className="w-3.5 h-3.5 shrink-0 ml-2 text-[#0B7A81] dark:text-[#14B8A6]" />}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </>
+                      )}
+                    </div>
 
                     {/* Separator */}
                     <span className="w-px h-5 bg-gray-300 dark:bg-white/[0.1] mx-1 shrink-0" />

@@ -88,7 +88,7 @@ export default function AppHeader({ onMenuOpen, className }: AppHeaderProps) {
           {/* Logo Section (Left Aligned with Content) */}
           <div className="flex items-center pointer-events-none shrink-0">
             <Link href="/home" className="flex items-center hover:opacity-90 transition-all active:scale-95 pointer-events-auto">
-              <img src="/logo.svg" alt="The Bible Net" width={104} height={40} />
+              <img src="/logo_white.png" alt="The Bible Net" width={104} height={40} className="object-contain" />
             </Link>
           </div>
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { Play, MessageCircle, Pause, X, Send, MoreVertical, Check, Bookmark, BookOpen, Copy, User } from 'lucide-react';
+import { Play, MessageCircle, Pause, X, Send, MoreVertical, Check, Bookmark, BookOpen, Copy, User, Download, Copyright } from 'lucide-react';
 import { RiShareForwardLine } from 'react-icons/ri';
 import { LuNotebookPen } from 'react-icons/lu';
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -29,6 +29,7 @@ import { HomeOfflineService } from '@/lib/offline/HomeOfflineService';
 import { fetchWithOfflineCache } from '@/lib/offline';
 import { PendingActionsService } from '@/lib/offline/PendingActionsService';
 import { LegalModal } from '@/components/LegalModal';
+import { usePWA } from '@/components/offline/PWAProvider';
 
 const getGreetingByHour = (hour: number): string => {
   if (hour >= 5 && hour < 12) return 'Good Morning,';
@@ -38,6 +39,7 @@ const getGreetingByHour = (hour: number): string => {
 
 export default function HomeView() {
   const { session } = useAuth();
+  const { openInstallModal } = usePWA();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { isLoading: progressLoading } = useReadingProgress();
@@ -1298,29 +1300,23 @@ export default function HomeView() {
       <footer className="w-full bg-white border-t border-gray-100/80 mt-12 py-10 px-6 flex flex-col items-center select-none">
         {/* Logo */}
         <div className="flex justify-center mb-6">
-          <img src="/logo.svg" alt="The Bible Net" width={140} height={54} className="object-contain select-none" />
+          <img src="/logo_teal.png" alt="The Bible Net" width={140} height={54} className="object-contain select-none" />
         </div>
 
         {/* Paragraph Text */}
-        <p className="text-gray-500 text-sm leading-relaxed text-center max-w-sm mb-8 px-2 font-normal">
+        <p className="text-gray-500 text-sm leading-relaxed text-center max-w-sm mb-6 px-2 font-normal">
           Helping you discover God's truth and deepen your faith daily.
         </p>
 
-        {/* Links Grid */}
-        {/* <div className="grid grid-cols-2 gap-x-12 gap-y-3.5 text-sm text-gray-400 font-medium mb-10 w-full max-w-[280px]">
-          <div className="flex flex-col space-y-3 items-start">
-            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
-            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
-            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
-            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
-          </div>
-          <div className="flex flex-col space-y-3 items-end">
-            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
-            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
-            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
-            <a href="#" className="hover:text-gray-600 transition-colors">Links</a>
-          </div>
-        </div> */}
+        {/* Bible App Installation Link */}
+        <button
+          type="button"
+          onClick={openInstallModal}
+          className="inline-flex items-center gap-2 px-5 py-2 mb-6 rounded-full text-sm font-medium text-[var(--color-primary-teal)] hover:bg-[#41adb0]/10 active:scale-95 transition-all duration-200 cursor-pointer"
+        >
+          <Download className="size-4" />
+          <span>Bible App Installation</span>
+        </button>
 
         {/* Social Icons */}
         <div className="flex items-center justify-center gap-8 mb-5">
@@ -1354,7 +1350,7 @@ export default function HomeView() {
         </div>
 
         {/* Legal Links (Terms of Service & Privacy Policy) */}
-        <div className="flex items-center justify-center gap-3 text-sm text-gray-500 font-normal">
+        <div className="flex items-center justify-center gap-3 text-sm text-gray-500 font-normal mb-4">
           <button
             type="button"
             onClick={() => setLegalModal({ isOpen: true, type: 'terms' })}
@@ -1370,6 +1366,12 @@ export default function HomeView() {
           >
             Privacy Policy
           </button>
+        </div>
+
+        {/* Copyright */}
+        <div className="flex items-center justify-center gap-1.5 text-xs text-gray-400 font-normal">
+          <Copyright className="size-3.5 shrink-0" />
+          <span>{new Date().getFullYear()} The Bible Net. All rights reserved.</span>
         </div>
       </footer>
 
