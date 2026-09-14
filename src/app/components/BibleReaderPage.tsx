@@ -199,7 +199,9 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
     pause: pauseAmbient,
     stop: stopAmbient,
     togglePlay: toggleAmbientPlay,
-    restoreSession: restoreAmbientSession
+    restoreSession: restoreAmbientSession,
+    musicLoopMode,
+    cycleMusicLoopMode,
   } = useAmbientMusicStore();
 
   const { isOnline } = useNetworkStatusContext();
@@ -226,7 +228,6 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
   }, [restoreAmbientSession]);
 
   const selectedMusic = currentTrack ? currentTrack.id : 'none';
-  const [musicLoopMode, setMusicLoopMode] = useState<'shuffle' | 'repeat-all' | 'repeat-one'>('shuffle');
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
 
@@ -2719,13 +2720,10 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
               <div className="flex items-center space-x-2">
                 {/* Loop/Shuffle/Repeat Toggle */}
                 <button
-                  onClick={() => {
-                    const modes: Array<'shuffle' | 'repeat-all' | 'repeat-one'> = ['shuffle', 'repeat-all', 'repeat-one'];
-                    const currentIndex = modes.indexOf(musicLoopMode);
-                    setMusicLoopMode(modes[(currentIndex + 1) % modes.length]);
-                  }}
-                  className="flex items-center space-x-1.5 px-3 py-2 rounded-full transition-colors"
+                  onClick={cycleMusicLoopMode}
+                  className="flex items-center space-x-1.5 px-3 py-2 rounded-full transition-colors hover:bg-black/5"
                   style={{ color: currentTheme.text }}
+                  title={`Ambient Mode: ${musicLoopMode === 'shuffle' ? 'Shuffle' : musicLoopMode === 'repeat-all' ? 'Repeat All' : 'Repeat One'}`}
                 >
                   {musicLoopMode === 'shuffle' ? (
                     <><span className="text-sm">Shuffle</span><Shuffle className="size-5" /></>
@@ -2746,11 +2744,13 @@ export default function BibleReaderPage(props: BibleReaderPageProps) {
                       } else {
                         playAmbient(currentTrack);
                       }
+                    } else if (ambientTracks.length > 0) {
+                      playAmbient(ambientTracks[0]);
                     }
                   }}
-                  disabled={!currentTrack}
+                  disabled={!currentTrack && ambientTracks.length === 0}
                   className={`p-2 rounded-full transition-colors ${
-                    currentTrack ? 'cursor-pointer hover:bg-black/5' : 'opacity-40 cursor-not-allowed'
+                    currentTrack || ambientTracks.length > 0 ? 'cursor-pointer hover:bg-black/5' : 'opacity-40 cursor-not-allowed'
                   }`}
                   title={ambientPlaying ? "Pause ambient music" : "Play ambient music"}
                 >

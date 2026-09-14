@@ -12,7 +12,8 @@
     "import:bible": "npx tsx --tsconfig tsconfig.scripts.json scripts/import_bible.ts",
     "import:bible:dry": "npx tsx --tsconfig tsconfig.scripts.json scripts/import_bible.ts --dry-run",
     "migrate:telugu-books": "npx tsx --tsconfig tsconfig.scripts.json scripts/migrate-telugu-book-names.ts",
-    "test:disposable-email": "npx tsx --tsconfig tsconfig.scripts.json scripts/test-disposable-email.ts"
+    "test:disposable-email": "npx tsx --tsconfig tsconfig.scripts.json scripts/test-disposable-email.ts",
+    "test:ambient-queue": "npx tsx --tsconfig tsconfig.scripts.json scripts/test-ambient-queue.ts"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",

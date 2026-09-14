@@ -192,9 +192,6 @@ export default function BibleReaderPageContainer({ onNavigate }: BibleReaderPage
   const [availableVoices, setAvailableVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [audioControlExpanded, setAudioControlExpanded] = useState(false);
   const [showAudioSheet, setShowAudioSheet] = useState(false);
-  const [showMusicSelector, setShowMusicSelector] = useState(false);
-  const [selectedMusic, setSelectedMusic] = useState<string | null>('none');
-  const [musicLoopMode, setMusicLoopMode] = useState<'shuffle' | 'repeat-all' | 'repeat-one'>('shuffle');
   const [audioCurrentTime, setAudioCurrentTime] = useState(0);
   const [audioDuration, setAudioDuration] = useState(1);
   const [playbackSpeed, setPlaybackSpeed] = useState(1.0);
