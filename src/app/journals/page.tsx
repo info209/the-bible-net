@@ -161,67 +161,6 @@ function JournalsContent() {
     }
   };
 
-  const handleSelectTextStyle = (style: 'h1' | 'h2' | 'h3' | 'normal' | 'quote') => {
-    if (!editor) return;
-
-    switch (style) {
-      case 'h1':
-      case 'h2':
-      case 'h3': {
-        const level = (style === 'h1' ? 1 : style === 'h2' ? 2 : 3) as 1 | 2 | 3;
-        if (editor.isActive('blockquote')) {
-          editor.chain().focus().unsetBlockquote().setHeading({ level }).run();
-        } else {
-          editor.chain().focus().setHeading({ level }).run();
-        }
-        break;
-      }
-      case 'normal': {
-        if (editor.isActive('blockquote')) {
-          editor.chain().focus().unsetBlockquote().setParagraph().run();
-        } else {
-          editor.chain().focus().setParagraph().run();
-        }
-        break;
-      }
-      case 'quote': {
-        if (!editor.isActive('blockquote')) {
-          if (editor.isActive('heading')) {
-            editor.chain().focus().setParagraph().toggleBlockquote().run();
-          } else {
-            editor.chain().focus().toggleBlockquote().run();
-          }
-        }
-        break;
-      }
-    }
-    setShowTextStyleMenu(false);
-    setTextStyleMenuPos(null);
-  };
-
-  const textStyleOptions: Array<{
-    key: TextStyleKey;
-    label: string;
-    shortLabel: string;
-    icon: typeof Heading1;
-    previewClass: string;
-  }> = useMemo(() => [
-    { key: 'h1', label: 'Heading 1', shortLabel: 'H1', icon: Heading1, previewClass: 'font-bold' },
-    { key: 'h2', label: 'Heading 2', shortLabel: 'H2', icon: Heading2, previewClass: 'font-semibold' },
-    { key: 'h3', label: 'Heading 3', shortLabel: 'H3', icon: Heading3, previewClass: 'font-medium' },
-    { key: 'normal', label: 'Normal', shortLabel: 'Normal', icon: Type, previewClass: 'font-normal' },
-    { key: 'quote', label: 'Quote', shortLabel: 'Quote', icon: Quote, previewClass: 'italic' },
-  ], []);
-
-  const currentTextStyle = useMemo(() => {
-    if (!editor) return { key: 'normal', label: 'Normal', shortLabel: 'Normal' };
-    if (editor.isActive('heading', { level: 1 })) return { key: 'h1', label: 'Heading 1', shortLabel: 'H1' };
-    if (editor.isActive('heading', { level: 2 })) return { key: 'h2', label: 'Heading 2', shortLabel: 'H2' };
-    if (editor.isActive('heading', { level: 3 })) return { key: 'h3', label: 'Heading 3', shortLabel: 'H3' };
-    if (editor.isActive('blockquote')) return { key: 'quote', label: 'Quote', shortLabel: 'Quote' };
-    return { key: 'normal', label: 'Normal', shortLabel: 'Normal' };
-  }, [editor, editor?.state?.selection]);
-
   useEffect(() => {
     if (!showColorMenu && !showTextStyleMenu) return;
     const handleScrollOrResize = () => {
@@ -1094,6 +1033,67 @@ function JournalsContent() {
       setEditContent(editor.getHTML());
     },
   });
+
+  const handleSelectTextStyle = (style: 'h1' | 'h2' | 'h3' | 'normal' | 'quote') => {
+    if (!editor) return;
+
+    switch (style) {
+      case 'h1':
+      case 'h2':
+      case 'h3': {
+        const level = (style === 'h1' ? 1 : style === 'h2' ? 2 : 3) as 1 | 2 | 3;
+        if (editor.isActive('blockquote')) {
+          editor.chain().focus().unsetBlockquote().setHeading({ level }).run();
+        } else {
+          editor.chain().focus().setHeading({ level }).run();
+        }
+        break;
+      }
+      case 'normal': {
+        if (editor.isActive('blockquote')) {
+          editor.chain().focus().unsetBlockquote().setParagraph().run();
+        } else {
+          editor.chain().focus().setParagraph().run();
+        }
+        break;
+      }
+      case 'quote': {
+        if (!editor.isActive('blockquote')) {
+          if (editor.isActive('heading')) {
+            editor.chain().focus().setParagraph().toggleBlockquote().run();
+          } else {
+            editor.chain().focus().toggleBlockquote().run();
+          }
+        }
+        break;
+      }
+    }
+    setShowTextStyleMenu(false);
+    setTextStyleMenuPos(null);
+  };
+
+  const textStyleOptions: Array<{
+    key: TextStyleKey;
+    label: string;
+    shortLabel: string;
+    icon: typeof Heading1;
+    previewClass: string;
+  }> = useMemo(() => [
+    { key: 'h1', label: 'Heading 1', shortLabel: 'H1', icon: Heading1, previewClass: 'font-bold' },
+    { key: 'h2', label: 'Heading 2', shortLabel: 'H2', icon: Heading2, previewClass: 'font-semibold' },
+    { key: 'h3', label: 'Heading 3', shortLabel: 'H3', icon: Heading3, previewClass: 'font-medium' },
+    { key: 'normal', label: 'Normal', shortLabel: 'Normal', icon: Type, previewClass: 'font-normal' },
+    { key: 'quote', label: 'Quote', shortLabel: 'Quote', icon: Quote, previewClass: 'italic' },
+  ], []);
+
+  const currentTextStyle = useMemo(() => {
+    if (!editor) return { key: 'normal', label: 'Normal', shortLabel: 'Normal' };
+    if (editor.isActive('heading', { level: 1 })) return { key: 'h1', label: 'Heading 1', shortLabel: 'H1' };
+    if (editor.isActive('heading', { level: 2 })) return { key: 'h2', label: 'Heading 2', shortLabel: 'H2' };
+    if (editor.isActive('heading', { level: 3 })) return { key: 'h3', label: 'Heading 3', shortLabel: 'H3' };
+    if (editor.isActive('blockquote')) return { key: 'quote', label: 'Quote', shortLabel: 'Quote' };
+    return { key: 'normal', label: 'Normal', shortLabel: 'Normal' };
+  }, [editor, editor?.state?.selection]);
 
   // Sync editor content when opening a different item
   useEffect(() => {
