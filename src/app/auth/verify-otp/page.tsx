@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { ShieldCheck, Mail, ArrowRight, RefreshCcw, AlertCircle, ChevronLeft } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
+import { focusTarget } from '@/hooks/useAutoFocus';
 
 function VerifyOTPContent() {
     const router = useRouter();
@@ -25,21 +26,86 @@ function VerifyOTPContent() {
         }
     }, [userId, router]);
 
+    // Automatically focus the first empty OTP input on initial mount/landing
+    useEffect(() => {
+        const firstEmptyIndex = otp.findIndex((digit) => !digit);
+        const targetIndex = firstEmptyIndex === -1 ? otp.length - 1 : firstEmptyIndex;
+        focusTarget(inputRefs.current[targetIndex]);
+    }, []);
+
     const handleInput = (index: number, value: string) => {
-        if (!/^\d*$/.test(value)) return;
+        const digits = value.replace(/\D/g, '');
+        if (!digits) {
+            const newOtp = [...otp];
+            newOtp[index] = '';
+            setOtp(newOtp);
+            return;
+        }
 
+        // Multi-digit entry (e.g. mobile SMS auto-fill or fast typing)
+        if (digits.length > 1) {
+            const newOtp = [...otp];
+            let nextFocus = index;
+            for (let i = 0; i < digits.length && (index + i) < 6; i++) {
+                newOtp[index + i] = digits[i];
+                nextFocus = index + i + 1;
+            }
+            setOtp(newOtp);
+            setError('');
+            const target = Math.min(nextFocus, 5);
+            focusTarget(inputRefs.current[target]);
+            return;
+        }
+
+        // Single digit entry
         const newOtp = [...otp];
-        newOtp[index] = value.slice(-1);
+        newOtp[index] = digits;
         setOtp(newOtp);
+        setError('');
 
-        if (value && index < 5) {
-            inputRefs.current[index + 1]?.focus();
+        if (index < 5) {
+            focusTarget(inputRefs.current[index + 1]);
         }
     };
 
-    const handleKeyDown = (index: number, e: React.KeyboardEvent) => {
-        if (e.key === 'Backspace' && !otp[index] && index > 0) {
-            inputRefs.current[index - 1]?.focus();
+    const handlePaste = (index: number, e: React.ClipboardEvent<HTMLInputElement>) => {
+        e.preventDefault();
+        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '');
+        if (!pastedData) return;
+
+        const newOtp = [...otp];
+        let nextFocus = index;
+        for (let i = 0; i < pastedData.length && (index + i) < 6; i++) {
+            newOtp[index + i] = pastedData[i];
+            nextFocus = index + i + 1;
+        }
+        setOtp(newOtp);
+        setError('');
+
+        const target = Math.min(nextFocus, 5);
+        focusTarget(inputRefs.current[target]);
+    };
+
+    const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Backspace') {
+            if (!otp[index] && index > 0) {
+                // Clear previous box and navigate back
+                const newOtp = [...otp];
+                newOtp[index - 1] = '';
+                setOtp(newOtp);
+                focusTarget(inputRefs.current[index - 1]);
+                e.preventDefault();
+            } else if (otp[index]) {
+                // Clear current box
+                const newOtp = [...otp];
+                newOtp[index] = '';
+                setOtp(newOtp);
+                e.preventDefault();
+            }
+        } else if (e.key === 'ArrowLeft' && index > 0) {
+            focusTarget(inputRefs.current[index - 1]);
+        } else if (e.key === 'ArrowRight' && index < 5) {
+            focusTarget(inputRefs.current[index + 1]);
         }
     };
 
@@ -117,6 +183,9 @@ function VerifyOTPContent() {
             });
             if (res.ok) {
                 toast.success('New OTP sent');
+                setOtp(['', '', '', '', '', '']);
+                setError('');
+                focusTarget(inputRefs.current[0], { force: true });
             } else {
                 const data = await res.json();
                 const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Failed to resend. Try again later.', 'otp');
@@ -184,11 +253,16 @@ function VerifyOTPContent() {
                             ref={(el) => { inputRefs.current[i] = el; }}
                             type="text"
                             inputMode="numeric"
+                            pattern="[0-9]*"
                             maxLength={1}
+                            autoComplete={i === 0 ? "one-time-code" : "off"}
+                            aria-label={`Digit ${i + 1} of 6`}
+                            disabled={loading || resending}
                             value={digit}
                             onChange={(e) => handleInput(i, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(i, e)}
-                            className="w-full aspect-square text-center text-2xl sm:text-3xl font-bold bg-gray-100/50 border-2 border-transparent rounded-xl sm:rounded-2xl outline-none focus:border-[var(--color-primary-teal)] focus:ring-4 focus:ring-[var(--color-primary-teal)]/10 transition-all text-slate-800 shadow-sm"
+                            onPaste={(e) => handlePaste(i, e)}
+                            className="w-full aspect-square text-center text-2xl sm:text-3xl font-bold bg-gray-100/50 border-2 border-transparent rounded-xl sm:rounded-2xl outline-none focus:border-[var(--color-primary-teal)] focus:ring-4 focus:ring-[var(--color-primary-teal)]/10 transition-all text-slate-800 shadow-sm disabled:opacity-50"
                         />
                     ))}
                 </div>

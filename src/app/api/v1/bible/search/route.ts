@@ -439,7 +439,9 @@ export async function GET(req: NextRequest) {
         const { searchParams } = new URL(req.url);
         const q = searchParams.get('q');
         const versionCodeParam = searchParams.get('versionCode') ?? searchParams.get('versionId') ?? undefined;
-        const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 100);
+        const limit = Math.min(parseInt(searchParams.get('limit') || '25'), 100);
+        const page = Math.max(parseInt(searchParams.get('page') || '1'), 1);
+        const testamentParam = searchParams.get('testament') as 'OT' | 'NT' | null;
 
         if (!q || q.trim().length < 2) {
             return NextResponse.json(
@@ -543,7 +545,9 @@ export async function GET(req: NextRequest) {
 
         const searchResponse = await searchService.search(query, {
             limit,
+            page,
             versionCode: resolvedVersionCode,
+            testament: (testamentParam === 'OT' || testamentParam === 'NT') ? testamentParam : undefined,
         });
 
         if (searchResponse.success) {
@@ -582,6 +586,8 @@ export async function GET(req: NextRequest) {
                     results,
                     total: results.length,
                     query,
+                    page,
+                    hasMore: searchResponse.hasMore,
                     processingTimeMs: searchResponse.processingTimeMs,
                 },
             });

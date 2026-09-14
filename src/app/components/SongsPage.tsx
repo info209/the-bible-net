@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { songsDatabase, Song, getGroupedSongs, getAlphabets, searchSongs } from './SongsData';
 import { toast } from '@/context/ToastContext';
+import { useAutoFocus, focusTarget } from '@/hooks/useAutoFocus';
 
 interface SongsPageProps {
   onBack: () => void;
@@ -53,12 +54,8 @@ export default function SongsPage({ onBack }: SongsPageProps) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Focus search input when opened
-  useEffect(() => {
-    if (showSearch && searchInputRef.current) {
-      searchInputRef.current.focus();
-    }
-  }, [showSearch]);
+  // Focus search input when opened or reopened
+  useAutoFocus({ active: showSearch }, searchInputRef);
 
   // Get songs based on search or language filter
   const getDisplaySongs = () => {
@@ -434,8 +431,13 @@ export default function SongsPage({ onBack }: SongsPageProps) {
               />
               {searchQuery && (
                 <button
-                  onClick={() => setSearchQuery('')}
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    focusTarget(searchInputRef.current);
+                  }}
                   className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-gray-200 rounded-full transition-colors"
+                  aria-label="Clear search"
                 >
                   <X className="size-4 text-gray-500" />
                 </button>

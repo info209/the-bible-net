@@ -4,7 +4,7 @@ import { QueryNormalizer, NormalizedQuery } from '../normalization/normalizer';
 import { WeightedReranker, ScoredVerse } from '../ranking/reranker';
 import { SearchHighlighter } from '../highlighting/highlighter';
 import { SynonymEngine } from '../synonyms/synonymEngine';
-import { getLocalizedBookName } from '@/utils/bibleBooks';
+import { getLocalizedBookName, BIBLE_BOOKS } from '@/utils/bibleBooks';
 
 function detectQueryLanguage(query: string): 'hi' | 'te' | 'en' {
     if (/[\u0900-\u097F]/.test(query)) return 'hi'; // Devanagari range
@@ -32,6 +32,8 @@ export interface SearchOptions {
     mode?: 'exact' | 'keyword' | 'semantic' | 'auto';
     rerank?: boolean;
     versionCode?: string;
+    /** Filter results to Old or New Testament only */
+    testament?: 'OT' | 'NT';
 }
 
 export interface VerseSearchResult {
@@ -76,6 +78,8 @@ export interface SearchResponse {
         total: number;
     };
     results: VerseSearchResult[];
+    /** Whether more results exist beyond the current page */
+    hasMore: boolean;
     processingTimeMs: number;
     error?: string;
 }
@@ -102,7 +106,7 @@ export class BibleSearchService {
         let parsed: ParsedQuery | null = null;
         
         try {
-            const limit = Math.min(options.limit || 30, 100);
+            const limit = Math.min(options.limit || 25, 100);
             const page = Math.max(options.page || 1, 1);
             parsed = await parseQuery(query);
             
@@ -129,13 +133,16 @@ export class BibleSearchService {
             }
             
             let results: VerseSearchResult[] = [];
+            let hasMore = false;
             
             // Execute search path
             if (mode === 'exact') {
                 results = await this.searchExact(parsed, limit);
             } else {
                 // Both keyword and semantic searches run the optimized hybrid pipeline without vectors
-                results = await this.searchHybrid(parsed, limit, page);
+                const hybridOut = await this.searchHybrid(parsed, limit, page, options.testament);
+                results = hybridOut.results;
+                hasMore = hybridOut.hasMore;
             }
             
             const processingTimeMs = Date.now() - startTime;
@@ -148,7 +155,8 @@ export class BibleSearchService {
                 filters: {
                     versionCode: parsed.versionCode,
                     bookName: parsed.bookName,
-                    chapter: parsed.chapter
+                    chapter: parsed.chapter,
+                    testament: options.testament,
                 },
                 pagination: {
                     limit,
@@ -156,6 +164,7 @@ export class BibleSearchService {
                     total: results.length
                 },
                 results,
+                hasMore,
                 processingTimeMs
             };
         } catch (error: any) {
@@ -181,6 +190,7 @@ export class BibleSearchService {
                 filters: {},
                 pagination: { limit: 0, page: 1, total: 0 },
                 results: [],
+                hasMore: false,
                 processingTimeMs,
                 error: error.message || 'Search failed'
             };
@@ -236,14 +246,15 @@ export class BibleSearchService {
     private async searchHybrid(
         parsed: ParsedQuery,
         limit: number,
-        page: number
-    ): Promise<VerseSearchResult[]> {
+        page: number,
+        testament?: 'OT' | 'NT'
+    ): Promise<{ results: VerseSearchResult[]; hasMore: boolean }> {
         const skip = (page - 1) * limit;
         
         // Extract residual query or full text if no residual query remains
         const queryText = parsed.query || parsed.raw;
         if (!queryText || queryText.length < 2) {
-            return [];
+            return { results: [], hasMore: false };
         }
 
         // 1. Normalize query and expand with synonyms
@@ -251,7 +262,7 @@ export class BibleSearchService {
         
         // Make sure we have active tokens to search
         if (normalizedQuery.tokens.length === 0) {
-            return [];
+            return { results: [], hasMore: false };
         }
 
         // 2. Build MongoDB text search query
@@ -268,6 +279,21 @@ export class BibleSearchService {
         }
         if (parsed.bookName) {
             filters.bookName = getDbBookNameFilter(parsed.bookName);
+        } else if (testament) {
+            // Testament filter: derive the list of book names for OT or NT
+            const testamentBooks = BIBLE_BOOKS
+                .filter(b => b.testament === testament)
+                .map(b => b.name);
+            // Also include localized names so Hindi/Telugu bibles are filtered correctly
+            const allTestamentBookNames: string[] = [];
+            for (const name of testamentBooks) {
+                allTestamentBookNames.push(name);
+                const hi = getLocalizedBookName(name, 'hi');
+                const te = getLocalizedBookName(name, 'te');
+                if (hi !== name) allTestamentBookNames.push(hi);
+                if (te !== name) allTestamentBookNames.push(te);
+            }
+            filters.bookName = { $in: allTestamentBookNames };
         }
         if (parsed.chapter) {
             filters.chapterNumber = parsed.chapter;
@@ -311,16 +337,22 @@ export class BibleSearchService {
         const candidates = Array.from(candidateMap.values());
 
         if (candidates.length === 0) {
-            return [];
+            return { results: [], hasMore: false };
         }
 
         // 4. In-memory reranking and scoring
         const scoredVerses = WeightedReranker.rerank(candidates as any[], normalizedQuery);
 
-        // 5. Paginate and map results
+        // 5. Determine whether more pages exist
+        const hasMore = scoredVerses.length > skip + limit;
+
+        // 6. Paginate and map results
         const paginatedScoredVerses = scoredVerses.slice(skip, skip + limit);
 
-        return paginatedScoredVerses.map(sv => this.mapScoredVerseToResult(sv, normalizedQuery));
+        return {
+            results: paginatedScoredVerses.map(sv => this.mapScoredVerseToResult(sv, normalizedQuery)),
+            hasMore,
+        };
     }
 
     /**

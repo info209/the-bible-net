@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { FiSearch } from 'react-icons/fi';
-import { X, Clock, Trash2, BookOpen, ChevronRight, Heart, Loader2 } from 'lucide-react';
+import { X, Clock, Trash2, BookOpen, ChevronRight, Heart, Loader2, ChevronDown } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BibleOfflineService } from '@/lib/offline/BibleOfflineService';
+import { useAutoFocus, focusTarget } from '@/hooks/useAutoFocus';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -64,6 +65,8 @@ interface HybridResult {
     }[];
     total: number;
     query: string;
+    hasMore?: boolean;
+    page?: number;
 }
 
 type SearchData = BookSearchResult | ExactVerseResult | EmotionResult | HybridResult | null;
@@ -92,6 +95,7 @@ export interface BibleSearchModalProps {
 const SEARCH_HISTORY_KEY = 'bible_search_history_v2';
 const MAX_HISTORY = 10;
 const DEBOUNCE_MS = 250;
+const PAGE_LIMIT = 25;
 
 const EMOTION_EMOJI: Record<string, string> = {
     joy: '😊', peace: '🕊️', hope: '🌟', faith: '✝️', fear: '😰',
@@ -104,6 +108,14 @@ const EMOTION_EMOJI: Record<string, string> = {
     salvation: '🌊', doubt: '❓', suffering: '💔', perseverance: '⚡',
     grace: '🌺', mercy: '🕊️', righteousness: '⚖️', holiness: '🕊️',
 };
+
+type TestamentFilter = 'all' | 'OT' | 'NT';
+
+const TESTAMENT_FILTERS: { value: TestamentFilter; label: string }[] = [
+    { value: 'all', label: 'All' },
+    { value: 'OT', label: 'Old Testament' },
+    { value: 'NT', label: 'New Testament' },
+];
 
 // ---------------------------------------------------------------------------
 // Theme helpers
@@ -391,15 +403,21 @@ function EmotionModeView({
 // ---------------------------------------------------------------------------
 
 function HybridModeView({
-    data,
+    results,
     theme: t,
     query,
+    hasMore,
+    isLoadingMore,
     onVerseClick,
+    onLoadMore,
 }: {
-    data: HybridResult;
+    results: HybridResult['results'];
     theme: ReturnType<typeof useThemeVars>;
     query: string;
+    hasMore: boolean;
+    isLoadingMore: boolean;
     onVerseClick: (book: string, chapter: number, verse: number, version?: string) => void;
+    onLoadMore: () => void;
 }) {
     const highlightText = (text: string, q: string) => {
         if (!q.trim()) return text;
@@ -415,7 +433,7 @@ function HybridModeView({
         return out;
     };
 
-    if (data.results.length === 0) {
+    if (results.length === 0) {
         return (
             <div className="text-center py-12" style={{ color: t.subText }}>
                 <FiSearch size={40} className="mx-auto mb-3 opacity-20" />
@@ -428,11 +446,11 @@ function HybridModeView({
     return (
         <div className="p-4 space-y-3">
             <p className="text-[10px] font-bold tracking-wider" style={{ color: t.subText }}>
-                {data.total} result{data.total !== 1 ? 's' : ''}
+                {results.length} result{results.length !== 1 ? 's' : ''}{hasMore ? '+' : ''}
             </p>
-            {data.results.slice(0, 50).map((r, i) => (
+            {results.map((r, i) => (
                 <button
-                    key={`${r.book?.name}-${r.chapter?.number}-${r.number}-${i}`}
+                    key={`${r.book?.name}-${r.chapter?.number}-${r.number}-${r.verseId ?? i}`}
                     onClick={() => onVerseClick(r.book?.name, r.chapter?.number, r.number, r.version?.abbreviation)}
                     className="w-full text-left p-3.5 rounded-xl border flex gap-3 transition-all duration-150 hover:scale-[1.01] active:scale-[0.99]"
                     style={{ backgroundColor: t.cardBg, borderColor: t.cardBorder }}
@@ -457,6 +475,70 @@ function HybridModeView({
                     </div>
                 </button>
             ))}
+
+            {/* Load More button */}
+            {(hasMore || isLoadingMore) && (
+                <button
+                    onClick={onLoadMore}
+                    disabled={isLoadingMore}
+                    className="w-full flex items-center justify-center gap-2 py-3 mt-1 rounded-xl text-sm font-bold transition-all duration-150 border disabled:opacity-60"
+                    style={{
+                        borderColor: t.chipBorder,
+                        color: t.accent,
+                        backgroundColor: t.accentLight,
+                    }}
+                    aria-label="Load more results"
+                >
+                    {isLoadingMore
+                        ? <><Loader2 size={15} className="animate-spin" /> Loading…</>
+                        : <><ChevronDown size={15} /> Load more</>
+                    }
+                </button>
+            )}
+        </div>
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Testament Filter Pills
+// ---------------------------------------------------------------------------
+
+function TestamentFilterPills({
+    active,
+    theme: t,
+    onChange,
+}: {
+    active: TestamentFilter;
+    theme: ReturnType<typeof useThemeVars>;
+    onChange: (val: TestamentFilter) => void;
+}) {
+    return (
+        <div
+            className="flex items-center gap-1.5 px-4 py-2 overflow-x-auto"
+            style={{
+                borderBottom: `1px solid ${t.innerBorder}`,
+                scrollbarWidth: 'none',
+            }}
+        >
+            {TESTAMENT_FILTERS.map(f => {
+                const isActive = f.value === active;
+                return (
+                    <button
+                        key={f.value}
+                        onClick={() => onChange(f.value)}
+                        className="flex-shrink-0 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide transition-all duration-150 hover:scale-105 active:scale-95"
+                        style={{
+                            backgroundColor: isActive ? t.accent : t.chipBg,
+                            color: isActive ? '#ffffff' : t.subText,
+                            border: `1.5px solid ${isActive ? t.accent : t.chipBorder}`,
+                            boxShadow: isActive ? '0 1px 6px rgba(226,55,68,0.3)' : 'none',
+                        }}
+                        aria-pressed={isActive}
+                    >
+                        {f.label}
+                    </button>
+                );
+            })}
         </div>
     );
 }
@@ -483,6 +565,21 @@ export default function BibleSearchModal({
     const [debouncedQuery, setDebouncedQuery] = useState('');
     const [history, setHistory] = useState<string[]>([]);
 
+    // Filter + pagination state
+    const [testamentFilter, setTestamentFilter] = useState<TestamentFilter>('all');
+    const [currentPage, setCurrentPage] = useState(1);
+    const [accumulatedResults, setAccumulatedResults] = useState<HybridResult['results']>([]);
+    const [hasMore, setHasMore] = useState(false);
+    const [isLoadingMore, setIsLoadingMore] = useState(false);
+    const [firstPageData, setFirstPageData] = useState<SearchData>(null);
+    const [isInitialLoading, setIsInitialLoading] = useState(false);
+    const [searchError, setSearchError] = useState(false);
+
+    // Track in-flight request to prevent duplicates
+    const activeRequestRef = useRef<AbortController | null>(null);
+    // Track which (query, filter, page) we last fetched to prevent duplicates
+    const lastFetchKeyRef = useRef<string>('');
+
     const inputRef = useRef<HTMLInputElement>(null);
 
     // Load history on mount
@@ -501,50 +598,144 @@ export default function BibleSearchModal({
         return () => clearTimeout(handler);
     }, [query]);
 
-    // Focus input when modal opens; reset when it closes
+    // Manage autofocus when modal opens, reopens, or mounts
+    useAutoFocus({ active: isOpen }, inputRef);
+
+    // Reset queries when modal closes
     useEffect(() => {
-        if (isOpen) {
-            setTimeout(() => inputRef.current?.focus(), 80);
-        } else {
+        if (!isOpen) {
             setQuery('');
             setDebouncedQuery('');
+            resetPagination();
         }
     }, [isOpen]);
 
-    const { data: searchResultsData, isFetching: isRefreshing, isLoading } = useQuery({
-        queryKey: ['bible-search', debouncedQuery, activeVersionCode],
-        queryFn: async ({ signal }) => {
+    // Reset pagination when query or filter changes
+    useEffect(() => {
+        resetPagination();
+    }, [debouncedQuery, testamentFilter]);
+
+    // Fetch page 1 whenever query/filter resets (currentPage goes back to 1)
+    useEffect(() => {
+        if (debouncedQuery.length >= 2 && currentPage === 1) {
+            fetchPage(1, true);
+        }
+    }, [debouncedQuery, testamentFilter, currentPage]);
+
+    function resetPagination() {
+        setCurrentPage(1);
+        setAccumulatedResults([]);
+        setHasMore(false);
+        setFirstPageData(null);
+        setSearchError(false);
+    }
+
+    async function fetchPage(page: number, isFirstPage: boolean) {
+        const fetchKey = `${debouncedQuery}|${testamentFilter}|${page}`;
+        if (lastFetchKeyRef.current === fetchKey) return; // duplicate guard
+        lastFetchKeyRef.current = fetchKey;
+
+        // Cancel any in-flight request
+        if (activeRequestRef.current) {
+            activeRequestRef.current.abort();
+        }
+        const controller = new AbortController();
+        activeRequestRef.current = controller;
+
+        if (isFirstPage) {
+            setIsInitialLoading(true);
+        } else {
+            setIsLoadingMore(true);
+        }
+        setSearchError(false);
+
+        try {
             const isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+
+            let result: SearchData = null;
+
             if (!isOnline) {
-                return await BibleOfflineService.searchOffline(debouncedQuery, activeVersionCode);
-            }
-
-            try {
-                const params = new URLSearchParams({ q: debouncedQuery, limit: '50' });
-                if (activeVersionCode) params.set('versionCode', activeVersionCode);
-
-                const res = await fetch(`/api/v1/bible/search?${params}`, { signal });
-                const json = await res.json();
-                if (!json.success || !json.data) {
-                    if (json.error) {
-                        const isCompleteReference = /^[1-3]?\s*[a-zA-Z\s]+?\s+\d+\s*:\s*\d+(?:\s*-\s*\d+)?$/.test(debouncedQuery);
-                        if (isCompleteReference) {
-                            toast.error(json.error);
-                        }
+                result = await BibleOfflineService.searchOffline(
+                    debouncedQuery,
+                    activeVersionCode,
+                    {
+                        testament: testamentFilter === 'all' ? undefined : testamentFilter,
+                        page,
+                        limit: PAGE_LIMIT,
                     }
-                    return await BibleOfflineService.searchOffline(debouncedQuery, activeVersionCode);
-                }
-                return json.data;
-            } catch (err: any) {
-                if (err?.name === 'AbortError') throw err;
-                return await BibleOfflineService.searchOffline(debouncedQuery, activeVersionCode);
-            }
-        },
-        enabled: debouncedQuery.length >= 2,
-        staleTime: 5 * 60 * 1000, // 5 minutes cache
-    });
+                );
+            } else {
+                try {
+                    const params = new URLSearchParams({ q: debouncedQuery, limit: String(PAGE_LIMIT), page: String(page) });
+                    if (activeVersionCode) params.set('versionCode', activeVersionCode);
+                    if (testamentFilter !== 'all') params.set('testament', testamentFilter);
 
-    const searchData = searchResultsData || null;
+                    const res = await fetch(`/api/v1/bible/search?${params}`, { signal: controller.signal });
+                    const json = await res.json();
+
+                    if (!json.success || !json.data) {
+                        if (json.error) {
+                            const isCompleteReference = /^[1-3]?\s*[a-zA-Z\s]+?\s+\d+\s*:\s*\d+(?:\s*-\s*\d+)?$/.test(debouncedQuery);
+                            if (isCompleteReference) toast.error(json.error);
+                        }
+                        result = await BibleOfflineService.searchOffline(
+                            debouncedQuery,
+                            activeVersionCode,
+                            {
+                                testament: testamentFilter === 'all' ? undefined : testamentFilter,
+                                page,
+                                limit: PAGE_LIMIT,
+                            }
+                        );
+                    } else {
+                        result = json.data;
+                    }
+                } catch (err: any) {
+                    if (err?.name === 'AbortError') return; // silently ignore cancelled request
+                    result = await BibleOfflineService.searchOffline(
+                        debouncedQuery,
+                        activeVersionCode,
+                        {
+                            testament: testamentFilter === 'all' ? undefined : testamentFilter,
+                            page,
+                            limit: PAGE_LIMIT,
+                        }
+                    );
+                }
+            }
+
+            // Merge results
+            if (result?.mode === 'hybrid') {
+                const incoming = (result as HybridResult).results ?? [];
+                if (isFirstPage) {
+                    setAccumulatedResults(incoming);
+                    setFirstPageData(result);
+                } else {
+                    // Deduplicate by verseId
+                    setAccumulatedResults(prev => {
+                        const existingIds = new Set(prev.map(r => r.verseId));
+                        const deduped = incoming.filter(r => !existingIds.has(r.verseId));
+                        return [...prev, ...deduped];
+                    });
+                }
+                setHasMore((result as HybridResult).hasMore ?? false);
+            } else if (isFirstPage) {
+                // Non-hybrid modes (book, exact, emotion) — just store as firstPageData
+                setFirstPageData(result);
+                setHasMore(false);
+            }
+        } finally {
+            setIsInitialLoading(false);
+            setIsLoadingMore(false);
+        }
+    }
+
+    function handleLoadMore() {
+        if (isLoadingMore || !hasMore) return;
+        const nextPage = currentPage + 1;
+        setCurrentPage(nextPage);
+        fetchPage(nextPage, false);
+    }
 
     // History helpers
     const addHistory = (q: string) => {
@@ -562,32 +753,30 @@ export default function BibleSearchModal({
     const clearQuery = () => {
         setQuery('');
         setDebouncedQuery('');
-        inputRef.current?.focus();
+        resetPagination();
+        focusTarget(inputRef.current);
     };
 
     // Navigation handlers
     const handleChapterTap = (chapter: number) => {
-        const data = searchData as BookSearchResult;
+        const data = firstPageData as BookSearchResult;
         addHistory(query);
         onNavigateToChapter(data.book, chapter);
         onClose();
     };
 
     const handleVersionChange = (versionCode: string) => {
-        if (searchData?.mode !== 'exact') return;
-        const ev = searchData as ExactVerseResult;
+        if (firstPageData?.mode !== 'exact') return;
+        const ev = firstPageData as ExactVerseResult;
         const match = ev.availableVersions.find(v => v.versionCode === versionCode);
         if (match) {
-            queryClient.setQueryData(
-                ['bible-search', debouncedQuery, activeVersionCode],
-                { ...ev, text: match.text, versionCode: match.versionCode }
-            );
+            setFirstPageData({ ...ev, text: match.text, versionCode: match.versionCode });
         }
     };
 
     const handleReadChapter = () => {
-        if (searchData?.mode !== 'exact') return;
-        const ev = searchData as ExactVerseResult;
+        if (firstPageData?.mode !== 'exact') return;
+        const ev = firstPageData as ExactVerseResult;
         addHistory(query);
         onNavigateToVerse(ev.book, ev.chapter, ev.verse, ev.versionCode);
         onClose();
@@ -610,9 +799,14 @@ export default function BibleSearchModal({
 
     if (!isOpen) return null;
 
-    // Determine what content area shows
     const hasQuery = query.trim().length >= 2;
-    const showSkeleton = isLoading && !searchData;
+    const showSkeleton = isInitialLoading && accumulatedResults.length === 0 && !firstPageData;
+    // Show filter pills only for free-text (hybrid) searches, not during exact/book/emotion results
+    const showFilters = hasQuery && !isInitialLoading && (
+        !firstPageData ||
+        firstPageData.mode === 'hybrid' ||
+        accumulatedResults.length > 0
+    );
 
     return (
         <div
@@ -630,7 +824,7 @@ export default function BibleSearchModal({
                     className="flex items-center gap-3 px-4 py-3 border-b"
                     style={{ borderColor: t.innerBorder, backgroundColor: t.modalBg }}
                 >
-                    {isRefreshing
+                    {isInitialLoading
                         ? <Loader2 size={18} className="animate-spin flex-shrink-0" style={{ color: t.accent }} />
                         : <FiSearch size={18} style={{ color: t.subText, flexShrink: 0 }} />
                     }
@@ -673,6 +867,19 @@ export default function BibleSearchModal({
                     </button>
                 </div>
 
+                {/* ── Testament filter pills ───────────────────────────── */}
+                {showFilters && (
+                    <TestamentFilterPills
+                        active={testamentFilter}
+                        theme={t}
+                        onChange={val => {
+                            if (val !== testamentFilter) {
+                                setTestamentFilter(val);
+                            }
+                        }}
+                    />
+                )}
+
                 {/* ── Content area ────────────────────────────────────── */}
                 <div className="flex-1 overflow-y-auto overscroll-contain">
 
@@ -685,44 +892,47 @@ export default function BibleSearchModal({
                     )}
 
                     {/* ── Mode-specific views — shown whenever data exists ── */}
-                    {/* Note: NOT gated by isLoading/isRefreshing so results always show */}
 
-                    {searchData?.mode === 'book' && (
+                    {firstPageData?.mode === 'book' && (
                         <BookModeView
-                            data={searchData as BookSearchResult}
+                            data={firstPageData as BookSearchResult}
                             theme={t}
                             onChapterTap={handleChapterTap}
                         />
                     )}
 
-                    {searchData?.mode === 'exact' && (
+                    {firstPageData?.mode === 'exact' && (
                         <ExactVerseModeView
-                            data={searchData as ExactVerseResult}
+                            data={firstPageData as ExactVerseResult}
                             theme={t}
                             onVersionChange={handleVersionChange}
                             onReadChapter={handleReadChapter}
                         />
                     )}
 
-                    {searchData?.mode === 'emotion' && (
+                    {firstPageData?.mode === 'emotion' && (
                         <EmotionModeView
-                            data={searchData as EmotionResult}
+                            data={firstPageData as EmotionResult}
                             theme={t}
                             onVerseClick={handleEmotionVerseClick}
                         />
                     )}
 
-                    {searchData?.mode === 'hybrid' && (
+                    {/* Hybrid mode — accumulated paginated results */}
+                    {(accumulatedResults.length > 0 || (firstPageData?.mode === 'hybrid' && !isInitialLoading)) && (
                         <HybridModeView
-                            data={searchData as HybridResult}
+                            results={accumulatedResults}
                             theme={t}
                             query={query}
+                            hasMore={hasMore}
+                            isLoadingMore={isLoadingMore}
                             onVerseClick={handleHybridVerseClick}
+                            onLoadMore={handleLoadMore}
                         />
                     )}
 
                     {/* ── No-results state (query present, search done, nothing found) ── */}
-                    {hasQuery && !isLoading && !searchData && (
+                    {hasQuery && !isInitialLoading && !firstPageData && accumulatedResults.length === 0 && !searchError && debouncedQuery === query.trim() && (
                         <div className="text-center py-12" style={{ color: t.subText }}>
                             <FiSearch size={40} className="mx-auto mb-3 opacity-20" />
                             <p className="text-sm font-semibold">No results for "{query.trim()}"</p>

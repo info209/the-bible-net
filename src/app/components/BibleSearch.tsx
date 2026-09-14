@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { FiSearch } from 'react-icons/fi';
-import { X, Clock, Trash2, BookOpen } from 'lucide-react';
+import { X, Clock, Trash2, BookOpen, ChevronDown, Loader2 } from 'lucide-react';
+import { useAutoFocus, focusTarget } from '@/hooks/useAutoFocus';
 
 interface SearchResult {
   book: string;
@@ -10,6 +11,7 @@ interface SearchResult {
   preview: string;
   versionAbbr?: string;
   versionName?: string;
+  verseId?: string;
 }
 
 interface BibleSearchProps {
@@ -23,6 +25,15 @@ interface BibleSearchProps {
 
 const SEARCH_HISTORY_KEY = 'bible_search_history';
 const MAX_HISTORY_ITEMS = 10;
+const PAGE_LIMIT = 25;
+
+type TestamentFilter = 'all' | 'OT' | 'NT';
+
+const TESTAMENT_FILTERS: { value: TestamentFilter; label: string }[] = [
+  { value: 'all', label: 'All' },
+  { value: 'OT', label: 'Old Testament' },
+  { value: 'NT', label: 'New Testament' },
+];
 
 export default function BibleSearch({
   isOpen,
@@ -36,9 +47,16 @@ export default function BibleSearch({
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [testamentFilter, setTestamentFilter] = useState<TestamentFilter>('all');
   const [showSuggestions, setShowSuggestions] = useState(false);
+
   const searchInputRef = useRef<HTMLInputElement>(null);
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastFetchKeyRef = useRef<string>('');
+  const activeAbortRef = useRef<AbortController | null>(null);
 
   // Load search history from localStorage on mount
   useEffect(() => {
@@ -52,46 +70,92 @@ export default function BibleSearch({
     }
   }, []);
 
-  // Focus search input when modal opens
-  useEffect(() => {
-    if (isOpen && searchInputRef.current) {
-      setTimeout(() => {
-        searchInputRef.current?.focus();
-      }, 100);
-    }
-  }, [isOpen]);
+  // Focus search input when modal opens or reopens
+  useAutoFocus({ active: isOpen }, searchInputRef);
 
-  // Search function using Server API
-  const performSearch = async (query: string) => {
+  // Search function using Server API — fetches a specific page
+  const performSearch = async (query: string, page: number, testament: TestamentFilter, isFirstPage: boolean) => {
     if (!query.trim() || query.trim().length < 2) {
       setSearchResults([]);
+      setHasMore(false);
       return;
     }
 
-    setIsSearching(true);
+    const fetchKey = `${query}|${testament}|${page}`;
+    if (lastFetchKeyRef.current === fetchKey) return;
+    lastFetchKeyRef.current = fetchKey;
+
+    // Cancel any in-flight request
+    if (activeAbortRef.current) activeAbortRef.current.abort();
+    const controller = new AbortController();
+    activeAbortRef.current = controller;
+
+    if (isFirstPage) {
+      setIsSearching(true);
+    } else {
+      setIsLoadingMore(true);
+    }
+
     try {
-      const response = await fetch(`/api/v1/bible/search?q=${encodeURIComponent(query)}&limit=50`);
+      const params = new URLSearchParams({
+        q: encodeURIComponent(query),
+        limit: String(PAGE_LIMIT),
+        page: String(page),
+      });
+      if (testament !== 'all') params.set('testament', testament);
+
+      const response = await fetch(`/api/v1/bible/search?${params}`, { signal: controller.signal });
       const data = await response.json();
 
-      if (data.success && data.data.results) {
-        const formattedResults: SearchResult[] = data.data.results.map((r: any) => ({
+      if (data.success && data.data?.results) {
+        const formatted: SearchResult[] = data.data.results.map((r: any) => ({
           book: r.book.name,
           chapter: r.chapter.number,
           verse: r.number,
           text: r.text,
           preview: r.text,
           versionAbbr: r.version?.abbreviation,
-          versionName: r.version?.name
+          versionName: r.version?.name,
+          verseId: r.verseId,
         }));
-        setSearchResults(formattedResults);
-      } else {
+
+        if (isFirstPage) {
+          setSearchResults(formatted);
+        } else {
+          // Append and deduplicate
+          setSearchResults(prev => {
+            const existingKeys = new Set(prev.map(r => `${r.book}-${r.chapter}-${r.verse}`));
+            const deduped = formatted.filter(r => !existingKeys.has(`${r.book}-${r.chapter}-${r.verse}`));
+            return [...prev, ...deduped];
+          });
+        }
+
+        setHasMore(data.data.hasMore ?? false);
+      } else if (isFirstPage) {
         setSearchResults([]);
+        setHasMore(false);
       }
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.name === 'AbortError') return;
       console.error('Search failed:', error);
-      setSearchResults([]);
+      if (isFirstPage) {
+        setSearchResults([]);
+        setHasMore(false);
+      }
     } finally {
       setIsSearching(false);
+      setIsLoadingMore(false);
+    }
+  };
+
+  // Reset and search from page 1 whenever query or filter changes
+  const resetAndSearch = (query: string, testament: TestamentFilter) => {
+    setCurrentPage(1);
+    setSearchResults([]);
+    setHasMore(false);
+    lastFetchKeyRef.current = '';
+    if (query.trim().length >= 2) {
+      performSearch(query, 1, testament, true);
     }
   };
 
@@ -104,10 +168,11 @@ export default function BibleSearch({
     if (searchQuery.trim() && searchQuery.trim().length >= 2) {
       setShowSuggestions(true);
       searchTimeoutRef.current = setTimeout(() => {
-        performSearch(searchQuery);
+        resetAndSearch(searchQuery, testamentFilter);
       }, 500);
     } else {
       setSearchResults([]);
+      setHasMore(false);
       setShowSuggestions(false);
     }
 
@@ -116,12 +181,19 @@ export default function BibleSearch({
         clearTimeout(searchTimeoutRef.current);
       }
     };
-  }, [searchQuery]);
+  }, [searchQuery, testamentFilter]);
+
+  // Load more handler
+  const handleLoadMore = () => {
+    if (isLoadingMore || !hasMore) return;
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    performSearch(searchQuery, nextPage, testamentFilter, false);
+  };
 
   // Add to search history
   const addToHistory = (query: string) => {
     if (!query.trim()) return;
-
     const newHistory = [query, ...searchHistory.filter(item => item !== query)].slice(0, MAX_HISTORY_ITEMS);
     setSearchHistory(newHistory);
     localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(newHistory));
@@ -137,7 +209,7 @@ export default function BibleSearch({
   const handleSearch = (query: string) => {
     if (!query.trim()) return;
     addToHistory(query);
-    performSearch(query);
+    resetAndSearch(query, testamentFilter);
     setShowSuggestions(false);
   };
 
@@ -237,12 +309,23 @@ export default function BibleSearch({
     dark: 'rgba(255,255,255,0.05)'
   }[theme];
 
-  const resultCardHover = {
-    light: 'rgba(0,0,0,0.02)',
-    sepia: 'rgba(92, 74, 58, 0.04)',
-    cream: 'rgba(74, 63, 42, 0.04)',
-    dark: 'rgba(255,255,255,0.04)'
+  const chipBg = {
+    light: '#f3f4f6',
+    sepia: 'rgba(92,74,58,0.1)',
+    cream: 'rgba(74,63,42,0.09)',
+    dark: 'rgba(255,255,255,0.09)'
   }[theme];
+
+  const chipBorder = {
+    light: '#e5e7eb',
+    sepia: 'rgba(92,74,58,0.2)',
+    cream: 'rgba(74,63,42,0.2)',
+    dark: 'rgba(255,255,255,0.12)'
+  }[theme];
+
+  const accent = '#E23744';
+  const accentLight = 'rgba(226,55,68,0.12)';
+  const showFilters = !!searchQuery && searchQuery.trim().length >= 2;
 
   return (
     <div
@@ -261,7 +344,10 @@ export default function BibleSearch({
         {/* Header with search input */}
         <div className="p-4 border-b" style={{ borderColor: innerBorderCol }}>
           <div className="flex items-center space-x-3">
-            <FiSearch className="size-5 flex-shrink-0" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : '#9ca3af' }} />
+            {isSearching
+              ? <Loader2 className="size-5 flex-shrink-0 animate-spin" style={{ color: accent }} />
+              : <FiSearch className="size-5 flex-shrink-0" style={{ color: isDark ? 'rgba(255,255,255,0.4)' : '#9ca3af' }} />
+            }
             <input
               ref={searchInputRef}
               type="text"
@@ -280,13 +366,19 @@ export default function BibleSearch({
             />
             {searchQuery && (
               <button
+                type="button"
                 onClick={() => {
                   setSearchQuery('');
                   setSearchResults([]);
+                  setHasMore(false);
+                  setCurrentPage(1);
                   setShowSuggestions(false);
+                  lastFetchKeyRef.current = '';
+                  focusTarget(searchInputRef.current);
                 }}
                 className="p-1.5 rounded-full transition-colors"
                 style={{ backgroundColor: hoverBg }}
+                aria-label="Clear search"
               >
                 <X className="size-4 text-gray-400" />
               </button>
@@ -300,6 +392,38 @@ export default function BibleSearch({
             </button>
           </div>
         </div>
+
+        {/* Testament filter pills */}
+        {showFilters && (
+          <div
+            className="flex items-center gap-1.5 px-4 py-2 overflow-x-auto border-b"
+            style={{ borderColor: innerBorderCol, scrollbarWidth: 'none' }}
+          >
+            {TESTAMENT_FILTERS.map(f => {
+              const isActive = f.value === testamentFilter;
+              return (
+                <button
+                  key={f.value}
+                  onClick={() => {
+                    if (f.value !== testamentFilter) {
+                      setTestamentFilter(f.value);
+                    }
+                  }}
+                  className="flex-shrink-0 px-3 py-1 rounded-full text-[11px] font-bold tracking-wide transition-all duration-150 hover:scale-105 active:scale-95"
+                  style={{
+                    backgroundColor: isActive ? accent : chipBg,
+                    color: isActive ? '#ffffff' : subTextCol,
+                    border: `1.5px solid ${isActive ? accent : chipBorder}`,
+                    boxShadow: isActive ? '0 1px 6px rgba(226,55,68,0.3)' : 'none',
+                  }}
+                  aria-pressed={isActive}
+                >
+                  {f.label}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Content area */}
         <div className="flex-1 overflow-y-auto">
@@ -323,10 +447,7 @@ export default function BibleSearch({
                     key={index}
                     onClick={() => handleHistoryClick(item)}
                     className="w-full flex items-center space-x-3 p-2.5 rounded-xl transition-all text-left border border-transparent"
-                    style={{
-                      hoverBg: hoverBg,
-                      color: textCol
-                    } as any}
+                    style={{ color: textCol }}
                   >
                     <Clock className="size-4 flex-shrink-0" style={{ color: isDark ? 'rgba(255,255,255,0.3)' : '#9ca3af' }} />
                     <span className="flex-1 text-sm font-medium">{item}</span>
@@ -354,13 +475,13 @@ export default function BibleSearch({
                 </div>
               )}
 
-              {!isSearching && searchResults.length > 0 && (
+              {searchResults.length > 0 && (
                 <>
                   <div className="mb-4 text-xs font-bold tracking-wider" style={{ color: subTextCol }}>
-                    Found {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}
+                    {searchResults.length} result{searchResults.length !== 1 ? 's' : ''}{hasMore ? '+' : ''}
                   </div>
                   <div className="space-y-3">
-                    {searchResults.slice(0, 50).map((result, index) => (
+                    {searchResults.map((result, index) => (
                       <button
                         key={`${result.book}-${result.chapter}-${result.verse}-${index}`}
                         onClick={() => handleResultClick(result)}
@@ -368,8 +489,7 @@ export default function BibleSearch({
                         style={{
                           backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.01)',
                           borderColor: resultCardBorder,
-                          hoverBg: resultCardHover
-                        } as any}
+                        }}
                       >
                         <div className="flex items-start space-x-3 w-full">
                           <BookOpen className="size-4.5 flex-shrink-0 mt-1" style={{ color: '#E23744' }} />
@@ -400,10 +520,25 @@ export default function BibleSearch({
                         </div>
                       </button>
                     ))}
-                    {searchResults.length > 50 && (
-                      <div className="text-center py-4 text-xs font-semibold" style={{ color: subTextCol }}>
-                        Showing first 50 results
-                      </div>
+
+                    {/* Load more button */}
+                    {(hasMore || isLoadingMore) && (
+                      <button
+                        onClick={handleLoadMore}
+                        disabled={isLoadingMore}
+                        className="w-full flex items-center justify-center gap-2 py-3 mt-1 rounded-xl text-sm font-bold transition-all duration-150 border disabled:opacity-60"
+                        style={{
+                          borderColor: chipBorder,
+                          color: accent,
+                          backgroundColor: accentLight,
+                        }}
+                        aria-label="Load more results"
+                      >
+                        {isLoadingMore
+                          ? <><Loader2 className="size-4 animate-spin" /> Loading…</>
+                          : <><ChevronDown className="size-4" /> Load more</>
+                        }
+                      </button>
                     )}
                   </div>
                 </>

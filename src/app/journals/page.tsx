@@ -24,6 +24,7 @@ import { fetchWithOfflineCache } from '@/lib/offline';
 import { ModuleOfflineService } from '@/lib/offline/ModuleOfflineService';
 import { PendingActionsService } from '@/lib/offline/PendingActionsService';
 import { useVoiceDictation } from '@/hooks/useVoiceDictation';
+import { useAutoFocus } from '@/hooks/useAutoFocus';
 
 // â”€â”€ Tiptap Rich Text Editor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 import { useEditor, EditorContent } from '@tiptap/react';
@@ -127,6 +128,9 @@ function JournalsContent() {
   
   // Custom features states
   const [showSearchBar, setShowSearchBar] = useState(false);
+  const { refCallback: journalSearchRef, focus: focusJournalSearch } = useAutoFocus<HTMLInputElement>({
+    active: showSearchBar,
+  });
   const [showColorMenu, setShowColorMenu] = useState<'text' | 'bg' | null>(null);
   const [colorMenuPos, setColorMenuPos] = useState<{ top: number; left: number } | null>(null);
   const [showTextStyleMenu, setShowTextStyleMenu] = useState(false);
@@ -2100,6 +2104,7 @@ function JournalsContent() {
                   <div className="relative flex items-center bg-white dark:bg-[#111111] border border-[#E6E6E6] dark:border-white/[0.08] rounded-xl px-3.5 py-2.5 shadow-sm">
                     <Search className="w-4 h-4 text-gray-400 mr-2 shrink-0" />
                     <input
+                      ref={journalSearchRef}
                       type="text"
                       placeholder="Search journals and prayers..."
                       value={searchQuery}
@@ -2107,7 +2112,16 @@ function JournalsContent() {
                       className="bg-transparent border-none outline-none focus:ring-0 w-full text-[16px] md:text-sm placeholder:text-gray-400"
                     />
                     {searchQuery && (
-                      <button onClick={() => setSearchQuery('')} className="p-0.5 hover:bg-gray-200 dark:hover:bg-white/[0.08] rounded-full shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSearchQuery('');
+                          focusJournalSearch();
+                        }}
+                        className="p-0.5 hover:bg-gray-200 dark:hover:bg-white/[0.08] rounded-full shrink-0 cursor-pointer"
+                        title="Clear search"
+                        aria-label="Clear search"
+                      >
                         <X className="w-3.5 h-3.5 text-gray-400" />
                       </button>
                     )}

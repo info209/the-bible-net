@@ -11,9 +11,9 @@ export type SupportedCountry = typeof SUPPORTED_COUNTRIES[number];
 
 export const SUPPORTED_LANGUAGES = [
     'English',
-    'Spanish',
-    'French',
     'Hindi',
+    'Kannada',
+    'Tamil',
     'Telugu',
 ] as const;
 
@@ -21,15 +21,15 @@ export type SupportedLanguage = typeof SUPPORTED_LANGUAGES[number];
 
 export const LANGUAGE_CODE_TO_NAME_MAP: Record<string, SupportedLanguage> = {
     en: 'English',
-    es: 'Spanish',
-    fr: 'French',
     hi: 'Hindi',
     te: 'Telugu',
+    ka: 'Kannada',
+    ta: 'Tamil',
     english: 'English',
-    spanish: 'Spanish',
-    french: 'French',
     hindi: 'Hindi',
-    telugu: 'Telugu',
+    telugu: 'Telugu', 
+    kannada: 'Kannada',
+    tamil: 'Tamil',
 };
 
 export const DEFAULT_COUNTRY: SupportedCountry = 'New Zealand';

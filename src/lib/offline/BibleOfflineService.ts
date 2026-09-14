@@ -17,6 +17,7 @@ import type {
   OfflineChapterData,
   DownloadRecord,
 } from './types';
+import { BIBLE_BOOKS } from '@/utils/bibleBooks';
 
 export class BibleOfflineService {
   // -------------------------------------------------------------------------
@@ -693,9 +694,20 @@ export class BibleOfflineService {
   // Offline Bible Search
   // -------------------------------------------------------------------------
 
-  static async searchOffline(query: string, preferredVersion: string = 'NKJV'): Promise<any | null> {
+  static async searchOffline(
+    query: string,
+    preferredVersion: string = 'NKJV',
+    options: { testament?: 'OT' | 'NT'; page?: number; limit?: number } = {}
+  ): Promise<any | null> {
     const cleanQ = query.trim();
     if (cleanQ.length < 2) return null;
+
+    const { testament, page = 1, limit = 25 } = options;
+
+    // Build a set of book names for the requested testament (if any)
+    const testamentBookNames: Set<string> | null = testament
+      ? new Set(BIBLE_BOOKS.filter(b => b.testament === testament).map(b => b.name.toLowerCase()))
+      : null;
 
     try {
       const db = await getOfflineDB();
@@ -769,6 +781,13 @@ export class BibleOfflineService {
 
       for (const chapter of allChapters) {
         if (!Array.isArray(chapter.verses)) continue;
+
+        // Apply testament filter if specified
+        if (testamentBookNames) {
+          const chapterBookName = (chapter.bookName || '').toLowerCase();
+          if (!testamentBookNames.has(chapterBookName)) continue;
+        }
+
         for (const verse of chapter.verses) {
           if (verse.text && verse.text.toLowerCase().includes(lowerKeyword)) {
             const verseNo = Number((verse as any).verseNumber || (verse as any).number || 1);
@@ -786,17 +805,20 @@ export class BibleOfflineService {
               emotions: [],
               themes: [],
             });
-            if (results.length >= 30) break;
           }
         }
-        if (results.length >= 30) break;
       }
 
       if (results.length > 0) {
+        const skip = (page - 1) * limit;
+        const pageResults = results.slice(skip, skip + limit);
+        const hasMore = results.length > skip + limit;
         return {
           mode: 'hybrid',
-          results,
-          total: results.length,
+          results: pageResults,
+          total: pageResults.length,
+          hasMore,
+          page,
           query: cleanQ,
         };
       }

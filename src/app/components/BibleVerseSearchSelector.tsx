@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { Search, ChevronLeft, X, BookOpen, Loader2 } from 'lucide-react';
 import { getLocalizedBookName } from '@/utils/bibleBooks';
+import { useAutoFocus } from '@/hooks/useAutoFocus';
 
 interface BibleVersion {
   id: string;
@@ -76,6 +77,7 @@ export default function BibleVerseSearchSelector({
   const [loading, setLoading] = useState(false);
   
   const searchInputRef = useRef<HTMLInputElement>(null);
+  useAutoFocus({ active: isOpen && step === 'book' }, searchInputRef);
 
   // Hydrate translation version from localStorage
   useEffect(() => {
