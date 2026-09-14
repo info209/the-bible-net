@@ -155,8 +155,8 @@ export default function HomeView() {
           queryClient.setQueryData(['daily-devotion', item.date, preferredVersion], item);
         });
         // Save to offline cache (fire-and-forget)
-        HomeOfflineService.saveHomeCache('daily_content_list', items).catch(() => {});
-        HomeOfflineService.saveHomeCache('daily_verse', items).catch(() => {});
+        HomeOfflineService.saveHomeCache('daily_content_list', items).catch(() => { });
+        HomeOfflineService.saveHomeCache('daily_verse', items).catch(() => { });
         return items;
       } catch (err) {
         // Offline fallback: serve from persistent IndexedDB storage
@@ -1315,7 +1315,7 @@ export default function HomeView() {
           className="inline-flex items-center gap-2 px-5 py-2 mb-6 rounded-full text-sm font-medium text-[var(--color-primary-teal)] hover:bg-[#41adb0]/10 active:scale-95 transition-all duration-200 cursor-pointer"
         >
           <Download className="size-4" />
-          <span>Bible App Installation</span>
+          <span>Install The Bible Net</span>
         </button>
 
         {/* Social Icons */}

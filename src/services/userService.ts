@@ -37,7 +37,7 @@ export class UserService {
         });
 
         // 4. Send OTP
-        await this.sendNewOTP(user.id, email);
+        await this.sendNewOTP(user.id, email, user.firstName);
 
         return { userId: user.id, email: user.email };
     }
@@ -45,7 +45,7 @@ export class UserService {
     /**
      * Generates, hashes, stores, and sends a new OTP.
      */
-    static async sendNewOTP(userId: string, email: string): Promise<void> {
+    static async sendNewOTP(userId: string, email: string, firstName?: string): Promise<void> {
         const rawOTP = OTPUtils.generateOTP();
         const otpHash = await OTPUtils.hashOTP(rawOTP);
         const expiresAt = OTPUtils.getExpirationDate();
@@ -55,11 +55,11 @@ export class UserService {
         await OTPRepository.create({ userId: userId as any, otpHash, expiresAt });
 
         // Send Email
-        await EmailService.sendOTP(email, rawOTP);
+        await EmailService.sendOTP(email, rawOTP, firstName);
     }
 
-    static async resendOTP(userId: string, email: string) {
-        await this.sendNewOTP(userId, email);
+    static async resendOTP(userId: string, email: string, firstName?: string) {
+        await this.sendNewOTP(userId, email, firstName);
     }
 
     /**
