@@ -19,7 +19,6 @@ export default function RegisterStep1() {
         email: '',
         password: '',
     });
-    const [tncAccepted, setTncAccepted] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [legalModal, setLegalModal] = useState<{ isOpen: boolean; type: 'terms' | 'privacy' }>({
@@ -171,25 +170,15 @@ export default function RegisterStep1() {
                 </div>
 
                 <div className="flex items-start gap-3 px-1">
-                    <div className="flex items-center h-5 mt-0.5">
-                        <input
-                            type="checkbox"
-                            id="tnc"
-                            required
-                            checked={tncAccepted}
-                            onChange={(e) => setTncAccepted(e.target.checked)}
-                            className="w-5 h-5 rounded-[6px] border-slate-300 text-[var(--color-primary-teal)] focus:ring-[var(--color-primary-teal)] accent-[var(--color-primary-teal)] cursor-pointer"
-                        />
-                    </div>
                     <label htmlFor="tnc" className="text-sm text-slate-600 font-medium cursor-pointer leading-relaxed">
-                        I agree to the <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'terms' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Terms of Service</button> and <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Privacy Policy</button>.
+                        By signing up, you agree to the <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'terms' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Terms of Service</button> and <button type="button" onClick={() => setLegalModal({ isOpen: true, type: 'privacy' })} className="text-[var(--color-primary-teal)] font-bold hover:underline bg-transparent border-none p-0">Privacy Policy</button>.
                     </label>
 
                 </div>
 
                 <button
                     type="submit"
-                    disabled={loading || !tncAccepted || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || formData.password.length < 8}
+                    disabled={loading || !formData.firstName.trim() || !formData.lastName.trim() || !formData.email.trim() || formData.password.length < 8}
                     className="w-full bg-[var(--color-primary-teal)] disabled:bg-slate-300 hover:bg-[var(--color-primary-teal-dark)] text-white font-bold py-4 rounded-2xl shadow-xl shadow-[var(--color-primary-teal)]/20 disabled:shadow-none transition-all active:scale-[0.98] disabled:active:scale-100 flex items-center justify-center gap-3 group text-lg"
                 >
                     {loading ? (

@@ -13,11 +13,12 @@ import {
   Heading1, Heading2, Heading3, Quote, Type,
   AlignLeft, AlignCenter, AlignRight, Loader2,
   Undo2, Redo2,
-  ArrowDownWideNarrow, ArrowUpNarrowWide
+  ArrowDownWideNarrow, ArrowUpNarrowWide,
+  NotebookPen
 } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
 import { useConfirm } from '@/context/ConfirmContext';
-import { LiaBookMedicalSolid, LiaBookSolid } from 'react-icons/lia';
+import { PiHandsPraying } from 'react-icons/pi';
 import { RelativeTimestamp } from '@/components/RelativeTimestamp';
 import { fetchWithOfflineCache } from '@/lib/offline';
 import { ModuleOfflineService } from '@/lib/offline/ModuleOfflineService';
@@ -2441,7 +2442,7 @@ function JournalsContent() {
                         aria-label="New Journal"
                       >
                         <div className="w-10 h-10 rounded-full bg-[#0B7A81]/10 dark:bg-[#0B7A81]/20 text-[#0B7A81] dark:text-[#14B8A6] flex items-center justify-center shrink-0">
-                          <LiaBookMedicalSolid className="w-5 h-5" />
+                          <NotebookPen className="w-5 h-5" />
                         </div>
                         <span className="text-sm font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap pr-1">
                           New Journal
@@ -2466,8 +2467,8 @@ function JournalsContent() {
                         className="bg-white dark:bg-[#1A1A1E] border border-gray-100 dark:border-white/[0.08] rounded-2xl px-4 py-3 shadow-[0_8px_30px_rgba(0,0,0,0.12)] flex items-center gap-3.5 group cursor-pointer"
                         aria-label="New Prayer"
                       >
-                        <div className="w-10 h-10 rounded-full bg-rose-500/10 dark:bg-rose-400/20 text-rose-600 dark:text-rose-400 flex items-center justify-center shrink-0">
-                          <LiaBookSolid className="w-5 h-5" />
+                        <div className="w-10 h-10 rounded-full bg-[#0B7A81]/10 dark:bg-[#0B7A81]/20 text-[#0B7A81] dark:text-[#14B8A6] flex items-center justify-center shrink-0">
+                          <PiHandsPraying className="w-5 h-5" />
                         </div>
                         <span className="text-sm font-bold text-gray-800 dark:text-gray-100 whitespace-nowrap pr-1">
                           New Prayer

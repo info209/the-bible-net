@@ -38,7 +38,7 @@ const PasswordInput = React.forwardRef<HTMLInputElement, PasswordInputProps>(
           aria-label={showPassword ? 'Hide password' : 'Show password'}
           aria-pressed={showPassword}
           className={cn(
-            'absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-lg text-slate-400 hover:text-slate-600 transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400/20 active:scale-95 touch-manipulation cursor-pointer flex items-center justify-center',
+            'absolute right-3 top-1/2 -translate-y-1/2 p-2.5 rounded-lg text-slate-400 hover:text-slate-600 transition-colors border-none outline-none focus:outline-none focus:ring-0 focus-visible:outline-none focus-visible:ring-0 active:scale-95 touch-manipulation cursor-pointer flex items-center justify-center',
             buttonClassName
           )}
         >
