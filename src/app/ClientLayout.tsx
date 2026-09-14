@@ -16,6 +16,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
   const [mounted, setMounted] = useState(false);
   const [hideBottomNav, setHideBottomNav] = useState(false);
 
+  // Bible reader fires 'bible-reading-mode' when entering/leaving immersive reading.
   useEffect(() => {
     const handleReadingMode = (e: any) => {
       setHideBottomNav(e.detail.isReadingMode);
@@ -24,11 +25,19 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
     return () => window.removeEventListener('bible-reading-mode', handleReadingMode);
   }, []);
 
-  // Reset reading mode when leaving Bible page
+  // Journals & Library pages fire 'page-scroll-nav-hide' on scroll direction changes.
   useEffect(() => {
-    if (!isBibleReadingRoute(pathname)) {
-      setHideBottomNav(false);
-    }
+    const handlePageScrollNav = (e: any) => {
+      setHideBottomNav(!!e.detail.hide);
+    };
+    window.addEventListener('page-scroll-nav-hide', handlePageScrollNav);
+    return () => window.removeEventListener('page-scroll-nav-hide', handlePageScrollNav);
+  }, []);
+
+  // Reset nav visibility on every route change so the bottom nav is always
+  // shown when first arriving on any page.
+  useEffect(() => {
+    setHideBottomNav(false);
   }, [pathname]);
 
   useEffect(() => {

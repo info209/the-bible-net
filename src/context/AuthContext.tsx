@@ -12,6 +12,8 @@ import React, {
 import { useSession, signOut as nextAuthSignOut } from 'next-auth/react';
 import type { Session } from 'next-auth';
 import { useNetworkStatusContext } from '@/lib/offline/NetworkStatusContext';
+import { ModuleOfflineService } from '@/lib/offline/ModuleOfflineService';
+import { PendingActionsService } from '@/lib/offline/PendingActionsService';
 
 export type AppAuthStatus =
   | 'loading'
@@ -200,10 +202,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isOfflineAuth = effectiveStatus === 'auth-status-unavailable-because-offline';
 
   const signOutWithOfflineCleanup = useCallback(async (options?: { callbackUrl?: string }) => {
+    // Capture the user ID before wiping the session so we can target
+    // userId-scoped IndexedDB keys (saved_verses_${userId}, notes_${userId}, etc.)
+    const currentUserId = effectiveSession?.user?.id;
+
     setCachedSession(null);
     clearSafeSessionFromStorage();
+
+    // Clear all user-specific IndexedDB cache: journals, prayers, library plans,
+    // saved verses/items, notes, reading progress. Does NOT touch Bible offline data.
+    await ModuleOfflineService.clearUserData(currentUserId).catch((err) =>
+      console.warn('[AuthContext] clearUserData failed:', err)
+    );
+
+    // Clear queued offline actions that belong to this user (journal/prayer writes etc.)
+    if (currentUserId) {
+      await PendingActionsService.clearByUserId(currentUserId).catch((err) =>
+        console.warn('[AuthContext] clearByUserId failed:', err)
+      );
+    }
+
     await nextAuthSignOut(options);
-  }, []);
+  }, [effectiveSession]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

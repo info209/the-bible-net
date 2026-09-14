@@ -41,6 +41,57 @@ function LibraryContent() {
     };
   }, []);
 
+  // ── Hide bottom nav on scroll-down, show on scroll-up ────────────────────
+  // Mirrors the same rAF-throttled logic used by BibleReaderPageContainer.
+  // Dispatches 'page-scroll-nav-hide' which ClientLayout listens to.
+  useEffect(() => {
+    let lastKnownScrollY = window.scrollY;
+    let ticking = false;
+    const THRESHOLD = 15; // minimum scroll delta to trigger state change
+
+    const dispatchNavVisibility = (hide: boolean) => {
+      window.dispatchEvent(
+        new CustomEvent('page-scroll-nav-hide', { detail: { hide } })
+      );
+    };
+
+    const updateScrollState = () => {
+      const currentScrollY = window.scrollY;
+      const deltaY = currentScrollY - lastKnownScrollY;
+
+      if (Math.abs(deltaY) > THRESHOLD) {
+        if (deltaY > 0 && currentScrollY > 80) {
+          // Scrolling down — hide the nav
+          dispatchNavVisibility(true);
+        } else if (deltaY < -THRESHOLD || currentScrollY <= 80) {
+          // Scrolling up or near the top — show the nav
+          dispatchNavVisibility(false);
+        }
+        lastKnownScrollY = currentScrollY;
+      }
+
+      ticking = false;
+    };
+
+    const onScroll = () => {
+      if (!ticking) {
+        window.requestAnimationFrame(updateScrollState);
+        ticking = true;
+      }
+    };
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+
+    // Ensure nav is visible when this page is mounted
+    dispatchNavVisibility(false);
+
+    return () => {
+      window.removeEventListener('scroll', onScroll);
+      // Restore nav when leaving library page
+      dispatchNavVisibility(false);
+    };
+  }, []);
+
   // Sync state with URL search params when changed
   useEffect(() => {
     const tabFromUrl = searchParams.get('tab') as LibraryTabId;

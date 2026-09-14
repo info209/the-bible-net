@@ -301,4 +301,30 @@ export class PendingActionsService {
       console.warn('[PendingActionsService] clearAll failed:', err);
     }
   }
+
+  /**
+   * Clear all pending actions belonging to a specific user on logout.
+   * Uses the `by_user_id` index for an efficient targeted deletion.
+   * Actions with no userId (anonymous/system) are left untouched.
+   */
+  static async clearByUserId(userId: string): Promise<void> {
+    if (!userId) return;
+    try {
+      const db = await getOfflineDB();
+      const userActions = await db.getAllFromIndex('pending_actions', 'by_user_id', userId);
+      if (userActions.length === 0) return;
+
+      const tx = db.transaction('pending_actions', 'readwrite');
+      await Promise.all([
+        ...userActions.map((action) => tx.store.delete(action.id)),
+        tx.done,
+      ]);
+
+      const newCount = await db.count('pending_actions');
+      emitCount(newCount);
+    } catch (err) {
+      console.warn('[PendingActionsService] clearByUserId failed:', err);
+    }
+  }
 }
+
