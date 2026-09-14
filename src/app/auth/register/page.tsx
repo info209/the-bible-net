@@ -476,7 +476,7 @@ function RegisterStep3View({ onBack, onFinish }: Step3Props) {
                     if (versionsArray && versionsArray.length > 0) {
                         const abbrs = versionsArray.map((v: any) => v.abbreviation || v.name).filter(Boolean);
                         if (abbrs.length > 0) {
-                            setAvailableVersions(Array.from(new Set([...abbrs, 'NKJV', 'KJV', 'NIV', 'ESV'])));
+                            setAvailableVersions(Array.from(new Set([...abbrs])));
                         }
                     }
                 }

@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useState, useEffect, useRef, Suspense } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { ShieldCheck, Mail, ArrowRight, RefreshCcw, AlertCircle, ChevronLeft } from 'lucide-react';
+import { ShieldCheck, ArrowRight, RefreshCcw, AlertCircle, ChevronLeft } from 'lucide-react';
 import { toast } from '@/context/ToastContext';
 import { getFriendlyErrorMessage } from '@/utils/errorMapper';
-import { focusTarget } from '@/hooks/useAutoFocus';
+import { useOtpInput } from '@/hooks/useOtpInput';
 import { useAuth } from '@/context/AuthContext';
 
 function VerifyOTPContent() {
@@ -16,11 +16,26 @@ function VerifyOTPContent() {
     const email = searchParams.get('email');
     const { status, user, isAuthenticated } = useAuth();
 
-    const [otp, setOtp] = useState(['', '', '', '', '', '']);
     const [loading, setLoading] = useState(false);
     const [resending, setResending] = useState(false);
     const [error, setError] = useState('');
-    const inputRefs = useRef<Array<HTMLInputElement | null>>([]);
+
+    const {
+        otp,
+        inputRefs,
+        handleInput,
+        handleKeyDown,
+        handleBeforeInput,
+        handlePaste,
+        handleFocus,
+        handleClick,
+        resetOtp,
+    } = useOtpInput({
+        length: 6,
+        autoFocus: true,
+        disabled: loading || resending,
+        onChange: () => setError(''),
+    });
 
     useEffect(() => {
         if (isAuthenticated && user) {
@@ -36,89 +51,6 @@ function VerifyOTPContent() {
             router.push('/auth/register');
         }
     }, [userId, status, isAuthenticated, user, router]);
-
-    // Automatically focus the first empty OTP input on initial mount/landing
-    useEffect(() => {
-        const firstEmptyIndex = otp.findIndex((digit) => !digit);
-        const targetIndex = firstEmptyIndex === -1 ? otp.length - 1 : firstEmptyIndex;
-        focusTarget(inputRefs.current[targetIndex]);
-    }, []);
-
-    const handleInput = (index: number, value: string) => {
-        const digits = value.replace(/\D/g, '');
-        if (!digits) {
-            const newOtp = [...otp];
-            newOtp[index] = '';
-            setOtp(newOtp);
-            return;
-        }
-
-        // Multi-digit entry (e.g. mobile SMS auto-fill or fast typing)
-        if (digits.length > 1) {
-            const newOtp = [...otp];
-            let nextFocus = index;
-            for (let i = 0; i < digits.length && (index + i) < 6; i++) {
-                newOtp[index + i] = digits[i];
-                nextFocus = index + i + 1;
-            }
-            setOtp(newOtp);
-            setError('');
-            const target = Math.min(nextFocus, 5);
-            focusTarget(inputRefs.current[target]);
-            return;
-        }
-
-        // Single digit entry
-        const newOtp = [...otp];
-        newOtp[index] = digits;
-        setOtp(newOtp);
-        setError('');
-
-        if (index < 5) {
-            focusTarget(inputRefs.current[index + 1]);
-        }
-    };
-
-    const handlePaste = (index: number, e: React.ClipboardEvent<HTMLInputElement>) => {
-        e.preventDefault();
-        const pastedData = e.clipboardData.getData('text').replace(/\D/g, '');
-        if (!pastedData) return;
-
-        const newOtp = [...otp];
-        let nextFocus = index;
-        for (let i = 0; i < pastedData.length && (index + i) < 6; i++) {
-            newOtp[index + i] = pastedData[i];
-            nextFocus = index + i + 1;
-        }
-        setOtp(newOtp);
-        setError('');
-
-        const target = Math.min(nextFocus, 5);
-        focusTarget(inputRefs.current[target]);
-    };
-
-    const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Backspace') {
-            if (!otp[index] && index > 0) {
-                // Clear previous box and navigate back
-                const newOtp = [...otp];
-                newOtp[index - 1] = '';
-                setOtp(newOtp);
-                focusTarget(inputRefs.current[index - 1]);
-                e.preventDefault();
-            } else if (otp[index]) {
-                // Clear current box
-                const newOtp = [...otp];
-                newOtp[index] = '';
-                setOtp(newOtp);
-                e.preventDefault();
-            }
-        } else if (e.key === 'ArrowLeft' && index > 0) {
-            focusTarget(inputRefs.current[index - 1]);
-        } else if (e.key === 'ArrowRight' && index < 5) {
-            focusTarget(inputRefs.current[index + 1]);
-        }
-    };
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -194,9 +126,8 @@ function VerifyOTPContent() {
             });
             if (res.ok) {
                 toast.success('New OTP sent');
-                setOtp(['', '', '', '', '', '']);
+                resetOtp();
                 setError('');
-                focusTarget(inputRefs.current[0], { force: true });
             } else {
                 const data = await res.json();
                 const friendlyMsg = getFriendlyErrorMessage(data.error || data.message || 'Failed to resend. Try again later.', 'otp');
@@ -265,14 +196,17 @@ function VerifyOTPContent() {
                             type="text"
                             inputMode="numeric"
                             pattern="[0-9]*"
-                            maxLength={1}
+                            maxLength={6}
                             autoComplete={i === 0 ? "one-time-code" : "off"}
                             aria-label={`Digit ${i + 1} of 6`}
                             disabled={loading || resending}
                             value={digit}
                             onChange={(e) => handleInput(i, e.target.value)}
                             onKeyDown={(e) => handleKeyDown(i, e)}
+                            onBeforeInput={(e) => handleBeforeInput(i, e)}
                             onPaste={(e) => handlePaste(i, e)}
+                            onFocus={(e) => handleFocus(i, e)}
+                            onClick={(e) => handleClick(i, e)}
                             className="w-full aspect-square text-center text-2xl sm:text-3xl font-bold bg-gray-100/50 border-2 border-transparent rounded-xl sm:rounded-2xl outline-none focus:border-[var(--color-primary-teal)] focus:ring-4 focus:ring-[var(--color-primary-teal)]/10 transition-all text-slate-800 shadow-sm disabled:opacity-50"
                         />
                     ))}

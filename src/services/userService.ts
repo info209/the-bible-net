@@ -4,6 +4,7 @@ import { UserRepository } from '@/repositories/user/userRepository';
 import { OTPRepository } from '@/repositories/otp/otpRepository';
 import { OTPUtils } from '@/utils/otpUtils';
 import { EmailService } from '@/utils/email/emailService';
+import { validateRegistrationEmail } from '@/lib/disposableEmail';
 import { IUser } from '@/models/User';
 import { UserRole } from '@/types/user';
 
@@ -15,12 +16,19 @@ export class UserService {
         const { email, password } = userData;
         if (!email || !password) throw new Error('Email and password are required');
 
+        // Disposable Email Protection (Before user creation or OTP generation)
+        const emailValidation = validateRegistrationEmail(email);
+        if (!emailValidation.isValid) {
+            throw new Error(emailValidation.error || 'Invalid email address');
+        }
+        const normalizedEmail = emailValidation.normalizedEmail;
+
         // 1. Check if user already exists
-        const existingUser = await UserRepository.findByEmail(email);
+        const existingUser = await UserRepository.findByEmail(normalizedEmail);
         if (existingUser) {
             if (!existingUser.emailVerified) {
                 // Resend OTP if not verified
-                await this.resendOTP(existingUser.id, email);
+                await this.resendOTP(existingUser.id, normalizedEmail, existingUser.firstName);
                 return { userId: existingUser.id, email: existingUser.email };
             }
             throw new Error('Email already registered and verified');
@@ -32,12 +40,13 @@ export class UserService {
         // 3. Create User
         const user = await UserRepository.create({
             ...userData,
+            email: normalizedEmail,
             password: hashedPassword,
             emailVerified: false,
         });
 
         // 4. Send OTP
-        await this.sendNewOTP(user.id, email, user.firstName);
+        await this.sendNewOTP(user.id, normalizedEmail, user.firstName);
 
         return { userId: user.id, email: user.email };
     }
@@ -59,7 +68,19 @@ export class UserService {
     }
 
     static async resendOTP(userId: string, email: string, firstName?: string) {
-        await this.sendNewOTP(userId, email, firstName);
+        // Disposable Email Protection for unvalidated signup resend
+        const emailValidation = validateRegistrationEmail(email);
+        if (!emailValidation.isValid) {
+            throw new Error(emailValidation.error || 'Invalid email address');
+        }
+        const normalizedEmail = emailValidation.normalizedEmail;
+
+        const user = await UserRepository.findById(userId);
+        if (user && user.emailVerified) {
+            throw new Error('Email already registered and verified');
+        }
+
+        await this.sendNewOTP(userId, normalizedEmail, firstName || user?.firstName);
     }
 
     /**

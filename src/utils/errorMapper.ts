@@ -96,6 +96,9 @@ export function getFriendlyErrorMessage(
 
     // --- REGISTER ---
     if (context === 'register') {
+        if (cleanMsg.includes('disposable') || cleanMsg.includes('temporary email') || cleanMsg.includes('permanent email')) {
+            return 'Temporary or disposable email addresses are not allowed. Please use a permanent email address.';
+        }
         if (
             cleanMsg.includes('already registered') ||
             cleanMsg.includes('already exists') ||
@@ -155,6 +158,9 @@ export function getFriendlyErrorMessage(
     }
 
     // 5. Fallback for specific raw errors that we want to map regardless of context
+    if (cleanMsg.includes('disposable') || cleanMsg.includes('temporary email') || cleanMsg.includes('permanent email')) {
+        return 'Temporary or disposable email addresses are not allowed. Please use a permanent email address.';
+    }
     if (cleanMsg.includes('user not found')) {
         if (context === 'forgot-password') {
             return 'No account exists with this email address.';

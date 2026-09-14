@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserService } from '@/services/userService';
+import { validateRegistrationEmail } from '@/lib/disposableEmail';
 import { z } from 'zod';
 
 const registerSchema = z.object({
@@ -46,6 +47,16 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const validatedData = registerSchema.parse(body);
 
+        // Disposable email validation (Server security boundary)
+        const emailValidation = validateRegistrationEmail(validatedData.email);
+        if (!emailValidation.isValid) {
+            return NextResponse.json({
+                success: false,
+                error: emailValidation.error || 'Invalid email address',
+            }, { status: 400 });
+        }
+        validatedData.email = emailValidation.normalizedEmail;
+
         const result = await UserService.registerUser(validatedData);
 
         return NextResponse.json({
@@ -57,7 +68,15 @@ export async function POST(req: NextRequest) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ success: false, errors: error.issues }, { status: 400 });
         }
+        const errorMsg = error?.message || '';
+        if (
+            errorMsg.includes('disposable') ||
+            errorMsg.includes('temporary') ||
+            errorMsg.includes('already registered')
+        ) {
+            return NextResponse.json({ success: false, error: errorMsg }, { status: 400 });
+        }
         console.error('Registration error:', error);
-        return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ success: false, error: errorMsg || 'Internal Server Error' }, { status: 500 });
     }
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { UserService } from '@/services/userService';
+import { validateRegistrationEmail } from '@/lib/disposableEmail';
 import { z } from 'zod';
 
 const resendOtpSchema = z.object({
@@ -27,14 +28,23 @@ const resendOtpSchema = z.object({
  *       200:
  *         description: OTP resent
  *       400:
- *         description: User not found
+ *         description: User not found or invalid email
  */
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
         const { userId, email } = resendOtpSchema.parse(body);
 
-        await UserService.resendOTP(userId, email);
+        // Validate disposable email
+        const emailValidation = validateRegistrationEmail(email);
+        if (!emailValidation.isValid) {
+            return NextResponse.json({
+                success: false,
+                error: emailValidation.error || 'Invalid email address',
+            }, { status: 400 });
+        }
+
+        await UserService.resendOTP(userId, emailValidation.normalizedEmail);
 
         return NextResponse.json({
             success: true,
@@ -44,7 +54,15 @@ export async function POST(req: NextRequest) {
         if (error instanceof z.ZodError) {
             return NextResponse.json({ success: false, errors: error.issues }, { status: 400 });
         }
+        const errorMsg = error?.message || '';
+        if (
+            errorMsg.includes('disposable') ||
+            errorMsg.includes('temporary') ||
+            errorMsg.includes('already registered')
+        ) {
+            return NextResponse.json({ success: false, error: errorMsg }, { status: 400 });
+        }
         console.error('Resend OTP error:', error);
-        return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
+        return NextResponse.json({ success: false, error: errorMsg || 'Internal Server Error' }, { status: 500 });
     }
 }
